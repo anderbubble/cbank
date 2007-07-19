@@ -1,0 +1,115 @@
+#!/usr/bin/env python
+from django.core.management import setup_environ
+try:
+    import settings # Assumed to be in the same directory.
+except ImportError:
+    print >> sys.stderr, "Error: Can't find the file 'settings.py' in the directory containing %r. It appears you've customized things." % __file__
+    print >> sys.stderr, "You'll have to run django-admin.py, passing it your settings module."
+    print >> sys.stedrr, "(If the file settings.py does indeed exist, it's causing an ImportError somehow.)"
+    sys.exit(1)
+else:
+    setup_environ(settings)
+
+import sys
+from datetime import datetime
+
+from optparse import OptionParser
+from clusterbank.scripting import CBOption
+from clusterbank.models import Refund
+
+parser = OptionParser(option_class=CBOption)
+parser.add_option(
+    "-l", "--list",
+    dest="list", action="store_true", default=False,
+    help="list charges")
+parser.add_option(
+    "-u", "--user",
+    dest="user", type="user",
+    help="request as USER", metavar="USER")
+parser.add_option(
+    "-p", "--project",
+    dest="project", type="project",
+    help="list charges on PROJECT", metavar="PROJECT")
+parser.add_option(
+    "-r", "--resource",
+    dest="resource", type="resource",
+    help="list charges for RESOURCE", metavar="RESOURCE")
+parser.add_option(
+    "-n", "--lien",
+    dest="lien", type="lien",
+    help="charge against LIEN", metavar="LIEN")
+parser.add_option(
+    "-c", "--charge",
+    dest="charge", type="charge",
+    help="refund a CHARGE", metavar="CHARGE")
+parser.add_option(
+    "-t", "--time",
+    type="int", dest="time",
+    help="request time of time on the resource", metavar="UNITS")
+parser.add_option(
+    "-e", "--explanation",
+    dest="explanation", type="string",
+    help="EXPLANATION of the request", metavar="EXPLANATION")
+
+
+if __name__ == "__main__":
+    (options, args) = parser.parse_args()
+    
+    if not options.user:
+        print >> sys.stderr, "You must supply a user."
+        sys.exit(1)
+    user = options.user
+    
+    if options.list:
+        refunds = Refund.objects.all()
+        if options.project:
+            if not user.can_refund and not user.member_of(options.project):
+                print >> sys.stderr, "%s cannot list refunds for %s." % (user, options.project)
+                sys.exit(1)
+            refunds = refunds.filter(charge__lien__alloation__request__project=options.project)
+        else:
+            refunds = refunds.filter(charge__lien__allocation__request__project__in=user.project_set)
+        if options.resource:
+            refunds = refunds.filter(charge__lien__allocation__request__resource=options.resource)
+        if options.lien:
+            refunds = refunds.filter(charge__lien=options.lien)
+        if options.charge:
+            refunds = refunds.filter(charge=options.charge)
+        refunds = (refund for refund in refunds if refund.active)
+        for refund in refunds:
+            print refund.id, refund
+    
+    else:
+        # create options:
+        # user -- user performing the refund (required)
+        # charge -- charge to refund (required)
+        # time -- amount of refund
+        # explanation -- reason for refund
+        
+        if not options.charge:
+            print >> sys.stderr, "You must supply a charge."
+            sys.exit(1)
+        
+        kwargs = dict(
+            charge = options.charge)
+        if options.time is not None:
+            kwargs['time'] = options.time
+        if options.explanation is not None:
+            kwargs['explanation'] = options.explanation
+        
+        try:
+            refund = user.refund(**kwargs)
+        except user.NotPermitted, e:
+            print >> sys.stderr, e
+            sys.exit(1)
+        except charge.ExcessiveRefund, e:
+            print >> sys.stderr, e
+            sys.exit(1)
+        
+        try:
+            refund.save()
+        except ValueError, e:
+            print >> sys.stderr, e
+            sys.exit(1)
+        
+        print refund.id, refund

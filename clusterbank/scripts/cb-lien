@@ -1,0 +1,133 @@
+#!/usr/bin/env python
+from django.core.management import setup_environ
+try:
+    import settings # Assumed to be in the same directory.
+except ImportError:
+    print >> sys.stderr, "Error: Can't find the file 'settings.py' in the directory containing %r. It appears you've customized things." % __file__
+    print >> sys.stderr, "You'll have to run django-admin.py, passing it your settings module."
+    print >> sys.stedrr, "(If the file settings.py does indeed exist, it's causing an ImportError somehow.)"
+    sys.exit(1)
+else:
+    setup_environ(settings)
+
+import sys
+from datetime import datetime
+
+from optparse import OptionParser
+from clusterbank.scripting import CBOption
+from clusterbank.models import Lien
+
+parser = OptionParser(option_class=CBOption)
+parser.add_option(
+    "-l", "--list",
+    dest="list", action="store_true", default=False,
+    help="list charges")
+parser.add_option(
+    "-u", "--user",
+    dest="user", type="user",
+    help="post as USER", metavar="USER")
+parser.add_option(
+    "-a", "--allocation",
+    dest="allocation", type="allocation",
+    help="post lien against ALLOCATION", metavar="ALLOCATION")
+parser.add_option(
+    "-p", "--project",
+    dest="project", type="project",
+    help="post lien against PROJECT", metavar="PROJECT")
+parser.add_option(
+    "-r", "--resource",
+    dest="resource", type="resource",
+    help="post lien for RESOURCE", metavar="RESOURCE")
+parser.add_option(
+    "-t", "--time",
+    type="int", dest="time",
+    help="request UNITS of time on the resource", metavar="UNITS")
+parser.add_option(
+    "-e", "--explanation",
+    dest="explanation", type="string",
+    help="EXPLANATION of the request", metavar="EXPLANATION")
+
+if __name__ == "__main__":
+    (options, args) = parser.parse_args()
+    if not options.user:
+        print >> sys.stderr, "You must supply a user."
+        sys.exit(1)
+    user = options.user
+    
+    if options.list:
+        # list options:
+        # user -- user whose projects to list liens on (required)
+        # project -- project to list liens on
+        # resource -- resource to list liens for
+        liens = Lien.objects.all()
+        if options.project:
+            if not user.can_charge and not user.member_of(options.project):
+                print >> sys.stderr, "%s cannot list liens for %s." % (user, options.project)
+                sys.exit(1)
+            liens = liens.filter(allocation__request__project=options.project)
+        else:
+            liens = liens.filter(allocation__request__project__in=user.project_set)
+        if options.resource:
+            liens = liens.filter(allocation__request__resource=options.resource)
+        if options.allocation:
+            liens = liens.filter(allocation=options.allocation)
+        liens = (lien for lien in liens if lien.active)
+        for lien in liens:
+            print lien.id, lien
+    
+    else:
+        # create options:
+        # user -- user creating the lien (required)
+        # project -- project of the lien (required)
+        # resource -- resource of the lien (required)
+        # time -- maximum charge of the lien
+        # explanation -- explanation for the lien
+        
+        if not options.allocation:
+            if not options.project:
+                print >> sys.stderr, "You must supply a project or allocation."
+                sys.exit(1)
+            if not options.resource:
+                print >> sys.stderr, "You must supply a resource or allocation."
+                sys.exit(1)
+        if not options.time:
+            print >> sys.stderr, "You must supply time for the lien."
+            sys.exit(1)
+        
+        kwargs = dict(
+            project = options.project,
+            resource = options.resource,
+            allocation = options.allocation,
+            time = options.time,
+        )
+        if options.explanation is not None:
+            kwargs['explanation'] = options.explanation
+        
+        try:
+            lien = user.lien(**kwargs)
+        except user.NotPermitted, e:
+            print >> sys.stderr, e
+            sys.exit(1)
+        except options.project.InsufficientFunds, e:
+            print >> sys.stderr, e
+            sys.exit(1)
+        
+        try:
+            liens = iter(lien)
+        except TypeError:
+            liens = [lien]
+
+        saved_liens = list()
+        for lien in liens:
+            try:
+                lien.save()
+            except ValueError, e:
+                for lien in saved_liens:
+                    lien.delete()
+                print >> sys.stderr, e
+                sys.exit(1)
+            else:
+                saved_liens.append(lien)
+        
+        for lien in saved_liens:
+            print lien.id, lien

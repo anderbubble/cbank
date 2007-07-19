@@ -1,0 +1,119 @@
+#!/usr/bin/env python
+from django.core.management import setup_environ
+try:
+    import settings # Assumed to be in the same directory.
+except ImportError:
+    print >> sys.stderr, "Error: Can't find the file 'settings.py' in the directory containing %r. It appears you've customized things." % __file__
+    print >> sys.stderr, "You'll have to run django-admin.py, passing it your settings module."
+    print >> sys.stedrr, "(If the file settings.py does indeed exist, it's causing an ImportError somehow.)"
+    sys.exit(1)
+else:
+    setup_environ(settings)
+
+import sys
+from datetime import datetime, timedelta
+
+from optparse import OptionParser
+from clusterbank.scripting import CBOption
+from clusterbank.models import Request
+
+parser = OptionParser(option_class=CBOption)
+parser.add_option(
+    "-l", "--list",
+    dest="list", action="store_true", default=False,
+    help="list charges")
+parser.add_option(
+    "-u", "--user",
+    dest="user", type="user",
+    help="request as USER", metavar="USER")
+parser.add_option(
+    "-p", "--project",
+    dest="project", type="project",
+    help="request a resource for PROJECT", metavar="PROJECT")
+parser.add_option(
+    "-r", "--resource",
+    dest="resource", type="resource",
+    help="request time on RESOURCE", metavar="RESOURCE")
+parser.add_option(
+    "-t", "--time",
+    type="int", dest="time",
+    help="request UNITS of time on the resource", metavar="UNITS")
+parser.add_option(
+    "-s", "--start",
+    dest="start", type="date",
+    help="request resources starting at DATE", metavar="DATE")
+parser.add_option(
+    "-e", "--explanation",
+    dest="explanation", type="string",
+    help="EXPLANATION of the request", metavar="EXPLANATION")
+
+if __name__ == "__main__":
+    (options, args) = parser.parse_args()
+    
+    if options.user is None:
+        print >> sys.stderr, "You must supply a user."
+        sys.exit(1)
+    user = options.user
+    
+    if options.list:
+        # list options:
+        # user -- user whose projects to list requests for (required)
+        # project -- project to list requests for
+        # resource -- resource to list requests for
+        requests = Request.objects.all()
+        if options.project:
+            if not user.can_allocate and not user.member_of(options.project):
+                # Any user who can allocate can list requests.
+                # Otherwise, users must have project membership.
+                print >> sys.stderr, "%s cannot list requests for %s." % (user, options.project)
+                sys.exit(1)
+            requests = requests.filter(project=options.project)
+        else:
+            requests = requests.filter(project__in=user.project_set)
+        if options.resource:
+            requests = requests.filter(resource=options.resource)
+        requests = (request for request in requests if request.active)
+        for request in requests:
+            print request.id, request
+    
+    else:
+        # create options:
+        # user -- user making request (required)
+        # project -- project requesting for (required)
+        # resource -- resource requesting time on (required)
+        # start -- when time is needed
+        # time -- amount of time requested (required)
+        # explanation -- reason for request
+        
+        if not options.project:
+            print >> sys.stderr, "You must supply a project."
+            sys.exit(1)
+        if not options.resource:
+            print >> sys.stderr, "You must supply a resource."
+            sys.exit(1)
+        if not options.time:
+            print >> sys.stderr, "You must supply an amount of time to request."
+            sys.exit(1)
+        
+        kwargs = dict(
+            project = options.project,
+            resource = options.resource,
+            time = options.time)
+        if options.start is not None:
+            kwargs['start'] = options.start
+        if options.explanation is not None:
+            kwargs['explanation'] = options.explanation
+            
+        try:
+            request = user.request(**kwargs)
+        except user.NotPermitted, e:
+            print >> sys.stderr, e
+            sys.exit(1)
+        
+        try:
+            request.save()
+        except ValueError, e:
+            print >> sys.stderr, e
+            sys.exit(1)
+        
+        print request.id, request

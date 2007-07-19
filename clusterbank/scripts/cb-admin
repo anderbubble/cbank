@@ -1,0 +1,57 @@
+#!/usr/bin/env python
+from django.core.management import setup_environ
+try:
+    import settings # Assumed to be in the same directory.
+except ImportError:
+    print >> sys.stderr, "Error: Can't find the file 'settings.py' in the directory containing %r. It appears you've customized things." % __file__
+    print >> sys.stderr, "You'll have to run django-admin.py, passing it your settings module."
+    print >> sys.stedrr, "(If the file settings.py does indeed exist, it's causing an ImportError somehow.)"
+    sys.exit(1)
+else:
+    setup_environ(settings)
+
+import sys
+
+from optparse import OptionParser
+from clusterbank.scripting import CBOption
+
+
+if __name__ == "__main__":
+    """cb-admin -u <username> -g <privileges>] [-r <privileges>]"""
+    parser = OptionParser(option_class=CBOption)
+    parser.add_option(
+        "-u", "--user",
+        dest="user", type="user",
+        help="allocate/revoke on USER", metavar="USER")
+    parser.add_option(
+        "-g", "--grant",
+        dest="grant", type="privileges", action="store", default=[],
+        help="grant PRIVILEGES", metavar="PRIVILEGES")
+    parser.add_option(
+        "-r", "--revoke",
+        dest="revoke", type="privileges", action="store", default=[],
+        help="request a resource for PROJECT", metavar="PRIVILEGES")
+    parser.add_option(
+        "-v", "--view",
+        dest="view", action="store_true", default=False,
+        help="view the permissions of a user")
+    (options, args) = parser.parse_args()
+    
+    if options.user is not None:
+        user = options.user
+    else:
+        print >> sys.stderr, "You must supply a user."
+        sys.exit(1)
+    
+    for privilege in options.grant:
+        setattr(user, "can_" + privilege, True)
+    
+    for privilege in options.revoke:
+        setattr(user, "can_" + privilege, False)
+    
+    user.save()
+    
+    if options.view:
+        for privilege in CBOption.PRIVILEGES:
+            if getattr(user, "can_" + privilege):
+                print privilege

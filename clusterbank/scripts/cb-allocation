@@ -1,0 +1,154 @@
+#!/usr/bin/env python
+from django.core.management import setup_environ
+try:
+    import settings # Assumed to be in the same directory.
+except ImportError:
+    print >> sys.stderr, "Error: Can't find the file 'settings.py' in the directory containing %r. It appears you've customized things." % __file__
+    print >> sys.stderr, "You'll have to run django-admin.py, passing it your settings module."
+    print >> sys.stedrr, "(If the file settings.py does indeed exist, it's causing an ImportError somehow.)"
+    sys.exit(1)
+else:
+    setup_environ(settings)
+
+import sys
+from datetime import datetime
+from optparse import OptionParser
+from clusterbank.scripting import CBOption
+from clusterbank.models import Allocation
+
+parser = OptionParser(option_class=CBOption)
+parser.add_option(
+    "-l", "--list",
+    dest="list", action="store_true", default=False,
+    help="list charges")
+parser.add_option(
+    "-u", "--user",
+    dest="user", type="user",
+    help="allocate as USER", metavar="USER")
+parser.add_option(
+    "-p", "--project",
+    dest="project", type="project",
+    help="list charges on PROJECT", metavar="PROJECT")
+parser.add_option(
+    "-r", "--resource",
+    dest="resource", type="resource",
+    help="list charges for RESOURCE", metavar="RESOURCE")
+parser.add_option(
+    "-q", "--request",
+    dest="request", type="request",
+    help="allocate for REQUEST", metavar="REQUEST")
+parser.add_option(
+    "-t", "--time",
+    dest="time", type="int",
+    help="allocate UNITS of time on the resource", metavar="UNITS")
+parser.add_option(
+    "-c", "--credit-limit",
+    dest="credit", type="int",
+    help="set up a credit limit of UNITS of time", metavar="UNITS")
+parser.add_option(
+    "-s", "--start",
+    dest="start", type="date",
+    help="allocate resources starting at DATE", metavar="DATE")
+parser.add_option(
+    "-x", "--expiration",
+    dest="expiration", type="date",
+    help="specify an expiration at DATE", metavar="DATE")
+parser.add_option(
+    "-e", "--explanation",
+    dest="explanation", type="string",
+    help="EXPLANATION of the request", metavar="EXPLANATION")
+
+if __name__ == "__main__":
+    (options, args) = parser.parse_args()
+    
+    if not options.user:
+        print >> sys.stderr, "You must supply a user."
+        sys.exit(1)
+    user = options.user
+    
+    if options.list:
+        # list options:
+        # user -- user whose project to list allocations for (required)
+        # project -- project to list allocations for
+        # resource -- resource to list allocations for
+        # request -- request to list allocations for
+        allocations = Allocation.objects.all()
+        if options.project:
+            if not user.can_lien and not user.member_of(options.project):
+                # Any user who can post liens can list allocations.
+                # Otherwise, user must have project membership.
+                print >> sys.stderr, "%s cannot list allocations for %s." % (user, options.project)
+                sys.exit(1)
+            allocations = allocations.filter(request__project=options.project)
+        else:
+            allocations = allocations.filter(request__project__in=user.project_set)
+        if options.resource:
+            allocations = allocations.filter(request__resource=options.resource)
+        if options.request:
+            allocations = allocations.filter(request=options.request)
+        
+        allocations = (allocation for allocation in allocations if allocation.active)
+        for allocation in allocations:
+            print allocation.id, allocation
+    
+    else:
+        # create options:
+        # user -- user allocating the request (required)
+        # request -- request to allocation time for (required)
+        # time -- time to allocate
+        # start -- date the allocation becomes active (required)
+        # expiration -- specify an expiration date (required)
+        # explanation -- explanation of the allocation
+        
+        if not options.request:
+            print >> sys.stderr, "You must supply a request."
+            sys.exit(1)
+        if not options.start:
+            print >> sys.stderr, "You must supply a start date."
+            sys.exit(1)
+        if not options.expiration:
+            print >> sys.stderr, "You must supply an expiration date."
+            sys.exit(1)
+        
+        # Create the new allocation.
+        kwargs = dict(
+            request = options.request,
+            start = options.start,
+            expiration = options.expiration,
+        )
+        if options.time is not None:
+            kwargs['time'] = options.time
+        try:
+            allocation = user.allocate(**kwargs)
+        except user.NotPermitted, e:
+            print >> sys.stderr, e
+            sys.exit(1)
+        try:
+            allocation.save()
+        except ValueError, e:
+            print >> sys.stderr, e
+            sys.exit(1)
+        
+        # Set up a line of credit.
+        if options.credit is not None:
+            kwargs = dict(
+                resource = allocation.resource,
+                project = allocation.project,
+                start = allocation.start,
+                explanation = allocation.explanation,
+                time = options.credit,
+            )
+            try:
+                credit_limit = user.allocate_credit(**kwargs)
+            except user.NotPermitted, e:
+                allocation.delete()
+                print e
+                sys.exit(1)
+            try:
+                credit_limit.save()
+            except ValueError:
+                allocation.delete()
+                print >> sys.stderr, e
+                sys.exit(1)
+        
+        print allocation.id, allocation
