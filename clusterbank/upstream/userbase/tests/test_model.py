@@ -1,8 +1,4 @@
 import clusterbank.upstream.userbase.model as model
-from django.core.management import setup_environ
-import settings # Assumed to be in the same directory.
-
-setup_environ(settings)
 
 TEST_USER = dict(
     id = 258,

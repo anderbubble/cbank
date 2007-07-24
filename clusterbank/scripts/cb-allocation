@@ -1,20 +1,12 @@
 #!/usr/bin/env python
-from django.core.management import setup_environ
-try:
-    import settings # Assumed to be in the same directory.
-except ImportError:
-    print >> sys.stderr, "Error: Can't find the file 'settings.py' in the directory containing %r. It appears you've customized things." % __file__
-    print >> sys.stderr, "You'll have to run django-admin.py, passing it your settings module."
-    print >> sys.stedrr, "(If the file settings.py does indeed exist, it's causing an ImportError somehow.)"
-    sys.exit(1)
-else:
-    setup_environ(settings)
 
 import sys
 from datetime import datetime
 from optparse import OptionParser
+
 from clusterbank.scripting import CBOption
-from clusterbank.models import Allocation
+import clusterbank.models as models
+from clusterbank.models import Request, Allocation
 
 parser = OptionParser(option_class=CBOption)
 parser.add_option(
@@ -72,22 +64,26 @@ if __name__ == "__main__":
         # project -- project to list allocations for
         # resource -- resource to list allocations for
         # request -- request to list allocations for
-        allocations = Allocation.objects.all()
+        allocations = Allocation.query().join("request")
         if options.project:
             if not user.can_lien and not user.member_of(options.project):
                 # Any user who can post liens can list allocations.
                 # Otherwise, user must have project membership.
                 print >> sys.stderr, "%s cannot list allocations for %s." % (user, options.project)
                 sys.exit(1)
-            allocations = allocations.filter(request__project=options.project)
+            allocations = allocations.filter_by(project=options.project)
         else:
-            allocations = allocations.filter(request__project__in=user.project_set)
+            allocations = allocations.filter(Request.c.project_id.in_([project.id for project in user.projects]))
         if options.resource:
-            allocations = allocations.filter(request__resource=options.resource)
+            allocations = allocations.filter_by(resource=options.resource)
         if options.request:
-            allocations = allocations.filter(request=options.request)
+            allocations = allocations.filter_by(request=options.request)
         
-        allocations = (allocation for allocation in allocations if allocation.active)
+        allocations = (
+            allocation for allocation in allocations
+            if allocation.active
+        )
+        
         for allocation in allocations:
             print allocation.id, allocation
     
@@ -118,14 +114,10 @@ if __name__ == "__main__":
         )
         if options.time is not None:
             kwargs['time'] = options.time
+        allocation = user.allocate(**kwargs)
         try:
-            allocation = user.allocate(**kwargs)
-        except user.NotPermitted, e:
-            print >> sys.stderr, e
-            sys.exit(1)
-        try:
-            allocation.save()
-        except ValueError, e:
+            models.lxr.objectstore.flush()
+        except (user.NotPermitted, ValueError), e:
             print >> sys.stderr, e
             sys.exit(1)
         
@@ -138,16 +130,12 @@ if __name__ == "__main__":
                 explanation = allocation.explanation,
                 time = options.credit,
             )
+            credit_limit = user.allocate_credit(**kwargs)
             try:
-                credit_limit = user.allocate_credit(**kwargs)
-            except user.NotPermitted, e:
+                models.lxr.objectstore.flush()
+            except (user.NotPermitted, ValueError), e:
                 allocation.delete()
-                print e
-                sys.exit(1)
-            try:
-                credit_limit.save()
-            except ValueError:
-                allocation.delete()
+                models.lxr.objectstore.flush([allocation])
                 print >> sys.stderr, e
                 sys.exit(1)
         

@@ -1,16 +1,5 @@
 from datetime import datetime, timedelta
 
-import django.core.management
-import django.db.models.query
-try:
-    import settings # Assumed to be in the same directory.
-except ImportError:
-    print >> sys.stderr, "Error: Can't find the file 'settings.py' in the directory containing %r. It appears you've customized things." % __file__
-    print >> sys.stderr, "You'll have to run django-admin.py, passing it your settings module."
-    print >> sys.stedrr, "(If the file settings.py does indeed exist, it's causing an ImportError somehow.)"
-    sys.exit(1)
-else:
-    django.core.management.setup_environ(settings)
 from clusterbank import models
 
 def tag (*names):
@@ -68,19 +57,24 @@ RESOURCE_UNITS = 30
 UNIT_FACTOR = 0.3
 
 
-def setup ():
+def teardown ():
     """Initialize the local database before any tests are run.
     
     Note that upstream is assumed to already exist.
     """
-    django.core.management.syncdb(verbosity=0, interactive=False)
+    models.lxr.cleanup_all()
 
 
 class TestModel (object):
     
+    def setup (self):
+        """Create the tables before each test."""
+        models.lxr.create_all()
+    
     def teardown (self):
-        """Reset the database after each test."""
-        django.core.management.reset(models, interactive=False)
+        """drop the database after each test."""
+        models.lxr.objectstore.clear()
+        models.lxr.drop_all()
 
 
 class TestUser (TestModel):
@@ -105,10 +99,10 @@ class TestUser (TestModel):
     
     # Attributes
     @tag("user")
-    def test_upstream_id (self):
-        """user.upstream_id reflects the id of the upstream user."""
+    def test_id (self):
+        """user.id reflects the id of the upstream user."""
         user = models.User.from_upstream_name(UPSTREAM_TEST_USER['name'])
-        assert user.upstream_id == UPSTREAM_TEST_USER['id']
+        assert user.id == UPSTREAM_TEST_USER['id']
     
     @tag("user")
     def test_defaults (self):
@@ -128,13 +122,12 @@ class TestUser (TestModel):
         assert user.name == UPSTREAM_TEST_USER['name']
     
     @tag("user")
-    def test_project_set (self):
-        """user.project_set reflects upstream project membership."""
+    def test_projects (self):
+        """user.projects reflects upstream project membership."""
         user = models.User.from_upstream_name(UPSTREAM_TEST_USER['name'])
-        assert isinstance(user.project_set, django.db.models.query.QuerySet)
-        if user.project_set.count() < 1:
+        if len(user.projects) < 1:
             raise Exception("Unable to verify instance classes. (No instances.)")
-        for project in user.project_set:
+        for project in user.projects:
             assert isinstance(project, models.Project)
     
     # Methods
@@ -196,39 +189,40 @@ class TestUser (TestModel):
         the project/resource pair.
         """
         user = models.User.from_upstream_name(UPSTREAM_TEST_USER['name'])
+        project = models.Project.from_upstream_name(UPSTREAM_TEST_PROJECT['name'])
+        resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name'])
         # Request two allocations for less than will be liened.
-        request = user.request(
-            project = models.Project.from_upstream_name(UPSTREAM_TEST_PROJECT['name']),
-            resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name']),
+        request1 = user.request(
+            project = project,
+            resource = resource,
             time = REQUEST_AMOUNT,
         )
-        request.poster.can_request = True
-        request.save()
-        allocation = user.allocate(request,
+        request1.poster.can_request = True
+        allocation1 = user.allocate(request1,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
             time = LIEN_AMOUNT / 2,
         )
-        allocation.poster.can_allocate = True
-        allocation.save()
-        request = user.request(
-            project = models.Project.from_upstream_name(UPSTREAM_TEST_PROJECT['name']),
-            resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name']),
+        allocation1.poster.can_allocate = True
+        request2 = user.request(
+            project = project,
+            resource = resource,
             time = REQUEST_AMOUNT,
         )
-        request.poster.can_request = True
-        request.save()
-        allocation = user.allocate(request,
+        request2.poster.can_request = True
+        allocation2 = user.allocate(request2,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
             time = LIEN_AMOUNT / 2,
         )
-        allocation.poster.can_allocate = True
-        allocation.save()
+        allocation2.poster.can_allocate = True
+        
+        models.lxr.objectstore.flush()
+        
         # Post a lien that must be split across both.
         liens = user.lien(
-            project = request.project,
-            resource = request.resource,
+            project = project,
+            resource = resource,
             time = LIEN_AMOUNT,
         )
         assert len(liens) == 2
@@ -249,35 +243,36 @@ class TestUser (TestModel):
     def test_charge_nonspecific (self):
         """A user can charge against multiple liens."""
         user = models.User.from_upstream_name(UPSTREAM_TEST_USER['name'])
+        project = models.Project.from_upstream_name(UPSTREAM_TEST_PROJECT['name'])
+        resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name'])
         # Request two allocations for less than will be liened.
         request = user.request(
-            project = models.Project.from_upstream_name(UPSTREAM_TEST_PROJECT['name']),
-            resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name']),
+            project = project,
+            resource = resource,
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
         allocation = user.allocate(request,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
             time = LIEN_AMOUNT / 2,
         )
         allocation.poster.can_allocate = True
-        allocation.save()
         request = user.request(
-            project = models.Project.from_upstream_name(UPSTREAM_TEST_PROJECT['name']),
-            resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name']),
+            project = project,
+            resource = resource,
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
         allocation = user.allocate(request,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
             time = LIEN_AMOUNT / 2,
         )
         allocation.poster.can_allocate = True
-        allocation.save()
+        
+        models.lxr.objectstore.flush()
+        
         # Post a lien that must be split across both.
         liens = user.lien(
             project = request.project,
@@ -286,7 +281,6 @@ class TestUser (TestModel):
         )
         for lien in liens:
             lien.poster.can_lien = True
-            lien.save()
         # Post charges across both liens.
         charges = user.charge(liens=liens, time=(LIEN_AMOUNT / 2) + (LIEN_AMOUNT / 4))
         assert len(charges) == 2
@@ -326,10 +320,10 @@ class TestResource (TestModel):
     
     # Attributes
     @tag("resource")
-    def test_upstream_id (self):
-        """resource.upstream_id reflects the id of the upstream resource."""
+    def test_id (self):
+        """resource.id reflects the id of the upstream resource."""
         resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name'])
-        assert resource.upstream_id == UPSTREAM_TEST_RESOURCE['id']
+        assert resource.id == UPSTREAM_TEST_RESOURCE['id']
     
     # Properties
     @tag("resource")
@@ -360,10 +354,10 @@ class TestProject (TestModel):
     
     # Attributes
     @tag("project")
-    def test_upstream_id (self):
-        """project.upstream_id reflects the id of the upstream project."""
+    def test_id (self):
+        """project.id reflects the id of the upstream project."""
         project = models.Project.from_upstream_name(UPSTREAM_TEST_PROJECT['name'])
-        assert project.upstream_id == UPSTREAM_TEST_PROJECT['id']
+        assert project.id == UPSTREAM_TEST_PROJECT['id']
     
     # Properties
     @tag("project")
@@ -373,13 +367,12 @@ class TestProject (TestModel):
         assert project.name == UPSTREAM_TEST_PROJECT['name']
     
     @tag("project")
-    def test_user_set (self):
+    def test_users (self):
         """Local projects have local user members based on upstream membership."""
         project = models.Project.from_upstream_name(UPSTREAM_TEST_PROJECT['name'])
-        assert isinstance(project.user_set, django.db.models.query.QuerySet)
-        if project.user_set.count() < 1:
+        if len(project.users) < 1:
             raise Exception("Unable to verify instance classes. (No instances.)")
-        for user in project.user_set:
+        for user in project.users:
             assert isinstance(user, models.User)
     
     # Methods
@@ -407,20 +400,20 @@ class TestProject (TestModel):
         """Sum a project's allocated time on a resource."""
         user = models.User.from_upstream_name(UPSTREAM_TEST_USER['name'])
         user.can_request, user.can_allocate = True, True
-        user.save()
         request = user.request(
             project = models.Project.from_upstream_name(UPSTREAM_TEST_PROJECT['name']),
             resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name']),
             time = REQUEST_AMOUNT,
         )
-        request.save()
+        models.lxr.objectstore.flush()
         assert request.project.resource_time_allocated(request.resource) == 0
+        
         allocation = user.allocate(request,
             time = ALLOCATION_AMOUNT,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
         )
-        allocation.save()
+        models.lxr.objectstore.flush()
         assert request.project.resource_time_allocated(request.resource) == ALLOCATION_AMOUNT
     
     @tag("project")
@@ -428,28 +421,29 @@ class TestProject (TestModel):
         """Sum a project's time liened on a resource."""
         user = models.User.from_upstream_name(UPSTREAM_TEST_USER['name'])
         user.can_request, user.can_allocate, user.can_lien, user.can_charge = True, True, True, True
-        user.save()
         request = user.request(
             project = models.Project.from_upstream_name(UPSTREAM_TEST_USER['member_of'][0]),
             resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name']),
             time = REQUEST_AMOUNT,
         )
-        request.save()
         allocation = user.allocate(request,
             time = ALLOCATION_AMOUNT,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
         )
-        allocation.save()
+        models.lxr.objectstore.flush()
         assert request.project.resource_time_liened(request.resource) == 0
+        
         lien = user.lien(
             allocation = allocation,
             time = LIEN_AMOUNT,
         )
-        lien.save()
+        models.lxr.objectstore.flush()
         assert request.project.resource_time_liened(request.resource) == LIEN_AMOUNT
+        
         charge = user.charge(lien, time=CHARGE_AMOUNT)
-        charge.save()
+        models.lxr.objectstore.flush()
+        lien.refresh()
         assert request.project.resource_time_liened(request.resource) == 0
     
     @tag("project")
@@ -457,30 +451,30 @@ class TestProject (TestModel):
         """Sum a project's time charged for a resource."""
         user = models.User.from_upstream_name(UPSTREAM_TEST_USER['name'])
         user.can_request, user.can_allocate, user.can_lien, user.can_charge, user.can_refund = True, True, True, True, True
-        user.save()
         request = user.request(
             project = models.Project.from_upstream_name(UPSTREAM_TEST_USER['member_of'][0]),
             resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name']),
             time = REQUEST_AMOUNT,
         )
-        request.save()
         allocation = user.allocate(request,
             time = ALLOCATION_AMOUNT,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
         )
-        allocation.save()
         lien = user.lien(
             allocation = allocation,
             time = LIEN_AMOUNT,
         )
-        lien.save()
+        models.lxr.objectstore.flush()
         assert request.project.resource_time_charged(request.resource) == 0
+        
         charge = user.charge(lien, time=CHARGE_AMOUNT)
-        charge.save()
+        models.lxr.objectstore.flush()
         assert request.project.resource_time_charged(request.resource) == CHARGE_AMOUNT
+        
         refund = user.refund(charge, time=REFUND_AMOUNT)
-        refund.save()
+        models.lxr.objectstore.flush()
+        charge.refresh()
         assert request.project.resource_time_charged(request.resource) == CHARGE_AMOUNT - REFUND_AMOUNT
     
     @tag("project")
@@ -488,49 +482,56 @@ class TestProject (TestModel):
         """Subtract a project's time liened and time charged from its time allocated."""
         user = models.User.from_upstream_name(UPSTREAM_TEST_USER['name'])
         user.can_request, user.can_allocate, user.can_lien, user.can_charge, user.can_refund = True, True, True, True, True
-        user.save()
         request = user.request(
             project = models.Project.from_upstream_name(UPSTREAM_TEST_USER['member_of'][0]),
             resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name']),
             time = REQUEST_AMOUNT,
         )
-        request.save()
+        models.lxr.objectstore.flush()
         assert request.project.resource_time_available(request.resource) == 0
+        
         allocation = user.allocate(request,
             time = ALLOCATION_AMOUNT,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
         )
-        allocation.save()
+        models.lxr.objectstore.flush()
         assert request.project.resource_time_available(request.resource) == ALLOCATION_AMOUNT
+        
         lien = user.lien(
             allocation = allocation,
             time = LIEN_AMOUNT,
         )
-        lien.save()
+        models.lxr.objectstore.flush()
         assert request.project.resource_time_available(request.resource) == ALLOCATION_AMOUNT - LIEN_AMOUNT
+        
         charge = user.charge(lien, time=CHARGE_AMOUNT)
-        charge.save()
+        models.lxr.objectstore.flush()
+        lien.refresh()
         assert request.project.resource_time_available(request.resource) == ALLOCATION_AMOUNT - CHARGE_AMOUNT
+        
         refund = user.refund(charge, time=REFUND_AMOUNT)
-        refund.save()
+        models.lxr.objectstore.flush()
+        charge.refresh()
         assert request.project.resource_time_available(request.resource) == ALLOCATION_AMOUNT - (CHARGE_AMOUNT - REFUND_AMOUNT)
     
     @tag("project")
     def test_resource_credit_limit (self):
         """Determine the amount of credit available."""
         user = models.User.from_upstream_name(UPSTREAM_TEST_USER['name'])
+        project = models.Project.from_upstream_name(UPSTREAM_TEST_USER['member_of'][0])
+        resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name'])
+        assert project.resource_credit_limit(resource) == 0
         user.can_allocate = True
-        user.save()
         credit = user.allocate_credit(
-            project = models.Project.from_upstream_name(UPSTREAM_TEST_USER['member_of'][0]),
-            resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name']),
+            project = project,
+            resource = resource,
             time = CREDIT_LIMIT_AMOUNT,
             start = datetime.now() - timedelta(seconds=1),
         )
-        assert credit.project.resource_credit_limit(credit.resource) == 0
-        credit.save()
-        assert credit.project.resource_credit_limit(credit.resource) == CREDIT_LIMIT_AMOUNT
+        models.lxr.objectstore.flush()
+        project.refresh()
+        assert project.resource_credit_limit(resource) == CREDIT_LIMIT_AMOUNT
 
 
 class TestCreditLimit (TestModel):
@@ -547,7 +548,7 @@ class TestCreditLimit (TestModel):
         
         # Fail without can_allocate.
         try:
-            credit.save()
+            models.lxr.objectstore.flush()
         except credit.poster.NotPermitted:
             pass
         else:
@@ -556,7 +557,7 @@ class TestCreditLimit (TestModel):
         # Succeed with can_allocate.
         credit.poster.can_allocate = True
         try:
-            credit.save()
+            models.lxr.objectstore.flush()
         except:
             assert False
     
@@ -571,7 +572,7 @@ class TestCreditLimit (TestModel):
         )
         credit.poster.can_allocate = True
         try:
-            credit.save()
+            models.lxr.objectstore.flush()
         except ValueError:
             pass
         else:
@@ -582,7 +583,7 @@ class TestRequest (TestModel):
     
     @tag("request")
     def test_create (self):
-        """Create a minimal request limit."""
+        """Create a minimal request."""
         member_project = models.Project.from_upstream_name(UPSTREAM_TEST_USER['member_of'][0])
         not_member_project = models.Project.from_upstream_name(UPSTREAM_TEST_USER['not_member_of'][0])
         
@@ -596,7 +597,7 @@ class TestRequest (TestModel):
         # Request fails without can_request.
         request.poster.can_request = False
         try:
-            request.save()
+            models.lxr.objectstore.flush()
         except request.poster.NotPermitted:
             pass
         else:
@@ -606,8 +607,8 @@ class TestRequest (TestModel):
         request.poster.can_request = True
         request.project = not_member_project
         try:
-            request.save()
-        except request.poster.NotAMember:
+            models.lxr.objectstore.flush()
+        except request.poster.NotPermitted:
             pass
         else:
             assert False
@@ -615,7 +616,7 @@ class TestRequest (TestModel):
         # Request succeeds if member and can_request.
         request.project = member_project
         try:
-            request.save()
+            models.lxr.objectstore.flush()
         except:
             assert False
     
@@ -636,14 +637,15 @@ class TestRequest (TestModel):
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
+        models.lxr.objectstore.flush()
         assert request.active
         allocation = request.poster.allocate(request,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
         )
         allocation.poster.can_allocate = True
-        allocation.save()
+        models.lxr.objectstore.flush()
+        request.refresh()
         assert not request.active
 
 
@@ -659,7 +661,8 @@ class TestAllocation (TestModel):
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
+        models.lxr.objectstore.flush()
+        
         allocation = models.Allocation(
             request = request,
             poster = request.poster,
@@ -667,10 +670,9 @@ class TestAllocation (TestModel):
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
         )
-        
         # Allocation fails without can_allocate.
         try:
-            allocation.save()
+            models.lxr.objectstore.flush()
         except allocation.poster.NotPermitted:
             pass
         else:
@@ -679,7 +681,7 @@ class TestAllocation (TestModel):
         # Allocation succeeds with can_allocate.
         allocation.poster.can_allocate = True
         try:
-            allocation.save()
+            models.lxr.objectstore.flush()
         except:
             raise
             assert False
@@ -689,7 +691,6 @@ class TestAllocation (TestModel):
         """Active when allocation starts before now and after last expiration."""
         user = models.User.from_upstream_name(UPSTREAM_TEST_USER['name'])
         user.can_request, user.can_allocate = True, True
-        user.save()
         project = models.Project.from_upstream_name(UPSTREAM_TEST_PROJECT['name'])
         resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name'])
         request = models.Request(
@@ -699,7 +700,6 @@ class TestAllocation (TestModel):
             time = REQUEST_AMOUNT,
             start = datetime.now(),
         )
-        request.save()
         allocation = models.Allocation(
             poster = user,
             request = request,
@@ -707,7 +707,6 @@ class TestAllocation (TestModel):
             start = datetime.now() + timedelta(days=1),
             expiration = datetime.now() + timedelta(days=2),
         )
-        allocation.save()
         
         # Allocation has not yet started.
         assert not allocation.active
@@ -715,7 +714,6 @@ class TestAllocation (TestModel):
         # Allocation has started but expired.
         allocation.start = datetime.now() - timedelta(days=2)
         allocation.expiration = datetime.now() - timedelta(days=1)
-        allocation.save()
         assert not allocation.active
         
         # Allocation has started and not expired.
@@ -727,7 +725,6 @@ class TestAllocation (TestModel):
         """Allocation project and resource point back to request."""
         user = models.User.from_upstream_name(UPSTREAM_TEST_USER['name'])
         user.can_request, user.can_allocate = True, True
-        user.save()
         project = models.Project.from_upstream_name(UPSTREAM_TEST_PROJECT['name'])
         resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name'])
         request = models.Request(
@@ -737,7 +734,6 @@ class TestAllocation (TestModel):
             time = REQUEST_AMOUNT,
             start = datetime.now(),
         )
-        request.save()
         allocation = models.Allocation(
             request = request,
         )
@@ -760,7 +756,6 @@ class TestLien (TestModel):
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
         allocation = models.Allocation(
             request = request,
             poster = request.poster,
@@ -769,16 +764,16 @@ class TestLien (TestModel):
             time = ALLOCATION_AMOUNT,
         )
         allocation.poster.can_allocate = True
-        allocation.save()
+        models.lxr.objectstore.flush()
+        
         lien = models.Lien(
             poster = member_user,
             allocation = allocation,
             time = LIEN_AMOUNT,
         )
-        
         # Fail without can_lien.
         try:
-            lien.save()
+            models.lxr.objectstore.flush()
         except lien.poster.NotPermitted:
             pass
         else:
@@ -788,8 +783,8 @@ class TestLien (TestModel):
         lien.poster = not_member_user
         lien.poster.can_lien = True
         try:
-            lien.save()
-        except lien.poster.NotAMember:
+            models.lxr.objectstore.flush()
+        except lien.poster.NotPermitted:
             pass
         else:
             assert False
@@ -798,9 +793,8 @@ class TestLien (TestModel):
         lien.poster = member_user
         lien.poster.can_lien = True
         try:
-            lien.save()
+            models.lxr.objectstore.flush()
         except:
-            raise
             assert False
     
     @tag("lien")
@@ -813,7 +807,6 @@ class TestLien (TestModel):
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
         allocation = models.Allocation(
             request = request,
             poster = request.poster,
@@ -822,7 +815,6 @@ class TestLien (TestModel):
             time = ALLOCATION_AMOUNT,
         )
         allocation.poster.can_allocate = True
-        allocation.save()
         lien = models.Lien(
             poster = request.poster,
             allocation = allocation,
@@ -841,7 +833,6 @@ class TestLien (TestModel):
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
         allocation = models.Allocation(
             request = request,
             poster = request.poster,
@@ -850,22 +841,25 @@ class TestLien (TestModel):
             time = ALLOCATION_AMOUNT,
         )
         allocation.poster.can_allocate = True
-        allocation.save()
         lien = models.Lien(
             poster = request.poster,
             allocation = allocation,
             time = LIEN_AMOUNT,
         )
         lien.poster.can_lien = True
-        lien.save()
+        models.lxr.objectstore.flush()
         assert lien.effective_charge == 0
+        
         charge = lien.poster.charge(lien, time=CHARGE_AMOUNT)
         charge.poster.can_charge = True
-        charge.save()
+        models.lxr.objectstore.flush()
+        lien.refresh()
         assert lien.effective_charge == CHARGE_AMOUNT
+        
         refund = allocation.poster.refund(charge, time=REFUND_AMOUNT)
         refund.poster.can_refund = True
-        refund.save()
+        models.lxr.objectstore.flush()
+        charge.refresh()
         assert lien.effective_charge == CHARGE_AMOUNT - REFUND_AMOUNT
     
     @tag("lien")
@@ -878,7 +872,6 @@ class TestLien (TestModel):
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
         allocation = models.Allocation(
             request = request,
             poster = request.poster,
@@ -887,22 +880,24 @@ class TestLien (TestModel):
             time = ALLOCATION_AMOUNT,
         )
         allocation.poster.can_allocate = True
-        allocation.save()
         lien = models.Lien(
             poster = request.poster,
             allocation = allocation,
             time = LIEN_AMOUNT,
         )
         lien.poster.can_lien = True
-        lien.save()
         assert lien.time_available == LIEN_AMOUNT
+        
         charge = lien.poster.charge(lien, time=CHARGE_AMOUNT)
         charge.poster.can_charge = True
-        charge.save()
+        models.lxr.objectstore.flush()
+        lien.refresh()
         assert lien.time_available == LIEN_AMOUNT - CHARGE_AMOUNT
+        
         refund = allocation.poster.refund(charge, time=REFUND_AMOUNT)
         refund.poster.can_refund = True
-        refund.save()
+        models.lxr.objectstore.flush()
+        charge.refresh()
         assert lien.time_available == LIEN_AMOUNT - (CHARGE_AMOUNT - REFUND_AMOUNT)
     
     @tag("lien")
@@ -915,7 +910,6 @@ class TestLien (TestModel):
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
         allocation = models.Allocation(
             request = request,
             poster = request.poster,
@@ -924,7 +918,6 @@ class TestLien (TestModel):
             time = ALLOCATION_AMOUNT,
         )
         allocation.poster.can_allocate = True
-        allocation.save()
         lien = models.Lien(
             poster = request.poster,
             allocation = allocation,
@@ -932,7 +925,7 @@ class TestLien (TestModel):
         )
         lien.poster.can_lien = True
         try:
-            lien.save()
+            models.lxr.objectstore.flush()
         except ValueError:
             pass
         else:
@@ -955,7 +948,6 @@ class TestLien (TestModel):
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
         allocation = models.Allocation(
             request = request,
             poster = request.poster,
@@ -964,7 +956,6 @@ class TestLien (TestModel):
             time = ALLOCATION_AMOUNT,
         )
         allocation.poster.can_allocate = True
-        allocation.save()
         lien = models.Lien(
             poster = request.poster,
             allocation = allocation,
@@ -972,7 +963,6 @@ class TestLien (TestModel):
             datetime = datetime.now() - timedelta(days=2),
         )
         lien.poster.can_lien = True
-        lien.save()
         
         # Allocation has not started.
         assert not lien.active
@@ -980,7 +970,6 @@ class TestLien (TestModel):
         # Allocation has started, but expired.
         lien.allocation.start = datetime.now() - timedelta(days=2)
         lien.allocation.expiration = datetime.now() - timedelta(days=1)
-        lien.save()
         assert not lien.active
         
         # Allocation has started and not yet expired.
@@ -997,7 +986,6 @@ class TestLien (TestModel):
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
         allocation = models.Allocation(
             request = request,
             poster = request.poster,
@@ -1006,7 +994,6 @@ class TestLien (TestModel):
             time = ALLOCATION_AMOUNT,
         )
         allocation.poster.can_allocate = True
-        allocation.save()
         lien = models.Lien(
             poster = request.poster,
             allocation = allocation,
@@ -1014,7 +1001,7 @@ class TestLien (TestModel):
             datetime = datetime.now(),
         )
         lien.poster.can_lien = True
-        lien.save()
+        models.lxr.objectstore.flush()
         
         # Lien has not been charged.
         assert lien.open
@@ -1022,7 +1009,8 @@ class TestLien (TestModel):
         # Lien has been charged.
         charge = lien.poster.charge(lien, time=CHARGE_AMOUNT)
         charge.poster.can_charge = True
-        charge.save()
+        models.lxr.objectstore.flush()
+        lien.refresh()
         assert not lien.open
 
 
@@ -1038,7 +1026,6 @@ class TestCharge (TestModel):
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
         allocation = models.Allocation(
             request = request,
             poster = request.poster,
@@ -1047,14 +1034,13 @@ class TestCharge (TestModel):
             time = ALLOCATION_AMOUNT,
         )
         allocation.poster.can_allocate = True
-        allocation.save()
         lien = models.Lien(
             poster = request.poster,
             allocation = allocation,
             time = LIEN_AMOUNT,
         )
         lien.poster.can_lien = True
-        lien.save()
+        models.lxr.objectstore.flush()
         
         charge = models.Charge(
             lien = lien,
@@ -1064,7 +1050,7 @@ class TestCharge (TestModel):
         
         # Charge fails without can_charge.
         try:
-            charge.save()
+            models.lxr.objectstore.flush()
         except charge.poster.NotPermitted:
             pass
         else:
@@ -1073,7 +1059,7 @@ class TestCharge (TestModel):
         # Charge succeeds with can_charge.
         charge.poster.can_charge = True
         try:
-            charge.save()
+            models.lxr.objectstore.flush()
         except:
             assert False
     
@@ -1087,7 +1073,6 @@ class TestCharge (TestModel):
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
         allocation = models.Allocation(
             request = request,
             poster = request.poster,
@@ -1096,14 +1081,12 @@ class TestCharge (TestModel):
             time = ALLOCATION_AMOUNT,
         )
         allocation.poster.can_allocate = True
-        allocation.save()
         lien = models.Lien(
             poster = request.poster,
             allocation = allocation,
             time = LIEN_AMOUNT,
         )
         lien.poster.can_lien = True
-        lien.save()
         charge = models.Charge(
             lien = lien,
             poster = lien.poster,
@@ -1111,7 +1094,7 @@ class TestCharge (TestModel):
         )
         charge.poster.can_charge = True
         try:
-            charge.save()
+            models.lxr.objectstore.flush()
         except ValueError:
             pass
         else:
@@ -1127,7 +1110,6 @@ class TestCharge (TestModel):
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
         allocation = models.Allocation(
             request = request,
             poster = request.poster,
@@ -1136,25 +1118,25 @@ class TestCharge (TestModel):
             time = ALLOCATION_AMOUNT,
         )
         allocation.poster.can_allocate = True
-        allocation.save()
         lien = models.Lien(
             poster = request.poster,
             allocation = allocation,
             time = LIEN_AMOUNT,
         )
         lien.poster.can_lien = True
-        lien.save()
         charge = models.Charge(
             lien = lien,
             poster = lien.poster,
             time = CHARGE_AMOUNT,
         )
         charge.poster.can_charge = True
-        charge.save()
+        models.lxr.objectstore.flush()
         assert charge.effective_charge == CHARGE_AMOUNT
+        
         refund = charge.poster.refund(charge, time=REFUND_AMOUNT)
         refund.poster.can_refund = True
-        refund.save()
+        models.lxr.objectstore.flush()
+        charge.refresh()
         assert charge.effective_charge == CHARGE_AMOUNT - REFUND_AMOUNT
     
     @tag("charge")
@@ -1167,7 +1149,6 @@ class TestCharge (TestModel):
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
         allocation = models.Allocation(
             request = request,
             poster = request.poster,
@@ -1176,14 +1157,12 @@ class TestCharge (TestModel):
             time = ALLOCATION_AMOUNT,
         )
         allocation.poster.can_allocate = True
-        allocation.save()
         lien = models.Lien(
             poster = request.poster,
             allocation = allocation,
             time = LIEN_AMOUNT,
         )
         lien.poster.can_lien = True
-        lien.save()
         charge = models.Charge(
             lien = lien,
             poster = lien.poster,
@@ -1212,7 +1191,6 @@ class TestRefund (TestModel):
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
         allocation = models.Allocation(
             request = request,
             poster = request.poster,
@@ -1221,21 +1199,19 @@ class TestRefund (TestModel):
             time = ALLOCATION_AMOUNT,
         )
         allocation.poster.can_allocate = True
-        allocation.save()
         lien = models.Lien(
             poster = request.poster,
             allocation = allocation,
             time = LIEN_AMOUNT,
         )
         lien.poster.can_lien = True
-        lien.save()
         charge = models.Charge(
             lien = lien,
             poster = lien.poster,
             time = CHARGE_AMOUNT,
         )
         charge.poster.can_charge = True
-        charge.save()
+        models.lxr.objectstore.flush()
         
         refund = models.Refund(
             poster = charge.poster,
@@ -1244,7 +1220,7 @@ class TestRefund (TestModel):
         )
         # Fail without can_refund
         try:
-            refund.save()
+            models.lxr.objectstore.flush()
         except refund.poster.NotPermitted:
             pass
         else:
@@ -1253,7 +1229,7 @@ class TestRefund (TestModel):
         # Succeed.
         refund.poster.can_refund = True
         try:
-            refund.save()
+            models.lxr.objectstore.flush()
         except:
             assert False
     
@@ -1267,7 +1243,6 @@ class TestRefund (TestModel):
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
         allocation = models.Allocation(
             request = request,
             poster = request.poster,
@@ -1276,21 +1251,18 @@ class TestRefund (TestModel):
             time = ALLOCATION_AMOUNT,
         )
         allocation.poster.can_allocate = True
-        allocation.save()
         lien = models.Lien(
             poster = request.poster,
             allocation = allocation,
             time = LIEN_AMOUNT,
         )
         lien.poster.can_lien = True
-        lien.save()
         charge = models.Charge(
             lien = lien,
             poster = lien.poster,
             time = CHARGE_AMOUNT,
         )
         charge.poster.can_charge = True
-        charge.save()
         refund = models.Refund(
             charge = charge,
         )
@@ -1307,7 +1279,6 @@ class TestRefund (TestModel):
             time = REQUEST_AMOUNT,
         )
         request.poster.can_request = True
-        request.save()
         allocation = models.Allocation(
             request = request,
             poster = request.poster,
@@ -1316,21 +1287,18 @@ class TestRefund (TestModel):
             time = ALLOCATION_AMOUNT,
         )
         allocation.poster.can_allocate = True
-        allocation.save()
         lien = models.Lien(
             poster = request.poster,
             allocation = allocation,
             time = LIEN_AMOUNT,
         )
         lien.poster.can_lien = True
-        lien.save()
         charge = models.Charge(
             lien = lien,
             poster = lien.poster,
             time = CHARGE_AMOUNT,
         )
         charge.poster.can_charge = True
-        charge.save()
         refund = models.Refund(
             poster = charge.poster,
             charge = charge,
@@ -1338,7 +1306,7 @@ class TestRefund (TestModel):
         )
         refund.poster.can_refund = True
         try:
-            refund.save()
+            models.lxr.objectstore.flush()
         except ValueError:
             pass
         else:
@@ -1356,42 +1324,42 @@ class TestUnitFactor (TestModel):
             factor = UNIT_FACTOR,
         )
         try:
-            factor.save()
+            models.lxr.objectstore.flush()
         except:
             assert False
     
     @tag("factor")
     def test_resource_factor (self):
         """Retrieve a factor for a resource."""
-        factor = factor = models.UnitFactor(
+        factor = models.UnitFactor(
             poster = models.User.from_upstream_name(UPSTREAM_TEST_USER['name']),
             resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name']),
             factor = UNIT_FACTOR,
         )
-        factor.save()
+        models.lxr.objectstore.flush()
         jitter = models.UnitFactor.resource_factor(factor.resource) - factor.factor
         assert jitter < 0.1
     
     @tag("factor")
     def test_to_ru (self):
         """Convert from standard units to resource units."""
-        factor = factor = models.UnitFactor(
+        factor = models.UnitFactor(
             poster = models.User.from_upstream_name(UPSTREAM_TEST_USER['name']),
             resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name']),
             factor = UNIT_FACTOR,
         )
-        factor.save()
+        models.lxr.objectstore.flush()
         resource_units = models.UnitFactor.to_ru(factor.resource, STANDARD_UNITS)
         assert resource_units == RESOURCE_UNITS
     
     @tag("factor")
     def test_to_su (self):
         """Convert from resource units to standard units."""
-        factor = factor = models.UnitFactor(
+        factor = models.UnitFactor(
             poster = models.User.from_upstream_name(UPSTREAM_TEST_USER['name']),
             resource = models.Resource.from_upstream_name(UPSTREAM_TEST_RESOURCE['name']),
             factor = UNIT_FACTOR,
         )
-        factor.save()
+        models.lxr.objectstore.flush()
         standard_units = models.UnitFactor.to_su(factor.resource, RESOURCE_UNITS)
         assert standard_units == STANDARD_UNITS

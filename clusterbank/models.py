@@ -11,41 +11,43 @@ Lien -- A potential charge against a allocation.
 Charge -- Charge against a allocation.
 Refund -- Refund against a charge.
 UnitFactor -- Translation of model time to physical time.
-
-This model is based on /ALCF-Admindoc/alcfbank/accounting-db in
-the ALCF svn repository.
 """
 
 import warnings
 from datetime import datetime
 
-from django.db import models as dm
-from django.conf import settings
+import sqlalchemy as sa
+import elixir as lxr
+import clusterbank.statements
+
+import settings
 
 if settings.UPSTREAM_TYPE == "userbase":
     import clusterbank.upstream.userbase as upstream
+    upstream.metadata.connect(settings.UPSTREAM_DATABASE_URI)
 else:
     warnings.warn("No upstream layer was loaded.")
+lxr.metadata.connect(settings.DATABASE_URI)
 
 
-class User (dm.Model):
+class User (lxr.Entity):
     
     """A logical user.
     
     Relationships:
-    request_set -- Requests made by a user.
-    allocation_set -- Allocations made by a user.
-    credit_limit_set -- CreditLimits posted by the user.
-    lien_set -- Liens made by a user.
-    charge_set -- Charges made by a user.
-    refund_set -- Refunds made by a user.
-    unit_factor_set -- Factors set by a user.
+    credit_limits -- CreditLimits posted by the user.
+    requests -- Requests made by the user.
+    allocations -- Allocations made by the user.
+    liens -- Liens made by the user.
+    charges -- Charges made by the user.
+    refunds -- Refunds made by the user.
+    unit_factors -- Factors set by the user.
     
     Class methods:
     from_upstream_name -- Get a user based on his name upstream.
     
     Attributes:
-    upstream_id -- Canonical id of the user.
+    id -- Canonical id of the user.
     can_request -- Permission to make requests.
     can_allocate -- Permission to allocate time or credit.
     can_lien -- Permission to post liens.
@@ -54,26 +56,44 @@ class User (dm.Model):
     
     Properties:
     name -- Human-readable name from upstream.
-    project_set -- Result set of local projects by upstream membership.
+    projects -- Result set of local projects by upstream membership.
     
     Methods:
-    member_of -- Is a user is a member of a given project?
+    member_of -- A user is a member of a project.
     request -- Request time on a resource for a project.
-    allocate -- Allocate time.
-    allocate_credit -- Post a credit limit for a project.
+    allocate -- Allocate time for a request.
+    allocate_credit -- Allocate a credit limit for a project.
     lien -- Acquire a lien against an allocation.
     charge -- Charge a lien.
     refund -- Refund a charge.
     
     Exceptions:
-    NotPermitted -- An intentional denial of action.
-    NotAMember -- Acting user not a member of the project.
+    DoesNotExist -- The specified user does not exist.
+    NotPermitted -- An intentional denial of an action.
     """
     
+    lxr.has_many("credit_limits", of_kind="CreditLimit")
+    lxr.has_many("requests", of_kind="Request")
+    lxr.has_many("allocations", of_kind="Allocation")
+    lxr.has_many("liens", of_kind="Lien")
+    lxr.has_many("charges", of_kind="Charge")
+    lxr.has_many("refunds", of_kind="Refund")
+    lxr.has_many("unit_factors", of_kind="UnitFactor")
+    
+    lxr.with_fields(
+        id = lxr.Field(sa.Integer, primary_key=True),
+        can_request = lxr.Field(sa.Boolean, required=True, default=False),
+        can_allocate = lxr.Field(sa.Boolean, required=True, default=False),
+        can_lien = lxr.Field(sa.Boolean, required=True, default=False),
+        can_charge = lxr.Field(sa.Boolean, required=True, default=False),
+        can_refund = lxr.Field(sa.Boolean, required=True, default=False),
+    )
+    
+    class DoesNotExist (Exception):
+        """The specified user does not exist."""
+    
     class NotPermitted (Exception):
-        """An intentional denail of action."""
-    class NotAMember (NotPermitted):
-        """Acting user not a member of the project."""
+        """An intentional denail of an action."""
     
     @classmethod
     def from_upstream_name (cls, name):
@@ -86,39 +106,37 @@ class User (dm.Model):
             upstream_user = upstream.User.by_name(name)
         except upstream.DoesNotExist:
             raise cls.DoesNotExist("The user does not exist.")
-        user, created = cls.objects.get_or_create(upstream_id=upstream_user.id)
+        user = cls.get_by(id=upstream_user.id) \
+            or cls(id=upstream_user.id)
+        lxr.objectstore.flush([user])
         return user
     
-    upstream_id = dm.IntegerField(unique=True)
-    can_request = dm.BooleanField(default=False)
-    can_allocate = dm.BooleanField(default=False)
-    can_lien = dm.BooleanField(default=False)
-    can_charge = dm.BooleanField(default=False)
-    can_refund = dm.BooleanField(default=False)
-    
-    def _get_name (self):
-        """Return the name of the upstream user."""
-        upstream_user = upstream.User.by_id(self.upstream_id)
-        return upstream_user.name
-    name = property(_get_name)
-    
-    def _get_project_set (self):
-        """Return the set of projects that this user is a member of."""
-        upstream_projects = upstream.User.by_id(self.upstream_id).projects
-        local_projects = (
-            Project.objects.get_or_create(upstream_id=project.id)[0]
-            for project in upstream_projects)
-        local_project_ids = [project.id for project in local_projects]
-        return Project.objects.filter(id__in=local_project_ids)
-    project_set = property(_get_project_set)
+    def __repr__ (self):
+        return "<%s %s>" % (self.__class__.__name__, self.id)
     
     def __str__ (self):
         return self.name
     
+    def _get_name (self):
+        """Return the name of the upstream user."""
+        upstream_user = upstream.User.by_id(self.id)
+        return upstream_user.name
+    name = property(_get_name)
+    
+    def _get_projects (self):
+        """Return the set of projects that this user is a member of."""
+        upstream_projects = upstream.User.by_id(self.id).projects
+        local_projects = [
+            Project.from_upstream_name(name)
+            for name in (project.name for project in upstream_projects)
+        ]
+        return local_projects
+    projects = property(_get_projects)
+    
     def member_of (self, project):
         """Whether or not a user is a member of a given project."""
-        upstream_user = upstream.User.by_id(self.upstream_id)
-        upstream_project = upstream.Project.by_id(project.upstream_id)
+        upstream_user = upstream.User.by_id(self.id)
+        upstream_project = upstream.Project.by_id(project.id)
         return upstream_project in upstream_user.projects
     
     def request (self, **kwargs):
@@ -141,31 +159,48 @@ class User (dm.Model):
         """
         return CreditLimit(poster=self, **kwargs)
     
-    def lien (self, allocation=None,
-              project=None, resource=None, time=None, **kwargs):
+    def lien (self, allocation=None, time=None,
+              project=None, resource=None, **kwargs):
         """Enter a lien against an allocation(s)."""
-        if allocation:
-            # Allocation is specified.
-            # project cannot be specified differently than in allocation.
-            if project and project is not allocation.project:
-                raise self.NotPermitted(
-                    "%s is not an allocation for %s" % (allocation, project))
-            # resource cannot be specified differently than in allocation.
-            if resource and resource is not allocation.resource:
-                raise self.NotPermitted(
-                    "%s is not an allocation for %s" % (allocation, resource))
-            return Lien(poster=self, allocation=allocation, time=time, **kwargs)
         
-        # Allocation is unspecific.
-        allocations = Allocation.objects.filter(
-            request__project=project, request__resource=resource)
-        allocations = allocations.order_by("expiration", "datetime")
+        if allocation:
+            # A specific allocation has been given.
+            return Lien(
+                poster = self,
+                allocation = allocation,
+                time = time,
+                **kwargs
+            )
+        else:
+            # No specific allocation has been given.
+            # Take out a lien against any available allocation.
+            if not project and resource:
+                raise TypeError("lien requires either allocation or both project and resource.")
+            return self._smart_lien(project, resource, time, **kwargs)
+    
+    def _smart_lien (self, project, resource, time, **kwargs):
+        """Collect available allocations and post liens that span them.
+        
+        Arguments:
+        project -- The project that must be allocated.
+        resource -- The resource that must be allocated.
+        time -- How much time to acquire liens for.
+        """
+        allocations = Allocation.query().join("request").filter_by(
+            project = project,
+            resource = resource,
+        ).order_by([Allocation.c.expiration, Allocation.c.datetime])
         allocations = (
             allocation for allocation in allocations
             if allocation.active
         )
+        
+        # Post a lien to each allocation until all time has been liened.
         liens = list()
         for allocation in allocations:
+            # If the remaining time will fit into the allocation,
+            # post a lien for it. Otherwise, post a lien for whatever
+            # The allocation will support.
             if allocation.time_available >= time:
                 lien = self.lien(allocation, time=time, **kwargs)
             else:
@@ -177,46 +212,80 @@ class User (dm.Model):
             time -= lien.time
             if time <= 0:
                 break
+        
+        # If there is still time to be liened, add it to the last lien.
+        # This allows liens to be posted that put the project negative.
         if time > 0:
-            # There is still time to be liened.
-            # Add to the last lien.
             try:
                 liens[-1].time += time
             except IndexError:
-                # No lien has yet been created.
-                lien = self.lien(allocation, time=time, **kwargs)
+                # No lien has yet been created. Post a lien on the last
+                # Allocation used.
+                try:
+                    lien = self.lien(allocation, time=time, **kwargs)
+                except NameError:
+                    # There are no allocations.
+                    raise self.NotPermitted(
+                        "There are no active allocations for %s on %s." \
+                        % (project, resource)
+                    )
                 liens.append(lien)
         return liens
     
-    def charge (self, lien=None, liens=None, time=None, **kwargs):
+    def charge (self, lien=None, time=None, liens=None, **kwargs):
+        
         """Charge time against a lien.
         
         Arguments:
-        lien -- lien to charge against. (required)
+        lien -- lien to charge against.
+        liens -- liens to which the charge can be charged.
         """
-        if lien:
-            # Charge is for a specific lien.
-            return lien.charge(poster=self, time=time, **kwargs)
         
-        # Apply charge to multiple liens.
-        charges = []
+        # If the charge is for a specific lien, post the charge.
+        if lien:
+            return lien.charge(poster=self, time=time, **kwargs)
+        else:
+            # No specific lien has been given. Post a charge to each lien
+            # in the pool until all time has been charged.
+            return self._smart_charge(liens, time, **kwargs)
+        
+    def _smart_charge (self, liens, time, **kwargs):
+        """Post a charge across a  number of liens in a pool.
+        
+        Arguments:
+        liens -- A list of liens available to be charged.
+        time -- Time to be charged.
+        """
+        
+        charges = list()
         for lien in liens:
+            # If the remaining time will fit into the lien, post a
+            # Charge for all of it. Otherwise, post a charge for what
+            # the lien can support.
             if lien.time_available >= time:
                 charge = self.charge(lien, time=time, **kwargs)
             else:
                 charge = self.charge(lien, time=lien.time_available, **kwargs)
             charges.append(charge)
             time -= charge.time
-            if time <= 0:
-                break
+            # Iterate through all liens to charge 0 on unused liens.
+            # Charging 0 marks the lien as closed, and frees the liened
+            # time.
+            #if time <= 0:
+            #    break
+        
+        # If there is time remaining, add it to the last charge.
         if time > 0:
-            # There is still time to be charged.
-            # Add to last charge.
             try:
                 charges[-1].time += time
             except IndexError:
-                # No charges have yet been made.
-                charge = self.charge(lien, time=time, **kwargs)
+                # No charges have yet been made. Charge the last lien.
+                try:
+                    charge = self.charge(lien, time=time, **kwargs)
+                except NameError:
+                    # There was no lien.
+                    raise self.NotPermitted(
+                        "No liens are available to be charged.")
                 charges.append(charge)
         return charges
     
@@ -229,78 +298,33 @@ class User (dm.Model):
         return charge.refund(poster=self, **kwargs)
 
 
-class Resource (dm.Model):
-    
-    """A logical resource.
-    
-    Relationships:
-    request_set -- Requests made for a resource.
-    lien_set -- Liens made on a resource.
-    
-    Class methods:
-    from_upstream_name -- Get a resource based on its name upstream.
-    
-    Attributes:
-    upstream_id -- Canonical id of the resource.
-    
-    Properties:
-    name -- Upstream name of the resource.
-    """
-    
-    @classmethod
-    def from_upstream_name (cls, name):
-        """Get (or create) a resource based on its name upstream.
-        
-        Arguments:
-        name -- The upstream name of the resource.
-        """
-        try:
-            upstream_resource = upstream.Resource.by_name(name)
-        except upstream.DoesNotExist:
-            raise cls.DoesNotExist("The resource does not exist.")
-        resource, created = \
-            cls.objects.get_or_create(upstream_id=upstream_resource.id)
-        return resource
-    
-    upstream_id = dm.IntegerField(unique=True)
-    
-    def _get_name (self):
-        """Return the name of the upstream resource."""
-        upstream_resource = upstream.Resource.by_id(self.upstream_id)
-        return upstream_resource.name
-    name = property(_get_name)
-    
-    def __str__ (self):
-        return self.name
-
-
-class Project (dm.Model):
+class Project (lxr.Entity):
     
     """A logical project.
     
     Relationships:
-    credit_limit_set -- Available credit per-resource.
-    request_set -- Requests made by a project.
-    lien_set -- Liens made by a project.
+    credit_limits -- Available credit per-resource.
+    requests -- Requests made for the project.
     
     Exceptions:
+    DoesNotExist -- The specified project does not exist.
     InsufficientFunds -- Not enough funds to perform an action.
     
     Class methods:
     from_upstream_name -- Get a project based on its name upstream.
     
     Attributes:
-    upstream_id -- Canonical id of the project.
+    id -- Canonical id of the project.
     
     Properties:
     name -- The upstream project name.
-    user_set -- The users that are members of the project from upstream.
-    allocation_set -- All allocations related to this project.
-    charge_set -- All charges related to this project.
-    lien_set -- All liens related to this project.
+    users -- The users that are members of the project from upstream.
+    allocations -- All allocations related to this project.
+    charges -- All charges related to this project.
+    liens -- All liens related to this project.
     
     Methods:
-    has_member -- Is a given user is a member of a project?
+    has_member -- The group has a member.
     resource_time_allocated -- Sum of time allocated to a resource.
     resource_time_liened -- Sum of time committed to uncharged liens.
     resource_time_charged -- Sum of effective charges.
@@ -311,68 +335,84 @@ class Project (dm.Model):
     resource_credit_available -- Difference of credit limit and credit used.
     """
     
+    lxr.has_many("credit_limits", of_kind="CreditLimit")
+    lxr.has_many("requests", of_kind="Request")
+    
+    lxr.with_fields(
+        id = lxr.Field(sa.Integer, primary_key=True),
+    )
+    
+    class DoesNotExist (Exception):
+        """The specified project does not exist."""
+    
     class InsufficientFunds (Exception):
         """Not enough funds to perform an action."""
     
     @classmethod
     def from_upstream_name (cls, name):
-        """Get (or create) a project based on its name upstream.
+        """Get (or create) a project based on its upstream name.
         
         Arguments:
-        name -- The upstream name of the project.
+        name -- The upstream name of the user.
         """
         try:
             upstream_project = upstream.Project.by_name(name)
         except upstream.DoesNotExist:
-            raise cls.DoesNotExist("The project does not exist upstream.")
-        project, created = \
-            cls.objects.get_or_create(upstream_id=upstream_project.id)
+            raise cls.DoesNotExist("The project does not exist.")
+        project = cls.get_by(id=upstream_project.id) \
+            or cls(id=upstream_project.id)
+        lxr.objectstore.flush([project])
         return project
     
-    upstream_id = dm.IntegerField(unique=True)
-    
-    def _get_name (self):
-        """Return the name of the upstream project."""
-        upstream_project = upstream.Project.by_id(self.upstream_id)
-        return upstream_project.name
-    name = property(_get_name)
-    
-    def _get_user_set (self):
-        """Return the set of users who are members of this project."""
-        upstream_users = upstream.Project.by_id(self.upstream_id).users
-        local_users = (User.objects.get_or_create(upstream_id=user.id)[0]
-            for user in upstream_users)
-        local_user_ids = [user.id for user in local_users]
-        return User.objects.filter(id__in=local_user_ids)
-    user_set = property(_get_user_set)
-    
-    def _get_allocation_set (self):
-        """Return the set of allocations for this project."""
-        return Allocation.objects.filter(request__project=self)
-    allocation_set = property(_get_allocation_set)
-    
-    def _get_lien_set (self):
-        """Return the set of liens posted against this project."""
-        return Lien.objects.filter(allocation__request__project=self)
-    lien_set = property(_get_lien_set)
-    
-    def _get_charge_set (self):
-        """Return the set of charges posted against this project."""
-        return Charge.objects.filter(lien__allocation__request__project=self)
-    charge_set = property(_get_charge_set)
+    def __repr__ (self):
+        return "<%s %s>" % (self.__class__.__name__, self.id)
     
     def __str__ (self):
         return self.name
     
+    def _get_name (self):
+        """Return the name of the upstream project."""
+        upstream_project = upstream.Project.by_id(self.id)
+        return upstream_project.name
+    name = property(_get_name)
+    
+    def _get_users (self):
+        """Return the set of users who are members of this project."""
+        upstream_users = upstream.Project.by_id(self.id).users
+        local_users = [
+            User.from_upstream_name(name)
+            for name in (user.name for user in upstream_users)
+        ]
+        return local_users
+    users = property(_get_users)
+    
     def has_member (self, user):
         """Whether or not a given user is a member of a project."""
-        upstream_project = upstream.Project.by_id(self.upstream_id)
-        upstream_user = upstream.User.by_id(user.upstream_id)
+        upstream_project = upstream.Project.by_id(self.id)
+        upstream_user = upstream.User.by_id(user.id)
         return upstream_user in upstream_project.users
+    
+    def _get_allocations (self):
+        """Return the set of allocations for this project."""
+        return Allocation.query().join("request").filter_by(project=self)
+    allocations = property(_get_allocations)
+    
+    def _get_liens (self):
+        """Return the set of liens posted against this project."""
+        return Lien.query().join("request").filter_by(project=self)
+    liens = property(_get_liens)
+    
+    def _get_charges (self):
+        """Return the set of charges posted against this project."""
+        return Charge.query().join("request").filter_by(project=self)
+    charges = property(_get_charges)
     
     def resource_time_allocated (self, resource):
         """Sum of time in active allocations."""
-        allocations = self.allocation_set.filter(request__resource=resource)
+        allocations = Allocation.query().join("request").filter_by(
+            project = self,
+            resource = resource,
+        )
         allocations = (
             allocation for allocation in allocations
             if allocation.active
@@ -384,8 +424,14 @@ class Project (dm.Model):
     
     def resource_time_liened (self, resource):
         """Sum of time in active and open liens."""
-        liens = self.lien_set.filter(allocation__request__resource=resource)
-        liens = (lien for lien in liens if lien.active and lien.open)
+        liens = Lien.query().join(["allocation", "request"]).filter_by(
+            project = self,
+            resource = resource,
+        )
+        liens = (
+            lien for lien in liens
+            if lien.active and lien.open
+        )
         time_liened = 0
         for lien in liens:
             time_liened += lien.time
@@ -393,9 +439,14 @@ class Project (dm.Model):
     
     def resource_time_charged (self, resource):
         """Sum of time in active charges."""
-        charges = self.charge_set.filter(
-            lien__allocation__request__resource=resource)
-        charges = (charge for charge in charges if charge.active)
+        charges = Charge.query().join(["lien", "allocation", "request"]).filter_by(
+            project = self,
+            resource = resource,
+        )
+        charges = (
+            charge for charge in charges
+            if charge.active
+        )
         time_charged = 0
         for charge in charges:
             time_charged += charge.effective_charge
@@ -411,27 +462,18 @@ class Project (dm.Model):
         return self.resource_time_allocated(resource) \
             - self.resource_time_used(resource)
     
-    def resource_credit_limit (self, resource, datetime=datetime.now):
+    def resource_credit_limit (self, resource):
         """The effective credit limit for a resource at a given date.
         
         Arguments:
         resource -- The applicable resource.
-        
-        Keyword arguments:
-        datetime -- The date to check.
-        
-        Defaults:
-        datetime -- Now.
         """
-        try:
-            # Allow callable for datetime.
-            datetime = datetime()
-        except TypeError:
-            # Accept standard variable.
-            pass
-        credit_limits = self.credit_limit_set.filter(
-            resource=resource, start__lte=datetime)
-        credit_limits = credit_limits.order_by("-start")
+        credit_limits = CreditLimit.query().filter(
+            CreditLimit.c.start <= datetime.now(),
+        ).filter_by(
+            project = self,
+            resource = resource,
+        ).order_by(sa.desc(CreditLimit.c.start))
         try:
             return credit_limits[0].time
         except IndexError:
@@ -450,7 +492,68 @@ class Project (dm.Model):
             - self.resource_credit_used(resource)
 
 
-class CreditLimit (dm.Model):
+class Resource (lxr.Entity):
+    
+    """A logical resource.
+    
+    Relationships:
+    credit_limits -- CreditLimits on the resource.
+    requests -- Requests made for the resource.
+    unit_factors -- UnitFactors for this resource.
+    
+    Class methods:
+    from_upstream_name -- Get a resource based on its name upstream.
+    
+    Attributes:
+    id -- Canonical id of the resource.
+    
+    Properties:
+    name -- Upstream name of the resource.
+    
+    Exceptions:
+    DoesNotExist -- The specified resource does not exist.
+    """
+    
+    lxr.has_many("credit_limits", of_kind="CreditLimit")
+    lxr.has_many("requests", of_kind="Request")
+    
+    lxr.with_fields(
+        id = lxr.Field(sa.Integer, primary_key=True),
+    )
+    
+    class DoesNotExist (Exception):
+        """The specified resource does not exist."""
+    
+    @classmethod
+    def from_upstream_name (cls, name):
+        """Get (or create) a resource based on its name upstream.
+        
+        Arguments:
+        name -- The upstream name of the resource.
+        """
+        try:
+            upstream_resource = upstream.Resource.by_name(name)
+        except upstream.DoesNotExist:
+            raise cls.DoesNotExist("The resource does not exist.")
+        resource = cls.get_by(id=upstream_resource.id) \
+            or cls(id=upstream_resource.id)
+        lxr.objectstore.flush([resource])
+        return resource
+    
+    def __repr__ (self):
+        return "<%s %s>" % (self.__class__.__name__, self.id)
+    
+    def __str__ (self):
+        return self.name
+    
+    def _get_name (self):
+        """Return the name of the upstream resource."""
+        upstream_resource = upstream.Resource.by_id(self.id)
+        return upstream_resource.name
+    name = property(_get_name)
+
+
+class CreditLimit (lxr.Entity):
     
     """A limit on the charges a project can have.
     
@@ -465,42 +568,49 @@ class CreditLimit (dm.Model):
     explanation -- A verbose explanation of why credit was allocated.
     
     Methods:
-    save -- Extends default save behavior.
     
     Constraints:
      * Only one entry for a given project, start, and resource.
     """
     
-    class Meta:
-        unique_together = (("project", "resource", "start"),)
+    lxr.belongs_to("project", of_kind="Project", required=True)
+    lxr.belongs_to("resource", of_kind="Resource", required=True)
+    lxr.belongs_to("poster", of_kind="User", required=True)
     
-    project = dm.ForeignKey("Project", related_name="credit_limit_set")
-    resource = dm.ForeignKey("Resource", related_name="credit_limit_set")
-    poster = dm.ForeignKey("User", related_name="credit_limit_set")
+    lxr.with_fields(
+        id = lxr.Field(sa.Integer, primary_key=True),
+        start = lxr.Field(sa.DateTime, required=True, default=datetime.now),
+        time = lxr.Field(sa.Integer, required=True),
+        explanation = lxr.Field(sa.Unicode),
+    )
     
-    start = dm.DateTimeField(default=datetime.now)
-    time = dm.IntegerField()
-    explanation = dm.TextField(default="")
+    #lxr.using_table_options(
+    #    sa.UniqueConstraint("project_id", "resource_id", "start"),
+    #)
+    
+    clusterbank.statements.before_insert("_check_permissions", "_check_values")
+    clusterbank.statements.before_update("_check_permissions", "_check_values")
     
     def __str__ (self):
         return "%s ~%i" % (self.resource.name, self.time)
     
-    def save (self):
-        """Save a credit limit.
-        
-        Extends default save method with pre-save checks.
-        """
-        # Require can_allocate.
+    def _check_permissions (self):
+        """Check that the poster has permission to allocate credit."""
         if not self.poster.can_allocate:
             raise self.poster.NotPermitted(
                 "%s cannot allocate credit." % self.poster)
-        # time cannot be negative
-        if self.time is not None and self.time < 0:
+    
+    def _check_values (self):
+        """Check that the allocation values are valid."""
+        if self.time < 0 and self.time is not None:
             raise ValueError("Credit limit cannot be negative.")
-        super(self.__class__, self).save()
 
+# Move this to the class definition when the Elixir dependency bug is fixed.
+CreditLimit._descriptor.add_constraint(
+        sa.UniqueConstraint("project_id", "resource_id", "start"),
+)
 
-class Request (dm.Model):
+class Request (lxr.Entity):
     
     """A request for time on a resource.
     
@@ -508,7 +618,7 @@ class Request (dm.Model):
     resource -- The resource to be used.
     project -- The project for which time is requested.
     poster -- The user requesting the time.
-    allocation_set -- Allocations on the system in response to this request.
+    allocations -- Allocations on the system in response to this request.
     
     Attributes:
     datetime -- When the request was entered.
@@ -520,43 +630,46 @@ class Request (dm.Model):
     active -- The request remains unanswered.
     
     Methods:
-    save -- Save a request with pre-save hooks.
     allocate -- Allocate time on a resource in response to a request.
     """
     
-    resource = dm.ForeignKey("Resource")
-    project = dm.ForeignKey("Project")
-    poster = dm.ForeignKey("User")
+    lxr.belongs_to("resource", of_kind="Resource", required=True)
+    lxr.belongs_to("project", of_kind="Project", required=True)
+    lxr.belongs_to("poster", of_kind="User", required=True)
     
-    datetime = dm.DateTimeField(default=datetime.now)
-    time = dm.IntegerField()
-    explanation = dm.TextField()
-    start = dm.DateTimeField(null=True, blank=True)
+    lxr.has_many("allocations", of_kind="Allocation")
+    
+    lxr.with_fields(
+        id = lxr.Field(sa.Integer, primary_key=True),
+        datetime = lxr.Field(sa.DateTime, required=True, default=datetime.now),
+        time = lxr.Field(sa.Integer, required=True),
+        explanation = lxr.Field(sa.Unicode),
+        start = lxr.Field(sa.DateTime),
+    )
+    
+    clusterbank.statements.before_insert("_check_permissions", "_check_values")
+    clusterbank.statements.before_update("_check_permissions", "_check_values")
     
     def __str__ (self):
         try:
             resource_name = self.resource.name
         except Resource.DoesNotExist:
             resource_name = None
-        return "%s: %s" % (resource_name, self.time)
+        return "%s ?%s" % (resource_name, self.time)
     
-    def save (self):
-        """Save a request.
-        
-        Extends default save method with pre-save checks.
-        """
-        # Requestor must have can_request.
+    def _check_permissions (self):
+        """Check that the poster has permission to request."""
         if not self.poster.can_request:
             raise self.poster.NotPermitted(
                 "%s cannot make requests." % self.poster)
-        # Requestor must be a member of the project.
         if not self.poster.member_of(self.project):
-            raise self.poster.NotAMember(
+            raise self.poster.NotPermitted(
                 "%s is not a member of %s." % (self.poster, self.project))
-        # Time cannot be negative.
+    
+    def _check_values (self):
+        """Check that the values of the request are valid."""
         if self.time is not None and self.time < 0:
             raise ValueError("Cannot request negative time.")
-        super(self.__class__, self).save()
     
     def allocate (self, **kwargs):
         """Allocate time on a resource in response to a request."""
@@ -564,19 +677,19 @@ class Request (dm.Model):
     
     def _get_active (self):
         """Whether the request requires consideration."""
-        allocated = self.allocation_set.count() > 0
+        allocated = len(self.allocations) > 0
         return not allocated
     active = property(_get_active)
 
 
-class Allocation (dm.Model):
+class Allocation (lxr.Entity):
     
     """An amount of time allocated to a project.
     
     Relationships:
     request -- The request for time to which this is a response.
-    poster -- User who entered this allocation into the system.
-    charge_set -- Time used from this allocation.
+    poster -- User who entered the allocation into the system.
+    charges -- Time used from the allocation.
     
     Attributes:
     datetime -- When the allocation was entered.
@@ -593,23 +706,28 @@ class Allocation (dm.Model):
     active -- The allocation has started and has not expired.
     
     Methods:
-    save -- Save an allocation with pre-save hooks.
     """
     
-    request = dm.ForeignKey("Request")
-    poster = dm.ForeignKey("User")
+    lxr.belongs_to("request", of_kind="Request")
+    lxr.belongs_to("poster", of_kind="User")
     
-    approver = dm.CharField(maxlength=30)
-    datetime = dm.DateTimeField(default=datetime.now)
-    time = dm.IntegerField()
-    start = dm.DateTimeField()
-    expiration = dm.DateTimeField()
-    explanation = dm.TextField(default="")
+    lxr.has_many("liens", of_kind="Lien")
+    
+    lxr.with_fields(
+        id = lxr.Field(sa.Integer, primary_key=True),
+        approver = lxr.Field(sa.Unicode),
+        datetime = lxr.Field(sa.DateTime, required=True, default=datetime.now),
+        time = lxr.Field(sa.Integer, required=True),
+        start = lxr.Field(sa.DateTime, required=True),
+        expiration = lxr.Field(sa.DateTime, required=True),
+        explanation = lxr.Field(sa.Unicode),
+    )
+    
+    clusterbank.statements.before_insert("_check_permissions", "_check_values", "_set_programmatic_defaults")
+    clusterbank.statements.before_update("_check_permissions", "_check_values")
     
     def __str__ (self):
-        return "%s +%i" % (
-            self.resource.name,
-            self.time)
+        return "%s +%i" % (self.resource.name, self.time)
     
     def _get_project (self):
         """Return the related project."""
@@ -621,25 +739,22 @@ class Allocation (dm.Model):
         return self.request.resource
     resource = property(_get_resource)
     
-    def save (self):
-        """Save an allocation.
-        
-        Extends default save method with pre-save checks.
-        """
-        # Allocator must have can_allocate.
+    def _check_permissions (self):
+        """Check that the poster has permission to allocate."""
         if not self.poster.can_allocate:
             raise self.poster.NotPermitted(
                 "%s cannot allocate time." % self.poster)
-        # Time cannot be negative.
+    
+    def _check_values (self):
+        """Check that the values of the allocation are valid."""
         if self.time is None:
             self.time = self.request.time
         elif self.time < 0:
             raise ValueError("Cannot allocate negative time.")
         
-        # Programmatic defaults.
+    def _set_programmatic_defaults (self):
         if not self.start:
             self.start = self.request.start
-        super(self.__class__, self).save()
     
     def _get_started (self):
         """The allocation has a start date before now."""
@@ -656,15 +771,15 @@ class Allocation (dm.Model):
         return self.started and not self.expired
     active = property(_get_active)
     
-    def _get_charge_set (self):
+    def _get_charges (self):
         """Return the set of charges made against this allocation."""
-        return Charge.objects.filter(lien__allocation=self)
-    charge_set = property(_get_charge_set)
+        return Charge.query().filter_by(allocation=self)
+    charges = property(_get_charges)
     
     def _get_time_charged (self):
         """Return the sum of effective charges against this allocation."""
         time_charged = 0
-        for charge in self.charge_set:
+        for charge in self.charges:
             time_charged += charge.effective_charge
         return time_charged
     time_charged = property(_get_time_charged)
@@ -672,7 +787,7 @@ class Allocation (dm.Model):
     def _get_time_liened (self):
         """Sum of time in open liens."""
         time_liened = 0
-        for lien in self.lien_set.all():
+        for lien in self.liens:
             if lien.open:
                 time_liened += lien.time
         return time_liened
@@ -685,17 +800,14 @@ class Allocation (dm.Model):
     time_available = property(_get_time_available)
 
 
-class Lien (dm.Model):
+class Lien (lxr.Entity):
     
     """A potential charge against an allocation.
     
     Relationships:
-    allocation -- The allocation this lien is against.
+    allocation -- The allocation the lien is against.
     poster -- The user who posted the lien.
-    charge_set -- Charges resulting from this lien.
-    
-    Exceptions:
-    InsufficientFunds -- Charges exceed liens.
+    charges -- Charges resulting from the lien.
     
     Attributes:
     datetime -- When the lien was entered.
@@ -712,16 +824,28 @@ class Lien (dm.Model):
     open -- The lien is uncharged.
     
     Methods:
-    save -- Save an allocation with pre-save hooks.
     charge -- Charge time against this lien.
+    
+    Exceptions:
+    InsufficientFunds -- Charges exceed liens.
     """
     
-    allocation = dm.ForeignKey("Allocation")
-    poster = dm.ForeignKey("User")
+    lxr.belongs_to("allocation", of_kind="Allocation", required=True)
+    lxr.belongs_to("poster", of_kind="User", required=True)
     
-    datetime = dm.DateTimeField(default=datetime.now)
-    time = dm.IntegerField()
-    explanation = dm.TextField(default="")
+    lxr.has_many("charges", of_kind="Charge")
+    
+    lxr.with_fields(
+        id = lxr.Field(sa.Integer, primary_key=True),
+        datetime = lxr.Field(sa.DateTime, required=True, default=datetime.now),
+        time = lxr.Field(sa.Integer, required=True),
+        explanation = lxr.Field(sa.Unicode),
+    )
+    
+    clusterbank.statements.before_insert("_check_permissions", "_check_values_pre")
+    clusterbank.statements.after_insert("_check_values_post")
+    clusterbank.statements.before_update("_check_permissions", "_check_values_pre")
+    clusterbank.statements.after_update("_check_values_post")
     
     class InsufficientFunds (Exception):
         """Charges exceed liens."""
@@ -729,7 +853,8 @@ class Lien (dm.Model):
     def __str__ (self):
         return "%s %i/%i" % (
             self.resource.name,
-            self.effective_charge, self.time)
+            self.effective_charge, self.time
+        )
     
     def _get_project (self):
         """Return the related project."""
@@ -744,7 +869,7 @@ class Lien (dm.Model):
     def _get_effective_charge (self):
         """Sum the effective charges of related charges for this lien."""
         effective_charge = 0
-        for charge in self.charge_set.all():
+        for charge in self.charges:
             effective_charge += charge.effective_charge
         return effective_charge
     effective_charge = property(_get_effective_charge)
@@ -754,36 +879,28 @@ class Lien (dm.Model):
         return self.time - self.effective_charge
     time_available = property(_get_time_available)
     
-    def save (self):
-        
-        """Save a lien.
-        
-        Extends default save method with pre-save checks.
-        """
-        
-        # Poster must have can_request.
+    def _check_permissions (self):
+        """Check that the poster has permission to lien."""
         if not self.poster.can_lien:
             raise self.poster.NotPermitted(
                 "%s cannot post liens." % self.poster)
-        
-        # Poster must be a member of the project.
         if not self.poster.member_of(self.project):
-            raise self.poster.NotAMember(
+            raise self.poster.NotPermitted(
                 "%s is not a member of %s." % (self.poster, self.project))
-        
-        # Time cannot be negative.
-        if self.time is not None and self.time < 0:
+    
+    def _check_values_pre (self):
+        """Check that the value of the lien is valid."""
+        if self.time < 0 and self.time is not None:
             raise ValueError("Lien cannot be for negative time.")
         
-        super(self.__class__, self).save()
-        
-        # Cannot take a lien for more than time available + credit.
+    def _check_values_post (self):
+        """Check that the value of the lien is valid."""
         credit_limit = self.project.resource_credit_limit(self.resource)
         credit_used = self.project.resource_credit_used(self.resource)
         if credit_used > credit_limit:
             self.delete()
             raise self.project.InsufficientFunds(
-                "Credit limit exceeded by %i." % credit_used - credit_limit)
+                "Credit limit exceeded by %i." % (credit_used - credit_limit))
     
     def charge (self, **kwargs):
         """Charge some time against a lien."""
@@ -791,7 +908,7 @@ class Lien (dm.Model):
     
     def _get_charged (self):
         """The lien has been charged."""
-        return self.charge_set.count() > 0
+        return len(self.charges) > 0
     charged = property(_get_charged)
     
     def _get_active (self):
@@ -805,17 +922,14 @@ class Lien (dm.Model):
     open = property(_get_open)
 
 
-class Charge (dm.Model):
+class Charge (lxr.Entity):
     
     """A charge against an allocation.
     
     Relationships:
     lien -- The lien to which this charge applies.
     poster -- Who posted the transaction.
-    refund_set -- Refunds against this charge.
-    
-    Exceptions:
-    ExcessiveRefund -- Refund in excess of charge.
+    refunds -- Refunds against this charge.
     
     Attributes:
     datetime -- When the charge was deducted.
@@ -829,16 +943,26 @@ class Charge (dm.Model):
     active -- The charge is against an active lien.
     
     Methods:
-    save -- Save a charge with pre-save hooks.
     refund -- Refund time from this charge.
+    
+    Exceptions:
+    ExcessiveRefund -- Refund in excess of charge.
     """
     
-    lien = dm.ForeignKey("Lien")
-    poster = dm.ForeignKey("User")
+    lxr.belongs_to("lien", of_kind="Lien", required=True)
+    lxr.belongs_to("poster", of_kind="User", required=True)
     
-    datetime = dm.DateTimeField(default=datetime.now)
-    time = dm.IntegerField()
-    explanation = dm.TextField()
+    lxr.has_many("refunds", of_kind="Refund")
+    
+    lxr.with_fields(
+        id = lxr.Field(sa.Integer, primary_key=True),
+        datetime = lxr.Field(sa.DateTime, required=True, default=datetime.now),
+        time = lxr.Field(sa.Integer, required=True),
+        explanation = lxr.Field(sa.Unicode),
+    )
+    
+    clusterbank.statements.before_insert("_check_permissions", "_check_values", "_set_programmatic_defaults")
+    clusterbank.statements.before_update("_check_permissions", "_check_values")
     
     class ExcessiveRefund (Exception):
         """Refund in excess of charge."""
@@ -846,12 +970,13 @@ class Charge (dm.Model):
     def __str__ (self):
         return "%s -%s" % (
             self.resource.name,
-            self.effective_charge)
+            self.effective_charge
+        )
     
     def _get_effective_charge (self):
         """Difference of charge time and refund times."""
         effective_charge = self.time
-        for refund in self.refund_set.all():
+        for refund in self.refunds:
             effective_charge -= refund.time
         return effective_charge
     effective_charge = property(_get_effective_charge)
@@ -866,33 +991,24 @@ class Charge (dm.Model):
         return self.lien.resource
     resource = property(_get_resource)
     
-    def save (self):
-        
-        """Save a lien.
-        
-        Extends default save method with pre-save checks.
-        """
-        
-        # Require can_charge.
+    def _check_permissions (self):
+        """Check that the poster has permission to charge."""
         if not self.poster.can_charge:
             raise self.poster.NotPermitted(
                 "%s cannot post charges." % self.poster)
-        
-        # Time cannot be greater than available time.
         if self.time is not None:
             if self.time > self.lien.time_available:
                 raise self.lien.InsufficientFunds(
                     "Total charges cannot exceed lien.")
-        
-        # No negative charges.
+    
+    def _check_values (self):
+        """Check that the values of the charge are valid."""
         if self.time is not None and self.time < 0:
             raise ValueError("Cannot charge negative time.")
-        
-        # Programmatic defaults.
+    
+    def _set_programmatic_defaults (self):
         if self.time is None:
             self.time = self.lien.time
-        
-        super(self.__class__, self).save()
     
     def refund (self, **kwargs):
         """Refund a portion of the charge."""
@@ -904,7 +1020,7 @@ class Charge (dm.Model):
     active = property(_get_active)
 
 
-class Refund (dm.Model):
+class Refund (lxr.Entity):
     
     """A refund against a charge.
     
@@ -923,20 +1039,23 @@ class Refund (dm.Model):
     active -- The refund is against an active charge.
     
     Methods:
-    save -- Save a refund with pre-save hooks.
     """
     
-    charge = dm.ForeignKey("Charge")
-    poster = dm.ForeignKey("User")
+    lxr.belongs_to("charge", of_kind="Charge", required=True)
+    lxr.belongs_to("poster", of_kind="User", required=True)
     
-    datetime = dm.DateTimeField(default=datetime.now)
-    time = dm.IntegerField()
-    explanation = dm.TextField()
+    lxr.with_fields(
+        id = lxr.Field(sa.Integer, primary_key=True),
+        datetime = lxr.Field(sa.DateTime, required=True, default=datetime.now),
+        time = lxr.Field(sa.Integer, required=True),
+        explanation = lxr.Field(sa.Unicode),
+    )
+    
+    clusterbank.statements.before_insert("_check_permissions", "_check_values", "_set_programmatic_defaults")
+    clusterbank.statements.before_update("_check_permissions", "_check_values")
     
     def __str__ (self):
-        return "%s +%i" % (
-            self.resource.name,
-            self.time)
+        return "%s +%i" % (self.resource.name, self.time)
     
     def _get_project (self):
         """Return the related project."""
@@ -948,23 +1067,21 @@ class Refund (dm.Model):
         return self.charge.resource
     resource = property(_get_resource)
     
-    def save (self):
-        
-        # Poster must have can_refund.
+    def _check_permissions (self):
+        """Check that the poster has permission to refund."""
         if not self.poster.can_refund:
             raise self.poster.NotPermitted("%s cannot refund charges.")
-        
-        # No negative refunds.
-        if self.time is not None and self.time < 0:
+    
+    def _check_values (self):
+        """Check that the value of the refund is valid."""
+        if self.time < 0 and self.time is not None:
             raise ValueError("Cannot refund negative time.")
-        
-        # Cannot refund more than was charged.
-        if self.time is None:
-            self.time = self.charge.effective_charge
         elif self.time > self.charge.effective_charge:
             raise self.charge.ExcessiveRefund("Refunds cannot exceed charges.")
         
-        super(self.__class__, self).save()
+    def _set_programmatic_defaults (self):
+        if self.time is None:
+            self.time = self.charge.effective_charge
     
     def _get_active (self):
         """The charge affects the project's current allocation."""
@@ -972,7 +1089,7 @@ class Refund (dm.Model):
     active = property(_get_active)
 
 
-class UnitFactor (dm.Model):
+class UnitFactor (lxr.Entity):
     
     """A mapping between logical service time and internal resource time.
     
@@ -998,29 +1115,32 @@ class UnitFactor (dm.Model):
     the resource is 1 minute, the factor would be 60.
     """
     
-    class Meta:
-        unique_together = (("resource", "start"),)
+    lxr.belongs_to("poster", of_kind="User", required=True)
+    lxr.belongs_to("resource", of_kind="Resource", required=True)
+    
+    lxr.with_fields(
+        id = lxr.Field(sa.Integer, primary_key=True),
+        start = lxr.Field(sa.DateTime, required=True, default=datetime.now),
+        factor = lxr.Field(sa.Integer, required=True),
+        explanation = lxr.Field(sa.Unicode),
+    )
+    
+    #lxr.using_table_options(
+    #    sa.UniqueConstraint("resource_id", "start"),
+    #)
     
     @classmethod
-    def resource_factor (cls, resource, datetime=datetime.now):
+    def resource_factor (cls, resource):
         """The effective factor for a resource at a given date.
         
         Arguments:
         resource -- The applicable resource.
-        
-        Keyword arguments:
-        datetime -- The date to check.
-        
-        Defaults:
-        datetime -- Now.
         """
-        try:
-            datetime = datetime()
-        except TypeError:
-            pass
-        factors = cls.objects.filter(
-            resource=resource, start__lte=datetime)
-        factors = factors.order_by("-start")
+        factors = cls.query().filter_by(
+            resource = resource,
+        ).filter(
+            UnitFactor.c.start <= datetime.now(),
+        ).order_by(sa.desc(UnitFactor.c.start))
         try:
             return float(factors[0].factor)
         except IndexError:
@@ -1047,11 +1167,10 @@ class UnitFactor (dm.Model):
         
         return int(units / cls.resource_factor(resource))
     
-    poster = dm.ForeignKey("User")
-    resource = dm.ForeignKey("Resource")
-    
-    start = dm.DateTimeField(default=datetime.now)
-    factor = dm.FloatField(max_digits=5, decimal_places=2)
-    
     def __str__ (self):
         return "su = %s * %s" % (self.resource, self.factor)
+
+# Move this to the class definition when the Elixir dependency bug is fixed.
+UnitFactor._descriptor.add_constraint(
+    sa.UniqueConstraint("resource_id", "start"),
+)

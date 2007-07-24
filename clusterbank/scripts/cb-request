@@ -1,21 +1,12 @@
 #!/usr/bin/env python
-from django.core.management import setup_environ
-try:
-    import settings # Assumed to be in the same directory.
-except ImportError:
-    print >> sys.stderr, "Error: Can't find the file 'settings.py' in the directory containing %r. It appears you've customized things." % __file__
-    print >> sys.stderr, "You'll have to run django-admin.py, passing it your settings module."
-    print >> sys.stedrr, "(If the file settings.py does indeed exist, it's causing an ImportError somehow.)"
-    sys.exit(1)
-else:
-    setup_environ(settings)
 
 import sys
 from datetime import datetime, timedelta
-
 from optparse import OptionParser
-from clusterbank.scripting import CBOption
+
+import clusterbank.models as models
 from clusterbank.models import Request
+from clusterbank.scripting import CBOption
 
 parser = OptionParser(option_class=CBOption)
 parser.add_option(
@@ -60,19 +51,24 @@ if __name__ == "__main__":
         # user -- user whose projects to list requests for (required)
         # project -- project to list requests for
         # resource -- resource to list requests for
-        requests = Request.objects.all()
+        requests = Request.query()
         if options.project:
             if not user.can_allocate and not user.member_of(options.project):
                 # Any user who can allocate can list requests.
                 # Otherwise, users must have project membership.
                 print >> sys.stderr, "%s cannot list requests for %s." % (user, options.project)
                 sys.exit(1)
-            requests = requests.filter(project=options.project)
+            requests = requests.filter_by(project=options.project)
         else:
-            requests = requests.filter(project__in=user.project_set)
+            requests = requests.filter(Request.c.project_id.in_([project.id for project in user.projects]))
         if options.resource:
-            requests = requests.filter(resource=options.resource)
-        requests = (request for request in requests if request.active)
+            requests = requests.filter_by(resource=options.resource)
+        
+        requests = (
+            request for request in requests
+            if request.active
+        )
+        
         for request in requests:
             print request.id, request
     
@@ -98,21 +94,17 @@ if __name__ == "__main__":
         kwargs = dict(
             project = options.project,
             resource = options.resource,
-            time = options.time)
+            time = options.time,
+        )
         if options.start is not None:
             kwargs['start'] = options.start
         if options.explanation is not None:
             kwargs['explanation'] = options.explanation
-            
-        try:
-            request = user.request(**kwargs)
-        except user.NotPermitted, e:
-            print >> sys.stderr, e
-            sys.exit(1)
         
+        request = user.request(**kwargs)
         try:
-            request.save()
-        except ValueError, e:
+            models.lxr.objectstore.flush()
+        except (user.NotPermitted, ValueError), e:
             print >> sys.stderr, e
             sys.exit(1)
         

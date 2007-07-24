@@ -1,21 +1,11 @@
 #!/usr/bin/env python
-from django.core.management import setup_environ
-try:
-    import settings # Assumed to be in the same directory.
-except ImportError:
-    print >> sys.stderr, "Error: Can't find the file 'settings.py' in the directory containing %r. It appears you've customized things." % __file__
-    print >> sys.stderr, "You'll have to run django-admin.py, passing it your settings module."
-    print >> sys.stedrr, "(If the file settings.py does indeed exist, it's causing an ImportError somehow.)"
-    sys.exit(1)
-else:
-    setup_environ(settings)
 
 import sys
 from datetime import datetime
-
 from optparse import OptionParser
+
 from clusterbank.scripting import CBOption
-from clusterbank.models import Refund
+from clusterbank.models import Request, Refund
 
 parser = OptionParser(option_class=CBOption)
 parser.add_option(
@@ -61,21 +51,26 @@ if __name__ == "__main__":
     user = options.user
     
     if options.list:
-        refunds = Refund.objects.all()
+        refunds = Refund.query().join(["charge", "lien", "allocation", "request"])
         if options.project:
             if not user.can_refund and not user.member_of(options.project):
                 print >> sys.stderr, "%s cannot list refunds for %s." % (user, options.project)
                 sys.exit(1)
-            refunds = refunds.filter(charge__lien__alloation__request__project=options.project)
+            refunds = refunds.filter_by(project=options.project)
         else:
-            refunds = refunds.filter(charge__lien__allocation__request__project__in=user.project_set)
+            refunds = refunds.filter(Request.c.project_id.in_([project.id for project in user.projects]))
         if options.resource:
-            refunds = refunds.filter(charge__lien__allocation__request__resource=options.resource)
+            refunds = refunds.filter_by(resource=options.resource)
         if options.lien:
-            refunds = refunds.filter(charge__lien=options.lien)
+            refunds = refunds.filter_by(lien=options.lien)
         if options.charge:
-            refunds = refunds.filter(charge=options.charge)
-        refunds = (refund for refund in refunds if refund.active)
+            refunds = refunds.filter_by(charge=options.charge)
+        
+        refunds = (
+            refund for refund in refunds
+            if refund.active
+        )
+        
         for refund in refunds:
             print refund.id, refund
     
@@ -91,24 +86,17 @@ if __name__ == "__main__":
             sys.exit(1)
         
         kwargs = dict(
-            charge = options.charge)
+            charge = options.charge,
+        )
         if options.time is not None:
             kwargs['time'] = options.time
         if options.explanation is not None:
             kwargs['explanation'] = options.explanation
         
+        refund = user.refund(**kwargs)
         try:
-            refund = user.refund(**kwargs)
-        except user.NotPermitted, e:
-            print >> sys.stderr, e
-            sys.exit(1)
-        except charge.ExcessiveRefund, e:
-            print >> sys.stderr, e
-            sys.exit(1)
-        
-        try:
-            refund.save()
-        except ValueError, e:
+            models.lxr.objectstore.flush()
+        except (user.NotPermitted, options.charge.ExcessiveRefund, ValueError), e:
             print >> sys.stderr, e
             sys.exit(1)
         

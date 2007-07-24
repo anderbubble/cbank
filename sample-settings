@@ -1,0 +1,6 @@
+# Configuration is read from /etc/clusterbank
+
+[database]
+DATABASE_URI=engine://user:pass@host:port/database
+UPSTREAM_DATABASE_URI=engine://user:pass@host:port/database
+UPSTREAM_TYPE=userbase

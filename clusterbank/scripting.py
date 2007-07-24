@@ -52,21 +52,21 @@ class CBOption (Option):
     
     def check_request (self, opt, value):
         try:
-            return Request.objects.get(id=value)
+            return Request.get_by(id=value)
         except Request.DoesNotExist:
             raise OptionValueError(
                 "option %s: unknown request: %r" % (opt, value))
     
     def check_allocation (self, opt, value):
         try:
-            return Allocation.objects.get(id=value)
+            return Allocation.get_by(id=value)
         except Allocation.DoesNotExist:
             raise OptionValueError(
                 "option %s: unknown allocation: %r" % (opt, value))
     
     def check_lien (self, opt, value):
         try:
-            return Lien.objects.get(id=value)
+            return Lien.get_by(id=value)
         except Lien.DoesNotExist:
             raise OptionValueError(
                 "option %s: unknown lien: %r" % (opt, value))
@@ -76,7 +76,7 @@ class CBOption (Option):
     
     def check_charge (self, opt, value):
         try:
-            return Charge.objects.get(id=value)
+            return Charge.get_by(id=value)
         except Charge.DoesNotExist:
             raise OptionValueError(
                 "option %s: unknown charge: %r" % (opt, value))
