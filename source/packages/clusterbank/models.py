@@ -1,5 +1,12 @@
 """Cluster accounting model.
 
+Before using the models:
+
+ elixir.metadata.connect(<uri>) # connect model to a database
+ UpstreamEntity = <UpstreamClass> # provide upstream class to local classes
+ # other configuration may be required for upstream
+ 
+
 Classes:
 User -- A user in the system.
 Resource -- A resource (usually for computation).
@@ -13,24 +20,21 @@ Refund -- Refund against a charge.
 UnitFactor -- Translation of model time to physical time.
 """
 
-import warnings
 from datetime import datetime
 
-import sqlalchemy as sa
-import elixir as lxr
+from sqlalchemy import Integer, DateTime, Unicode, Boolean, desc, UniqueConstraint
+import elixir
+from elixir import Entity, Field, has_many, with_fields, belongs_to
 import clusterbank.statements
 
-import settings
 
-if settings.UPSTREAM_TYPE == "userbase":
-    import clusterbank.upstream.userbase as upstream
-    upstream.metadata.connect(settings.UPSTREAM_DATABASE_URI)
-else:
-    warnings.warn("No upstream layer was loaded.")
-lxr.metadata.connect(settings.DATABASE_URI)
+__all__ = [
+    "User", "Project", "Resource",
+    "Request", "Allocation", "CreditLimit", "Lien", "Charge", "Refund",
+]
 
 
-class User (lxr.Entity):
+class User (Entity):
     
     """A logical user.
     
@@ -72,21 +76,21 @@ class User (lxr.Entity):
     NotPermitted -- An intentional denial of an action.
     """
     
-    lxr.has_many("credit_limits", of_kind="CreditLimit")
-    lxr.has_many("requests", of_kind="Request")
-    lxr.has_many("allocations", of_kind="Allocation")
-    lxr.has_many("liens", of_kind="Lien")
-    lxr.has_many("charges", of_kind="Charge")
-    lxr.has_many("refunds", of_kind="Refund")
-    lxr.has_many("unit_factors", of_kind="UnitFactor")
+    has_many("credit_limits", of_kind="CreditLimit")
+    has_many("requests", of_kind="Request")
+    has_many("allocations", of_kind="Allocation")
+    has_many("liens", of_kind="Lien")
+    has_many("charges", of_kind="Charge")
+    has_many("refunds", of_kind="Refund")
+    has_many("unit_factors", of_kind="UnitFactor")
     
-    lxr.with_fields(
-        id = lxr.Field(sa.Integer, primary_key=True),
-        can_request = lxr.Field(sa.Boolean, required=True, default=False),
-        can_allocate = lxr.Field(sa.Boolean, required=True, default=False),
-        can_lien = lxr.Field(sa.Boolean, required=True, default=False),
-        can_charge = lxr.Field(sa.Boolean, required=True, default=False),
-        can_refund = lxr.Field(sa.Boolean, required=True, default=False),
+    with_fields(
+        id = Field(Integer, primary_key=True),
+        can_request = Field(Boolean, required=True, default=False),
+        can_allocate = Field(Boolean, required=True, default=False),
+        can_lien = Field(Boolean, required=True, default=False),
+        can_charge = Field(Boolean, required=True, default=False),
+        can_refund = Field(Boolean, required=True, default=False),
     )
     
     class DoesNotExist (Exception):
@@ -103,29 +107,33 @@ class User (lxr.Entity):
         name -- The upstream name of the user.
         """
         try:
-            upstream_user = upstream.User.by_name(name)
-        except upstream.DoesNotExist:
+            upstream_user = cls.UpstreamEntity.by_name(name)
+        except cls.UpstreamEntity.DoesNotExist:
             raise cls.DoesNotExist("The user does not exist.")
         user = cls.get_by(id=upstream_user.id) \
             or cls(id=upstream_user.id)
-        lxr.objectstore.flush([user])
+        elixir.objectstore.flush([user])
         return user
     
     def __repr__ (self):
-        return "<%s %s>" % (self.__class__.__name__, self.id)
+        if self.id is None:
+            id_repr = "?"
+        else:
+            id_repr = self.id
+        return "<%s %s>" % (self.__class__.__name__, id_repr)
     
     def __str__ (self):
         return self.name
     
     def _get_name (self):
         """Return the name of the upstream user."""
-        upstream_user = upstream.User.by_id(self.id)
+        upstream_user = self.UpstreamEntity.by_id(self.id)
         return upstream_user.name
     name = property(_get_name)
     
     def _get_projects (self):
         """Return the set of projects that this user is a member of."""
-        upstream_projects = upstream.User.by_id(self.id).projects
+        upstream_projects = self.UpstreamEntity.by_id(self.id).projects
         local_projects = [
             Project.from_upstream_name(name)
             for name in (project.name for project in upstream_projects)
@@ -135,8 +143,8 @@ class User (lxr.Entity):
     
     def member_of (self, project):
         """Whether or not a user is a member of a given project."""
-        upstream_user = upstream.User.by_id(self.id)
-        upstream_project = upstream.Project.by_id(project.id)
+        upstream_user = self.UpstreamEntity.by_id(self.id)
+        upstream_project = Project.UpstreamEntity.by_id(project.id)
         return upstream_project in upstream_user.projects
     
     def request (self, **kwargs):
@@ -298,7 +306,7 @@ class User (lxr.Entity):
         return charge.refund(poster=self, **kwargs)
 
 
-class Project (lxr.Entity):
+class Project (Entity):
     
     """A logical project.
     
@@ -335,11 +343,11 @@ class Project (lxr.Entity):
     resource_credit_available -- Difference of credit limit and credit used.
     """
     
-    lxr.has_many("credit_limits", of_kind="CreditLimit")
-    lxr.has_many("requests", of_kind="Request")
+    has_many("credit_limits", of_kind="CreditLimit")
+    has_many("requests", of_kind="Request")
     
-    lxr.with_fields(
-        id = lxr.Field(sa.Integer, primary_key=True),
+    with_fields(
+        id = Field(Integer, primary_key=True),
     )
     
     class DoesNotExist (Exception):
@@ -356,29 +364,33 @@ class Project (lxr.Entity):
         name -- The upstream name of the user.
         """
         try:
-            upstream_project = upstream.Project.by_name(name)
-        except upstream.DoesNotExist:
+            upstream_project = cls.UpstreamEntity.by_name(name)
+        except cls.UpstreamEntity.DoesNotExist:
             raise cls.DoesNotExist("The project does not exist.")
         project = cls.get_by(id=upstream_project.id) \
             or cls(id=upstream_project.id)
-        lxr.objectstore.flush([project])
+        elixir.objectstore.flush([project])
         return project
     
     def __repr__ (self):
-        return "<%s %s>" % (self.__class__.__name__, self.id)
+        if self.id is None:
+            id_repr = "?"
+        else:
+            id_repr = self.id
+        return "<%s %s>" % (self.__class__.__name__, id_repr)
     
     def __str__ (self):
         return self.name
     
     def _get_name (self):
         """Return the name of the upstream project."""
-        upstream_project = upstream.Project.by_id(self.id)
+        upstream_project = self.UpstreamEntity.by_id(self.id)
         return upstream_project.name
     name = property(_get_name)
     
     def _get_users (self):
         """Return the set of users who are members of this project."""
-        upstream_users = upstream.Project.by_id(self.id).users
+        upstream_users = self.UpstreamEntity.by_id(self.id).users
         local_users = [
             User.from_upstream_name(name)
             for name in (user.name for user in upstream_users)
@@ -388,8 +400,8 @@ class Project (lxr.Entity):
     
     def has_member (self, user):
         """Whether or not a given user is a member of a project."""
-        upstream_project = upstream.Project.by_id(self.id)
-        upstream_user = upstream.User.by_id(user.id)
+        upstream_project = self.UpstreamEntity.by_id(self.id)
+        upstream_user = User.UpstreamEntity.by_id(user.id)
         return upstream_user in upstream_project.users
     
     def _get_allocations (self):
@@ -473,7 +485,7 @@ class Project (lxr.Entity):
         ).filter_by(
             project = self,
             resource = resource,
-        ).order_by(sa.desc(CreditLimit.c.start))
+        ).order_by(desc(CreditLimit.c.start))
         try:
             return credit_limits[0].time
         except IndexError:
@@ -492,7 +504,7 @@ class Project (lxr.Entity):
             - self.resource_credit_used(resource)
 
 
-class Resource (lxr.Entity):
+class Resource (Entity):
     
     """A logical resource.
     
@@ -514,11 +526,11 @@ class Resource (lxr.Entity):
     DoesNotExist -- The specified resource does not exist.
     """
     
-    lxr.has_many("credit_limits", of_kind="CreditLimit")
-    lxr.has_many("requests", of_kind="Request")
+    has_many("credit_limits", of_kind="CreditLimit")
+    has_many("requests", of_kind="Request")
     
-    lxr.with_fields(
-        id = lxr.Field(sa.Integer, primary_key=True),
+    with_fields(
+        id = Field(Integer, primary_key=True),
     )
     
     class DoesNotExist (Exception):
@@ -532,28 +544,32 @@ class Resource (lxr.Entity):
         name -- The upstream name of the resource.
         """
         try:
-            upstream_resource = upstream.Resource.by_name(name)
-        except upstream.DoesNotExist:
+            upstream_resource = cls.UpstreamEntity.by_name(name)
+        except cls.UpstreamEntity.DoesNotExist:
             raise cls.DoesNotExist("The resource does not exist.")
         resource = cls.get_by(id=upstream_resource.id) \
             or cls(id=upstream_resource.id)
-        lxr.objectstore.flush([resource])
+        elixir.objectstore.flush([resource])
         return resource
     
     def __repr__ (self):
-        return "<%s %s>" % (self.__class__.__name__, self.id)
+        if self.id is None:
+            id_repr = "?"
+        else:
+            id_repr = self.id
+        return "<%s %s>" % (self.__class__.__name__, id_repr)
     
     def __str__ (self):
         return self.name
     
     def _get_name (self):
         """Return the name of the upstream resource."""
-        upstream_resource = upstream.Resource.by_id(self.id)
+        upstream_resource = Resource.UpstreamEntity.by_id(self.id)
         return upstream_resource.name
     name = property(_get_name)
 
 
-class CreditLimit (lxr.Entity):
+class CreditLimit (Entity):
     
     """A limit on the charges a project can have.
     
@@ -573,19 +589,19 @@ class CreditLimit (lxr.Entity):
      * Only one entry for a given project, start, and resource.
     """
     
-    lxr.belongs_to("project", of_kind="Project", required=True)
-    lxr.belongs_to("resource", of_kind="Resource", required=True)
-    lxr.belongs_to("poster", of_kind="User", required=True)
+    belongs_to("project", of_kind="Project", required=True)
+    belongs_to("resource", of_kind="Resource", required=True)
+    belongs_to("poster", of_kind="User", required=True)
     
-    lxr.with_fields(
-        id = lxr.Field(sa.Integer, primary_key=True),
-        start = lxr.Field(sa.DateTime, required=True, default=datetime.now),
-        time = lxr.Field(sa.Integer, required=True),
-        explanation = lxr.Field(sa.Unicode),
+    with_fields(
+        id = Field(Integer, primary_key=True),
+        start = Field(DateTime, required=True, default=datetime.now),
+        time = Field(Integer, required=True),
+        explanation = Field(Unicode),
     )
     
-    #lxr.using_table_options(
-    #    sa.UniqueConstraint("project_id", "resource_id", "start"),
+    #using_table_options(
+    #    UniqueConstraint("project_id", "resource_id", "start"),
     #)
     
     clusterbank.statements.before_insert("_check_permissions", "_check_values")
@@ -593,6 +609,13 @@ class CreditLimit (lxr.Entity):
     
     def __str__ (self):
         return "%s ~%i" % (self.resource.name, self.time)
+    
+    def __repr__ (self):
+        if self.id is None:
+            id_repr = "?"
+        else:
+            id_repr = self.id
+        return "<%s %s>" % (self.__class__.__name__, id_repr)
     
     def _check_permissions (self):
         """Check that the poster has permission to allocate credit."""
@@ -607,10 +630,10 @@ class CreditLimit (lxr.Entity):
 
 # Move this to the class definition when the Elixir dependency bug is fixed.
 CreditLimit._descriptor.add_constraint(
-        sa.UniqueConstraint("project_id", "resource_id", "start"),
+        UniqueConstraint("project_id", "resource_id", "start"),
 )
 
-class Request (lxr.Entity):
+class Request (Entity):
     
     """A request for time on a resource.
     
@@ -627,24 +650,24 @@ class Request (lxr.Entity):
     start -- When the allocation should become active.
     
     Properties:
-    active -- The request remains unanswered.
+    open -- The request remains unanswered.
     
     Methods:
     allocate -- Allocate time on a resource in response to a request.
     """
     
-    lxr.belongs_to("resource", of_kind="Resource", required=True)
-    lxr.belongs_to("project", of_kind="Project", required=True)
-    lxr.belongs_to("poster", of_kind="User", required=True)
+    belongs_to("resource", of_kind="Resource", required=True)
+    belongs_to("project", of_kind="Project", required=True)
+    belongs_to("poster", of_kind="User", required=True)
     
-    lxr.has_many("allocations", of_kind="Allocation")
+    has_many("allocations", of_kind="Allocation")
     
-    lxr.with_fields(
-        id = lxr.Field(sa.Integer, primary_key=True),
-        datetime = lxr.Field(sa.DateTime, required=True, default=datetime.now),
-        time = lxr.Field(sa.Integer, required=True),
-        explanation = lxr.Field(sa.Unicode),
-        start = lxr.Field(sa.DateTime),
+    with_fields(
+        id = Field(Integer, primary_key=True),
+        datetime = Field(DateTime, required=True, default=datetime.now),
+        time = Field(Integer, required=True),
+        explanation = Field(Unicode),
+        start = Field(DateTime),
     )
     
     clusterbank.statements.before_insert("_check_permissions", "_check_values")
@@ -657,12 +680,19 @@ class Request (lxr.Entity):
             resource_name = None
         return "%s ?%s" % (resource_name, self.time)
     
+    def __repr__ (self):
+        if self.id is None:
+            id_repr = "?"
+        else:
+            id_repr = self.id
+        return "<%s %s>" % (self.__class__.__name__, id_repr)
+    
     def _check_permissions (self):
         """Check that the poster has permission to request."""
         if not self.poster.can_request:
             raise self.poster.NotPermitted(
                 "%s cannot make requests." % self.poster)
-        if not self.poster.member_of(self.project):
+        if not (self.poster.member_of(self.project) or self.poster.can_allocate):
             raise self.poster.NotPermitted(
                 "%s is not a member of %s." % (self.poster, self.project))
     
@@ -675,14 +705,18 @@ class Request (lxr.Entity):
         """Allocate time on a resource in response to a request."""
         return Allocation(request=self, **kwargs)
     
-    def _get_active (self):
-        """Whether the request requires consideration."""
-        allocated = len(self.allocations) > 0
-        return not allocated
-    active = property(_get_active)
+    def _get_allocated (self):
+        """Whether the request has had time allocated to it."""
+        return len(self.allocations) > 0
+    allocated = property(_get_allocated)
+    
+    def _get_open (self):
+        """Whether the request is awaiting a reply."""
+        return not self.allocated
+    open = property(_get_open)
 
 
-class Allocation (lxr.Entity):
+class Allocation (Entity):
     
     """An amount of time allocated to a project.
     
@@ -704,23 +738,21 @@ class Allocation (lxr.Entity):
     started -- Allocation has started.
     expired -- Allocation has expired.
     active -- The allocation has started and has not expired.
-    
-    Methods:
     """
     
-    lxr.belongs_to("request", of_kind="Request")
-    lxr.belongs_to("poster", of_kind="User")
+    belongs_to("request", of_kind="Request")
+    belongs_to("poster", of_kind="User")
     
-    lxr.has_many("liens", of_kind="Lien")
+    has_many("liens", of_kind="Lien")
     
-    lxr.with_fields(
-        id = lxr.Field(sa.Integer, primary_key=True),
-        approver = lxr.Field(sa.Unicode),
-        datetime = lxr.Field(sa.DateTime, required=True, default=datetime.now),
-        time = lxr.Field(sa.Integer, required=True),
-        start = lxr.Field(sa.DateTime, required=True),
-        expiration = lxr.Field(sa.DateTime, required=True),
-        explanation = lxr.Field(sa.Unicode),
+    with_fields(
+        id = Field(Integer, primary_key=True),
+        approver = Field(Unicode),
+        datetime = Field(DateTime, required=True, default=datetime.now),
+        time = Field(Integer, required=True),
+        start = Field(DateTime, required=True),
+        expiration = Field(DateTime, required=True),
+        explanation = Field(Unicode),
     )
     
     clusterbank.statements.before_insert("_check_permissions", "_check_values", "_set_programmatic_defaults")
@@ -728,6 +760,13 @@ class Allocation (lxr.Entity):
     
     def __str__ (self):
         return "%s +%i" % (self.resource.name, self.time)
+    
+    def __repr__ (self):
+        if self.id is None:
+            id_repr = "?"
+        else:
+            id_repr = self.id
+        return "<%s %s>" % (self.__class__.__name__, id_repr)
     
     def _get_project (self):
         """Return the related project."""
@@ -800,7 +839,7 @@ class Allocation (lxr.Entity):
     time_available = property(_get_time_available)
 
 
-class Lien (lxr.Entity):
+class Lien (Entity):
     
     """A potential charge against an allocation.
     
@@ -830,16 +869,16 @@ class Lien (lxr.Entity):
     InsufficientFunds -- Charges exceed liens.
     """
     
-    lxr.belongs_to("allocation", of_kind="Allocation", required=True)
-    lxr.belongs_to("poster", of_kind="User", required=True)
+    belongs_to("allocation", of_kind="Allocation", required=True)
+    belongs_to("poster", of_kind="User", required=True)
     
-    lxr.has_many("charges", of_kind="Charge")
+    has_many("charges", of_kind="Charge")
     
-    lxr.with_fields(
-        id = lxr.Field(sa.Integer, primary_key=True),
-        datetime = lxr.Field(sa.DateTime, required=True, default=datetime.now),
-        time = lxr.Field(sa.Integer, required=True),
-        explanation = lxr.Field(sa.Unicode),
+    with_fields(
+        id = Field(Integer, primary_key=True),
+        datetime = Field(DateTime, required=True, default=datetime.now),
+        time = Field(Integer, required=True),
+        explanation = Field(Unicode),
     )
     
     clusterbank.statements.before_insert("_check_permissions", "_check_values_pre")
@@ -855,6 +894,13 @@ class Lien (lxr.Entity):
             self.resource.name,
             self.effective_charge, self.time
         )
+    
+    def __repr__ (self):
+        if self.id is None:
+            id_repr = "?"
+        else:
+            id_repr = self.id
+        return "<%s %s>" % (self.__class__.__name__, id_repr)
     
     def _get_project (self):
         """Return the related project."""
@@ -884,7 +930,7 @@ class Lien (lxr.Entity):
         if not self.poster.can_lien:
             raise self.poster.NotPermitted(
                 "%s cannot post liens." % self.poster)
-        if not self.poster.member_of(self.project):
+        if not (self.poster.member_of(self.project) or self.poster.can_charge):
             raise self.poster.NotPermitted(
                 "%s is not a member of %s." % (self.poster, self.project))
     
@@ -922,7 +968,7 @@ class Lien (lxr.Entity):
     open = property(_get_open)
 
 
-class Charge (lxr.Entity):
+class Charge (Entity):
     
     """A charge against an allocation.
     
@@ -949,16 +995,16 @@ class Charge (lxr.Entity):
     ExcessiveRefund -- Refund in excess of charge.
     """
     
-    lxr.belongs_to("lien", of_kind="Lien", required=True)
-    lxr.belongs_to("poster", of_kind="User", required=True)
+    belongs_to("lien", of_kind="Lien", required=True)
+    belongs_to("poster", of_kind="User", required=True)
     
-    lxr.has_many("refunds", of_kind="Refund")
+    has_many("refunds", of_kind="Refund")
     
-    lxr.with_fields(
-        id = lxr.Field(sa.Integer, primary_key=True),
-        datetime = lxr.Field(sa.DateTime, required=True, default=datetime.now),
-        time = lxr.Field(sa.Integer, required=True),
-        explanation = lxr.Field(sa.Unicode),
+    with_fields(
+        id = Field(Integer, primary_key=True),
+        datetime = Field(DateTime, required=True, default=datetime.now),
+        time = Field(Integer, required=True),
+        explanation = Field(Unicode),
     )
     
     clusterbank.statements.before_insert("_check_permissions", "_check_values", "_set_programmatic_defaults")
@@ -972,6 +1018,13 @@ class Charge (lxr.Entity):
             self.resource.name,
             self.effective_charge
         )
+    
+    def __repr__ (self):
+        if self.id is None:
+            id_repr = "?"
+        else:
+            id_repr = self.id
+        return "<%s %s>" % (self.__class__.__name__, id_repr)
     
     def _get_effective_charge (self):
         """Difference of charge time and refund times."""
@@ -996,10 +1049,6 @@ class Charge (lxr.Entity):
         if not self.poster.can_charge:
             raise self.poster.NotPermitted(
                 "%s cannot post charges." % self.poster)
-        if self.time is not None:
-            if self.time > self.lien.time_available:
-                raise self.lien.InsufficientFunds(
-                    "Total charges cannot exceed lien.")
     
     def _check_values (self):
         """Check that the values of the charge are valid."""
@@ -1020,7 +1069,7 @@ class Charge (lxr.Entity):
     active = property(_get_active)
 
 
-class Refund (lxr.Entity):
+class Refund (Entity):
     
     """A refund against a charge.
     
@@ -1041,14 +1090,14 @@ class Refund (lxr.Entity):
     Methods:
     """
     
-    lxr.belongs_to("charge", of_kind="Charge", required=True)
-    lxr.belongs_to("poster", of_kind="User", required=True)
+    belongs_to("charge", of_kind="Charge", required=True)
+    belongs_to("poster", of_kind="User", required=True)
     
-    lxr.with_fields(
-        id = lxr.Field(sa.Integer, primary_key=True),
-        datetime = lxr.Field(sa.DateTime, required=True, default=datetime.now),
-        time = lxr.Field(sa.Integer, required=True),
-        explanation = lxr.Field(sa.Unicode),
+    with_fields(
+        id = Field(Integer, primary_key=True),
+        datetime = Field(DateTime, required=True, default=datetime.now),
+        time = Field(Integer, required=True),
+        explanation = Field(Unicode),
     )
     
     clusterbank.statements.before_insert("_check_permissions", "_check_values", "_set_programmatic_defaults")
@@ -1056,6 +1105,13 @@ class Refund (lxr.Entity):
     
     def __str__ (self):
         return "%s +%i" % (self.resource.name, self.time)
+    
+    def __repr__ (self):
+        if self.id is None:
+            id_repr = "?"
+        else:
+            id_repr = self.id
+        return "<%s %s>" % (self.__class__.__name__, id_repr)
     
     def _get_project (self):
         """Return the related project."""
@@ -1070,7 +1126,8 @@ class Refund (lxr.Entity):
     def _check_permissions (self):
         """Check that the poster has permission to refund."""
         if not self.poster.can_refund:
-            raise self.poster.NotPermitted("%s cannot refund charges.")
+            raise self.poster.NotPermitted(
+                "%s cannot refund charges." % self.poster)
     
     def _check_values (self):
         """Check that the value of the refund is valid."""
@@ -1089,88 +1146,88 @@ class Refund (lxr.Entity):
     active = property(_get_active)
 
 
-class UnitFactor (lxr.Entity):
-    
-    """A mapping between logical service time and internal resource time.
-    
-    Relationships:
-    poster -- User who added the factor.
-    resource -- The resource being described.
-    
-    Constraints:
-     * One entry for a given start and resource.
-    
-    Class methods:
-    resource_factor -- The effective factor for a resource at a given date.
-    to_ru -- Convert standard units to resource units.
-    to_su -- Convert resource units to standard units.
-    
-    Attributes:
-    start -- When the mapping becomes active.
-    factor -- The ratio of su to ru.
-    
-    su = ru * factor
-    
-    For example, if one service unit is 1 hour, but a unit of time on
-    the resource is 1 minute, the factor would be 60.
-    """
-    
-    lxr.belongs_to("poster", of_kind="User", required=True)
-    lxr.belongs_to("resource", of_kind="Resource", required=True)
-    
-    lxr.with_fields(
-        id = lxr.Field(sa.Integer, primary_key=True),
-        start = lxr.Field(sa.DateTime, required=True, default=datetime.now),
-        factor = lxr.Field(sa.Integer, required=True),
-        explanation = lxr.Field(sa.Unicode),
-    )
-    
-    #lxr.using_table_options(
-    #    sa.UniqueConstraint("resource_id", "start"),
-    #)
-    
-    @classmethod
-    def resource_factor (cls, resource):
-        """The effective factor for a resource at a given date.
-        
-        Arguments:
-        resource -- The applicable resource.
-        """
-        factors = cls.query().filter_by(
-            resource = resource,
-        ).filter(
-            UnitFactor.c.start <= datetime.now(),
-        ).order_by(sa.desc(UnitFactor.c.start))
-        try:
-            return float(factors[0].factor)
-        except IndexError:
-            return 1.0
-    
-    @classmethod
-    def to_ru (cls, resource, units):
-        """Convert standard units to resource units.
-        
-        Arguments:
-        resource -- The resource being used.
-        units -- The units to convert.
-        """
-        return int(units * cls.resource_factor(resource))
-    
-    @classmethod
-    def to_su (cls, resource, units):
-        """Convert resource units to standard units.
-        
-        Arguments:
-        resource -- The resource being used.
-        units -- The units to convert.
-        """
-        
-        return int(units / cls.resource_factor(resource))
-    
-    def __str__ (self):
-        return "su = %s * %s" % (self.resource, self.factor)
-
-# Move this to the class definition when the Elixir dependency bug is fixed.
-UnitFactor._descriptor.add_constraint(
-    sa.UniqueConstraint("resource_id", "start"),
-)
+# class UnitFactor (Entity):
+#     
+#     """A mapping between logical service time and internal resource time.
+#     
+#     Relationships:
+#     poster -- User who added the factor.
+#     resource -- The resource being described.
+#     
+#     Constraints:
+#      * One entry for a given start and resource.
+#     
+#     Class methods:
+#     resource_factor -- The effective factor for a resource at a given date.
+#     to_ru -- Convert standard units to resource units.
+#     to_su -- Convert resource units to standard units.
+#     
+#     Attributes:
+#     start -- When the mapping becomes active.
+#     factor -- The ratio of su to ru.
+#     
+#     su = ru * factor
+#     
+#     For example, if one service unit is 1 hour, but a unit of time on
+#     the resource is 1 minute, the factor would be 60.
+#     """
+#     
+#     belongs_to("poster", of_kind="User", required=True)
+#     belongs_to("resource", of_kind="Resource", required=True)
+#     
+#     with_fields(
+#         id = Field(Integer, primary_key=True),
+#         start = Field(DateTime, required=True, default=datetime.now),
+#         factor = Field(Integer, required=True),
+#         explanation = Field(Unicode),
+#     )
+#     
+#     #using_table_options(
+#     #    UniqueConstraint("resource_id", "start"),
+#     #)
+#     
+#     @classmethod
+#     def resource_factor (cls, resource):
+#         """The effective factor for a resource at a given date.
+#         
+#         Arguments:
+#         resource -- The applicable resource.
+#         """
+#         factors = cls.query().filter_by(
+#             resource = resource,
+#         ).filter(
+#             UnitFactor.c.start <= datetime.now(),
+#         ).order_by(desc(UnitFactor.c.start))
+#         try:
+#             return float(factors[0].factor)
+#         except IndexError:
+#             return 1.0
+#     
+#     @classmethod
+#     def to_ru (cls, resource, units):
+#         """Convert standard units to resource units.
+#         
+#         Arguments:
+#         resource -- The resource being used.
+#         units -- The units to convert.
+#         """
+#         return int(units * cls.resource_factor(resource))
+#     
+#     @classmethod
+#     def to_su (cls, resource, units):
+#         """Convert resource units to standard units.
+#         
+#         Arguments:
+#         resource -- The resource being used.
+#         units -- The units to convert.
+#         """
+#         
+#         return int(units / cls.resource_factor(resource))
+#     
+#     def __str__ (self):
+#         return "su = %s * %s" % (self.resource, self.factor)
+# 
+# # Move this to the class definition when the Elixir dependency bug is fixed.
+# UnitFactor._descriptor.add_constraint(
+#     UniqueConstraint("resource_id", "start"),
+# )

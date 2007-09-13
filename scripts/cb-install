@@ -1,5 +1,0 @@
-#!/usr/bin/env python
-
-import clusterbank.models
-
-clusterbank.models.lxr.create_all()
