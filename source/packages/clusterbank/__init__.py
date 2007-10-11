@@ -11,6 +11,12 @@ __all__ = ["models", "scripting", "settings", "statements", "upstream"]
 
 __version__ = "0.2.x"
 
+def get_end_module (name):
+    mod = __import__(name)
+    components = name.split(".")
+    for comp in components[1:]:
+        mod = getattr(mod, comp)
+    return mod
 
 config = SafeConfigParser()
 config.read(["/etc/clusterbank.conf"])
@@ -23,17 +29,18 @@ else:
     try:
         elixir.metadata.bind = create_engine(uri)
     except:
-        warnings.warn("invalid database: %s" % uri, ImportWarning)
+        warnings.warn("invalid database: %s" % (uri), ImportWarning)
 
 try:
-    upstream_type = config.get("main", "upstream")
+    upstream_module_name = config.get("main", "upstream")
 except:
-    warnings.warn("no upstream type specified", ImportWarning)
+    warnings.warn("no upstream module specified", ImportWarning)
 else:
-    if upstream_type == "userbase":
-        from upstream import userbase
-        upstream.User = userbase.User
-        upstream.Project = userbase.Project
-        upstream.Resource = userbase.Resource
+    try:
+        upstream_module = get_end_module(upstream_module_name)
+    except ImportError:
+        warnings.warn("invalid upstream module: %s" % (upstream_module_name), ImportWarning)
     else:
-        warnings.warn("invalid upstream type: %s" % upstream_type, ImportWarning)
+        upstream.User = upstream_module.User
+        upstream.Project = upstream_module.Project
+        upstream.Resource = upstream_module.Resource
