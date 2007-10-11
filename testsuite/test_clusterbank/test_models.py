@@ -219,7 +219,7 @@ class TestProject (EntityTester):
         for user in self.invalid_users:
             assert not self.project.has_member(user)
     
-    def test_resource_time_allocated (self):
+    def test_time_allocated (self):
         self.user.can_request = True
         self.user.can_allocate = True
         request = self.user.request(
@@ -233,11 +233,11 @@ class TestProject (EntityTester):
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
         )
-        assert self.project.resource_time_allocated(self.resource) == 0
+        assert self.project.time_allocated(self.resource) == 0
         elixir.objectstore.flush()
-        assert self.project.resource_time_allocated(self.resource) == self.ALLOCATION
+        assert self.project.time_allocated(self.resource) == self.ALLOCATION
     
-    def test_resource_time_liened (self):
+    def test_time_liened (self):
         self.user.can_request = True
         self.user.can_allocate = True
         self.user.can_lien = True
@@ -259,15 +259,15 @@ class TestProject (EntityTester):
             time = self.LIEN,
         )
         
-        assert self.project.resource_time_liened(self.resource) == 0
+        assert self.project.time_liened(self.resource) == 0
         elixir.objectstore.flush()
-        assert self.project.resource_time_liened(self.resource) == self.LIEN
+        assert self.project.time_liened(self.resource) == self.LIEN
         charge = self.user.charge(lien=lien, time=self.CHARGE)
         elixir.objectstore.flush()
         lien.refresh()
-        assert self.project.resource_time_liened(self.resource) == 0
+        assert self.project.time_liened(self.resource) == 0
     
-    def test_resource_time_charged (self):
+    def test_time_charged (self):
         self.user.can_request = True
         self.user.can_allocate = True
         self.user.can_lien = True
@@ -290,16 +290,16 @@ class TestProject (EntityTester):
         )
         
         elixir.objectstore.flush()
-        assert self.project.resource_time_charged(self.resource) == 0
+        assert self.project.time_charged(self.resource) == 0
         charge = self.user.charge(lien=lien, time=self.CHARGE)
         elixir.objectstore.flush()
-        assert self.project.resource_time_charged(self.resource) == self.CHARGE
+        assert self.project.time_charged(self.resource) == self.CHARGE
         refund = self.user.refund(charge=charge, time=self.REFUND)
         elixir.objectstore.flush()
         charge.refresh()
-        assert self.project.resource_time_charged(self.resource) == self.CHARGE - self.REFUND
+        assert self.project.time_charged(self.resource) == self.CHARGE - self.REFUND
     
-    def test_resource_time_available (self):
+    def test_time_available (self):
         self.user.can_request = True
         self.user.can_allocate = True
         self.user.can_lien = True
@@ -311,7 +311,7 @@ class TestProject (EntityTester):
             time = self.REQUEST,
         )
         elixir.objectstore.flush()
-        assert self.project.resource_time_available(self.resource) == 0
+        assert self.project.time_available(self.resource) == 0
         
         allocation = self.user.allocate(
             request = request,
@@ -320,28 +320,28 @@ class TestProject (EntityTester):
             expiration = datetime.now() + timedelta(days=1),
         )
         elixir.objectstore.flush()
-        assert self.project.resource_time_available(self.resource) == self.ALLOCATION
+        assert self.project.time_available(self.resource) == self.ALLOCATION
         
         lien = self.user.lien(
             allocation = allocation,
             time = self.LIEN,
         )
         elixir.objectstore.flush()
-        assert self.project.resource_time_available(self.resource) == self.ALLOCATION - self.LIEN
+        assert self.project.time_available(self.resource) == self.ALLOCATION - self.LIEN
         
         charge = self.user.charge(lien=lien, time=self.CHARGE)
         elixir.objectstore.flush()
         lien.refresh()
-        assert self.project.resource_time_available(request.resource) == self.ALLOCATION - self.CHARGE
+        assert self.project.time_available(request.resource) == self.ALLOCATION - self.CHARGE
         
         refund = self.user.refund(charge=charge, time=self.REFUND)
         elixir.objectstore.flush()
         charge.refresh()
-        assert self.project.resource_time_available(self.resource) == self.ALLOCATION - (self.CHARGE - self.REFUND)
+        assert self.project.time_available(self.resource) == self.ALLOCATION - (self.CHARGE - self.REFUND)
     
-    def test_resource_credit_limit (self):
+    def test_credit_limit (self):
         self.user.can_allocate = True
-        assert self.project.resource_credit_limit(self.resource) == 0
+        assert self.project.credit_limit(self.resource) == 0
         credit = self.user.allocate_credit(
             project = self.project,
             resource = self.resource,
@@ -350,7 +350,7 @@ class TestProject (EntityTester):
         )
         elixir.objectstore.flush()
         self.project.refresh()
-        assert self.project.resource_credit_limit(self.resource) == self.CREDIT_LIMIT
+        assert self.project.credit_limit(self.resource) == self.CREDIT_LIMIT
 
 
 class TestResource (EntityTester):

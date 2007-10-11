@@ -315,14 +315,14 @@ class Project (Entity):
     
     Methods:
     has_member -- The group has a member.
-    resource_time_allocated -- Sum of time allocated to a resource.
-    resource_time_liened -- Sum of time committed to uncharged liens.
-    resource_time_charged -- Sum of effective charges.
-    resource_time_used -- Sum of time liened and time charged.
-    resource_time_available -- Difference of time allocated and time used.
-    resource_credit_limit -- Current credit limit for the resource.
-    resource_credit_used -- Negative time used.
-    resource_credit_available -- Difference of credit limit and credit used.
+    time_allocated -- Sum of time allocated to a resource.
+    time_liened -- Sum of time committed to uncharged liens.
+    time_charged -- Sum of effective charges.
+    time_used -- Sum of time liened and time charged.
+    time_available -- Difference of time allocated and time used.
+    credit_limit -- Current credit limit for the resource.
+    credit_used -- Negative time used.
+    credit_available -- Difference of credit limit and credit used.
     """
     
     has_many("credit_limits", of_kind="CreditLimit")
@@ -385,7 +385,7 @@ class Project (Entity):
         return Charge.query().join("request").filter_by(project=self)
     charges = property(_get_charges)
     
-    def resource_time_allocated (self, resource):
+    def time_allocated (self, resource):
         """Sum of time in active allocations."""
         allocations = Allocation.query().join("request").filter_by(
             project = self,
@@ -400,7 +400,7 @@ class Project (Entity):
             time_allocated += allocation.time
         return time_allocated
     
-    def resource_time_liened (self, resource):
+    def time_liened (self, resource):
         """Sum of time in active and open liens."""
         liens = Lien.query().join(["allocation", "request"]).filter_by(
             project = self,
@@ -415,7 +415,7 @@ class Project (Entity):
             time_liened += lien.time
         return time_liened
     
-    def resource_time_charged (self, resource):
+    def time_charged (self, resource):
         """Sum of time in active charges."""
         charges = Charge.query().join(["lien", "allocation", "request"]).filter_by(
             project = self,
@@ -430,17 +430,17 @@ class Project (Entity):
             time_charged += charge.effective_charge
         return time_charged
     
-    def resource_time_used (self, resource):
+    def time_used (self, resource):
         """Sum of time committed to liens and charges."""
-        return self.resource_time_liened(resource) \
-            + self.resource_time_charged(resource)
+        return self.time_liened(resource) \
+            + self.time_charged(resource)
     
-    def resource_time_available (self, resource):
+    def time_available (self, resource):
         """Difference of time allocated and time used."""
-        return self.resource_time_allocated(resource) \
-            - self.resource_time_used(resource)
+        return self.time_allocated(resource) \
+            - self.time_used(resource)
     
-    def resource_credit_limit (self, resource):
+    def credit_limit (self, resource):
         """The effective credit limit for a resource at a given date.
         
         Arguments:
@@ -457,17 +457,17 @@ class Project (Entity):
         except IndexError:
             return 0
     
-    def resource_credit_used (self, resource):
-        delta = self.resource_time_allocated(resource) \
-            - self.resource_time_used(resource)
+    def credit_used (self, resource):
+        delta = self.time_allocated(resource) \
+            - self.time_used(resource)
         if delta < 0:
             return -1 * delta
         else:
             return 0
     
-    def resource_credit_available (self, resource):
-        return self.resource_credit_limit(resource) \
-            - self.resource_credit_used(resource)
+    def credit_available (self, resource):
+        return self.credit_limit(resource) \
+            - self.credit_used(resource)
 
 
 def fetch_resource (name):
@@ -900,8 +900,8 @@ class Lien (Entity):
         
     def _check_values_post (self):
         """Check that the value of the lien is valid."""
-        credit_limit = self.project.resource_credit_limit(self.resource)
-        credit_used = self.project.resource_credit_used(self.resource)
+        credit_limit = self.project.credit_limit(self.resource)
+        credit_used = self.project.credit_used(self.resource)
         if credit_used > credit_limit:
             self.delete()
             raise self.project.InsufficientFunds(
