@@ -3,6 +3,7 @@ from sqlalchemy import create_engine
 import elixir
 
 from clusterbank.models import User, Project, Resource
+from clusterbank import upstream
 from clusterbank.upstream import userbase
 
 __all__ = ["test_models", "test_scripting"]
@@ -49,9 +50,9 @@ RESOURCES = [
 
 def setup ():
     elixir.metadata.bind = create_engine("sqlite:///:memory:")
-    User.UpstreamEntity = userbase.User
-    Project.UpstreamEntity = userbase.Project
-    Resource.UpstreamEntity = userbase.Resource
+    upstream.User = userbase.User
+    upstream.Project = userbase.Project
+    upstream.Resource = userbase.Resource
     userbase.model.metadata.bind = create_engine("sqlite:///:memory:")
     userbase.model.metadata.create_all()
     
@@ -74,6 +75,6 @@ def teardown ():
     elixir.metadata.bind = None
     userbase.model.context.current.clear()
     userbase.model.metadata.bind = None
-    del User.UpstreamEntity
-    del Project.UpstreamEntity
-    del Resource.UpstreamEntity
+    del upstream.User
+    del upstream.Project
+    del upstream.Resource

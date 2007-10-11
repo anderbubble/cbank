@@ -1,12 +1,5 @@
 """Cluster accounting model.
 
-Before using the models:
-
- elixir.metadata.connect(<uri>) # connect model to a database
- UpstreamEntity = <UpstreamClass> # provide upstream class to local classes
- # other configuration may be required for upstream
- 
-
 Classes:
 User -- A user in the system.
 Resource -- A resource (usually for computation).
@@ -25,7 +18,9 @@ from datetime import datetime
 from sqlalchemy import Integer, DateTime, Unicode, Boolean, desc, UniqueConstraint
 import elixir
 from elixir import Entity, Field, has_many, with_fields, belongs_to
+
 import clusterbank.statements
+from clusterbank import upstream
 
 
 __all__ = [
@@ -41,8 +36,8 @@ def fetch_user (name):
     name -- The upstream name of the user.
     """
     try:
-        upstream_user = User.UpstreamEntity.by_name(name)
-    except User.UpstreamEntity.DoesNotExist:
+        upstream_user = upstream.User.by_name(name)
+    except upstream.User.DoesNotExist:
         raise User.DoesNotExist("The user does not exist.")
     user = User.get_by(id=upstream_user.id) \
         or User(id=upstream_user.id)
@@ -124,13 +119,13 @@ class User (Entity):
     
     def _get_name (self):
         """Return the name of the upstream user."""
-        upstream_user = self.UpstreamEntity.by_id(self.id)
+        upstream_user = upstream.User.by_id(self.id)
         return upstream_user.name
     name = property(_get_name)
     
     def _get_projects (self):
         """Return the set of projects that this user is a member of."""
-        upstream_projects = self.UpstreamEntity.by_id(self.id).projects
+        upstream_projects = upstream.User.by_id(self.id).projects
         local_projects = [
             fetch_project(name)
             for name in (project.name for project in upstream_projects)
@@ -140,8 +135,8 @@ class User (Entity):
     
     def member_of (self, project):
         """Whether or not a user is a member of a given project."""
-        upstream_user = self.UpstreamEntity.by_id(self.id)
-        upstream_project = Project.UpstreamEntity.by_id(project.id)
+        upstream_user = upstream.User.by_id(self.id)
+        upstream_project = upstream.Project.by_id(project.id)
         return upstream_project in upstream_user.projects
     
     def request (self, **kwargs):
@@ -283,8 +278,8 @@ def fetch_project (name):
     name -- The upstream name of the project.
     """
     try:
-        upstream_project = Project.UpstreamEntity.by_name(name)
-    except Project.UpstreamEntity.DoesNotExist:
+        upstream_project = upstream.Project.by_name(name)
+    except upstream.Project.DoesNotExist:
         raise Project.DoesNotExist("The project does not exist.")
     project = Project.get_by(id=upstream_project.id) \
         or Project(id=upstream_project.id)
@@ -350,13 +345,13 @@ class Project (Entity):
     
     def _get_name (self):
         """Return the name of the upstream project."""
-        upstream_project = self.UpstreamEntity.by_id(self.id)
+        upstream_project = upstream.Project.by_id(self.id)
         return upstream_project.name
     name = property(_get_name)
     
     def _get_users (self):
         """Return the set of users who are members of this project."""
-        upstream_users = self.UpstreamEntity.by_id(self.id).users
+        upstream_users = upstream.Project.by_id(self.id).users
         local_users = [
             fetch_user(name)
             for name in (user.name for user in upstream_users)
@@ -366,8 +361,8 @@ class Project (Entity):
     
     def has_member (self, user):
         """Whether or not a given user is a member of a project."""
-        upstream_project = self.UpstreamEntity.by_id(self.id)
-        upstream_user = User.UpstreamEntity.by_id(user.id)
+        upstream_project = upstream.Project.by_id(self.id)
+        upstream_user = upstream.User.by_id(user.id)
         return upstream_user in upstream_project.users
     
     def _get_allocations (self):
@@ -477,8 +472,8 @@ def fetch_resource (name):
     name -- The upstream name of the resource.
     """
     try:
-        upstream_resource = Resource.UpstreamEntity.by_name(name)
-    except Resource.UpstreamEntity.DoesNotExist:
+        upstream_resource = upstream.Resource.by_name(name)
+    except upstream.Resource.DoesNotExist:
         raise Resource.DoesNotExist("The resource does not exist.")
     resource = Resource.get_by(id=upstream_resource.id) \
         or Resource(id=upstream_resource.id)
@@ -527,7 +522,7 @@ class Resource (Entity):
     
     def _get_name (self):
         """Return the name of the upstream resource."""
-        upstream_resource = Resource.UpstreamEntity.by_id(self.id)
+        upstream_resource = upstream.Resource.by_id(self.id)
         return upstream_resource.name
     name = property(_get_name)
 
