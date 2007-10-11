@@ -151,13 +151,13 @@ class User (Entity):
         """Request time on a resource."""
         return Request(poster=self, **kwargs)
     
-    def allocate (self, request, **kwargs):
+    def allocate (self, **kwargs):
         """Allocate time on a resource in response to a request.
         
         Arguments:
         request -- Which request to allocate time for. (required)
         """
-        return request.allocate(poster=self, **kwargs)
+        return Allocation(poster=self, **kwargs)
     
     def allocate_credit (self, **kwargs):
         """Post a credit limit for a project.
@@ -167,37 +167,23 @@ class User (Entity):
         """
         return CreditLimit(poster=self, **kwargs)
     
-    def lien (self, allocation=None, time=None,
-              project=None, resource=None, **kwargs):
-        """Enter a lien against an allocation(s)."""
+    def lien (self, **kwargs):
         
-        if allocation:
-            # A specific allocation has been given.
-            return Lien(
-                poster = self,
-                allocation = allocation,
-                time = time,
-                **kwargs
-            )
-        else:
-            # No specific allocation has been given.
-            # Take out a lien against any available allocation.
-            if not project and resource:
-                raise TypeError("lien requires either allocation or both project and resource.")
-            return self._smart_lien(project, resource, time, **kwargs)
-    
-    def _smart_lien (self, project, resource, time, **kwargs):
-        """Collect available allocations and post liens that span them.
+        """Enter a lien against an allocation."""
         
-        Arguments:
-        project -- The project that must be allocated.
-        resource -- The resource that must be allocated.
-        time -- How much time to acquire liens for.
-        """
-        allocations = Allocation.query().join("request").filter_by(
-            project = project,
-            resource = resource,
-        ).order_by([Allocation.c.expiration, Allocation.c.datetime])
+        if kwargs.get("allocation") is not None:
+            kwargs.pop('project', None)
+            kwargs.pop('resource', None)
+            return Lien(poster=self, **kwargs)
+        
+        kwargs.pop("allocation", None)
+        
+        project = kwargs.pop('project')
+        resource = kwargs.pop('resource')
+        time = kwargs.pop('time')
+        
+        allocations = Allocation.query().join("request").filter_by(project=project, resource=resource)
+        allocations = allocations.order_by([Allocation.c.expiration, Allocation.c.datetime])
         allocations = (
             allocation for allocation in allocations
             if allocation.active
@@ -210,12 +196,9 @@ class User (Entity):
             # post a lien for it. Otherwise, post a lien for whatever
             # The allocation will support.
             if allocation.time_available >= time:
-                lien = self.lien(allocation, time=time, **kwargs)
+                lien = self.lien(allocation=allocation, time=time, **kwargs)
             else:
-                lien = self.lien(allocation,
-                    time = allocation.time_available,
-                    **kwargs
-                )
+                lien = self.lien(allocation=allocation, time=allocation.time_available, **kwargs)
             liens.append(lien)
             time -= lien.time
             if time <= 0:
@@ -230,17 +213,14 @@ class User (Entity):
                 # No lien has yet been created. Post a lien on the last
                 # Allocation used.
                 try:
-                    lien = self.lien(allocation, time=time, **kwargs)
+                    lien = Lien(allocation=allocation, time=time, **kwargs)
                 except NameError:
                     # There are no allocations.
-                    raise self.NotPermitted(
-                        "There are no active allocations for %s on %s." \
-                        % (project, resource)
-                    )
+                    raise self.NotPermitted("There are no active allocations for %s on %s." % (project, resource))
                 liens.append(lien)
         return liens
     
-    def charge (self, lien=None, time=None, liens=None, **kwargs):
+    def charge (self, **kwargs):
         
         """Charge time against a lien.
         
@@ -250,30 +230,24 @@ class User (Entity):
         """
         
         # If the charge is for a specific lien, post the charge.
-        if lien:
-            return lien.charge(poster=self, time=time, **kwargs)
-        else:
-            # No specific lien has been given. Post a charge to each lien
-            # in the pool until all time has been charged.
-            return self._smart_charge(liens, time, **kwargs)
+        if kwargs.get("lien") is not None:
+            kwargs.pop("liens", None)
+            return Charge(poster=self, **kwargs)
         
-    def _smart_charge (self, liens, time, **kwargs):
-        """Post a charge across a  number of liens in a pool.
+        kwargs.pop("lien", None)
         
-        Arguments:
-        liens -- A list of liens available to be charged.
-        time -- Time to be charged.
-        """
-        
+        # No specific lien has been given. Post a charge to each lien
+        # in the pool until all time has been charged.
         charges = list()
-        for lien in liens:
+        time = kwargs.pop("time")
+        for lien in kwargs.pop("liens"):
             # If the remaining time will fit into the lien, post a
             # Charge for all of it. Otherwise, post a charge for what
             # the lien can support.
             if lien.time_available >= time:
-                charge = self.charge(lien, time=time, **kwargs)
+                charge = self.charge(lien=lien, time=time, **kwargs)
             else:
-                charge = self.charge(lien, time=lien.time_available, **kwargs)
+                charge = self.charge(lien=lien, time=lien.time_available, **kwargs)
             charges.append(charge)
             time -= charge.time
             # Iterate through all liens to charge 0 on unused liens.
@@ -289,21 +263,20 @@ class User (Entity):
             except IndexError:
                 # No charges have yet been made. Charge the last lien.
                 try:
-                    charge = self.charge(lien, time=time, **kwargs)
+                    charge = self.charge(lien=lien, time=time, **kwargs)
                 except NameError:
                     # There was no lien.
-                    raise self.NotPermitted(
-                        "No liens are available to be charged.")
+                    raise self.NotPermitted("No liens are available to be charged.")
                 charges.append(charge)
         return charges
     
-    def refund (self, charge, **kwargs):
+    def refund (self, **kwargs):
         """Refund time from a charge.
         
         Arguments:
         charge -- Which charge to refund. (required)
         """
-        return charge.refund(poster=self, **kwargs)
+        return Refund(poster=self, **kwargs)
 
 
 class Project (Entity):
@@ -701,10 +674,6 @@ class Request (Entity):
         if self.time is not None and self.time < 0:
             raise ValueError("Cannot request negative time.")
     
-    def allocate (self, **kwargs):
-        """Allocate time on a resource in response to a request."""
-        return Allocation(request=self, **kwargs)
-    
     def _get_allocated (self):
         """Whether the request has had time allocated to it."""
         return len(self.allocations) > 0
@@ -948,10 +917,6 @@ class Lien (Entity):
             raise self.project.InsufficientFunds(
                 "Credit limit exceeded by %i." % (credit_used - credit_limit))
     
-    def charge (self, **kwargs):
-        """Charge some time against a lien."""
-        return Charge(lien=self, **kwargs)
-    
     def _get_charged (self):
         """The lien has been charged."""
         return len(self.charges) > 0
@@ -1058,10 +1023,6 @@ class Charge (Entity):
     def _set_programmatic_defaults (self):
         if self.time is None:
             self.time = self.lien.time
-    
-    def refund (self, **kwargs):
-        """Refund a portion of the charge."""
-        return Refund(charge=self, **kwargs)
     
     def _get_active (self):
         """Charge affects the project's current allocation."""

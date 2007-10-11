@@ -112,7 +112,7 @@ class TestUser (UpstreamBackedEntityTester):
     
     def test_allocate (self):
         request = self.user.request()
-        allocation = self.user.allocate(request)
+        allocation = self.user.allocate(request=request)
         assert isinstance(allocation, Allocation)
     
     def test_allocate_credit (self):
@@ -121,8 +121,8 @@ class TestUser (UpstreamBackedEntityTester):
     
     def test_lien (self):
         request = self.user.request()
-        allocation = self.user.allocate(request)
-        lien = self.user.lien(allocation)
+        allocation = self.user.allocate(request=request)
+        lien = self.user.lien(allocation=allocation)
         assert isinstance(lien, Lien)
     
     def test_smart_lien (self):
@@ -134,12 +134,14 @@ class TestUser (UpstreamBackedEntityTester):
             resource = self.resource,
             time = self.REQUEST,
         )
-        allocation1 = self.user.allocate(request,
+        allocation1 = self.user.allocate(
+            request = request,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
             time = self.LIEN / 2,
         )
-        allocation2 = self.user.allocate(request,
+        allocation2 = self.user.allocate(
+            request = request,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
             time = self.LIEN / 2,
@@ -157,9 +159,9 @@ class TestUser (UpstreamBackedEntityTester):
     
     def test_charge (self):
         request = self.user.request()
-        allocation = self.user.allocate(request)
-        lien = self.user.lien(allocation)
-        charge = self.user.charge(lien)
+        allocation = self.user.allocate(request=request)
+        lien = self.user.lien(allocation=allocation)
+        charge = self.user.charge(lien=lien)
         assert isinstance(charge, Charge)
     
     def test_charge_multiple_liens (self):
@@ -171,12 +173,14 @@ class TestUser (UpstreamBackedEntityTester):
             resource = self.resource,
             time = self.REQUEST,
         )
-        allocation1 = self.user.allocate(request,
+        allocation1 = self.user.allocate(
+            request = request,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
             time = self.LIEN / 2,
         )
-        allocation2 = self.user.allocate(request,
+        allocation2 = self.user.allocate(
+            request = request,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
             time = self.LIEN / 2,
@@ -196,10 +200,10 @@ class TestUser (UpstreamBackedEntityTester):
     
     def test_refund (self):
         request = self.user.request()
-        allocation = self.user.allocate(request)
-        lien = self.user.lien(allocation)
-        charge = self.user.charge(lien)
-        refund = self.user.refund(charge)
+        allocation = self.user.allocate(request=request)
+        lien = self.user.lien(allocation=allocation)
+        charge = self.user.charge(lien=lien)
+        refund = self.user.refund(charge=charge)
         assert isinstance(refund, Refund)
 
 
@@ -253,7 +257,8 @@ class TestProject (UpstreamBackedEntityTester):
             resource = self.resource,
             time = self.REQUEST,
         )
-        allocation = self.user.allocate(request,
+        allocation = self.user.allocate(
+            request = request,
             time = self.ALLOCATION,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
@@ -272,7 +277,8 @@ class TestProject (UpstreamBackedEntityTester):
             resource = self.resource,
             time = self.REQUEST,
         )
-        allocation = self.user.allocate(request,
+        allocation = self.user.allocate(
+            request = request,
             time = self.ALLOCATION,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
@@ -286,7 +292,7 @@ class TestProject (UpstreamBackedEntityTester):
         assert self.project.resource_time_liened(self.resource) == 0
         elixir.objectstore.flush()
         assert self.project.resource_time_liened(self.resource) == self.LIEN
-        charge = self.user.charge(lien, time=self.CHARGE)
+        charge = self.user.charge(lien=lien, time=self.CHARGE)
         elixir.objectstore.flush()
         lien.refresh()
         assert self.project.resource_time_liened(self.resource) == 0
@@ -302,7 +308,8 @@ class TestProject (UpstreamBackedEntityTester):
             resource = self.resource,
             time = self.REQUEST,
         )
-        allocation = self.user.allocate(request,
+        allocation = self.user.allocate(
+            request = request,
             time = self.ALLOCATION,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
@@ -314,10 +321,10 @@ class TestProject (UpstreamBackedEntityTester):
         
         elixir.objectstore.flush()
         assert self.project.resource_time_charged(self.resource) == 0
-        charge = self.user.charge(lien, time=self.CHARGE)
+        charge = self.user.charge(lien=lien, time=self.CHARGE)
         elixir.objectstore.flush()
         assert self.project.resource_time_charged(self.resource) == self.CHARGE
-        refund = self.user.refund(charge, time=self.REFUND)
+        refund = self.user.refund(charge=charge, time=self.REFUND)
         elixir.objectstore.flush()
         charge.refresh()
         assert self.project.resource_time_charged(self.resource) == self.CHARGE - self.REFUND
@@ -336,7 +343,8 @@ class TestProject (UpstreamBackedEntityTester):
         elixir.objectstore.flush()
         assert self.project.resource_time_available(self.resource) == 0
         
-        allocation = self.user.allocate(request,
+        allocation = self.user.allocate(
+            request = request,
             time = self.ALLOCATION,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
@@ -351,12 +359,12 @@ class TestProject (UpstreamBackedEntityTester):
         elixir.objectstore.flush()
         assert self.project.resource_time_available(self.resource) == self.ALLOCATION - self.LIEN
         
-        charge = self.user.charge(lien, time=self.CHARGE)
+        charge = self.user.charge(lien=lien, time=self.CHARGE)
         elixir.objectstore.flush()
         lien.refresh()
         assert self.project.resource_time_available(request.resource) == self.ALLOCATION - self.CHARGE
         
-        refund = self.user.refund(charge, time=self.REFUND)
+        refund = self.user.refund(charge=charge, time=self.REFUND)
         elixir.objectstore.flush()
         charge.refresh()
         assert self.project.resource_time_available(self.resource) == self.ALLOCATION - (self.CHARGE - self.REFUND)
@@ -477,11 +485,6 @@ class TestRequest (EntityTester):
         except self.request.poster.NotPermitted:
             assert not "Permission denied with can_request and membership."
     
-    def test_allocate (self):
-        request = Request()
-        allocation = request.allocate()
-        assert isinstance(allocation, Allocation)
-    
     def test_open (self):
         self.request.poster.can_request = True
         self.request.poster.can_allocate = True
@@ -489,8 +492,8 @@ class TestRequest (EntityTester):
         assert self.request.open
         
         self.user.can_allocate = True
-        allocation = self.request.allocate(
-            poster = self.user,
+        allocation = self.user.allocate(
+            request = self.request,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
         )
@@ -686,12 +689,12 @@ class TestLien (EntityTester):
         
         assert lien.effective_charge == 0
         
-        charge = self.user.charge(lien, time=self.CHARGE)
+        charge = self.user.charge(lien=lien, time=self.CHARGE)
         elixir.objectstore.flush()
         lien.refresh()
         assert lien.effective_charge == self.CHARGE
         
-        refund = self.user.refund(charge, time=self.REFUND)
+        refund = self.user.refund(charge=charge, time=self.REFUND)
         elixir.objectstore.flush()
         charge.refresh()
         assert lien.effective_charge == self.CHARGE - self.REFUND
@@ -722,12 +725,12 @@ class TestLien (EntityTester):
         )
         assert lien.time_available == self.LIEN
         
-        charge = self.user.charge(lien, time=self.CHARGE)
+        charge = self.user.charge(lien=lien, time=self.CHARGE)
         elixir.objectstore.flush()
         lien.refresh()
         assert lien.time_available == self.LIEN - self.CHARGE
         
-        refund = self.user.refund(charge, time=self.REFUND)
+        refund = self.user.refund(charge=charge, time=self.REFUND)
         elixir.objectstore.flush()
         charge.refresh()
         assert lien.time_available == self.LIEN - (self.CHARGE - self.REFUND)
@@ -742,11 +745,6 @@ class TestLien (EntityTester):
             pass
         else:
             assert not "Allowed negative lien."
-    
-    def test_charge (self):
-        lien = Lien()
-        charge = lien.charge()
-        assert isinstance(charge, Charge)
     
     def test_active (self):
         self.user.can_request = True
@@ -809,7 +807,7 @@ class TestLien (EntityTester):
         
         assert lien.open
         
-        charge = self.user.charge(lien, time=self.CHARGE)
+        charge = self.user.charge(lien=lien, time=self.CHARGE)
         elixir.objectstore.flush()
         lien.refresh()
         assert not lien.open
@@ -922,7 +920,7 @@ class TestCharge (EntityTester):
         
         assert charge.effective_charge == self.CHARGE
         
-        refund = self.user.refund(charge, time=self.REFUND)
+        refund = self.user.refund(charge=charge, time=self.REFUND)
         elixir.objectstore.flush()
         charge.refresh()
         assert charge.effective_charge == self.CHARGE - self.REFUND
@@ -953,11 +951,6 @@ class TestCharge (EntityTester):
         )
         assert charge.project is self.user.projects[0]
         assert charge.resource is self.resource
-    
-    def test_refund (self):
-        charge = Charge()
-        refund = charge.refund()
-        assert isinstance(refund, Refund)
 
 
 class TestRefund (EntityTester):
