@@ -4,9 +4,28 @@ The userbase module uses SQLAlchemy to build an interface over
 the MCS userbase database.
 """
 
-# Bring the plugin interface to the top level.
+from ConfigParser import SafeConfigParser
+import warnings
+
+import sqlalchemy
+from sqlalchemy import create_engine
+
+import model
 from model import User, Project, Resource
     
 __all__ = [
-    "User", "Project", "Resource", "DoesNotExist"
+    "User", "Project", "Resource",
 ]
+
+config = SafeConfigParser()
+config.read(["/etc/clusterbank.conf"])
+
+try:
+    uri = config.get("userbase", "database")
+except:
+    warnings.warn("no userbase database configured")
+else:
+    try:
+        model.metadata.bind = create_engine(uri)
+    except:
+        warnings.warn("invalid upstream database: %s" % uri)
