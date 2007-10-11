@@ -4,6 +4,7 @@ import elixir
 
 from clusterbank.models import \
     User, Project, Resource, \
+    fetch_user, fetch_project, fetch_resource, \
     Request, Allocation, CreditLimit, Lien, Charge, Refund
 
 
@@ -22,46 +23,18 @@ class EntityTester (object):
     def setup (self):
         """Create the tables before each test."""
         elixir.create_all()
-        self.user = User.from_upstream_name(self.USER_NAME)
-        self.project = Project.from_upstream_name(self.PROJECT_NAME)
+        self.user = fetch_user(self.USER_NAME)
+        self.project = fetch_project(self.PROJECT_NAME)
         assert self.project not in self.user.projects
-        self.resource = Resource.from_upstream_name(self.RESOURCE_NAME)
+        self.resource = fetch_resource(self.RESOURCE_NAME)
     
     def teardown (self):
         """drop the database after each test."""
         elixir.objectstore.clear()
         elixir.drop_all()
-
-
-class UpstreamBackedEntityTester (EntityTester):
-    
-    def setup (self):
-        EntityTester.setup(self)
-        self.entity = self.Entity.from_upstream_name(self.VALID_NAME)
-    
-    def test_from_upstream_name (self):
-        entity = self.Entity.from_upstream_name(self.VALID_NAME)
-        assert isinstance(entity, self.Entity)
-        
-        try:
-            entity = self.Entity.from_upstream_name(self.INVALID_NAME)
-        except self.Entity.DoesNotExist:
-            pass
-        else:
-            assert not "Invalid name didn't raise proper exception."
-    
-    def test_id (self):
-        entity = self.Entity.from_upstream_name(self.VALID_NAME)
-        assert entity.id == self.VALID_ID
-    
-    def test_name (self):
-        entity = self.Entity.from_upstream_name(self.VALID_NAME)
-        assert entity.name == self.VALID_NAME
     
 
-class TestUser (UpstreamBackedEntityTester):
-    
-    Entity = User
+class TestUser (EntityTester):
     
     VALID_ID = 1
     VALID_NAME = "user1"
@@ -72,18 +45,17 @@ class TestUser (UpstreamBackedEntityTester):
     INVALID_PROJECTS = ["project3", "project4"]
     
     def setup (self):
-        UpstreamBackedEntityTester.setup(self)
-        self.user = self.entity
+        EntityTester.setup(self)
         self.valid_projects = [
-            Project.from_upstream_name(name)
+            fetch_project(name)
             for name in self.VALID_PROJECTS
         ]
         self.invalid_projects = [
-            Project.from_upstream_name(name)
+            fetch_project(name)
             for name in self.INVALID_PROJECTS
         ]
         self.project = self.valid_projects[0]
-        self.resource = Resource.from_upstream_name(self.RESOURCE_NAME)
+        self.resource = fetch_resource(self.RESOURCE_NAME)
     
     def test_default_permissions (self):
         assert not self.user.can_request
@@ -207,9 +179,7 @@ class TestUser (UpstreamBackedEntityTester):
         assert isinstance(refund, Refund)
 
 
-class TestProject (UpstreamBackedEntityTester):
-    
-    Entity = Project
+class TestProject (EntityTester):
     
     VALID_ID = 1
     VALID_NAME = "project1"
@@ -222,18 +192,18 @@ class TestProject (UpstreamBackedEntityTester):
     RESOURCE_NAME = "resource1"
     
     def setup (self):
-        UpstreamBackedEntityTester.setup(self)
-        self.project = self.entity
+        EntityTester.setup(self)
+        self.project = fetch_project("project1")
         self.valid_users = [
-            User.from_upstream_name(name)
+            fetch_user(name)
             for name in self.VALID_USERS
         ]
         self.invalid_users = [
-            User.from_upstream_name(name)
+            fetch_user(name)
             for name in self.INVALID_USERS
         ]
         self.user = self.valid_users[0]
-        self.resource = Resource.from_upstream_name(self.RESOURCE_NAME)
+        self.resource = fetch_resource(self.RESOURCE_NAME)
     
     def test_users (self):
         for user in self.project.users:
@@ -383,9 +353,7 @@ class TestProject (UpstreamBackedEntityTester):
         assert self.project.resource_credit_limit(self.resource) == self.CREDIT_LIMIT
 
 
-class TestResource (UpstreamBackedEntityTester):
-    
-    Entity = Resource
+class TestResource (EntityTester):
     
     VALID_ID = 1
     VALID_NAME = "resource1"
@@ -396,10 +364,8 @@ class TestResource (UpstreamBackedEntityTester):
 
 class TestCreditLimit (EntityTester):
     
-    Entity = CreditLimit
-    
     def test_permission (self):
-        credit = self.Entity(
+        credit = CreditLimit(
             poster = self.user,
             project = self.project,
             time = self.CREDIT_LIMIT,
@@ -413,7 +379,7 @@ class TestCreditLimit (EntityTester):
     
     def test_negative (self):
         self.user.can_allocate = True
-        credit = self.Entity(
+        credit = CreditLimit(
             poster = self.user,
             project = self.project,
             resource = self.resource,

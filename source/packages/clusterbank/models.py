@@ -30,8 +30,24 @@ import clusterbank.statements
 
 __all__ = [
     "User", "Project", "Resource",
+    "fetch_user", "fetch_project", "fetch_resource",
     "Request", "Allocation", "CreditLimit", "Lien", "Charge", "Refund",
 ]
+
+def fetch_user (name):
+    """Get (or create) a user based on its name upstream.
+    
+    Arguments:
+    name -- The upstream name of the user.
+    """
+    try:
+        upstream_user = User.UpstreamEntity.by_name(name)
+    except User.UpstreamEntity.DoesNotExist:
+        raise User.DoesNotExist("The user does not exist.")
+    user = User.get_by(id=upstream_user.id) \
+        or User(id=upstream_user.id)
+    elixir.objectstore.flush([user])
+    return user
 
 
 class User (Entity):
@@ -46,9 +62,6 @@ class User (Entity):
     charges -- Charges made by the user.
     refunds -- Refunds made by the user.
     unit_factors -- Factors set by the user.
-    
-    Class methods:
-    from_upstream_name -- Get a user based on his name upstream.
     
     Attributes:
     id -- Canonical id of the user.
@@ -99,22 +112,6 @@ class User (Entity):
     class NotPermitted (Exception):
         """An intentional denail of an action."""
     
-    @classmethod
-    def from_upstream_name (cls, name):
-        """Get (or create) a user based on his upstream name.
-        
-        Arguments:
-        name -- The upstream name of the user.
-        """
-        try:
-            upstream_user = cls.UpstreamEntity.by_name(name)
-        except cls.UpstreamEntity.DoesNotExist:
-            raise cls.DoesNotExist("The user does not exist.")
-        user = cls.get_by(id=upstream_user.id) \
-            or cls(id=upstream_user.id)
-        elixir.objectstore.flush([user])
-        return user
-    
     def __repr__ (self):
         if self.id is None:
             id_repr = "?"
@@ -135,7 +132,7 @@ class User (Entity):
         """Return the set of projects that this user is a member of."""
         upstream_projects = self.UpstreamEntity.by_id(self.id).projects
         local_projects = [
-            Project.from_upstream_name(name)
+            fetch_project(name)
             for name in (project.name for project in upstream_projects)
         ]
         return local_projects
@@ -279,6 +276,21 @@ class User (Entity):
         return Refund(poster=self, **kwargs)
 
 
+def fetch_project (name):
+    """Get (or create) a project based on its upstream name.
+    
+    Arguments:
+    name -- The upstream name of the project.
+    """
+    try:
+        upstream_project = Project.UpstreamEntity.by_name(name)
+    except Project.UpstreamEntity.DoesNotExist:
+        raise Project.DoesNotExist("The project does not exist.")
+    project = Project.get_by(id=upstream_project.id) \
+        or Project(id=upstream_project.id)
+    elixir.objectstore.flush([project])
+    return project
+
 class Project (Entity):
     
     """A logical project.
@@ -290,9 +302,6 @@ class Project (Entity):
     Exceptions:
     DoesNotExist -- The specified project does not exist.
     InsufficientFunds -- Not enough funds to perform an action.
-    
-    Class methods:
-    from_upstream_name -- Get a project based on its name upstream.
     
     Attributes:
     id -- Canonical id of the project.
@@ -329,22 +338,6 @@ class Project (Entity):
     class InsufficientFunds (Exception):
         """Not enough funds to perform an action."""
     
-    @classmethod
-    def from_upstream_name (cls, name):
-        """Get (or create) a project based on its upstream name.
-        
-        Arguments:
-        name -- The upstream name of the user.
-        """
-        try:
-            upstream_project = cls.UpstreamEntity.by_name(name)
-        except cls.UpstreamEntity.DoesNotExist:
-            raise cls.DoesNotExist("The project does not exist.")
-        project = cls.get_by(id=upstream_project.id) \
-            or cls(id=upstream_project.id)
-        elixir.objectstore.flush([project])
-        return project
-    
     def __repr__ (self):
         if self.id is None:
             id_repr = "?"
@@ -365,7 +358,7 @@ class Project (Entity):
         """Return the set of users who are members of this project."""
         upstream_users = self.UpstreamEntity.by_id(self.id).users
         local_users = [
-            User.from_upstream_name(name)
+            fetch_user(name)
             for name in (user.name for user in upstream_users)
         ]
         return local_users
@@ -477,6 +470,22 @@ class Project (Entity):
             - self.resource_credit_used(resource)
 
 
+def fetch_resource (name):
+    """Get (or create) a resource based on its name upstream.
+    
+    Arguments:
+    name -- The upstream name of the resource.
+    """
+    try:
+        upstream_resource = Resource.UpstreamEntity.by_name(name)
+    except Resource.UpstreamEntity.DoesNotExist:
+        raise Resource.DoesNotExist("The resource does not exist.")
+    resource = Resource.get_by(id=upstream_resource.id) \
+        or Resource(id=upstream_resource.id)
+    elixir.objectstore.flush([resource])
+    return resource
+
+
 class Resource (Entity):
     
     """A logical resource.
@@ -485,9 +494,6 @@ class Resource (Entity):
     credit_limits -- CreditLimits on the resource.
     requests -- Requests made for the resource.
     unit_factors -- UnitFactors for this resource.
-    
-    Class methods:
-    from_upstream_name -- Get a resource based on its name upstream.
     
     Attributes:
     id -- Canonical id of the resource.
@@ -508,22 +514,6 @@ class Resource (Entity):
     
     class DoesNotExist (Exception):
         """The specified resource does not exist."""
-    
-    @classmethod
-    def from_upstream_name (cls, name):
-        """Get (or create) a resource based on its name upstream.
-        
-        Arguments:
-        name -- The upstream name of the resource.
-        """
-        try:
-            upstream_resource = cls.UpstreamEntity.by_name(name)
-        except cls.UpstreamEntity.DoesNotExist:
-            raise cls.DoesNotExist("The resource does not exist.")
-        resource = cls.get_by(id=upstream_resource.id) \
-            or cls(id=upstream_resource.id)
-        elixir.objectstore.flush([resource])
-        return resource
     
     def __repr__ (self):
         if self.id is None:

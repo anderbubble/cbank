@@ -12,7 +12,7 @@ import time
 import optparse
 
 from clusterbank.models import \
-    User, Project, Resource, Request, Allocation, Lien, Charge
+    fetch_user, fetch_project, fetch_resource, User, Project, Resource, Request, Allocation, Lien, Charge
 
 
 PERMISSIONS = ("request", "allocate", "lien", "charge", "refund")
@@ -137,7 +137,7 @@ class Option (optparse.Option):
     def check_project (self, opt, value):
         """Return a project from its name."""
         try:
-            return Project.from_upstream_name(value)
+            return fetch_project(value)
         except Project.DoesNotExist:
             raise optparse.OptionValueError(
                 "option %s: unknown project: %r" % (opt, value))
@@ -153,7 +153,7 @@ class Option (optparse.Option):
     def check_resource (self, opt, value):
         """Return a resource from its name."""
         try:
-            return Resource.from_upstream_name(value)
+            return fetch_resource(value)
         except Resource.DoesNotExist:
             raise optparse.OptionValueError(
                 "option %s: unknown resource: %r" % (opt, value))
@@ -161,7 +161,7 @@ class Option (optparse.Option):
     def check_user (self, opt, value):
         """Return a user from its name."""
         try:
-            return User.from_upstream_name(value)
+            return fetch_user(value)
         except User.DoesNotExist:
             raise optparse.OptionValueError(
                 "option %s: unknown user: %r" % (opt, value))
