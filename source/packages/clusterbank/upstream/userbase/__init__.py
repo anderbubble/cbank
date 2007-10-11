@@ -23,9 +23,9 @@ config.read(["/etc/clusterbank.conf"])
 try:
     uri = config.get("userbase", "database")
 except:
-    warnings.warn("no userbase database configured")
+    warnings.warn("no userbase database configured", ImportWarning)
 else:
     try:
         model.metadata.bind = create_engine(uri)
     except:
-        warnings.warn("invalid upstream database: %s" % uri)
+        warnings.warn("invalid upstream database: %s" % uri, ImportWarning)

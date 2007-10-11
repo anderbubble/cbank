@@ -18,17 +18,17 @@ config.read(["/etc/clusterbank.conf"])
 try:
     uri = config.get("main", "database")
 except:
-    warnings.warn("no database specified")
+    warnings.warn("no database specified", ImportWarning)
 else:
     try:
         elixir.metadata.bind = create_engine(uri)
     except:
-        warnings.warn("invalid database: %s" % uri)
+        warnings.warn("invalid database: %s" % uri, ImportWarning)
 
 try:
     upstream_type = config.get("main", "upstream")
 except:
-    warnings.warn("no upstream type specified")
+    warnings.warn("no upstream type specified", ImportWarning)
 else:
     if upstream_type == "userbase":
         from upstream import userbase
@@ -36,4 +36,4 @@ else:
         upstream.Project = userbase.Project
         upstream.Resource = userbase.Resource
     else:
-        warnings.warn("invalid upstream type: %s" % upstream_type)
+        warnings.warn("invalid upstream type: %s" % upstream_type, ImportWarning)
