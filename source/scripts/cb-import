@@ -6,7 +6,6 @@ from datetime import datetime
 
 import elixir
 
-import clusterbank.config
 import clusterbank.models
 from clusterbank.models import Lien, Charge
 
@@ -18,8 +17,6 @@ def Project (name):
 
 def Resource (name):
     return clusterbank.models.Resource.from_upstream_name(name)
-
-clusterbank.config.load_config()
 
 admin = User("janderso")
 resource = Resource("bgl")

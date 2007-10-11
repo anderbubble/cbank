@@ -7,20 +7,11 @@ import sys
 from sqlalchemy.exceptions import DBAPIError
 
 from clusterbank.scripting import lien, ScriptingError
-from clusterbank.config import load_config, ConfigurationError
 
 if __name__ == "__main__":
     try:
-        load_config()
-    except ConfigurationError, e:
-        print >> sys.stderr, e
-        sys.exit(e.STATUS)
-    try:
         liens = lien.run()
     except KeyboardInterrupt:
-        sys.exit(ScriptingError.STATUS)
-    except ConfigurationError, e:
-        print >> sys.stderr, e
         sys.exit(ScriptingError.STATUS)
     except ScriptingError, e:
         print >> sys.stderr, e

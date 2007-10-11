@@ -7,14 +7,8 @@ import sys
 from sqlalchemy.exceptions import DBAPIError
 
 from clusterbank.scripting import charge, ScriptingError
-from clusterbank.config import load_config, ConfigurationError
 
 if __name__ == "__main__":
-    try:
-        load_config()
-    except ConfigurationError, e:
-        print >> sys.stderr, e
-        sys.exit(e.STATUS)
     try:
         charges = charge.run()
     except KeyboardInterrupt:

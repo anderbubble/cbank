@@ -4,20 +4,13 @@ import sys
 
 from sqlalchemy.exceptions import DBAPIError
 
-from clusterbank import models, scripting, config
+from clusterbank import models, scripting
 from clusterbank.scripting import ScriptingError
-from clusterbank.config import load_config, ConfigurationError
 
 def run ():
-    config.load_config()
     models.lxr.create_all()
 
 if __name__ == "__main__":
-    try:
-        load_config()
-    except ConfigurationError, e:
-        print >> sys.stderr, e
-        sys.exit(e.STATUS)
     try:
         run()
     except KeyboardInterrupt:

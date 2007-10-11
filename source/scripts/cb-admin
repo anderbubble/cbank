@@ -7,14 +7,8 @@ import sys
 from sqlalchemy.exceptions import DBAPIError
 
 from clusterbank.scripting import admin, ScriptingError
-from clusterbank.config import load_config, ConfigurationError, NotConfigured
 
 if __name__ == "__main__":
-    try:
-        load_config()
-    except ConfigurationError, e:
-        print >> sys.stderr, e
-        sys.exit(e.STATUS)
     try:
         permissions = admin.run()
     except KeyboardInterrupt:
