@@ -1,11 +1,10 @@
 import sys
 import os
 
-import elixir
-
 import clusterbank
+import clusterbank.model
 from clusterbank import scripting
-from clusterbank.models import Request, Allocation
+from clusterbank.model import Request, Allocation
 from clusterbank.scripting import \
     ScriptingError, NotPermitted, \
     MissingArgument, InvalidArgument, ExtraArguments
@@ -23,7 +22,7 @@ class OptionParser (scripting.OptionParser):
         scripting.OPTIONS['credit'].having(help="PROJECT can use up to LIMIT negative time"),
         scripting.OPTIONS['start'].having(help="TIME becomes available on DATE"),
         scripting.OPTIONS['expiration'].having(help="TIME expires on DATE"),
-        scripting.OPTIONS['explanation'].having(help="misc. NOTES"),
+        scripting.OPTIONS['comment'].having(help="misc. NOTES"),
     ]
     
     __defaults__ = dict(
@@ -74,7 +73,7 @@ def run (argv=sys.argv):
             allocations = allocations.filter_by(project=options.project)
         else:
             project_ids = [project.id for project in user.projects]
-            allocations = allocations.filter(Request.c.project_id.in_(*project_ids))
+            allocations = allocations.filter(Request.c.project_id.in_(project_ids))
         
         if options.resource:
             allocations = allocations.filter_by(resource=options.resource)
@@ -92,7 +91,7 @@ def run (argv=sys.argv):
         # time -- time to allocate
         # start -- date the allocation becomes active (required)
         # expiration -- specify an expiration date (required)
-        # explanation -- explanation of the allocation
+        # comment -- comment of the allocation
         
         try:
             request = arg_parser.get(scripting.OPTIONS['request'], options)
@@ -126,7 +125,13 @@ def run (argv=sys.argv):
         )
         if options.time is not None:
             kwargs['time'] = options.time
-        allocation = user.allocate(**kwargs)
+        
+        try:
+            allocation = user.allocate(**kwargs)
+        except user.NotPermitted, e:
+            raise NotPermitted(e)
+        except ValueError, e:
+            raise InvalidArgument(e)
         
         # Set up a line of credit.
         if options.credit is not None:
@@ -134,16 +139,17 @@ def run (argv=sys.argv):
                 resource = allocation.resource,
                 project = allocation.project,
                 start = allocation.start,
-                explanation = allocation.explanation,
+                comment = allocation.comment,
                 time = options.credit,
             )
-            credit_limit = user.allocate_credit(**kwargs)
+            try:
+                credit_limit = user.allocate_credit(**kwargs)
+            except user.NotPermitted, e:
+                raise NotPermitted(e)
+            except ValueError, e:
+                raise InvalidArgument(e)
         
-        try:
-            elixir.objectstore.flush()
-        except user.NotPermitted, e:
-            raise NotPermitted(e)
-        except ValueError, e:
-            raise InvalidArgument(e)
+        clusterbank.model.Session.flush()
+        clusterbank.model.Session.commit()
         
         return [allocation]

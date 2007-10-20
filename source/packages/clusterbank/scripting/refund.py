@@ -1,11 +1,10 @@
 import sys
 import os
 
-import elixir
-
 import clusterbank
+import clusterbank.model
 from clusterbank import scripting
-from clusterbank.models import Request, Refund
+from clusterbank.model import Request, Refund
 from clusterbank.scripting import \
     ScriptingError, NotPermitted, \
     MissingArgument, InvalidArgument, ExtraArguments
@@ -21,7 +20,7 @@ class OptionParser (scripting.OptionParser):
         scripting.OPTIONS['lien'].having(help="list refunds under LIEN"),
         scripting.OPTIONS['charge'].having(help="post or list refunds of CHARGE"),
         scripting.OPTIONS['time'].having(help="refund TIME"),
-        scripting.OPTIONS['explanation'].having(help="misc. NOTES"),
+        scripting.OPTIONS['comment'].having(help="misc. NOTES"),
     ]
     
     __defaults__ = dict(
@@ -66,13 +65,13 @@ def run (argv=sys.argv):
         if options.lien:
             refunds = refunds.filter_by(lien=options.lien)
         
-        refunds = refunds.join(["lien", "allocation", "request"])
+        refunds = refunds.join(["charge", "lien", "allocation", "request"])
         
         if options.project:
             refunds = refunds.filter_by(project=options.project)
         else:
             project_ids = [project.id for project in user.projects]
-            refunds = refunds.filter(Request.c.project_id.in_(*project_ids))
+            refunds = refunds.filter(Request.c.project_id.in_(project_ids))
         
         if options.resource:
             refunds = refunds.filter_by(resource=options.resource)
@@ -88,7 +87,7 @@ def run (argv=sys.argv):
         # user -- user performing the refund (required)
         # charge -- charge to refund (required)
         # time -- amount of refund (required)
-        # explanation -- reason for refund
+        # comment -- reason for refund
         
         try:
             charge = arg_parser.get(scripting.OPTIONS['charge'], options)
@@ -114,15 +113,17 @@ def run (argv=sys.argv):
         except arg_parser.NotEmpty, e:
             raise ExtraArguments(e)
         
-        if options.explanation is not None:
-            kwargs['explanation'] = options.explanation
+        if options.comment is not None:
+            kwargs['comment'] = options.comment
         
-        refund = user.refund(**kwargs)
         try:
-            elixir.objectstore.flush()
+            refund = user.refund(**kwargs)
         except (user.NotPermitted, charge.ExcessiveRefund), e:
             raise NotPermitted(e)
         except ValueError, e:
             raise InvalidArgument(e)
+        
+        clusterbank.model.Session.flush()
+        clusterbank.model.Session.commit()
         
         return [refund]

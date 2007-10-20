@@ -1,16 +1,13 @@
 """Userbase model for userbase plugin.
 
 Classes:
-UpstreamEntity -- Base class for upstream entities.
-User -- Upstream user.
-Project -- Upstream project.
-Resource -- Upstream resource.
+UpstreamEntity -- base class for upstream entities
+User -- upstream user
+Project -- upstream project
+Resource -- upstream resource
 """
 
-from sqlalchemy import MetaData, Table, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import create_session, mapper, relation
-from sqlalchemy.ext.sessioncontext import SessionContext
-from sqlalchemy.ext.assignmapper import assign_mapper
+from sqlalchemy import MetaData, Table, Column, ForeignKey, types, exceptions
 
 
 __all__ = [
@@ -20,23 +17,23 @@ __all__ = [
 metadata = MetaData()
 
 user_table = Table("user", metadata,
-    Column("userbase_id", Integer, nullable=False, primary_key=True),
-    Column("username", String, nullable=False, unique=True),
+    Column("userbase_id", types.Integer, nullable=False, primary_key=True),
+    Column("username", types.String, nullable=False, unique=True),
 )
 
 projects_table = Table("projects", metadata,
-    Column("project_id", Integer, primary_key=True),
-    Column("project_name", String, nullable=False, unique=True),
+    Column("project_id", types.Integer, primary_key=True),
+    Column("project_name", types.String, nullable=False, unique=True),
 )
 
 project_members_table = Table("project_members", metadata,
-    Column("userbase_id", Integer, ForeignKey("user.userbase_id"), primary_key=True),
-    Column("project_id", Integer, ForeignKey("projects.project_id"), primary_key=True),
+    Column("userbase_id", None, ForeignKey("user.userbase_id"), primary_key=True),
+    Column("project_id", None, ForeignKey("projects.project_id"), primary_key=True),
 )
 
 resource_types_table = Table("resource_types", metadata,
-    Column("resource_id", Integer, nullable=False, primary_key=True),
-    Column("resource_name", String, nullable=False, unique=True),
+    Column("resource_id", types.Integer, nullable=False, primary_key=True),
+    Column("resource_name", types.String, nullable=False, unique=True),
 )
 
 
@@ -64,9 +61,9 @@ class UpstreamEntity (object):
                 return '%s "%s" does not exist' % (self.label, self.message)
     
     
-    def __init__ (self, id=None, name=None):
-        self.id = id
-        self.name = name
+    def __init__ (self, **kwargs):
+        self.id = kwargs.get("id")
+        self.name = kwargs.get("name")
     
     def __repr__ (self):
         if self.id is None:
@@ -85,8 +82,9 @@ class UpstreamEntity (object):
         Arguments:
         id -- Canonical, immutable, integer identifier.
         """
-        entity = cls.get_by(id=id)
-        if not entity:
+        try:
+            entity = cls.query.filter_by(id=id).one()
+        except exceptions.InvalidRequestError:
             raise cls.DoesNotExist(id)
         return entity
     
@@ -97,8 +95,9 @@ class UpstreamEntity (object):
         Arguments:
         name -- Canonical string identifier.
         """
-        entity = cls.get_by(name=name)
-        if not entity:
+        try:
+            entity = cls.query.filter_by(name=name).one()
+        except exceptions.InvalidRequestError:
             raise cls.DoesNotExist(name)
         return entity
 
@@ -166,23 +165,3 @@ class Resource (UpstreamEntity):
         """The specified project does not exist."""
         
         label = "resource"
-
-
-context = SessionContext(create_session)
-
-assign_mapper(context, User, user_table, properties=dict(
-    id = user_table.c.userbase_id,
-    name = user_table.c.username,
-    projects = relation(Project, secondary=project_members_table),
-))
-
-assign_mapper(context, Project, projects_table, properties=dict(
-    id = projects_table.c.project_id,
-    name = projects_table.c.project_name,
-    users = relation(User, secondary=project_members_table),
-))
-
-assign_mapper(context, Resource, resource_types_table, properties=dict(
-    id = resource_types_table.c.resource_id,
-    name = resource_types_table.c.resource_name,
-))

@@ -1,10 +1,9 @@
 import sys
 import os
 
-import elixir
-
 import clusterbank
-from clusterbank.models import Request
+import clusterbank.model
+from clusterbank.model import Request
 from clusterbank import scripting
 from clusterbank.scripting import ArgumentParser, \
     ScriptingError, NotPermitted, \
@@ -20,7 +19,7 @@ class OptionParser (scripting.OptionParser):
         scripting.OPTIONS['resource'].having(help="request time on or list requests for RESOURCE"),
         scripting.OPTIONS['time'].having(help="request amount of TIME"),
         scripting.OPTIONS['start'].having(help="request allocation to begin on DATE"),
-        scripting.OPTIONS['explanation'].having(help="misc. NOTES"),
+        scripting.OPTIONS['comment'].having(help="misc. NOTES"),
     ]
     
     __defaults__ = dict(
@@ -65,7 +64,7 @@ def run (argv=sys.argv):
             requests = requests.filter_by(project=options.project)
         else:
             project_ids = [project.id for project in user.projects]
-            requests = requests.filter(Request.c.project_id.in_(*project_ids))
+            requests = requests.filter(Request.c.project_id.in_(project_ids))
         
         if options.resource:
             requests = requests.filter_by(resource=options.resource)
@@ -83,7 +82,7 @@ def run (argv=sys.argv):
         # resource -- resource requesting time on (required)
         # start -- when time is needed
         # time -- amount of time requested (required)
-        # explanation -- reason for request
+        # comment -- reason for request
         
         try:
             project = arg_parser.get(scripting.OPTIONS['project'], options)
@@ -116,12 +115,13 @@ def run (argv=sys.argv):
         )
         if options.start is not None:
             kwargs['start'] = options.start
-        if options.explanation is not None:
-            kwargs['explanation'] = options.explanation
+        if options.comment is not None:
+            kwargs['comment'] = options.comment
         
         request = user.request(**kwargs)
         try:
-            elixir.objectstore.flush()
+            clusterbank.model.Session.flush()
+            clusterbank.model.Session.commit()
         except user.NotPermitted, e:
             raise NotPermitted(e)
         except ValueError, e:

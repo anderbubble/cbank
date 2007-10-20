@@ -1,3 +1,2 @@
 
-__all__ = ["support", "test_admin", "test_request"]
-
+__all__ = ["test_scripts"]

@@ -3,7 +3,6 @@ from ConfigParser import SafeConfigParser
 
 import sqlalchemy
 from sqlalchemy import create_engine
-import elixir
 
 import upstream
 
@@ -27,7 +26,7 @@ except:
     warnings.warn("no database specified", ImportWarning)
 else:
     try:
-        elixir.metadata.bind = create_engine(uri)
+        clusterbank.model.metadata.metadata.bind = create_engine(uri)
     except:
         warnings.warn("invalid database: %s" % (uri), ImportWarning)
 

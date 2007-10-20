@@ -1,11 +1,10 @@
 import sys
 import os
 
-import elixir
-
 import clusterbank
+import clusterbank.model
 from clusterbank import scripting
-from clusterbank.models import Project, Request, Charge
+from clusterbank.model import Project, Request, Charge
 from clusterbank.scripting import \
     ScriptingError, NotPermitted, \
     MissingArgument, InvalidArgument, ExtraArguments
@@ -20,7 +19,7 @@ class OptionParser (scripting.OptionParser):
         scripting.OPTIONS['resource'].having(help="list charges against RESOURCE"),
         scripting.OPTIONS['liens'].having(help="post charges against LIENS"),
         scripting.OPTIONS['time'].having(help="charge TIME against liens"),
-        scripting.OPTIONS['explanation'].having(help="misc. NOTES"),
+        scripting.OPTIONS['comment'].having(help="misc. NOTES"),
     ]
     
     __defaults__ = dict(
@@ -64,7 +63,7 @@ def run (argv=sys.argv):
         
         if options.liens:
             lien_ids = [lien.id for lien in options.liens]
-            charges = charges.filter(Charge.c.lien_id.in_(*lien_ids))
+            charges = charges.filter(Charge.c.lien_id.in_(lien_ids))
         
         charges = charges.join(["lien", "allocation", "request"])
         
@@ -72,7 +71,7 @@ def run (argv=sys.argv):
             charges = charges.filter_by(project=options.project)
         else:
             project_ids = [project.id for project in user.projects]
-            charges = charges.filter(Request.c.project_id.in_(*project_ids))
+            charges = charges.filter(Request.c.project_id.in_(project_ids))
         
         if options.resource:
             charges = charges.filter_by(resource=options.resource)
@@ -88,7 +87,7 @@ def run (argv=sys.argv):
         # user -- user doing the charge (required)
         # liens -- lien(s) to charge (required)
         # time -- amount of time to charge (required)
-        # explanation -- explanation for the charge
+        # comment -- comment for the charge
         
         try:
             liens = arg_parser.get(scripting.OPTIONS['liens'], options)
@@ -114,15 +113,17 @@ def run (argv=sys.argv):
         except arg_parser.NotEmpty, e:
             raise ExtraArguments(e)
         
-        if options.explanation is not None:
-            kwargs['explanation'] = options.explanation
+        if options.comment is not None:
+            kwargs['comment'] = options.comment
         
-        charges = user.charge(**kwargs)
         try:
-            elixir.objectstore.flush()
+            charges = user.charge(**kwargs)
         except (user.NotPermitted, Project.InsufficientFunds), e:
             raise NotPermitted(e)
         except ValueError, e:
             raise InvalidArgument(e)
+        
+        clusterbank.model.Session.flush()
+        clusterbank.model.Session.commit()
         
         return charges

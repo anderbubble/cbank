@@ -43,4 +43,4 @@ class Resource:
 class DoesNotExist (Exception)
 """
 
-__all__ = ['userbase']
+__all__ = ["userbase"]

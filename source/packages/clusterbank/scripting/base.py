@@ -11,8 +11,10 @@ from datetime import datetime
 import time
 import optparse
 
-from clusterbank.models import \
-    fetch_user, fetch_project, fetch_resource, User, Project, Resource, Request, Allocation, Lien, Charge
+from sqlalchemy import exceptions
+
+from clusterbank.model import \
+    User, Project, Resource, Request, Allocation, Lien, Charge
 
 
 PERMISSIONS = ("request", "allocate", "lien", "charge", "refund")
@@ -86,19 +88,19 @@ class Option (optparse.Option):
     
     def check_allocation (self, opt, value):
         """Return an allocation from its id."""
-        allocation = Allocation.get_by(id=value)
-        if not allocation:
+        try:
+            return Allocation.query.filter_by(id=value).one()
+        except exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown allocation: %r" % (opt, value))
-        return allocation
     
     def check_charge (self, opt, value):
         """Return a charge from its id."""
-        charge = Charge.get_by(id=value)
-        if not charge:
+        try:
+            return Charge.query.filter_by(id=value).one()
+        except exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown charge: %r" % (opt, value))
-        return charge
     
     def check_date (self, opt, value):
         """Return a datetime from YYYY-MM-DD."""
@@ -112,11 +114,11 @@ class Option (optparse.Option):
     
     def check_lien (self, opt, value):
         """Return a lien from its id."""
-        lien = Lien.get_by(id=value)
-        if not lien:
+        try:
+            return Lien.query.filter_by(id=value).one()
+        except exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown lien: %r" % (opt, value))
-        return lien
     
     def check_liens (self, opt, value):
         """Return a list of liens from a comma-separated list of ids."""
@@ -137,23 +139,23 @@ class Option (optparse.Option):
     def check_project (self, opt, value):
         """Return a project from its name."""
         try:
-            return fetch_project(value)
+            return Project.by_name(value)
         except Project.DoesNotExist:
             raise optparse.OptionValueError(
                 "option %s: unknown project: %r" % (opt, value))
     
     def check_request (self, opt, value):
         """Return a request from its id."""
-        request = Request.get_by(id=value)
-        if not request:
+        try:
+            return Request.query.filter_by(id=value).one()
+        except exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown request: %r" % (opt, value))
-        return request
     
     def check_resource (self, opt, value):
         """Return a resource from its name."""
         try:
-            return fetch_resource(value)
+            return Resource.by_name(value)
         except Resource.DoesNotExist:
             raise optparse.OptionValueError(
                 "option %s: unknown resource: %r" % (opt, value))
@@ -161,7 +163,7 @@ class Option (optparse.Option):
     def check_user (self, opt, value):
         """Return a user from its name."""
         try:
-            return fetch_user(value)
+            return User.by_name(value)
         except User.DoesNotExist:
             raise optparse.OptionValueError(
                 "option %s: unknown user: %r" % (opt, value))
@@ -284,8 +286,8 @@ OPTIONS = dict(
         metavar = "DATE",
     ),
     
-    explanation = Option("-e", "--explanation",
-       dest = "explanation",
+    comment = Option("-m", "--comment",
+       dest = "comment",
        type = "string",
        action = "store",
        metavar = "NOTES",

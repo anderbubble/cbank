@@ -1,11 +1,10 @@
 import sys
 import os
 
-import elixir
-
 import clusterbank
 from clusterbank import scripting
-from clusterbank.models import Project, Request, Lien
+import clusterbank.model
+from clusterbank.model import Project, Request, Lien
 from clusterbank.scripting import \
     ScriptingError, NotPermitted, \
     MissingArgument, InvalidArgument, ExtraArguments
@@ -20,7 +19,7 @@ class OptionParser (scripting.OptionParser):
         scripting.OPTIONS['project'].having(help="post lien against or list liens for PROJECT"),
         scripting.OPTIONS['resource'].having(help="post lien against or list liens for RESOURCE"),
         scripting.OPTIONS['time'].having(help="post lien for TIME"),
-        scripting.OPTIONS['explanation'].having(help="misc. NOTES"),
+        scripting.OPTIONS['comment'].having(help="misc. NOTES"),
     ]
     
     __defaults__ = dict(
@@ -71,7 +70,7 @@ def run (argv=sys.argv):
             liens = liens.filter_by(project=options.project)
         else:
             project_ids = [project.id for project in user.projects]
-            liens = liens.filter(Request.c.project_id.in_(*project_ids))
+            liens = liens.filter(Request.c.project_id.in_(project_ids))
         
         if options.resource:
             liens = liens.filter_by(resource=options.resource)
@@ -89,7 +88,7 @@ def run (argv=sys.argv):
         # project -- project of the lien (required for smart lien)
         # resource -- resource of the lien (required for smart lien)
         # time -- maximum charge of the lien
-        # explanation -- explanation for the lien
+        # comment -- comment for the lien
         try:
             allocation = arg_parser.get(scripting.OPTIONS['allocation'], options)
         except arg_parser.NoValue, e:
@@ -119,20 +118,22 @@ def run (argv=sys.argv):
             allocation = allocation,
             time = time,
         )
-        if options.explanation is not None:
-            kwargs['explanation'] = options.explanation
-        
-        lien = user.lien(**kwargs)
-        try:
-            liens = list(lien)
-        except TypeError:
-            liens = [lien]
+        if options.comment is not None:
+            kwargs['comment'] = options.comment
         
         try:
-            elixir.objectstore.flush()
+            lien = user.lien(**kwargs)
         except (user.NotPermitted, Project.InsufficientFunds), e:
             raise NotPermitted(e)
         except ValueError, e:
             raise InvalidArgument(e)
+        
+        clusterbank.model.Session.flush()
+        clusterbank.model.Session.commit()
+        
+        try:
+            liens = list(lien)
+        except TypeError:
+            liens = [lien]
         
         return liens

@@ -1,9 +1,8 @@
 import sys
 import os
 
-import elixir
-
 import clusterbank
+import clusterbank.model
 from clusterbank import scripting
 from clusterbank.scripting import \
     MissingArgument, InvalidArgument, ExtraArguments
@@ -29,7 +28,10 @@ class OptionParser (scripting.OptionParser):
     __description__ = "Grant or revoke PERMISSIONS for a user."
 
 
-def run (argv=sys.argv):
+def run (argv=None):
+    if argv is None:
+        argv = sys.argv
+    
     parser = OptionParser(prog=os.path.basename(argv[0]))
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)
@@ -53,7 +55,8 @@ def run (argv=sys.argv):
     except arg_parser.NotEmpty, e:
         raise ExtraArguments(e)
     
-    elixir.objectstore.flush()
+    clusterbank.model.Session.flush()
+    clusterbank.model.Session.commit()
     
     if options.list:
         permissions = (
