@@ -22,5 +22,6 @@ setup(
                               "cb-allocate", "cb-lien", "cb-refund",
                               "cb-request"]],
     provides = ["clusterbank"],
-    requires = ["SQLAlchemy"],
+    requires = ["sqlalchemy"],
+    install_requires = ["SQLAlchemy>=0.4"],
 )
