@@ -4,11 +4,12 @@ import sys
 
 from sqlalchemy.exceptions import DBAPIError
 
-from clusterbank import models, scripting
+import clusterbank.model
+from clusterbank import scripting
 from clusterbank.scripting import ScriptingError
 
 def run ():
-    models.lxr.create_all()
+    clusterbank.model.metadata.create_all()
 
 if __name__ == "__main__":
     try:
