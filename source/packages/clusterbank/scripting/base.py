@@ -360,14 +360,13 @@ class ArgumentParser (object):
         except IndexError:
             raise self.NoValue("%s: error: missing argument" % self.prog)
         # Try to validate the argument using an option.
-        try:
-            value = option.TYPE_CHECKER[option.type](option, None, value)
-        except AttributeError:
-            pass
-        except optparse.OptionValueError:
-            self.args.insert(0, value)
-            raise self.InvalidArgument("%s: error: invalid argument: %s" %
-                (self.prog, value))
+        if option is not None:
+            try:
+                value = option.TYPE_CHECKER[option.type](option, None, value)
+            except optparse.OptionValueError:
+                self.args.insert(0, value)
+                raise self.InvalidArgument("%s: error: invalid argument: %s" %
+                    (self.prog, value))
         return value
     
     def verify_empty (self):
@@ -376,4 +375,3 @@ class ArgumentParser (object):
                 self.prog,
                 ", ".join(self.args),
             ))
-
