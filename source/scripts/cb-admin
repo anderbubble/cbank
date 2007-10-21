@@ -13,9 +13,6 @@ if __name__ == "__main__":
         permissions = admin.run()
     except KeyboardInterrupt:
         sys.exit(ScriptingError.STATUS)
-    except ConfigurationError, e:
-        print >> sys.stderr, e
-        sys.exit(ScriptingError.STATUS)
     except ScriptingError, e:
         print >> sys.stderr, e
         sys.exit(e.STATUS)

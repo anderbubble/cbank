@@ -19,9 +19,6 @@ if __name__ == "__main__":
     except ScriptingError, e:
         print >> sys.stderr, e
         sys.exit(e.STATUS)
-    except ConfigurationError, e:
-        print >> sys.stderr, e
-        sys.exit(ScriptingError.STATUS)
     except DBAPIError, e:
         print >> sys.stderr, e
         sys.exit(1)
