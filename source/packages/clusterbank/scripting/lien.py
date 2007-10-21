@@ -6,6 +6,7 @@ from clusterbank import scripting
 import clusterbank.model
 from clusterbank.model import Project, Request, Lien
 from clusterbank.scripting import \
+    verify_configured, \
     MissingArgument, InvalidArgument, ExtraArguments
 
 
@@ -34,7 +35,12 @@ class OptionParser (scripting.OptionParser):
     __description__ = "Post a lien against allocations for a project on a resource."
 
 
-def run (argv=sys.argv):
+def run (argv=None):
+    if argv is None:
+        argv = sys.argv
+    
+    verify_configured()
+    
     parser = OptionParser(prog=os.path.basename(argv[0]))
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)

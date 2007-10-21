@@ -15,6 +15,13 @@ from sqlalchemy import exceptions
 
 from clusterbank.model import \
     User, Project, Resource, Request, Allocation, Lien, Charge
+import clusterbank.upstream
+
+def verify_configured ():
+    for entity in ("User", "Project", "Resource"):
+        if upstream_entity not in dir(clusterbank.upstream):
+            raise Exception("upstream is not properly configured")
+    print "verified"
 
 
 class OptionParser (optparse.OptionParser):

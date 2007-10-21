@@ -5,6 +5,7 @@ import clusterbank
 import clusterbank.model
 from clusterbank import scripting
 from clusterbank.scripting import \
+    verify_configured, \
     MissingArgument, InvalidArgument, ExtraArguments
 
 
@@ -31,6 +32,8 @@ class OptionParser (scripting.OptionParser):
 def run (argv=None):
     if argv is None:
         argv = sys.argv
+    
+    verify_configured()
     
     parser = OptionParser(prog=os.path.basename(argv[0]))
     options, args = parser.parse_args(args=argv[1:])

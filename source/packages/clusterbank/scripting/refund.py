@@ -6,6 +6,7 @@ import clusterbank.model
 from clusterbank import scripting
 from clusterbank.model import Request, Refund
 from clusterbank.scripting import \
+    verify_configured, \
     MissingArgument, InvalidArgument, ExtraArguments
 
 
@@ -34,7 +35,12 @@ class OptionParser (scripting.OptionParser):
     __description__ = "Refund time previously charged against a project on a resource."
 
 
-def run (argv=sys.argv):
+def run (argv=None):
+    if argv is None:
+        argv = sys.argv
+    
+    verify_configured()
+    
     parser = OptionParser(prog=os.path.basename(argv[0]))
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)
