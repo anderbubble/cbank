@@ -2,7 +2,7 @@
 from base import *
 
 __all__ = [
-    "base",
+    "base", "options",
     "install", "admin",
     "request", "allocation", "lien", "charge", "refund"
 ]
