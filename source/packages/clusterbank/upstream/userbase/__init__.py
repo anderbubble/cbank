@@ -20,7 +20,7 @@ __all__ = [
 ]
 
 config = SafeConfigParser()
-config.read(["/etc/clusterbank.conf", "clusterbank.conf"])
+config.read(["/etc/clusterbank.conf"])
 
 try:
     uri = config.get("userbase", "database")

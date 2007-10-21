@@ -18,10 +18,11 @@ from clusterbank.model import \
 import clusterbank.upstream
 
 def verify_configured ():
+    if clusterbank.model.metadata.bind is None:
+        raise Exception("database is not properly configured")
     for entity in ("User", "Project", "Resource"):
-        if upstream_entity not in dir(clusterbank.upstream):
+        if entity not in dir(clusterbank.upstream):
             raise Exception("upstream is not properly configured")
-    print "verified"
 
 
 class OptionParser (optparse.OptionParser):

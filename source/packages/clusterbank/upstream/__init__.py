@@ -49,10 +49,10 @@ from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 __all__ = ["userbase"]
 
 config = SafeConfigParser()
-config.read(["/etc/clusterbank.conf", "clusterbank.conf"])
+config.read(["/etc/clusterbank.conf"])
 
 try:
-    upstream_module_name = config.get("main", "upstream")
+    upstream_module_name = config.get("upstream", "module")
 except (NoSectionError, NoOptionError):
     warnings.warn("no upstream module specified", ImportWarning)
 else:
