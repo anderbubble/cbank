@@ -49,14 +49,7 @@ from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 __all__ = ["userbase"]
 
 config = SafeConfigParser()
-config.read(["/etc/clusterbank.conf"])
-
-def get_end_module (name):
-    mod = __import__(name)
-    components = name.split(".")
-    for comp in components[1:]:
-        mod = getattr(mod, comp)
-    return mod
+config.read(["/etc/clusterbank.conf", "clusterbank.conf"])
 
 try:
     upstream_module_name = config.get("main", "upstream")
@@ -64,8 +57,10 @@ except (NoSectionError, NoOptionError):
     warnings.warn("no upstream module specified", ImportWarning)
 else:
     try:
-        upstream_module = get_end_module(upstream_module_name)
-    except (ImportError, AttributeError):
+        base_name = upstream_module_name.split(".")[0]
+        upstream_module = __import__(upstream_module_name, locals(), globals(), ["*"])
+    except ImportError:
+        raise
         warnings.warn("invalid upstream module: %s" % (upstream_module_name), ImportWarning)
     else:
         User = upstream_module.User

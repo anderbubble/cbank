@@ -11,7 +11,7 @@ __all__ = ["model", "scripting", "upstream"]
 __version__ = "0.2.x"
 
 config = SafeConfigParser()
-config.read(["/etc/clusterbank.conf"])
+config.read(["/etc/clusterbank.conf", "clusterbank.conf"])
 
 try:
     uri = config.get("main", "database")
