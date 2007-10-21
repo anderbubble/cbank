@@ -212,7 +212,7 @@ class TestAllocation (ScriptTester):
         run("cb-request Monty grail spam 1000")
         try:
             run("cb-allocate Monty 1 2007-01-01 2008-01-01")
-        except scripting.NotPermitted:
+        except clusterbank.model.User.NotPermitted:
             pass
         else:
             assert False
@@ -222,7 +222,7 @@ class TestAllocation (ScriptTester):
         run("cb-request Monty grail spam 1000")
         try:
             run("cb-allocate Monty 1 2007-01-01 2008-01-01 --credit -100")
-        except scripting.InvalidArgument:
+        except ValueError:
             pass
         else:
             assert False
@@ -332,7 +332,7 @@ class TestLien (ScriptTester):
         run("cb-allocate Monty 1 2007-01-01 2008-01-01")
         try:
             run("cb-lien Monty --allocation 1 --time 100 --comment testing")
-        except scripting.NotPermitted:
+        except clusterbank.model.User.NotPermitted:
             pass
         else:
             assert False
@@ -353,7 +353,7 @@ class TestLien (ScriptTester):
         run("cb-allocate Monty 1 2007-01-01 2008-01-01")
         try:
             run("cb-lien Monty --allocation 1 --time -100 --comment testing")
-        except scripting.InvalidArgument:
+        except ValueError:
             pass
         else:
             assert False
@@ -424,7 +424,7 @@ class TestCharge (ScriptTester):
         run("cb-lien Monty 1 100")
         try:
             run("cb-charge Monty 1 50")
-        except scripting.NotPermitted:
+        except clusterbank.model.User.NotPermitted:
             pass
         else:
             assert False
@@ -439,7 +439,7 @@ class TestCharge (ScriptTester):
         run("cb-lien Monty 1 100")
         try:
             run("cb-charge Monty 1 --time -50")
-        except scripting.InvalidArgument:
+        except ValueError:
             pass
         else:
             assert False
@@ -525,7 +525,7 @@ class TestRefund (ScriptTester):
         run("cb-charge Monty 1 50")
         try:
             run("cb-refund Monty 1 --time -25")
-        except scripting.InvalidArgument:
+        except ValueError:
             pass
         else:
             assert False

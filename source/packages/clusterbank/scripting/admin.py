@@ -36,12 +36,7 @@ def run (argv=None):
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)
     
-    try:
-        user = arg_parser.get(scripting.OPTIONS['user'], options)
-    except arg_parser.NoValue, e:
-        raise MissingArgument("%s: user" % e)
-    except arg_parser.InvalidArgument, e:
-        raise InvalidArgument("%s: (user not found)" % e)
+    user = arg_parser.get(scripting.OPTIONS['user'], options)
     
     if options.grant:
         for permission in options.grant:
@@ -50,17 +45,14 @@ def run (argv=None):
         for permission in options.revoke:
             setattr(user, "can_" + permission, False)
     
-    try:
-        arg_parser.verify_empty()
-    except arg_parser.NotEmpty, e:
-        raise ExtraArguments(e)
+    arg_parser.verify_empty()
     
     clusterbank.model.Session.flush()
     clusterbank.model.Session.commit()
     
     if options.list:
         permissions = (
-            permission for permission in scripting.PERMISSIONS
+            permission for permission in ("request", "allocate", "lien", "charge", "refund")
             if getattr(user, "can_" + permission)
         )
         return permissions

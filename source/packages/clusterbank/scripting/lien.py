@@ -6,7 +6,6 @@ from clusterbank import scripting
 import clusterbank.model
 from clusterbank.model import Project, Request, Lien
 from clusterbank.scripting import \
-    ScriptingError, NotPermitted, \
     MissingArgument, InvalidArgument, ExtraArguments
 
 
@@ -40,12 +39,7 @@ def run (argv=sys.argv):
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)
     
-    try:
-        user = arg_parser.get(scripting.OPTIONS['user'], options)
-    except arg_parser.NoValue, e:
-        raise MissingArgument("%s: user" % e)
-    except arg_parser.InvalidArgument, e:
-        raise InvalidArgument("%s (user not found)" % e)
+    user = arg_parser.get(scripting.OPTIONS['user'], options)
     
     if options.list:
         # list options:
@@ -54,12 +48,9 @@ def run (argv=sys.argv):
         # resource -- resource to list liens for
         
         # At this point, no more arguments are used.
-        try:
-            arg_parser.verify_empty()
-        except arg_parser.NotEmpty, e:
-            raise ExtraArguments(e)
+        arg_parser.verify_empty()
         
-        liens = Lien.query()
+        liens = Lien.query
         
         if options.allocation:
             liens = liens.filter_by(allocation=options.allocation)
@@ -91,26 +82,14 @@ def run (argv=sys.argv):
         # comment -- comment for the lien
         try:
             allocation = arg_parser.get(scripting.OPTIONS['allocation'], options)
-        except arg_parser.NoValue, e:
-            allocation = None
+        except MissingArgument:
             if not (options.project and options.resource):
-                raise MissingArgument("%s: allocation" % e)
-        except arg_parser.InvalidArgument, e:
+                raise
             allocation = None
-            if not (options.project and options.resource):
-                raise InvalidArgument("%s (allocation not found)" % e)
         
-        try:
-            time = arg_parser.get(scripting.OPTIONS['time'], options)
-        except arg_parser.NoValue, e:
-            raise MissingArgument("%s: time" % e)
-        except arg_parser.InvalidArgument, e:
-            raise InvalidArgument(e)
+        time = arg_parser.get(scripting.OPTIONS['time'], options)
         
-        try:
-            arg_parser.verify_empty()
-        except arg_parser.NotEmpty, e:
-            raise ExtraArguments(e)
+        arg_parser.verify_empty()
         
         kwargs = dict(
             project = options.project,
@@ -121,12 +100,7 @@ def run (argv=sys.argv):
         if options.comment is not None:
             kwargs['comment'] = options.comment
         
-        try:
-            lien = user.lien(**kwargs)
-        except (user.NotPermitted, Project.InsufficientFunds), e:
-            raise NotPermitted(e)
-        except ValueError, e:
-            raise InvalidArgument(e)
+        lien = user.lien(**kwargs)
         
         clusterbank.model.Session.flush()
         clusterbank.model.Session.commit()

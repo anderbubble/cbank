@@ -5,8 +5,7 @@ import clusterbank
 import clusterbank.model
 from clusterbank.model import Request
 from clusterbank import scripting
-from clusterbank.scripting import ArgumentParser, \
-    ScriptingError, NotPermitted, \
+from clusterbank.scripting import \
     MissingArgument, InvalidArgument, ExtraArguments
 
 
@@ -37,14 +36,9 @@ class OptionParser (scripting.OptionParser):
 def run (argv=sys.argv):
     parser = OptionParser(prog=os.path.basename(argv[0]))
     options, args = parser.parse_args(args=argv[1:])
-    arg_parser = ArgumentParser(args)
+    arg_parser = scripting.ArgumentParser(args)
     
-    try:
-        user = arg_parser.get(scripting.OPTIONS['user'], options)
-    except arg_parser.NoValue, e:
-        raise MissingArgument("%s: user" % e)
-    except arg_parser.InvalidArgument, e:
-        raise InvalidArgument("%s (user not found)" % e)
+    user = arg_parser.get(scripting.OPTIONS['user'], options)
     
     if options.list:
         # list options:
@@ -53,12 +47,9 @@ def run (argv=sys.argv):
         # resource -- resource to list requests for
         
         # At this point, no more arguments are used.
-        try:
-            arg_parser.verify_empty()
-        except arg_parser.NotEmpty, e:
-            raise ExtraArguments(e)
+        arg_parser.verify_empty()
         
-        requests = Request.query()
+        requests = Request.query
         
         if options.project:
             requests = requests.filter_by(project=options.project)
@@ -84,29 +75,11 @@ def run (argv=sys.argv):
         # time -- amount of time requested (required)
         # comment -- reason for request
         
-        try:
-            project = arg_parser.get(scripting.OPTIONS['project'], options)
-        except arg_parser.NoValue, e:
-            raise MissingArgument("%s: project" % e)
-        except arg_parser.InvalidArgument, e:
-            raise InvalidArgument("%s (project not found)" % e)
-        try:
-            resource = arg_parser.get(scripting.OPTIONS['resource'], options)
-        except arg_parser.NoValue, e:
-            raise MissingArgument("%s: resource" % e)
-        except arg_parser.InvalidArgument, e:
-            raise InvalidArgument("%s (resource not found)" % e)
-        try:
-            time = arg_parser.get(scripting.OPTIONS['time'], options)
-        except arg_parser.NoValue, e:
-            raise MissingArgument("%s: time" % e)
-        except arg_parser.InvalidArgument, e:
-            raise InvalidArgument(e)
+        project = arg_parser.get(scripting.OPTIONS['project'], options)
+        resource = arg_parser.get(scripting.OPTIONS['resource'], options)
+        time = arg_parser.get(scripting.OPTIONS['time'], options)
         
-        try:
-            arg_parser.verify_empty()
-        except arg_parser.NotEmpty, e:
-            raise ExtraArguments(e)
+        arg_parser.verify_empty()
         
         kwargs = dict(
             project = project,
@@ -119,12 +92,8 @@ def run (argv=sys.argv):
             kwargs['comment'] = options.comment
         
         request = user.request(**kwargs)
-        try:
-            clusterbank.model.Session.flush()
-            clusterbank.model.Session.commit()
-        except user.NotPermitted, e:
-            raise NotPermitted(e)
-        except ValueError, e:
-            raise InvalidArgument(e)
+        
+        clusterbank.model.Session.flush()
+        clusterbank.model.Session.commit()
         
         return [request]

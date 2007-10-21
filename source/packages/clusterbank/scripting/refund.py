@@ -6,7 +6,6 @@ import clusterbank.model
 from clusterbank import scripting
 from clusterbank.model import Request, Refund
 from clusterbank.scripting import \
-    ScriptingError, NotPermitted, \
     MissingArgument, InvalidArgument, ExtraArguments
 
 
@@ -40,22 +39,14 @@ def run (argv=sys.argv):
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)
     
-    try:
-        user = arg_parser.get(scripting.OPTIONS['user'], options)
-    except arg_parser.NoValue, e:
-        raise MissingArgument("%s: user" % e)
-    except arg_parser.InvalidArgument, e:
-        raise InvalidArgument("%s (user not found)" % e)
+    user = arg_parser.get(scripting.OPTIONS['user'], options)
     
     if options.list:
         
         # At this point, no more arguments are used.
-        try:
-            arg_parser.verify_empty()
-        except arg_parser.NotEmpty, e:
-            raise ExtraArguments(e)
+        arg_parser.verify_empty()
         
-        refunds = Refund.query()
+        refunds = Refund.query
         
         if options.charge:
             refunds = refunds.filter_by(charge=options.charge)
@@ -89,18 +80,8 @@ def run (argv=sys.argv):
         # time -- amount of refund (required)
         # comment -- reason for refund
         
-        try:
-            charge = arg_parser.get(scripting.OPTIONS['charge'], options)
-        except arg_parser.NoValue, e:
-            raise MissingArgument("%s: charge" % e)
-        except arg_parser.InvalidArgument, e:
-            raise InvalidArgument("%s (charge not found)" % e)
-        try:
-            time = arg_parser.get(scripting.OPTIONS['time'], options)
-        except arg_parser.NoValue, e:
-            raise MissingArgument("%s: time" % e)
-        except arg_parser.InvalidArgument, e:
-            raise InvalidArgument(e)
+        charge = arg_parser.get(scripting.OPTIONS['charge'], options)
+        time = arg_parser.get(scripting.OPTIONS['time'], options)
         
         kwargs = dict(
             charge = charge,
@@ -108,20 +89,12 @@ def run (argv=sys.argv):
         )
         
         # At this point, no more arguments are used.
-        try:
-            arg_parser.verify_empty()
-        except arg_parser.NotEmpty, e:
-            raise ExtraArguments(e)
+        arg_parser.verify_empty()
         
         if options.comment is not None:
             kwargs['comment'] = options.comment
         
-        try:
-            refund = user.refund(**kwargs)
-        except (user.NotPermitted, charge.ExcessiveRefund), e:
-            raise NotPermitted(e)
-        except ValueError, e:
-            raise InvalidArgument(e)
+        refund = user.refund(**kwargs)
         
         clusterbank.model.Session.flush()
         clusterbank.model.Session.commit()

@@ -4,29 +4,18 @@ import sys
 import time
 from datetime import datetime
 
-import elixir
+import clusterbank.model
+from clusterbank.model import User, Resource, Lien, Charge
 
-import clusterbank.models
-from clusterbank.models import Lien, Charge
-
-def User (name):
-    return clusterbank.models.User.from_upstream_name(name)
-
-def Project (name):
-    return clusterbank.models.Project.from_upstream_name(name)
-
-def Resource (name):
-    return clusterbank.models.Resource.from_upstream_name(name)
-
-admin = User("janderso")
-resource = Resource("bgl")
+admin = User.by_name("janderso")
+resource = Resource.by_name("bgl")
 
 def parse (line):
     date, record_type, job_id, data = line.strip().split(";")
     date = datetime.strptime(date, "%m/%d/%Y %H:%M:%S")
     job_id = int(job_id)
     data = dict(pair.split("=") for pair in data.split(" ") if pair.count("=") == 1)
-    data['user'] = User(data['user'])
+    data['user'] = User.by_name(data['user'])
     data['qtime'] = datetime.strptime(data['qtime'], "%Y%m%d%H%M%S")
     data['stime'] = datetime.strptime(data['stime'], "%Y%m%d%H%M%S")
     data['etime'] = datetime.strptime(data['etime'], "%Y%m%d%H%M%S")
@@ -34,7 +23,7 @@ def parse (line):
     return date, record_type, job_id, data
 
 def record (line):
-    if Lien.query().filter_by(explanation=line).count() > 0:
+    if Lien.query.filter_by(explanation=line).count() > 0:
         raise Exception("already recorded '%s'" % line)
     
     date, record_type, job_id, data = parse(line)
@@ -60,14 +49,14 @@ def record (line):
     )
     
     try:
-        elixir.objectstore.flush()
+        clusterbank.model.Session.flush()
     except:
         for charge in charges:
-            elixir.objectstore.delete(charge)
+            clusterbank.model.Session.delete(charge)
         for lien in liens:
-            elixir.objectstore.delete(lien)
-        elixir.objectstore.flush()        
-        elixir.objectstore.clear()
+            clusterbank.model.Session.delete(lien)
+        clusterbank.model.Session.flush()        
+        clusterbank.model.Session.clear()
         raise
 
 if __name__ == "__main__":

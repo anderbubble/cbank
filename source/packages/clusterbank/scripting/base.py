@@ -17,29 +17,6 @@ from clusterbank.model import \
     User, Project, Resource, Request, Allocation, Lien, Charge
 
 
-PERMISSIONS = ("request", "allocate", "lien", "charge", "refund")
-
-
-class ScriptingError (Exception):
-    """Base class for errors in scripts."""
-    STATUS = -1
-
-class MissingArgument (ScriptingError):
-    """A required argument was not specified."""
-    STATUS = -2
-
-class InvalidArgument (ScriptingError):
-    """The specified argument does not exist, or represents an invalid value."""
-    STATUS = -3
-
-class ExtraArguments (ScriptingError):
-    """Unexpected arguments were present."""
-    STATUS = -4
-
-class NotPermitted (ScriptingError):
-    """The specified action is not permitted."""
-    STATUS = -5
-
 class OptionParser (optparse.OptionParser):
     """Extension of optparse.Options for declarative definition."""
     
@@ -126,12 +103,13 @@ class Option (optparse.Option):
     
     def check_permissions (self, opt, value):
         """Verify a comma-separated list of permissions."""
+        all_permissions = ("request", "allocate", "lien", "charge", "refund")
         if value == "all":
-            permissions = PERMISSIONS
+            return all_permissions
         else:
             permissions = value.split(",")
             for permission in permissions:
-                if permission not in PERMISSIONS:
+                if permission not in all_permissions:
                     raise optparse.OptionValueError(
                         "option %s: unknown permission: %r" % (opt, permission))
         return permissions
@@ -302,6 +280,20 @@ OPTIONS = dict(
     
 )
 
+
+class ArgumentException (Exception):
+    """Base class for errors in scripts."""
+
+class MissingArgument (ArgumentException):
+    """An expected argument was not specified."""
+
+class InvalidArgument (ArgumentException):
+    """The specified argument is not valid."""
+
+class ExtraArguments (ArgumentException):
+    """Unexpected arguments were present."""
+
+
 class ArgumentParser (object):
     
     """Parse arguments sequentially.
@@ -358,20 +350,20 @@ class ArgumentParser (object):
         try:
             value = self.args.pop(0)
         except IndexError:
-            raise self.NoValue("%s: error: missing argument" % self.prog)
+            raise MissingArgument("%s: error: missing argument" % self.prog)
         # Try to validate the argument using an option.
         if option is not None:
             try:
                 value = option.TYPE_CHECKER[option.type](option, None, value)
             except optparse.OptionValueError:
                 self.args.insert(0, value)
-                raise self.InvalidArgument("%s: error: invalid argument: %s" %
+                raise InvalidArgument("%s: error: invalid argument: %s" %
                     (self.prog, value))
         return value
     
     def verify_empty (self):
         if len(self.args) != 0:
-            raise self.NotEmpty("%s: error: unexpected argument(s): %s" % (
+            raise ExtraArguments("%s: error: unexpected argument(s): %s" % (
                 self.prog,
                 ", ".join(self.args),
             ))

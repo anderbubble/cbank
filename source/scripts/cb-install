@@ -2,23 +2,18 @@
 
 import sys
 
-from sqlalchemy.exceptions import DBAPIError
-
 import clusterbank.model
-from clusterbank import scripting
-from clusterbank.scripting import ScriptingError
 
-def run ():
+def run (argv=None):
     clusterbank.model.metadata.create_all()
+    clusterbank.model.Session.flush()
+    clusterbank.model.Session.commit()
 
 if __name__ == "__main__":
     try:
         run()
     except KeyboardInterrupt:
-        sys.exit(ScriptingError.STATUS)
-    except ScriptingError, e:
-        print >> sys.stderr, e
-        sys.exit(e.STATUS)
-    except DBAPIError, e:
+        sys.exit(1)
+    except Exception, e:
         print >> sys.stderr, e
         sys.exit(1)

@@ -4,19 +4,14 @@ __version__ = "0.2.x"
 
 import sys
 
-from sqlalchemy.exceptions import DBAPIError
-
-from clusterbank.scripting import refund, ScriptingError
+import clusterbank.scripting.refund
 
 if __name__ == "__main__":
     try:
-        refunds = refund.run()
+        refunds = clusterbank.scripting.refund.run()
     except KeyboardInterrupt:
-        sys.exit(ScriptingError.STATUS)
-    except ScriptingError, e:
-        print >> sys.stderr, e
-        sys.exit(e.STATUS)
-    except DBAPIError, e:
+        sys.exit(1)
+    except Exception, e:
         print >> sys.stderr, e
         sys.exit(1)
     
