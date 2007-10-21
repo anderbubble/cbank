@@ -432,13 +432,7 @@ class Charge (object):
     
     Methods:
     refund -- Refund time from this charge.
-    
-    Exceptions:
-    ExcessiveRefund -- Refund in excess of charge.
     """
-    
-    class ExcessiveRefund (Exception):
-        """Refund in excess of charge."""
     
     def __init__ (self, **kwargs):
         self.id = kwargs.get("id")
@@ -578,7 +572,7 @@ class Refund (object):
                     self._time = 0
                     print self
                     if value > self.charge.effective_charge:
-                        raise self.charge.ExcessiveRefund("refunds cannot exceed charges")
+                        raise ValueError("refunds cannot exceed charges")
                 finally:
                     self._time = prev_value
         self._time = value
