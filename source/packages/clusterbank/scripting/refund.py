@@ -4,23 +4,23 @@ import os
 import clusterbank
 import clusterbank.model
 from clusterbank import scripting
+import clusterbank.scripting.options
 from clusterbank.model import Request, Refund
 from clusterbank.scripting import \
-    verify_configured, \
     MissingArgument, InvalidArgument, ExtraArguments
 
 
 class OptionParser (scripting.OptionParser):
     
     standard_option_list = [
-        scripting.OPTIONS['list'].having(help="list active refunds"),
-        scripting.OPTIONS['user'].having(help="post refund as USER"),
-        scripting.OPTIONS['project'].having(help="list refunds for PROJECT"),
-        scripting.OPTIONS['resource'].having(help="list refunds for RESOURCE"),
-        scripting.OPTIONS['lien'].having(help="list refunds under LIEN"),
-        scripting.OPTIONS['charge'].having(help="post or list refunds of CHARGE"),
-        scripting.OPTIONS['time'].having(help="refund TIME"),
-        scripting.OPTIONS['comment'].having(help="misc. NOTES"),
+        scripting.options.list.having(help="list active refunds"),
+        scripting.options.user.having(help="post refund as USER"),
+        scripting.options.project.having(help="list refunds for PROJECT"),
+        scripting.options.resource.having(help="list refunds for RESOURCE"),
+        scripting.options.lien.having(help="list refunds under LIEN"),
+        scripting.options.charge.having(help="post or list refunds of CHARGE"),
+        scripting.options.time.having(help="refund TIME"),
+        scripting.options.comment.having(help="misc. NOTES"),
     ]
     
     __defaults__ = dict(
@@ -39,13 +39,13 @@ def run (argv=None):
     if argv is None:
         argv = sys.argv
     
-    verify_configured()
+    scripting.verify_configured()
     
     parser = OptionParser(prog=os.path.basename(argv[0]))
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)
     
-    user = arg_parser.get(scripting.OPTIONS['user'], options)
+    user = arg_parser.get(scripting.options.user, options)
     
     if options.list:
         
@@ -86,8 +86,8 @@ def run (argv=None):
         # time -- amount of refund (required)
         # comment -- reason for refund
         
-        charge = arg_parser.get(scripting.OPTIONS['charge'], options)
-        time = arg_parser.get(scripting.OPTIONS['time'], options)
+        charge = arg_parser.get(scripting.options.charge, options)
+        time = arg_parser.get(scripting.options.time, options)
         
         kwargs = dict(
             charge = charge,

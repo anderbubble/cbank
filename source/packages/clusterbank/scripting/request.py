@@ -5,21 +5,21 @@ import clusterbank
 import clusterbank.model
 from clusterbank.model import Request
 from clusterbank import scripting
+import clusterbank.scripting.options
 from clusterbank.scripting import \
-    verify_configured, \
     MissingArgument, InvalidArgument, ExtraArguments
 
 
 class OptionParser (scripting.OptionParser):
 
     standard_option_list = [
-        scripting.OPTIONS['list'].having(help="list open requests"),
-        scripting.OPTIONS['user'].having(help="request as or list open requests for USER"),
-        scripting.OPTIONS['project'].having(help="request time for or list requests for PROJECT"),
-        scripting.OPTIONS['resource'].having(help="request time on or list requests for RESOURCE"),
-        scripting.OPTIONS['time'].having(help="request amount of TIME"),
-        scripting.OPTIONS['start'].having(help="request allocation to begin on DATE"),
-        scripting.OPTIONS['comment'].having(help="misc. NOTES"),
+        scripting.options.list.having(help="list open requests"),
+        scripting.options.user.having(help="request as or list open requests for USER"),
+        scripting.options.project.having(help="request time for or list requests for PROJECT"),
+        scripting.options.resource.having(help="request time on or list requests for RESOURCE"),
+        scripting.options.time.having(help="request amount of TIME"),
+        scripting.options.start.having(help="request allocation to begin on DATE"),
+        scripting.options.comment.having(help="misc. NOTES"),
     ]
     
     __defaults__ = dict(
@@ -38,13 +38,13 @@ def run (argv=None):
     if argv is None:
         argv = sys.argv
     
-    verify_configured()
+    scripting.verify_configured()
     
     parser = OptionParser(prog=os.path.basename(argv[0]))
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)
     
-    user = arg_parser.get(scripting.OPTIONS['user'], options)
+    user = arg_parser.get(scripting.options.user, options)
     
     if options.list:
         # list options:
@@ -81,9 +81,9 @@ def run (argv=None):
         # time -- amount of time requested (required)
         # comment -- reason for request
         
-        project = arg_parser.get(scripting.OPTIONS['project'], options)
-        resource = arg_parser.get(scripting.OPTIONS['resource'], options)
-        time = arg_parser.get(scripting.OPTIONS['time'], options)
+        project = arg_parser.get(scripting.options.project, options)
+        resource = arg_parser.get(scripting.options.resource, options)
+        time = arg_parser.get(scripting.options.time, options)
         
         arg_parser.verify_empty()
         

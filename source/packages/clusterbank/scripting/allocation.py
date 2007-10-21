@@ -4,25 +4,25 @@ import os
 import clusterbank
 import clusterbank.model
 from clusterbank import scripting
+import clusterbank.scripting.options
 from clusterbank.model import Request, Allocation
 from clusterbank.scripting import \
-    verify_configured, \
     MissingArgument, InvalidArgument, ExtraArguments
 
 
 class OptionParser (scripting.OptionParser):
     
     standard_option_list = [
-        scripting.OPTIONS['list'].having(help="list active allocations"),
-        scripting.OPTIONS['user'].having(help="allocate as or list allocations for USER"),
-        scripting.OPTIONS['project'].having(help="list allocations for PROJECT"),
-        scripting.OPTIONS['resource'].having(help="list allocations for RESOURCE"),
-        scripting.OPTIONS['request'].having(help="allocate for REQUEST"),
-        scripting.OPTIONS['time'].having(help="allocate TIME"),
-        scripting.OPTIONS['credit'].having(help="PROJECT can use up to LIMIT negative time"),
-        scripting.OPTIONS['start'].having(help="TIME becomes available on DATE"),
-        scripting.OPTIONS['expiration'].having(help="TIME expires on DATE"),
-        scripting.OPTIONS['comment'].having(help="misc. NOTES"),
+        scripting.options.list.having(help="list active allocations"),
+        scripting.options.user.having(help="allocate as or list allocations for USER"),
+        scripting.options.project.having(help="list allocations for PROJECT"),
+        scripting.options.resource.having(help="list allocations for RESOURCE"),
+        scripting.options.request.having(help="allocate for REQUEST"),
+        scripting.options.time.having(help="allocate TIME"),
+        scripting.options.credit.having(help="PROJECT can use up to LIMIT negative time"),
+        scripting.options.start.having(help="TIME becomes available on DATE"),
+        scripting.options.expiration.having(help="TIME expires on DATE"),
+        scripting.options.comment.having(help="misc. NOTES"),
     ]
     
     __defaults__ = dict(
@@ -41,13 +41,13 @@ def run (argv=None):
     if argv is None:
         argv = sys.argv
     
-    verify_configured()
+    scripting.verify_configured()
     
     parser = OptionParser(prog=os.path.basename(argv[0]))
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)
     
-    user = arg_parser.get(scripting.OPTIONS['user'], options)
+    user = arg_parser.get(scripting.options.user, options)
     
     if options.list:
         # list options:
@@ -90,9 +90,9 @@ def run (argv=None):
         # expiration -- specify an expiration date (required)
         # comment -- comment of the allocation
         
-        request = arg_parser.get(scripting.OPTIONS['request'], options)
-        start = arg_parser.get(scripting.OPTIONS['start'], options)
-        expiration = arg_parser.get(scripting.OPTIONS['expiration'], options)
+        request = arg_parser.get(scripting.options.request, options)
+        start = arg_parser.get(scripting.options.start, options)
+        expiration = arg_parser.get(scripting.options.expiration, options)
         
         arg_parser.verify_empty()
         

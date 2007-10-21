@@ -4,22 +4,22 @@ import os
 import clusterbank
 import clusterbank.model
 from clusterbank import scripting
+import clusterbank.scripting.options
 from clusterbank.model import Project, Request, Charge
 from clusterbank.scripting import \
-    verify_configured, \
     MissingArgument, InvalidArgument, ExtraArguments
 
 
 class OptionParser (scripting.OptionParser):
     
     standard_option_list = [
-        scripting.OPTIONS['list'].having(help="list active charges"),
-        scripting.OPTIONS['user'].having(help="post charge as or list charges for USER"),
-        scripting.OPTIONS['project'].having(help="list charges for PROJECT"),
-        scripting.OPTIONS['resource'].having(help="list charges against RESOURCE"),
-        scripting.OPTIONS['liens'].having(help="post charges against LIENS"),
-        scripting.OPTIONS['time'].having(help="charge TIME against liens"),
-        scripting.OPTIONS['comment'].having(help="misc. NOTES"),
+        scripting.options.list.having(help="list active charges"),
+        scripting.options.user.having(help="post charge as or list charges for USER"),
+        scripting.options.project.having(help="list charges for PROJECT"),
+        scripting.options.resource.having(help="list charges against RESOURCE"),
+        scripting.options.liens.having(help="post charges against LIENS"),
+        scripting.options.time.having(help="charge TIME against liens"),
+        scripting.options.comment.having(help="misc. NOTES"),
     ]
     
     __defaults__ = dict(
@@ -38,13 +38,13 @@ def run (argv=None):
     if argv is None:
         argv = sys.argv
     
-    verify_configured()
+    scripting.verify_configured()
     
     parser = OptionParser(prog=os.path.basename(argv[0]))
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)
     
-    user = arg_parser.get(scripting.OPTIONS['user'], options)
+    user = arg_parser.get(scripting.options.user, options)
     
     if options.list:
         # list options:
@@ -86,8 +86,8 @@ def run (argv=None):
         # time -- amount of time to charge (required)
         # comment -- comment for the charge
         
-        liens = arg_parser.get(scripting.OPTIONS['liens'], options)
-        time = arg_parser.get(scripting.OPTIONS['time'], options)
+        liens = arg_parser.get(scripting.options.liens, options)
+        time = arg_parser.get(scripting.options.time, options)
         
         kwargs = dict(
             liens = liens,

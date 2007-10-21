@@ -3,23 +3,23 @@ import os
 
 import clusterbank
 from clusterbank import scripting
+import clusterbank.scripting.options
 import clusterbank.model
 from clusterbank.model import Project, Request, Lien
 from clusterbank.scripting import \
-    verify_configured, \
     MissingArgument, InvalidArgument, ExtraArguments
 
 
 class OptionParser (scripting.OptionParser):
     
     standard_option_list = [
-        scripting.OPTIONS['list'].having(help="list open active liens"),
-        scripting.OPTIONS['user'].having(help="post lien as or list liens for USER"),
-        scripting.OPTIONS['allocation'].having(help="post lien against ALLOCATION"),
-        scripting.OPTIONS['project'].having(help="post lien against or list liens for PROJECT"),
-        scripting.OPTIONS['resource'].having(help="post lien against or list liens for RESOURCE"),
-        scripting.OPTIONS['time'].having(help="post lien for TIME"),
-        scripting.OPTIONS['comment'].having(help="misc. NOTES"),
+        scripting.options.list.having(help="list open active liens"),
+        scripting.options.user.having(help="post lien as or list liens for USER"),
+        scripting.options.allocation.having(help="post lien against ALLOCATION"),
+        scripting.options.project.having(help="post lien against or list liens for PROJECT"),
+        scripting.options.resource.having(help="post lien against or list liens for RESOURCE"),
+        scripting.options.time.having(help="post lien for TIME"),
+        scripting.options.comment.having(help="misc. NOTES"),
     ]
     
     __defaults__ = dict(
@@ -39,13 +39,13 @@ def run (argv=None):
     if argv is None:
         argv = sys.argv
     
-    verify_configured()
+    scripting.verify_configured()
     
     parser = OptionParser(prog=os.path.basename(argv[0]))
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)
     
-    user = arg_parser.get(scripting.OPTIONS['user'], options)
+    user = arg_parser.get(scripting.options.user, options)
     
     if options.list:
         # list options:
@@ -87,13 +87,13 @@ def run (argv=None):
         # time -- maximum charge of the lien
         # comment -- comment for the lien
         try:
-            allocation = arg_parser.get(scripting.OPTIONS['allocation'], options)
+            allocation = arg_parser.get(scripting.options.allocation, options)
         except MissingArgument:
             if not (options.project and options.resource):
                 raise
             allocation = None
         
-        time = arg_parser.get(scripting.OPTIONS['time'], options)
+        time = arg_parser.get(scripting.options.time, options)
         
         arg_parser.verify_empty()
         
