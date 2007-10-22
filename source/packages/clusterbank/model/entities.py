@@ -22,39 +22,34 @@ class User (object):
     
     """A logical user.
     
-    Relationships:
-    credit_limits -- CreditLimits posted by the user.
-    requests -- Requests made by the user.
-    allocations -- Allocations made by the user.
-    liens -- Liens made by the user.
-    charges -- Charges made by the user.
-    refunds -- Refunds made by the user.
-    unit_factors -- Factors set by the user.
-    
-    Attributes:
-    id -- Canonical id of the user.
-    can_request -- Permission to make requests.
-    can_allocate -- Permission to allocate time or credit.
-    can_lien -- Permission to post liens.
-    can_charge -- Permission to charge liens.
-    can_refund -- Permission to refund charges.
-    
     Properties:
-    name -- Human-readable name from upstream.
-    projects -- Result set of local projects by upstream membership.
+    id -- canonical id of the user
+    can_request -- permission to make requests
+    can_allocate -- permission to allocate time or credit
+    can_lien -- permission to post liens
+    can_charge -- permission to charge liens
+    can_refund -- permission to refund charges
+    credit_limits -- credit limits posted by the user
+    requests -- requests posted by the user
+    allocations -- allocations posted by the user
+    liens -- liens posted by the user
+    charges -- charges posted by the user
+    refunds -- refunds posted by the user
+    name -- canonical username (from-upstream)
+    projects -- list of local projects by upstream membership
     
     Methods:
-    member_of -- A user is a member of a project.
-    request -- Request time on a resource for a project.
-    allocate -- Allocate time for a request.
-    allocate_credit -- Allocate a credit limit for a project.
-    lien -- Acquire a lien against an allocation.
-    charge -- Charge a lien.
-    refund -- Refund a charge.
+    member_of -- check project membership
+    request -- request time on a resource for a project
+    allocate -- allocate time for a request
+    allocate_credit -- allocate a credit limit for a project
+    lien -- acquire a lien against an allocation
+    charge -- charge a lien
+    refund -- refund a charge
     
     Exceptions:
-    DoesNotExist -- The specified user does not exist.
-    NotPermitted -- An intentional denial of an action.
+    DoesNotExist -- the specified user does not exist
+    NotPermitted -- an intentional denial of an action
     """
     
     class DoesNotExist (Exception):
@@ -94,14 +89,13 @@ class User (object):
         self.refunds = kwargs.get("refunds", [])
     
     def __repr__ (self):
-        if self.id is None:
-            id_repr = "?"
-        else:
-            id_repr = self.id
-        return "<%s %s>" % (self.__class__.__name__, id_repr)
+        try:
+            return "<%s %i>" % (self.__class__.__name__, self.id)
+        except TypeError:
+            return "<%s ?>" % self.__class__.__name__
     
     def __str__ (self):
-        return self.name
+        return self.name or "unknown"
     
     def _get_name (self):
         """Return the name of the upstream user."""
@@ -120,34 +114,54 @@ class User (object):
     projects = property(_get_projects)
     
     def member_of (self, project):
-        """Whether or not a user is a member of a given project."""
+        """Whether or not a user is a member of a given project.
+        
+        Arguments:
+        project -- project to check membership of"""
         upstream_user = upstream.User.by_id(self.id)
         upstream_project = upstream.Project.by_id(project.id)
         return upstream_project in upstream_user.projects
     
     def request (self, **kwargs):
-        """Request time on a resource."""
+        """Request time on a resource.
+        
+        Keyword arguments are passed to the Request constructor.
+        """
         return Request(poster=self, **kwargs)
     
     def allocate (self, **kwargs):
         """Allocate time on a resource in response to a request.
         
-        Arguments:
-        request -- Which request to allocate time for. (required)
+        Keyword arguments are passed to the Request constructor.
         """
         return Allocation(poster=self, **kwargs)
     
     def allocate_credit (self, **kwargs):
         """Post a credit limit for a project.
         
-        Arguments:
-        project -- Which project to give credit to. (required)
+        Keyword arguments are passed to the Request constructor.
         """
         return CreditLimit(poster=self, **kwargs)
     
     def lien (self, **kwargs):
         
-        """Enter a lien against an allocation."""
+        """Enter a lien against an allocation.
+        
+        Liens are explicitly entered against allocations, but a user
+        can also post a lien (or liens) against a project's aggregate allocation
+        by passing in a project and resource keyword argument and
+        not specifying an allocation. In this case, a list of liens will be
+        returned, rather than a single lien.
+        
+        When requesting this kind of smart lien, time must also be specified.
+        
+        Keyword arguments:
+        project -- project to post lien against
+        resource -- resource to post lien for
+        time -- time to secure in the lien
+        
+        Additional keyword arguments are passed to the Request constructor.
+        """
         
         if kwargs.get("allocation") is not None:
             kwargs.pop('project', None)
@@ -201,9 +215,18 @@ class User (object):
         
         """Charge time against a lien.
         
-        Arguments:
-        lien -- lien to charge against.
-        liens -- liens to which the charge can be charged.
+        Charges are usually posted against a single lien. However, if liens is specified
+        as a list of liens to charge against, (and lien is left unspecified) the charge
+        will be spread across the liens. Time must be spefied in this case.
+        
+        Note that liens not required to fulfill the charge will still be charged 0 time,
+        to deactivate the lien.
+        
+        Keyword arguments:
+        liens -- liens to which the charge can be applied
+        time -- time to charge
+        
+        Additional keyword arguments are passed to the Request constructor.
         """
         
         # If the charge is for a specific lien, post the charge.
@@ -250,8 +273,7 @@ class User (object):
     def refund (self, **kwargs):
         """Refund time from a charge.
         
-        Arguments:
-        charge -- Which charge to refund. (required)
+        Keyword arguments are passed to the Request constructor.
         """
         return Refund(poster=self, **kwargs)
 
@@ -260,34 +282,27 @@ class Project (object):
     
     """A logical project.
     
-    Relationships:
-    credit_limits -- Available credit per-resource.
-    requests -- Requests made for the project.
-    
     Exceptions:
-    DoesNotExist -- The specified project does not exist.
-    InsufficientFunds -- Not enough funds to perform an action.
-    
-    Attributes:
-    id -- Canonical id of the project.
+    DoesNotExist -- the specified project does not exist
+    InsufficientFunds -- not enough funds to perform an action
     
     Properties:
-    name -- The upstream project name.
-    users -- The users that are members of the project from upstream.
-    allocations -- All allocations related to this project.
-    charges -- All charges related to this project.
-    liens -- All liens related to this project.
+    id -- canonical id of the project
+    name -- canonical name of the project (from upstream)
+    users -- the users that are members of the project from upstream
+    credit_limits -- available credit per-resource
+    requests -- requests made for the project
     
     Methods:
-    has_member -- The group has a member.
-    time_allocated -- Sum of time allocated to a resource.
-    time_liened -- Sum of time committed to uncharged liens.
-    time_charged -- Sum of effective charges.
-    time_used -- Sum of time liened and time charged.
-    time_available -- Difference of time allocated and time used.
-    credit_limit -- Current credit limit for the resource.
-    credit_used -- Negative time used.
-    credit_available -- Difference of credit limit and credit used.
+    has_member -- check a user's membership in the group
+    time_allocated -- sum of time allocated to a resource
+    time_liened -- sum of time committed to uncharged liens
+    time_charged -- sum of effective charges
+    time_used -- sum of time liened and time charged
+    time_available -- difference of time allocated and time used
+    credit_limit -- current credit limit (value) for the resource
+    credit_used -- negative time used
+    credit_available -- difference of credit limit and credit used
     """
     
     class DoesNotExist (Exception):
@@ -318,14 +333,13 @@ class Project (object):
         self.requests = kwargs.get("requests", [])
     
     def __repr__ (self):
-        if self.id is None:
-            id_repr = "?"
-        else:
-            id_repr = self.id
-        return "<%s %s>" % (self.__class__.__name__, id_repr)
+        try:
+            return "<%s %i>" % (self.__class__.__name__, self.id)
+        except TypeError:
+            return "<%s ?>" % self.__class__.__name__
     
     def __str__ (self):
-        return self.name
+        return self.name or "unknown"
     
     def _get_name (self):
         """Return the name of the upstream project."""
@@ -435,16 +449,11 @@ class Resource (object):
     
     """A logical resource.
     
-    Relationships:
-    credit_limits -- CreditLimits on the resource.
-    requests -- Requests made for the resource.
-    unit_factors -- UnitFactors for this resource.
-    
-    Attributes:
-    id -- Canonical id of the resource.
-    
     Properties:
-    name -- Upstream name of the resource.
+    id -- canonical id of the resource
+    name -- canonical name of the resource (from upstream)
+    credit_limits -- credit limits posted for the resource
+    requests -- requests posted for the resource
     
     Exceptions:
     DoesNotExist -- The specified resource does not exist.
@@ -475,14 +484,13 @@ class Resource (object):
         self.requests = kwargs.get("requests", [])
     
     def __repr__ (self):
-        if self.id is None:
-            id_repr = "?"
-        else:
-            id_repr = self.id
-        return "<%s %s>" % (self.__class__.__name__, id_repr)
+        try:
+            return "<%s %i>" % (self.__class__.__name__, self.id)
+        except TypeError:
+            return "<%s ?>" % self.__class__.__name__
     
     def __str__ (self):
-        return self.name
+        return self.name or "unknown"
     
     def _get_name (self):
         """Return the name of the upstream resource."""

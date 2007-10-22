@@ -20,18 +20,16 @@ class CreditLimit (object):
     
     """A limit on the charges a project can have.
     
-    Relationships:
-    project -- Related project.
-    resource -- Applicable resource.
-    poster -- Who set this credit limit.
-    
     Attributes:
-    start -- When this credit limit becomes active.
-    time -- Amount of credit available.
-    explanation -- A verbose explanation of why credit was allocated.
+    start -- when this credit limit becomes active
+    time -- amount of credit authorized
+    comment -- A verbose comment of why credit was allocated.
+    project -- project that has the credit limit
+    resource -- resource the credit limit is for
+    poster -- user who posted the credit limit
     
     Constraints:
-     * Only one entry for a given project, start, and resource.
+    unique by project, resource, and start
     """
     
     def __init__ (self, **kwargs):
@@ -44,14 +42,16 @@ class CreditLimit (object):
         self.poster = kwargs.get("poster")
     
     def __str__ (self):
-        return "%s ~%i" % (self.resource.name, self.time)
+        try:
+            return "%r ~%i" % (self.resource, self.time)
+        except TypeError:
+            return "%r ~?" % self.resource
     
     def __repr__ (self):
-        if self.id is None:
-            id_repr = "?"
-        else:
-            id_repr = self.id
-        return "<%s %s>" % (self.__class__.__name__, id_repr)
+        try:
+            return "<%s %i>" % (self.__class__.__name__, self.id)
+        except TypeError:
+            return "<%s ?>" % self.__class__.__name__
     
     def _get_poster (self):
         return self._poster
@@ -78,20 +78,16 @@ class Request (object):
     
     """A request for time on a resource.
     
-    Relationships:
-    resource -- The resource to be used.
-    project -- The project for which time is requested.
-    poster -- The user requesting the time.
-    allocations -- Allocations on the system in response to this request.
-    
     Attributes:
-    datetime -- When the request was entered.
-    time -- Amount of time requested.
-    explanation -- Verbose description of need.
-    start -- When the allocation should become active.
-    
-    Properties:
-    open -- The request remains unanswered.
+    datetime -- when the request was entered
+    time -- amount of time requested
+    comment -- verbose description of need
+    start -- when the allocation should become active
+    open -- the request remains unanswered
+    resource -- the resource to be used
+    project -- the project for which time is requested
+    poster -- the user requesting the time
+    allocations -- allocations on the system in response to this request
     """
     
     def __init__ (self, **kwargs):
@@ -171,7 +167,7 @@ class Allocation (object):
     approver -- The person/group who approved the allocation.
     time -- Amount of time allocated.
     start -- When the allocation becomes active.
-    explanation -- Verbose description of the allocation.
+    comment -- Verbose description of the allocation.
     
     Properties:
     project -- Project from associated request.
@@ -296,7 +292,7 @@ class Lien (object):
     Attributes:
     datetime -- When the lien was entered.
     time -- How many time could be charged.
-    explanation -- Verbose description of the lien.
+    comment -- Verbose description of the lien.
     
     Properties:
     project -- Points to related project.
@@ -422,7 +418,7 @@ class Charge (object):
     Attributes:
     datetime -- When the charge was deducted.
     time -- Amount of time used.
-    explanation -- A verbose description of the charge.
+    comment -- A verbose description of the charge.
     
     Properties:
     effective_charge -- The unit charge after any refunds.
@@ -513,7 +509,7 @@ class Refund (object):
     Attributes:
     datetime -- When the refund was added.
     time -- How much time was refunded.
-    explanation -- A (possibly verbose) description of the refund.
+    comment -- A (possibly verbose) description of the refund.
     
     Properties:
     project -- Project from associated charge.
