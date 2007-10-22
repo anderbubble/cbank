@@ -18,7 +18,37 @@ __all__ = [
     "User", "Project", "Resource",
 ]
 
-class User (object):
+
+class Entity (object):
+    
+    def __repr__ (self):
+        try:
+            return "<%s %i>" % (self.__class__.__name__, self.id)
+        except TypeError:
+            return "<%s ?>" % self.__class__.__name__
+    
+    def __str__ (self):
+        return self.name or "unknown"
+    
+    @classmethod
+    def by_name (cls, name):
+        """Get (or create) an entity based on its name upstream.
+        
+        Arguments:
+        name -- upstream name of the entity
+        """
+        Upstream = getattr(upstream, cls.__name__)
+        try:
+            upstream_entity = Upstream.by_name(name)
+        except Upstream.DoesNotExist:
+            raise cls.DoesNotExist()
+        try:
+            return cls.query.filter_by(id=upstream_entity.id).one()
+        except exceptions.InvalidRequestError:
+            return cls(id=upstream_entity.id)
+
+
+class User (Entity):
     
     """A logical user.
     
@@ -58,22 +88,6 @@ class User (object):
     class NotPermitted (Exception):
         """An intentional denail of an action."""
     
-    @classmethod
-    def by_name (cls, name):
-        """Get (or create) a user based on its name upstream.
-        
-        Arguments:
-        name -- The upstream name of the user.
-        """
-        try:
-            upstream_user = upstream.User.by_name(name)
-        except upstream.User.DoesNotExist:
-            raise cls.DoesNotExist()
-        try:
-            return cls.query.filter_by(id=upstream_user.id).one()
-        except exceptions.InvalidRequestError:
-            return cls(id=upstream_user.id)
-    
     def __init__ (self, **kwargs):
         self.id = kwargs.get("id")
         self.can_request = kwargs.get("can_request", False)
@@ -87,15 +101,6 @@ class User (object):
         self.liens = kwargs.get("liens", [])
         self.charges = kwargs.get("charges", [])
         self.refunds = kwargs.get("refunds", [])
-    
-    def __repr__ (self):
-        try:
-            return "<%s %i>" % (self.__class__.__name__, self.id)
-        except TypeError:
-            return "<%s ?>" % self.__class__.__name__
-    
-    def __str__ (self):
-        return self.name or "unknown"
     
     def _get_name (self):
         """Return the name of the upstream user."""
@@ -278,7 +283,7 @@ class User (object):
         return Refund(poster=self, **kwargs)
 
 
-class Project (object):
+class Project (Entity):
     
     """A logical project.
     
@@ -311,35 +316,10 @@ class Project (object):
     class InsufficientFunds (Exception):
         """Not enough funds to perform an action."""
     
-    @classmethod
-    def by_name (cls, name):
-        """Get (or create) a project based on its upstream name.
-        
-        Arguments:
-        name -- The upstream name of the project.
-        """
-        try:
-            upstream_project = upstream.Project.by_name(name)
-        except upstream.Project.DoesNotExist:
-            raise cls.DoesNotExist()
-        try:
-            return cls.query.filter_by(id=upstream_project.id).one()
-        except exceptions.InvalidRequestError:
-            return cls(id=upstream_project.id)
-    
     def __init__ (self, **kwargs):
         self.id = kwargs.get("id")
         self.credit_limits = kwargs.get("credit_limits", [])
         self.requests = kwargs.get("requests", [])
-    
-    def __repr__ (self):
-        try:
-            return "<%s %i>" % (self.__class__.__name__, self.id)
-        except TypeError:
-            return "<%s ?>" % self.__class__.__name__
-    
-    def __str__ (self):
-        return self.name or "unknown"
     
     def _get_name (self):
         """Return the name of the upstream project."""
@@ -445,7 +425,7 @@ class Project (object):
             - self.credit_used(resource)
 
 
-class Resource (object):
+class Resource (Entity):
     
     """A logical resource.
     
@@ -462,35 +442,10 @@ class Resource (object):
     class DoesNotExist (Exception):
         """The specified resource does not exist."""
     
-    @classmethod
-    def by_name (cls, name):
-        """Get (or create) a resource based on its name upstream.
-        
-        Arguments:
-        name -- The upstream name of the resource.
-        """
-        try:
-            upstream_resource = upstream.Resource.by_name(name)
-        except upstream.Resource.DoesNotExist:
-            raise cls.DoesNotExist()
-        try:
-            return cls.query.filter_by(id=upstream_resource.id).one()
-        except exceptions.InvalidRequestError:
-            return cls(id=upstream_resource.id)
-    
     def __init__ (self, **kwargs):
         self.id = kwargs.get("id")
         self.credit_limits = kwargs.get("credit_limits", [])
         self.requests = kwargs.get("requests", [])
-    
-    def __repr__ (self):
-        try:
-            return "<%s %i>" % (self.__class__.__name__, self.id)
-        except TypeError:
-            return "<%s ?>" % self.__class__.__name__
-    
-    def __str__ (self):
-        return self.name or "unknown"
     
     def _get_name (self):
         """Return the name of the upstream resource."""

@@ -16,7 +16,26 @@ __all__ = [
 ]
 
 
-class CreditLimit (object):
+class AccountingEntity (object):
+    
+    def __str__ (self):
+        try:
+            resource_name = self.resource.name
+        except AttributeError:
+            resource_name = "unknown"
+        try:
+            return "%s %i" % (resource_name, self.time)
+        except TypeError:
+            return "%r ?" % resource_name
+    
+    def __repr__ (self):
+        try:
+            return "<%s %i>" % (self.__class__.__name__, self.id)
+        except TypeError:
+            return "<%s ?>" % self.__class__.__name__
+
+
+class CreditLimit (AccountingEntity):
     
     """A limit on the charges a project can have.
     
@@ -41,18 +60,6 @@ class CreditLimit (object):
         self.resource = kwargs.get("resource")
         self.poster = kwargs.get("poster")
     
-    def __str__ (self):
-        try:
-            return "%r ~%i" % (self.resource, self.time)
-        except TypeError:
-            return "%r ~?" % self.resource
-    
-    def __repr__ (self):
-        try:
-            return "<%s %i>" % (self.__class__.__name__, self.id)
-        except TypeError:
-            return "<%s ?>" % self.__class__.__name__
-    
     def _get_poster (self):
         return self._poster
     
@@ -74,7 +81,7 @@ class CreditLimit (object):
     time = property(_get_time, _set_time)
 
 
-class Request (object):
+class Request (AccountingEntity):
     
     """A request for time on a resource.
     
@@ -123,20 +130,6 @@ class Request (object):
     
     project = property(_get_project, _set_project)
     
-    def __str__ (self):
-        try:
-            resource_name = self.resource.name
-        except Resource.DoesNotExist:
-            resource_name = None
-        return "%s ?%s" % (resource_name, self.time)
-    
-    def __repr__ (self):
-        if self.id is None:
-            id_repr = "?"
-        else:
-            id_repr = self.id
-        return "<%s %s>" % (self.__class__.__name__, id_repr)
-    
     def _check_values (self):
         """Check that the values of the request are valid."""
         if self.time is not None and self.time < 0:
@@ -153,28 +146,24 @@ class Request (object):
     open = property(_get_open)
 
 
-class Allocation (object):
+class Allocation (AccountingEntity):
     
     """An amount of time allocated to a project.
     
-    Relationships:
-    request -- The request for time to which this is a response.
-    poster -- User who entered the allocation into the system.
-    charges -- Time used from the allocation.
-    
-    Attributes:
-    datetime -- When the allocation was entered.
-    approver -- The person/group who approved the allocation.
-    time -- Amount of time allocated.
-    start -- When the allocation becomes active.
-    comment -- Verbose description of the allocation.
-    
     Properties:
-    project -- Project from associated request.
-    resource -- Resource from associated request.
-    started -- Allocation has started.
-    expired -- Allocation has expired.
-    active -- The allocation has started and has not expired.
+    request -- request for time to which this is a response
+    poster -- user who entered the allocation into the system
+    charges -- time used from the allocation
+    datetime -- when the allocation was entered
+    approver -- the person/group who approved the allocation
+    time -- amount of time allocated
+    start -- when the allocation becomes active
+    comment -- verbose description of the allocation
+    project -- project from associated request
+    resource -- resource from associated request
+    started -- allocation has started
+    expired -- allocation has expired
+    active -- allocation has started and has not expired
     """
     
     def __init__ (self, **kwargs):
@@ -190,16 +179,6 @@ class Allocation (object):
         self.expiration = kwargs.get("expiration")
         self.comment = kwargs.get("comment")
         self.liens = kwargs.get("liens", [])
-    
-    def __str__ (self):
-        return "%s +%i" % (self.resource.name, self.time)
-    
-    def __repr__ (self):
-        if self.id is None:
-            id_repr = "?"
-        else:
-            id_repr = self.id
-        return "<%s %s>" % (self.__class__.__name__, id_repr)
     
     def _get_poster (self):
         return self._poster
@@ -280,34 +259,30 @@ class Allocation (object):
     time_available = property(_get_time_available)
 
 
-class Lien (object):
+class Lien (AccountingEntity):
     
     """A potential charge against an allocation.
     
-    Relationships:
-    allocation -- The allocation the lien is against.
-    poster -- The user who posted the lien.
-    charges -- Charges resulting from the lien.
-    
-    Attributes:
-    datetime -- When the lien was entered.
-    time -- How many time could be charged.
-    comment -- Verbose description of the lien.
-    
     Properties:
-    project -- Points to related project.
-    resource -- Points to related resource.
-    effective_charge -- Total time charged (after refunds).
-    time_available -- Difference of time and effective_charge.
-    charged -- The lien has charges.
-    active -- The lien is against an active allocation.
-    open -- The lien is uncharged.
+    datetime -- when the lien was entered
+    time -- how many time could be charged
+    comment -- verbose description of the lien
+    project -- points to related project
+    resource -- points to related resource
+    effective_charge -- total time charged (after refunds)
+    time_available -- difference of time and effective_charge
+    charged -- the lien has charges
+    active -- the lien is against an active allocation
+    open -- the lien is uncharged
+    allocation -- the allocation the lien is against
+    poster -- the user who posted the lien
+    charges -- charges resulting from the lien
     
     Methods:
-    charge -- Charge time against this lien.
+    charge -- charge time against this lien
     
     Exceptions:
-    InsufficientFunds -- Charges exceed liens.
+    InsufficientFunds -- charges exceed liens
     """
     
     class InsufficientFunds (Exception):
@@ -321,19 +296,6 @@ class Lien (object):
         self.time = kwargs.get("time")
         self.comment = kwargs.get("comment")
         self.charges = kwargs.get("charges", [])
-    
-    def __str__ (self):
-        return "%s %i/%i" % (
-            self.resource.name,
-            self.effective_charge, self.time
-        )
-    
-    def __repr__ (self):
-        if self.id is None:
-            id_repr = "?"
-        else:
-            id_repr = self.id
-        return "<%s %s>" % (self.__class__.__name__, id_repr)
     
     def _get_poster (self):
         return self._poster
@@ -406,28 +368,24 @@ class Lien (object):
     open = property(_get_open)
 
 
-class Charge (object):
+class Charge (AccountingEntity):
     
     """A charge against an allocation.
     
-    Relationships:
-    lien -- The lien to which this charge applies.
-    poster -- Who posted the transaction.
-    refunds -- Refunds against this charge.
-    
-    Attributes:
-    datetime -- When the charge was deducted.
-    time -- Amount of time used.
-    comment -- A verbose description of the charge.
-    
     Properties:
-    effective_charge -- The unit charge after any refunds.
-    project -- project from related request.
-    resource -- resource from related request.
-    active -- The charge is against an active lien.
+    project -- project from related request
+    resource -- resource from related request
+    datetime -- when the charge was deducted
+    time -- amount of time used
+    comment -- a verbose description of the charge
+    effective_charge -- The unit charge after any refunds
+    active -- the charge is against an active lien
+    lien -- the lien to which this charge applies
+    poster -- who posted the transaction
+    refunds -- refunds against this charge
     
     Methods:
-    refund -- Refund time from this charge.
+    refund -- refund time from this charge
     """
     
     def __init__ (self, **kwargs):
@@ -438,19 +396,6 @@ class Charge (object):
         self.time = kwargs.get("time")
         self.comment = kwargs.get("comment")
         self.refunds = kwargs.get("refunds", [])
-    
-    def __str__ (self):
-        return "%s -%s" % (
-            self.resource.name,
-            self.effective_charge
-        )
-    
-    def __repr__ (self):
-        if self.id is None:
-            id_repr = "?"
-        else:
-            id_repr = self.id
-        return "<%s %s>" % (self.__class__.__name__, id_repr)
     
     def _get_poster (self):
         return self._poster
@@ -498,23 +443,19 @@ class Charge (object):
     active = property(_get_active)
 
 
-class Refund (object):
+class Refund (AccountingEntity):
     
     """A refund against a charge.
     
-    Relationships:
-    charge -- The charge being refunded.
-    poster -- Who posted the refund.
-    
-    Attributes:
-    datetime -- When the refund was added.
-    time -- How much time was refunded.
-    comment -- A (possibly verbose) description of the refund.
-    
     Properties:
-    project -- Project from associated charge.
-    resource -- Resource from associated charge.
-    active -- The refund is against an active charge.
+    project -- project from associated charge
+    resource -- resource from associated charge
+    charge -- charge being refunded
+    datetime -- when the refund was added
+    time -- amount of time refunded
+    comment -- description of the refund
+    poster -- who posted the refund
+    active -- refund is against an active charge
     """
     
     def __init__ (self, **kwargs):
@@ -524,16 +465,6 @@ class Refund (object):
         self.datetime = kwargs.get("datetime")
         self.time = kwargs.get("time")
         self.comment = kwargs.get("comment")
-    
-    def __str__ (self):
-        return "%s +%i" % (self.resource.name, self.time)
-    
-    def __repr__ (self):
-        if self.id is None:
-            id_repr = "?"
-        else:
-            id_repr = self.id
-        return "<%s %s>" % (self.__class__.__name__, id_repr)
     
     def _get_project (self):
         """Return the related project."""
