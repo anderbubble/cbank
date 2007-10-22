@@ -349,21 +349,6 @@ class Project (object):
         upstream_user = upstream.User.by_id(user.id)
         return upstream_user in upstream_project.users
     
-    def _get_allocations (self):
-        """Return the set of allocations for this project."""
-        return Allocation.query.join("request").filter_by(project=self)
-    allocations = property(_get_allocations)
-    
-    def _get_liens (self):
-        """Return the set of liens posted against this project."""
-        return Lien.query.join("request").filter_by(project=self)
-    liens = property(_get_liens)
-    
-    def _get_charges (self):
-        """Return the set of charges posted against this project."""
-        return Charge.query.join("request").filter_by(project=self)
-    charges = property(_get_charges)
-    
     def time_allocated (self, resource):
         """Sum of time in active allocations."""
         allocations = Allocation.query.join("request").filter_by(
