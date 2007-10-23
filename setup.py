@@ -14,7 +14,9 @@ setup(
     author_email = "janderso@mcs.anl.gov",
     url = "http://trac.mcs.anl.gov/projects/clusterbank",
     package_dir = {'': os.path.join("source", "packages")},
-    packages = ["clusterbank", "clusterbank.upstream",
+    packages = ["clusterbank", "clusterbank.model",
+                "clusterbank.scripting",
+                "clusterbank.upstream",
                 "clusterbank.upstream.userbase"],
     zip_safe = True,
     scripts = [os.path.join("source", "scripts", script)
