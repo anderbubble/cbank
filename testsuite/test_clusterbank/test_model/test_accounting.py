@@ -17,7 +17,7 @@ class AccountingTester (object):
     
     def teardown (self):
         """drop the database after each test."""
-        clusterbank.model.Session.clear()
+        clusterbank.model.Session.close()
         clusterbank.model.metadata.drop_all()
 
 
@@ -57,53 +57,38 @@ class TestCreditLimit (AccountingTester):
 
 class TestRequest (AccountingTester):
     
-    def test_permission_notmember (self):
-        try:
-            request = Request(
-                poster = self.user,
-                project = self.project,
-                resource = self.resource,
-                time = 2000,
-            )
-        except self.user.NotPermitted:
-            pass
-        else:
-            assert not "allowed without membership and without can_request and can_allocate"
+    def test_permission_notmember_can_request (self):
+        request = Request(
+            poster = None,
+            project = None,
+            resource = self.resource,
+            time = 2000,
+        )
+        
         self.user.can_request = True
+        
+        request.project = self.project
         try:
-            request = Request(
-                poster = self.user,
-                project = self.project,
-                resource = self.resource,
-                time = 2000,
-            )
+            request.poster = self.user
         except self.user.NotPermitted:
             pass
         else:
-            assert not "allowed with can_request without membership"
-        self.user.can_request = False
-        self.user.can_allocate = True
+            assert not "allowed without membership"
+        
+        request.project = None
+        request.poster = self.user
         try:
-            request = Request(
-                poster = self.user,
-                project = self.project,
-                resource = self.resource,
-                time = 2000,
-            )
+            request.project = self.project
         except self.user.NotPermitted:
             pass
         else:
-            assert not "allowed without can_request"
-        self.user.can_request = True
+            assert not "allowed without membership"
+        
+        request.poster.can_allocate = True
         try:
-            request = Request(
-                poster = self.user,
-                project = self.project,
-                resource = self.resource,
-                time = 2000,
-            )
+            request.project = self.project
         except self.user.NotPermitted:
-            assert not "permission denied with can_request and can_allocate"
+            assert not "permission denied with can_allocate"
     
     def test_permission_member (self):
         user = self.project.users[0]
@@ -127,7 +112,7 @@ class TestRequest (AccountingTester):
                 time = 2000,
             )
         except user.NotPermitted:
-            assert not "Permission denied with can_request and membership."
+            assert not "Permission denied with can_request."
     
     def test_open (self):
         self.user.can_request = True
@@ -246,12 +231,62 @@ class TestLien (AccountingTester):
         self.project.users[0].can_lien = True
         liens = Lien.distributed(
             poster = self.project.users[0],
-            project = self.request.project,
-            resource = self.request.resource,
+            allocations = [allocation1, allocation2],
             time = 900,
         )
         assert len(liens) == 2
         assert sum([lien.time for lien in liens]) == 900
+    
+    def test_distributed_to_negative (self):
+        allocation1 = self.allocation
+        allocation1.time = 300
+        allocation2 = Allocation(
+            poster = self.user,
+            request = self.request,
+            start = datetime.now(),
+            expiration = datetime.now() + timedelta(days=1),
+            time = 300,
+        )
+        credit_limit = CreditLimit(
+            poster = self.user,
+            time = 300,
+            start = datetime.now(),
+            project = self.project,
+            resource = self.resource,
+        )
+        
+        self.project.users[0].can_lien = True
+        liens = Lien.distributed(
+            poster = self.project.users[0],
+            allocations = [allocation1, allocation2],
+            time = 900,
+        )
+        assert len(liens) == 2
+        assert liens[0].time == 300
+        assert liens[1].time == 600
+    
+    def test_distributed_to_none_negative (self):
+        self.allocation.time = 300
+        credit_limit = CreditLimit(
+            poster = self.user,
+            time = 300,
+            start = datetime.now() - timedelta(days=1),
+            project = self.project,
+            resource = self.resource,
+        )
+        self.project.users[0].can_lien = True
+        lien1 = Lien(
+            poster = self.project.users[0],
+            allocation = self.allocation,
+            time = 300,
+        )
+        liens = Lien.distributed(
+            poster = self.project.users[0],
+            allocations = [self.allocation],
+            time = 300,
+        )
+        assert len(liens) == 1
+        assert liens[0].time == 300
     
     def test_permissions_notmember (self):
         try:
@@ -428,6 +463,19 @@ class TestCharge (AccountingTester):
         charges = Charge.distributed(poster=self.user, liens=[lien1, lien2], time=600)
         assert len(charges) == 2
         assert sum([charge.time for charge in charges]) == 600
+    
+    def test_distributed_to_negative (self):
+        self.user.can_charge = True
+        charges = Charge.distributed(poster=self.user, liens=[self.lien], time=1000)
+        assert len(charges) == 1
+        assert sum([charge.time for charge in charges]) == 1000
+    
+    def test_distributed_to_none_negative (self):
+        self.user.can_charge = True
+        charge1 = Charge(poster=self.user, lien=self.lien, time=self.lien.time)
+        charges = Charge.distributed(poster=self.user, liens=[self.lien], time=100)
+        assert len(charges) == 1
+        assert sum([charge.time for charge in charges]) == 100
     
     def test_permissions (self):
         try:

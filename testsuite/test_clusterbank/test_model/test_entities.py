@@ -17,7 +17,7 @@ class EntityTester (object):
     
     def teardown (self):
         """drop the database after each test."""
-        clusterbank.model.Session.clear()
+        clusterbank.model.Session.close()
         clusterbank.model.metadata.drop_all()
     
 

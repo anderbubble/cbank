@@ -28,7 +28,7 @@ class ScriptTester (object):
         clusterbank.model.metadata.create_all()
     
     def teardown (self):
-        clusterbank.model.Session.clear()
+        clusterbank.model.Session.close()
         clusterbank.model.metadata.drop_all()
 
 class TestAdmin (ScriptTester):

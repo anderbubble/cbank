@@ -27,10 +27,10 @@ def setup ():
     userbase.Session.flush()
 
 def teardown ():
-    clusterbank.model.Session.clear()
+    clusterbank.model.Session.close()
     clusterbank.model.metadata.drop_all()
     clusterbank.model.metadata.bind = None
-    userbase.Session.clear()
+    userbase.Session.close()
     userbase.model.metadata.drop_all()
     userbase.model.metadata.bind = None
     del upstream.User

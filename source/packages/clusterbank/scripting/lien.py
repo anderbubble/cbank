@@ -5,7 +5,7 @@ import clusterbank
 from clusterbank import scripting
 import clusterbank.scripting.options
 import clusterbank.model
-from clusterbank.model import Project, Request, Lien
+from clusterbank.model import Project, Request, Allocation, Lien
 from clusterbank.scripting import \
     MissingArgument, InvalidArgument, ExtraArguments
 
@@ -99,7 +99,13 @@ def run (argv=None):
                 raise
             kwargs['time'] = arg_parser.get(scripting.options.time, options, arg="time")
             arg_parser.verify_empty()
-            liens = Lien.distributed(options.project, options.resource, **kwargs)
+            allocations = Allocation.query.join("request").filter_by(project=options.project, resource=options.resource)
+            allocations = allocations.order_by([Allocation.c.expiration, Allocation.c.datetime])
+            allocations = [
+                allocation for allocation in allocations
+                if allocation.active
+            ]
+            liens = Lien.distributed(allocations, **kwargs)
         else:
             kwargs['time'] = arg_parser.get(scripting.options.time, options, arg="time")
             arg_parser.verify_empty()

@@ -8,7 +8,7 @@ class UpstreamEntityTester (object):
         metadata.create_all()
     
     def teardown (self):
-        Session.clear()
+        Session.close()
         metadata.drop_all()
 
 

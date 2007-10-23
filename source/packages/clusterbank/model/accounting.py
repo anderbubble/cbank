@@ -64,8 +64,9 @@ class CreditLimit (AccountingEntity):
         return self._poster
     
     def _set_poster (self, user):
-        if not user.can_allocate:
-            raise user.NotPermitted("%s cannot allocate credit" % user)
+        if user is not None:
+            if not user.can_allocate:
+                raise user.NotPermitted("%s cannot allocate credit" % user)
         self._poster = user
     
     poster = property(_get_poster, _set_poster)
@@ -112,10 +113,11 @@ class Request (AccountingEntity):
         return self._poster
     
     def _set_poster (self, user):
-        if not user.can_request:
-            raise user.NotPermitted("%s cannot make requests" % user)
-        if getattr(self, "project", None) is not None and not (user.member_of(self.project) or user.can_allocate):
-            raise user.NotPermitted("%s is not a member of %s" % (user, self.project))
+        if user is not None:
+            if not user.can_request:
+                raise user.NotPermitted("%s cannot make requests" % user)
+            if getattr(self, "project", None) is not None and not (user.member_of(self.project) or user.can_allocate):
+                raise user.NotPermitted("%s is not a member of %s" % (user, self.project))
         self._poster = user
     
     poster = property(_get_poster, _set_poster)
@@ -124,8 +126,9 @@ class Request (AccountingEntity):
         return self._project
     
     def _set_project (self, project):
-        if getattr(self, "user", None) is not None and not (self.user.member_of(project) or self.user.can_allocate):
-            raise self.user.NotPermitted("%s is not a member of %s" % (self.user, project))
+        if project is not None:
+            if getattr(self, "poster", None) is not None and not (self.poster.member_of(project) or self.poster.can_allocate):
+                raise self.poster.NotPermitted("%s is not a member of %s" % (self.poster, project))
         self._project = project
     
     project = property(_get_project, _set_project)
@@ -301,35 +304,15 @@ class Lien (AccountingEntity):
         """Charges exceed liens."""
     
     @classmethod
-    def distributed (cls, project, resource, **kwargs):
-        
-        """Distribute a lien against any active allocations for a project and resource.
-        
-        Arguments:
-        project -- project to post lien against
-        resource -- resource to post lien for
-        
-        Keyword arguments:
-        time -- time to secure in the lien
-        
-        Keyword arguments are passed to the constructor.
-        """
+    def distributed (cls, allocations, **kwargs):
         
         time = kwargs.pop("time")
-        allocations = Allocation.query.join("request").filter_by(project=project, resource=resource)
-        allocations = allocations.order_by([Allocation.c.expiration, Allocation.c.datetime])
-        allocations = (
-            allocation for allocation in allocations
-            if allocation.active
-        )
         
-        # Post a lien to each allocation until all time has been liened.
         liens = list()
-        allocation = None
         for allocation in allocations:
-            # If the remaining time will fit into the allocation,
-            # post a lien for it. Otherwise, post a lien for whatever
-            # The allocation will support.
+            if allocation.time_available <= 0:
+                continue
+            
             if allocation.time_available >= time:
                 lien = cls(allocation=allocation, time=time, **kwargs)
             else:
@@ -339,16 +322,14 @@ class Lien (AccountingEntity):
             if time <= 0:
                 break
         
-        # If there is still time to be liened, add it to the last lien.
-        # This allows liens to be posted that put the project negative.
         if time > 0:
             try:
                 liens[-1].time += time
             except IndexError:
-                # No lien has yet been created. Post a lien on the last
-                # Allocation used.
-                if allocation is None:
-                    raise Exception("there are no active allocations for %s on %s" % (project, resource))
+                try:
+                    allocation = allocations[0]
+                except IndexError:
+                    raise Exception("no allocations are available")
                 lien = Lien(allocation=allocation, time=time, **kwargs)
                 liens.append(lien)
         return liens
@@ -366,10 +347,11 @@ class Lien (AccountingEntity):
         return self._poster
     
     def _set_poster (self, user):
-        if not user.can_lien:
-            raise user.NotPermitted("%s cannot post liens" % user)
-        if getattr(self, "project", None) is not None and not (user.member_of(self.project) or user.can_charge):
-            raise user.NotPermitted("%s is not a member of %s" % (user, self.project))
+        if user is not None:
+            if not user.can_lien:
+                raise user.NotPermitted("%s cannot post liens" % user)
+            if getattr(self, "project", None) is not None and not (user.member_of(self.project) or user.can_charge):
+                raise user.NotPermitted("%s is not a member of %s" % (user, self.project))
         self._poster = user
     
     poster = property(_get_poster, _set_poster)
@@ -456,12 +438,14 @@ class Charge (AccountingEntity):
     
     @classmethod
     def distributed (cls, liens, **kwargs):
+        
         time = kwargs.pop("time")
+        
         charges = list()
         for lien in liens:
-            # If the remaining time will fit into the lien, post a
-            # Charge for all of it. Otherwise, post a charge for what
-            # the lien can support.
+            if lien.time_available <= 0:
+                continue
+            
             if lien.time_available >= time:
                 charge = Charge(lien=lien, time=time, **kwargs)
             else:
@@ -469,17 +453,15 @@ class Charge (AccountingEntity):
             charges.append(charge)
             time -= charge.time
         
-        # If there is time remaining, add it to the last charge.
         if time > 0:
             try:
                 charges[-1].time += time
             except IndexError:
-                # No charges have yet been made. Charge the last lien.
                 try:
-                    charge = Charge(lien=lien, time=time, **kwargs)
-                except NameError:
-                    # There was no lien.
+                    lien = liens[0]
+                except IndexError:
                     raise Exception("no liens are available to be charged")
+                charge = Charge(lien=lien, time=time, **kwargs)
                 charges.append(charge)
         return charges
     
@@ -496,8 +478,9 @@ class Charge (AccountingEntity):
         return self._poster
     
     def _set_poster (self, user):
-        if user is not None and not user.can_charge:
-            raise user.NotPermitted("%s cannot post charges" % user)
+        if user is not None:
+            if not user.can_charge:
+                raise user.NotPermitted("%s cannot post charges" % user)
         self._poster = user
     
     poster = property(_get_poster, _set_poster)
@@ -575,8 +558,9 @@ class Refund (AccountingEntity):
         return self._poster
     
     def _set_poster (self, user):
-        if not user.can_refund:
-            raise user.NotPermitted("%s cannot refund charges" % user)
+        if user is not None:
+            if not user.can_refund:
+                raise user.NotPermitted("%s cannot refund charges" % user)
         self._poster = user
     
     poster = property(_get_poster, _set_poster)

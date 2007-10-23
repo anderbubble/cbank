@@ -34,7 +34,8 @@ def record (line):
     
     user.can_lien = True
     
-    liens = user.lien(
+    liens = Lien(
+        poster = user,
         project = user.projects[0],
         resource = resource,
         datetime = data['qtime'],
@@ -42,7 +43,8 @@ def record (line):
         explanation = line,
     )
     
-    charges = admin.charge(
+    charges = Charge(
+        poster = admin,
         liens = liens,
         time = (data['etime'] - data['stime']).seconds / 60,
         explanation = line,
