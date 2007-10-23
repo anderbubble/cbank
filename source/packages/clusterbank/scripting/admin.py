@@ -39,7 +39,7 @@ def run (argv=None):
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)
     
-    user = arg_parser.get(scripting.options.user, options)
+    user = arg_parser.get(scripting.options.user, options, arg="user")
     
     if options.grant:
         for permission in options.grant:

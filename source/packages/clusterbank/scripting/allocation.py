@@ -47,7 +47,7 @@ def run (argv=None):
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)
     
-    user = arg_parser.get(scripting.options.user, options)
+    user = arg_parser.get(scripting.options.user, options, arg="user")
     
     if options.list:
         # list options:
@@ -90,9 +90,9 @@ def run (argv=None):
         # expiration -- specify an expiration date (required)
         # comment -- comment of the allocation
         
-        request = arg_parser.get(scripting.options.request, options)
-        start = arg_parser.get(scripting.options.start, options)
-        expiration = arg_parser.get(scripting.options.expiration, options)
+        request = arg_parser.get(scripting.options.request, options, arg="request")
+        start = arg_parser.get(scripting.options.start, options, arg="start")
+        expiration = arg_parser.get(scripting.options.expiration, options, arg="expiration")
         
         arg_parser.verify_empty()
         

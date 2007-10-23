@@ -44,7 +44,7 @@ def run (argv=None):
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)
     
-    user = arg_parser.get(scripting.options.user, options)
+    user = arg_parser.get(scripting.options.user, options, arg="user")
     
     if options.list:
         # list options:
@@ -81,9 +81,9 @@ def run (argv=None):
         # time -- amount of time requested (required)
         # comment -- reason for request
         
-        project = arg_parser.get(scripting.options.project, options)
-        resource = arg_parser.get(scripting.options.resource, options)
-        time = arg_parser.get(scripting.options.time, options)
+        project = arg_parser.get(scripting.options.project, options, arg="project")
+        resource = arg_parser.get(scripting.options.resource, options, arg="resource")
+        time = arg_parser.get(scripting.options.time, options, arg="time")
         
         arg_parser.verify_empty()
         

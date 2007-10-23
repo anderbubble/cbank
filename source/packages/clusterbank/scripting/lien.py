@@ -45,7 +45,7 @@ def run (argv=None):
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)
     
-    user = arg_parser.get(scripting.options.user, options)
+    user = arg_parser.get(scripting.options.user, options, arg="user")
     
     if options.list:
         # list options:
@@ -93,15 +93,15 @@ def run (argv=None):
         )
         
         try:
-            kwargs['allocation'] = arg_parser.get(scripting.options.allocation, options)
+            kwargs['allocation'] = arg_parser.get(scripting.options.allocation, options, arg="allocation")
         except MissingArgument:
             if not (options.project and options.resource):
                 raise
-            kwargs['time'] = arg_parser.get(scripting.options.time, options)
+            kwargs['time'] = arg_parser.get(scripting.options.time, options, arg="time")
             arg_parser.verify_empty()
             liens = Lien.distributed(options.project, options.resource, **kwargs)
         else:
-            kwargs['time'] = arg_parser.get(scripting.options.time, options)
+            kwargs['time'] = arg_parser.get(scripting.options.time, options, arg="time")
             arg_parser.verify_empty()
             return [Lien(**kwargs)]
         

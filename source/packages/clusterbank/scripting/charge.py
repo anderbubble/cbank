@@ -44,7 +44,7 @@ def run (argv=None):
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)
     
-    user = arg_parser.get(scripting.options.user, options)
+    user = arg_parser.get(scripting.options.user, options, arg="user")
     
     if options.list:
         # list options:
@@ -87,8 +87,8 @@ def run (argv=None):
         # comment -- comment for the charge
         
         kwargs = dict(
-            liens = arg_parser.get(scripting.options.liens, options),
-            time = arg_parser.get(scripting.options.time, options),
+            liens = arg_parser.get(scripting.options.liens, options, arg="liens"),
+            time = arg_parser.get(scripting.options.time, options, arg="time"),
             poster = user,
         )
         

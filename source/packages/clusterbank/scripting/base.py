@@ -217,7 +217,7 @@ class ArgumentParser (object):
         self.prog = prog
 
     
-    def get (self, option=None, values=None):
+    def get (self, option=None, values=None, **kwargs):
         
         """Get the next argument.
         
@@ -242,7 +242,7 @@ class ArgumentParser (object):
         try:
             value = self.args.pop(0)
         except IndexError:
-            raise MissingArgument("%s: error: missing argument" % self.prog)
+            raise MissingArgument("%s: error: missing argument: %s" % (self.prog, kwargs.get("arg", "unknown")))
         # Try to validate the argument using an option.
         if option is not None:
             try:

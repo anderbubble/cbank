@@ -45,7 +45,7 @@ def run (argv=None):
     options, args = parser.parse_args(args=argv[1:])
     arg_parser = scripting.ArgumentParser(args)
     
-    user = arg_parser.get(scripting.options.user, options)
+    user = arg_parser.get(scripting.options.user, options, arg="user")
     
     if options.list:
         
@@ -88,8 +88,8 @@ def run (argv=None):
         
         kwargs = dict(
             poster = user,
-            charge = arg_parser.get(scripting.options.charge, options),
-            time = arg_parser.get(scripting.options.time, options),
+            charge = arg_parser.get(scripting.options.charge, options, arg="charge"),
+            time = arg_parser.get(scripting.options.time, options, arg="time"),
         )
         
         arg_parser.verify_empty()
