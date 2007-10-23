@@ -86,34 +86,26 @@ def run (argv=None):
         # resource -- resource of the lien (required for smart lien)
         # time -- maximum charge of the lien
         # comment -- comment for the lien
+        
+        kwargs = dict(
+            poster = user,
+            comment = options.comment,
+        )
+        
         try:
-            allocation = arg_parser.get(scripting.options.allocation, options)
+            kwargs['allocation'] = arg_parser.get(scripting.options.allocation, options)
         except MissingArgument:
             if not (options.project and options.resource):
                 raise
-            allocation = None
+            kwargs['time'] = arg_parser.get(scripting.options.time, options)
+            arg_parser.verify_empty()
+            liens = Lien.distributed(options.project, options.resource, **kwargs)
+        else:
+            kwargs['time'] = arg_parser.get(scripting.options.time, options)
+            arg_parser.verify_empty()
+            return [Lien(**kwargs)]
         
-        time = arg_parser.get(scripting.options.time, options)
-        
-        arg_parser.verify_empty()
-        
-        kwargs = dict(
-            project = options.project,
-            resource = options.resource,
-            allocation = allocation,
-            time = time,
-        )
-        if options.comment is not None:
-            kwargs['comment'] = options.comment
-        
-        lien = user.lien(**kwargs)
-        
-        clusterbank.model.Session.flush()
         clusterbank.model.Session.commit()
-        
-        try:
-            liens = list(lien)
-        except TypeError:
-            liens = [lien]
+        clusterbank.model.Session.flush()
         
         return liens

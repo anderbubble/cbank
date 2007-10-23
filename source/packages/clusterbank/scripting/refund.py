@@ -86,21 +86,18 @@ def run (argv=None):
         # time -- amount of refund (required)
         # comment -- reason for refund
         
-        charge = arg_parser.get(scripting.options.charge, options)
-        time = arg_parser.get(scripting.options.time, options)
-        
         kwargs = dict(
-            charge = charge,
-            time = time,
+            poster = user,
+            charge = arg_parser.get(scripting.options.charge, options),
+            time = arg_parser.get(scripting.options.time, options),
         )
         
-        # At this point, no more arguments are used.
         arg_parser.verify_empty()
         
         if options.comment is not None:
             kwargs['comment'] = options.comment
         
-        refund = user.refund(**kwargs)
+        refund = Refund(**kwargs)
         
         clusterbank.model.Session.flush()
         clusterbank.model.Session.commit()

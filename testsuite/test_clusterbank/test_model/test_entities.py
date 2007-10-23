@@ -56,96 +56,6 @@ class TestUser (EntityTester):
             assert self.user.member_of(Project.by_name(project_name))
         for project_name in ["brian", "circus"]:
             assert not self.user.member_of(Project.by_name(project_name))
-    
-    def test_request (self):
-        request = self.user.request()
-        assert isinstance(request, Request)
-    
-    def test_allocate (self):
-        request = self.user.request()
-        allocation = self.user.allocate(request=request)
-        assert isinstance(allocation, Allocation)
-    
-    def test_allocate_credit (self):
-        credit = self.user.allocate_credit()
-        assert isinstance(credit, CreditLimit)
-    
-    def test_lien (self):
-        request = self.user.request()
-        allocation = self.user.allocate(request=request)
-        lien = self.user.lien(allocation=allocation)
-        assert isinstance(lien, Lien)
-    
-    def test_smart_lien (self):
-        request = self.user.request(
-            project = self.user.projects[0],
-            resource = Resource.by_name("spam"),
-            time = 1024,
-        )
-        allocation1 = self.user.allocate(
-            request = request,
-            start = datetime.now(),
-            expiration = datetime.now() + timedelta(days=1),
-            time = 512,
-        )
-        allocation2 = self.user.allocate(
-            request = request,
-            start = datetime.now(),
-            expiration = datetime.now() + timedelta(days=1),
-            time = 512,
-        )
-        
-        liens = self.user.lien(
-            project = request.project,
-            resource = request.resource,
-            time = 768,
-        )
-        assert len(liens) == 2
-        assert sum([lien.time for lien in liens]) == 768
-    
-    def test_charge (self):
-        request = self.user.request()
-        allocation = self.user.allocate(request=request)
-        lien = self.user.lien(allocation=allocation)
-        charge = self.user.charge(lien=lien)
-        assert isinstance(charge, Charge)
-    
-    def test_charge_multiple_liens (self):
-        request = self.user.request(
-            project = self.user.projects[0],
-            resource = Resource.by_name("spam"),
-            time = 1024,
-        )
-        allocation1 = self.user.allocate(
-            request = request,
-            start = datetime.now(),
-            expiration = datetime.now() + timedelta(days=1),
-            time = 512,
-        )
-        allocation2 = self.user.allocate(
-            request = request,
-            start = datetime.now(),
-            expiration = datetime.now() + timedelta(days=1),
-            time = 512,
-        )
-        
-        liens = self.user.lien(
-            project = request.project,
-            resource = request.resource,
-            time = 1024,
-        )
-        
-        charges = self.user.charge(liens=liens, time=768)
-        assert len(charges) == 2
-        assert sum([charge.time for charge in charges]) == 768
-    
-    def test_refund (self):
-        request = self.user.request()
-        allocation = self.user.allocate(request=request)
-        lien = self.user.lien(allocation=allocation)
-        charge = self.user.charge(lien=lien)
-        refund = self.user.refund(charge=charge)
-        assert isinstance(refund, Refund)
 
 
 class TestProject (EntityTester):
@@ -177,14 +87,16 @@ class TestProject (EntityTester):
     
     def test_time_allocated (self):
         spam = Resource.by_name("spam")
-        request = self.user.request(
+        request = Request(
+            poster = self.user,
             project = self.project,
             resource = spam,
             time = 1024,
         )
         
         assert self.project.time_allocated(spam) == 0
-        allocation = self.user.allocate(
+        allocation = Allocation(
+            poster = self.user,
             request = request,
             time = 1024,
             start = datetime.now(),
@@ -194,12 +106,14 @@ class TestProject (EntityTester):
     
     def test_time_liened (self):
         spam = Resource.by_name("spam")
-        request = self.user.request(
+        request = Request(
+            poster = self.user,
             project = self.project,
             resource = spam,
             time = 1024,
         )
-        allocation = self.user.allocate(
+        allocation = Allocation(
+            poster = self.user,
             request = request,
             time = 1024,
             start = datetime.now(),
@@ -207,62 +121,68 @@ class TestProject (EntityTester):
         )
         
         assert self.project.time_liened(spam) == 0
-        lien = self.user.lien(allocation=allocation, time=512)
+        lien = Lien(poster=self.user, allocation=allocation, time=512)
         assert self.project.time_liened(spam) == 512
-        charge = self.user.charge(lien=lien, time=256)
+        charge = Charge(poster=self.user, lien=lien, time=256)
         assert self.project.time_liened(spam) == 0
     
     def test_time_charged (self):
         spam = Resource.by_name("spam")
-        request = self.user.request(
+        request = Request(
+            poster = self.user,
             project = self.project,
             resource = spam,
             time = 1024,
         )
-        allocation = self.user.allocate(
+        allocation = Allocation(
+            poster = self.user,
             request = request,
             time = 1024,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
         )
-        lien = self.user.lien(
+        lien = Lien(
+            poster = self.user,
             allocation = allocation,
             time = 512,
         )
         
         assert self.project.time_charged(spam) == 0
-        charge = self.user.charge(lien=lien, time=256)
+        charge = Charge(poster=self.user, lien=lien, time=256)
         assert self.project.time_charged(spam) == 256
-        refund = self.user.refund(charge=charge, time=64)
+        refund = Refund(poster=self.user, charge=charge, time=64)
         assert self.project.time_charged(spam) == 192
     
     def test_time_available (self):
         spam = Resource.by_name("spam")
-        request = self.user.request(
+        request = Request(
+            poster = self.user,
             project = self.project,
             resource = spam,
             time = 1024,
         )
         
         assert self.project.time_available(spam) == 0
-        allocation = self.user.allocate(
+        allocation = Allocation(
+            poster = self.user,
             request = request,
             time = 512,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
         )
         assert self.project.time_available(spam) == 512
-        lien = self.user.lien(allocation=allocation, time=128)
+        lien = Lien(poster=self.user, allocation=allocation, time=128)
         assert self.project.time_available(spam) == 384
-        charge = self.user.charge(lien=lien, time=64)
+        charge = Charge(poster=self.user, lien=lien, time=64)
         assert self.project.time_available(spam) == 448
-        refund = self.user.refund(charge=charge, time=16)
+        refund = Refund(poster=self.user, charge=charge, time=16)
         assert self.project.time_available(spam) == 464
     
     def test_credit_limit (self):
         spam = Resource.by_name("spam")
         assert self.project.credit_limit(spam) == 0
-        credit = self.user.allocate_credit(
+        credit = CreditLimit(
+            poster = self.user,
             project = self.project,
             resource = spam,
             time = 128,

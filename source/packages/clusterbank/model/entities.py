@@ -106,6 +106,7 @@ class User (Entity):
         """Return the name of the upstream user."""
         upstream_user = upstream.User.by_id(self.id)
         return upstream_user.name
+    
     name = property(_get_name)
     
     def _get_projects (self):
@@ -116,6 +117,7 @@ class User (Entity):
             for name in (project.name for project in upstream_projects)
         ]
         return local_projects
+    
     projects = property(_get_projects)
     
     def member_of (self, project):
@@ -126,161 +128,6 @@ class User (Entity):
         upstream_user = upstream.User.by_id(self.id)
         upstream_project = upstream.Project.by_id(project.id)
         return upstream_project in upstream_user.projects
-    
-    def request (self, **kwargs):
-        """Request time on a resource.
-        
-        Keyword arguments are passed to the Request constructor.
-        """
-        return Request(poster=self, **kwargs)
-    
-    def allocate (self, **kwargs):
-        """Allocate time on a resource in response to a request.
-        
-        Keyword arguments are passed to the Request constructor.
-        """
-        return Allocation(poster=self, **kwargs)
-    
-    def allocate_credit (self, **kwargs):
-        """Post a credit limit for a project.
-        
-        Keyword arguments are passed to the Request constructor.
-        """
-        return CreditLimit(poster=self, **kwargs)
-    
-    def lien (self, **kwargs):
-        
-        """Enter a lien against an allocation.
-        
-        Liens are explicitly entered against allocations, but a user
-        can also post a lien (or liens) against a project's aggregate allocation
-        by passing in a project and resource keyword argument and
-        not specifying an allocation. In this case, a list of liens will be
-        returned, rather than a single lien.
-        
-        When requesting this kind of smart lien, time must also be specified.
-        
-        Keyword arguments:
-        project -- project to post lien against
-        resource -- resource to post lien for
-        time -- time to secure in the lien
-        
-        Additional keyword arguments are passed to the Request constructor.
-        """
-        
-        if kwargs.get("allocation") is not None:
-            kwargs.pop('project', None)
-            kwargs.pop('resource', None)
-            lien = Lien(poster=self, **kwargs)
-            return lien
-        
-        kwargs.pop("allocation", None)
-        
-        project = kwargs.pop('project')
-        resource = kwargs.pop('resource')
-        time = kwargs.pop('time')
-        allocations = Allocation.query.join("request").filter_by(project=project, resource=resource)
-        allocations = allocations.order_by([Allocation.c.expiration, Allocation.c.datetime])
-        allocations = (
-            allocation for allocation in allocations
-            if allocation.active
-        )
-        
-        # Post a lien to each allocation until all time has been liened.
-        liens = list()
-        allocation = None
-        for allocation in allocations:
-            # If the remaining time will fit into the allocation,
-            # post a lien for it. Otherwise, post a lien for whatever
-            # The allocation will support.
-            if allocation.time_available >= time:
-                lien = self.lien(allocation=allocation, time=time, **kwargs)
-            else:
-                lien = self.lien(allocation=allocation, time=allocation.time_available, **kwargs)
-            liens.append(lien)
-            time -= lien.time
-            if time <= 0:
-                break
-        
-        # If there is still time to be liened, add it to the last lien.
-        # This allows liens to be posted that put the project negative.
-        if time > 0:
-            try:
-                liens[-1].time += time
-            except IndexError:
-                # No lien has yet been created. Post a lien on the last
-                # Allocation used.
-                if allocation is None:
-                    raise self.NotPermitted("There are no active allocations for %s on %s." % (project, resource))
-                lien = self.lien(allocation=allocation, time=time, **kwargs)
-                liens.append(lien)
-        return liens
-    
-    def charge (self, **kwargs):
-        
-        """Charge time against a lien.
-        
-        Charges are usually posted against a single lien. However, if liens is specified
-        as a list of liens to charge against, (and lien is left unspecified) the charge
-        will be spread across the liens. Time must be spefied in this case.
-        
-        Note that liens not required to fulfill the charge will still be charged 0 time,
-        to deactivate the lien.
-        
-        Keyword arguments:
-        liens -- liens to which the charge can be applied
-        time -- time to charge
-        
-        Additional keyword arguments are passed to the Request constructor.
-        """
-        
-        # If the charge is for a specific lien, post the charge.
-        if kwargs.get("lien") is not None:
-            kwargs.pop("liens", None)
-            return Charge(poster=self, **kwargs)
-        
-        kwargs.pop("lien", None)
-        
-        # No specific lien has been given. Post a charge to each lien
-        # in the pool until all time has been charged.
-        charges = list()
-        time = kwargs.pop("time")
-        for lien in kwargs.pop("liens"):
-            # If the remaining time will fit into the lien, post a
-            # Charge for all of it. Otherwise, post a charge for what
-            # the lien can support.
-            if lien.time_available >= time:
-                charge = self.charge(lien=lien, time=time, **kwargs)
-            else:
-                charge = self.charge(lien=lien, time=lien.time_available, **kwargs)
-            charges.append(charge)
-            time -= charge.time
-            # Iterate through all liens to charge 0 on unused liens.
-            # Charging 0 marks the lien as closed, and frees the liened
-            # time.
-            #if time <= 0:
-            #    break
-        
-        # If there is time remaining, add it to the last charge.
-        if time > 0:
-            try:
-                charges[-1].time += time
-            except IndexError:
-                # No charges have yet been made. Charge the last lien.
-                try:
-                    charge = self.charge(lien=lien, time=time, **kwargs)
-                except NameError:
-                    # There was no lien.
-                    raise self.NotPermitted("No liens are available to be charged.")
-                charges.append(charge)
-        return charges
-    
-    def refund (self, **kwargs):
-        """Refund time from a charge.
-        
-        Keyword arguments are passed to the Request constructor.
-        """
-        return Refund(poster=self, **kwargs)
 
 
 class Project (Entity):
@@ -325,6 +172,7 @@ class Project (Entity):
         """Return the name of the upstream project."""
         upstream_project = upstream.Project.by_id(self.id)
         return upstream_project.name
+    
     name = property(_get_name)
     
     def _get_users (self):
@@ -335,6 +183,7 @@ class Project (Entity):
             for name in (user.name for user in upstream_users)
         ]
         return local_users
+    
     users = property(_get_users)
     
     def has_member (self, user):
@@ -451,4 +300,5 @@ class Resource (Entity):
         """Return the name of the upstream resource."""
         upstream_resource = upstream.Resource.by_id(self.id)
         return upstream_resource.name
+    
     name = property(_get_name)

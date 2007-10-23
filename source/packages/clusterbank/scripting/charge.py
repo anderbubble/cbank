@@ -86,12 +86,10 @@ def run (argv=None):
         # time -- amount of time to charge (required)
         # comment -- comment for the charge
         
-        liens = arg_parser.get(scripting.options.liens, options)
-        time = arg_parser.get(scripting.options.time, options)
-        
         kwargs = dict(
-            liens = liens,
-            time = time,
+            liens = arg_parser.get(scripting.options.liens, options),
+            time = arg_parser.get(scripting.options.time, options),
+            poster = user,
         )
         
         # At this point, no more arguments are used.
@@ -100,9 +98,9 @@ def run (argv=None):
         if options.comment is not None:
             kwargs['comment'] = options.comment
         
-        charges = user.charge(**kwargs)
+        charges = Charge.distributed(**kwargs)
         
-        clusterbank.model.Session.flush()
         clusterbank.model.Session.commit()
+        clusterbank.model.Session.flush()
         
         return charges

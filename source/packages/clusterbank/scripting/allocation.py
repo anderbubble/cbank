@@ -5,7 +5,7 @@ import clusterbank
 import clusterbank.model
 from clusterbank import scripting
 import clusterbank.scripting.options
-from clusterbank.model import Request, Allocation
+from clusterbank.model import Request, Allocation, CreditLimit
 from clusterbank.scripting import \
     MissingArgument, InvalidArgument, ExtraArguments
 
@@ -98,6 +98,7 @@ def run (argv=None):
         
         # Create the new allocation.
         kwargs = dict(
+            poster = user,
             request = request,
             start = start,
             expiration = expiration,
@@ -105,18 +106,19 @@ def run (argv=None):
         if options.time is not None:
             kwargs['time'] = options.time
         
-        allocation = user.allocate(**kwargs)
+        allocation = Allocation(**kwargs)
         
         # Set up a line of credit.
         if options.credit is not None:
             kwargs = dict(
+                poster = user,
                 resource = allocation.resource,
                 project = allocation.project,
                 start = allocation.start,
                 comment = allocation.comment,
                 time = options.credit,
             )
-            credit_limit = user.allocate_credit(**kwargs)
+            credit_limit = CreditLimit(**kwargs)
         
         clusterbank.model.Session.flush()
         clusterbank.model.Session.commit()

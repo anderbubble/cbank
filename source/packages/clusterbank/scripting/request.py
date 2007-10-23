@@ -88,6 +88,7 @@ def run (argv=None):
         arg_parser.verify_empty()
         
         kwargs = dict(
+            poster = user,
             project = project,
             resource = resource,
             time = time,
@@ -97,7 +98,7 @@ def run (argv=None):
         if options.comment is not None:
             kwargs['comment'] = options.comment
         
-        request = user.request(**kwargs)
+        request = Request(**kwargs)
         
         clusterbank.model.Session.flush()
         clusterbank.model.Session.commit()

@@ -1,3 +1,7 @@
+import warnings
+from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
+
+from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker, relation, synonym
 
 from clusterbank.model.metadata import \
@@ -15,6 +19,19 @@ __all__ = [
     "User", "Project", "Resource",
     "CreditLimit", "Request", "Allocation", "Lien", "Charge", "Refund",
 ]
+
+config = SafeConfigParser()
+config.read(["/etc/clusterbank.conf"])
+
+try:
+    uri = config.get("main", "database")
+except (NoSectionError, NoOptionError):
+    warnings.warn("no database specified", ImportWarning)
+else:
+    try:
+        metadata.bind = create_engine(uri)
+    except Exception, e:
+        warnings.warn("invalid database: %s (%s)" % (uri, e), ImportWarning)
 
 Session = scoped_session(sessionmaker(transactional=True, autoflush=True))
 
@@ -63,7 +80,8 @@ Session.mapper(Request, requests_table, properties=dict(
     _poster = relation(User, backref="requests"),
     poster = synonym("_poster"),
     datetime = requests_table.c.datetime,
-    time = requests_table.c.time,
+    _time = requests_table.c.time,
+    time = synonym("_time"),
     comment = requests_table.c.comment,
     start = requests_table.c.start,
     allocations = relation(Allocation, backref="request"),
@@ -105,12 +123,13 @@ Session.mapper(Charge, charges_table, properties=dict(
     _time = charges_table.c.time,
     time = synonym("_time"),
     comment = charges_table.c.comment,
-    refunds = relation(Refund, backref="charge"),
+    refunds = relation(Refund, backref="_charge"),
 ))
 
 Session.mapper(Refund, refunds_table, properties=dict(
     id = refunds_table.c.id,
-    charge = relation(Charge, backref="refunds"),
+    _charge = relation(Charge, backref="refunds"),
+    charge = synonym("_charge"),
     _poster = relation(User, backref="refunds"),
     poster = synonym("_poster"),
     datetime = refunds_table.c.datetime,

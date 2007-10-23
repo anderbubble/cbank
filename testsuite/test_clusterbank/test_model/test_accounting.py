@@ -139,7 +139,8 @@ class TestRequest (AccountingTester):
             time = 2000,
         )
         assert request.open
-        allocation = self.user.allocate(
+        allocation = Allocation(
+            poster = self.user,
             request = request,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
@@ -231,6 +232,27 @@ class TestLien (AccountingTester):
             time = 1200,
         )
     
+    def test_distributed (self):
+        allocation1 = self.allocation
+        allocation1.time = 600
+        allocation2 = Allocation(
+            poster = self.user,
+            request = self.request,
+            start = datetime.now(),
+            expiration = datetime.now() + timedelta(days=1),
+            time = 600,
+        )
+        
+        self.project.users[0].can_lien = True
+        liens = Lien.distributed(
+            poster = self.project.users[0],
+            project = self.request.project,
+            resource = self.request.resource,
+            time = 900,
+        )
+        assert len(liens) == 2
+        assert sum([lien.time for lien in liens]) == 900
+    
     def test_permissions_notmember (self):
         try:
             lien = Lien(
@@ -282,7 +304,7 @@ class TestLien (AccountingTester):
                 poster = user,
                 time = 900,
             )
-        except self.lien.poster.NotPermitted:
+        except user.NotPermitted:
             assert not "Didn't permit lien with membership and can_lien."
     
     def test_convenience_properties (self):
@@ -305,9 +327,9 @@ class TestLien (AccountingTester):
             time = 900,
         )
         assert lien.effective_charge == 0
-        charge = self.user.charge(lien=lien, time=300)
+        charge = Charge(poster=self.user, lien=lien, time=300)
         assert lien.effective_charge == 300
-        refund = self.user.refund(charge=charge, time=100)
+        refund = Refund(poster=self.user, charge=charge, time=100)
         assert lien.effective_charge == 300 - 100
     
     def test_time_available (self):
@@ -321,9 +343,9 @@ class TestLien (AccountingTester):
             time = 900,
         )
         assert lien.time_available == 900
-        charge = self.user.charge(lien=lien, time=300)
+        charge = Charge(poster=self.user, lien=lien, time=300)
         assert lien.time_available == 900 - 300
-        refund = self.user.refund(charge=charge, time=100)
+        refund = Refund(poster=self.user, charge=charge, time=100)
         assert lien.time_available == 900 - (300 - 100)
     
     def test_lien_not_negative (self):
@@ -362,7 +384,7 @@ class TestLien (AccountingTester):
             time = 900,
         )
         assert lien.open
-        charge = self.user.charge(lien=lien, time=300)
+        charge = Charge(poster=self.user, lien=lien, time=300)
         assert not lien.open
 
 
@@ -392,6 +414,20 @@ class TestCharge (AccountingTester):
             allocation = self.allocation,
             time = 900,
         )
+    
+    def test_distributed (self):
+        lien1 = self.lien
+        lien1.time = 450
+        lien2 = Lien(
+            allocation = self.allocation,
+            poster = self.project.users[0],
+            time = 450,
+        )
+        
+        self.user.can_charge = True
+        charges = Charge.distributed(poster=self.user, liens=[lien1, lien2], time=600)
+        assert len(charges) == 2
+        assert sum([charge.time for charge in charges]) == 600
     
     def test_permissions (self):
         try:
@@ -436,7 +472,7 @@ class TestCharge (AccountingTester):
             time = 300,
         )
         assert charge.effective_charge == 300
-        refund = self.user.refund(charge=charge, time=100)
+        refund = Refund(poster=self.user, charge=charge, time=100)
         assert charge.effective_charge == 300 - 100
     
     def test_convenience_properties (self):
