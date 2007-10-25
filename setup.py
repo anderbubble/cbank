@@ -21,8 +21,8 @@ setup(
     zip_safe = True,
     scripts = [os.path.join("source", "scripts", script)
                for script in ["cb-install", "cb-admin", "cb-request",
-                              "cb-allocate", "cb-lien", "cb-refund",
-                              "cb-request"]],
+                              "cb-allocate", "cb-lien", "cb-charge",
+                              "cb-refund"]],
     provides = ["clusterbank"],
     requires = ["sqlalchemy"],
     install_requires = ["SQLAlchemy>=0.4"],
