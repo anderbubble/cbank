@@ -13,8 +13,8 @@ def setup ():
     upstream.User = userbase.User
     upstream.Project = userbase.Project
     upstream.Resource = userbase.Resource
-    userbase.model.metadata.bind = create_engine("sqlite:///:memory:")
-    userbase.model.metadata.create_all()
+    userbase.metadata.bind = create_engine("sqlite:///:memory:")
+    userbase.metadata.create_all()
     
     monty = userbase.User(id=1, name="Monty")
     userbase.User(id=2, name="Python")
@@ -31,8 +31,8 @@ def teardown ():
     clusterbank.model.metadata.drop_all()
     clusterbank.model.metadata.bind = None
     userbase.Session.close()
-    userbase.model.metadata.drop_all()
-    userbase.model.metadata.bind = None
+    userbase.metadata.drop_all()
+    userbase.metadata.bind = None
     del upstream.User
     del upstream.Project
     del upstream.Resource

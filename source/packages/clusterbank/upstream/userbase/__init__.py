@@ -4,33 +4,19 @@ The userbase module uses SQLAlchemy to build an interface over
 the MCS userbase database.
 """
 
-from ConfigParser import SafeConfigParser
+from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 import warnings
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, exceptions
 from sqlalchemy.orm import scoped_session, sessionmaker, relation
 
-import model
-from model import \
-    user_table, projects_table, project_members_table, resource_types_table, \
-    User, Project, Resource
+from clusterbank.upstream.userbase.metadata import \
+    metadata, user_table, projects_table, project_members_table, resource_types_table
+from clusterbank.upstream.userbase.model import User, Project, Resource
     
 __all__ = [
     "User", "Project", "Resource",
 ]
-
-config = SafeConfigParser()
-config.read(["/etc/clusterbank.conf"])
-
-try:
-    uri = config.get("userbase", "database")
-except:
-    warnings.warn("no userbase database configured", ImportWarning)
-else:
-    try:
-        model.metadata.bind = create_engine(uri)
-    except:
-        warnings.warn("invalid upstream database: %s" % uri, ImportWarning)
 
 Session = scoped_session(sessionmaker(transactional=True))
 
@@ -50,3 +36,17 @@ Session.mapper(Resource, resource_types_table, properties=dict(
     id = resource_types_table.c.resource_id,
     name = resource_types_table.c.resource_name,
 ))
+
+
+config = SafeConfigParser()
+config.read(["/etc/clusterbank.conf"])
+
+try:
+    uri = config.get("userbase", "database")
+except (NoSectionError, NoOptionError):
+    warnings.warn("no userbase database configured", ImportWarning)
+else:
+    try:
+        metadata.bind = create_engine(uri)
+    except Exception, e:
+        warnings.warn("unable to connect to %s (%s)" % (uri, e), ImportWarning)

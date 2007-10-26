@@ -1,4 +1,4 @@
-from clusterbank.upstream.userbase.model import metadata, User, Project, Resource
+from clusterbank.upstream.userbase import metadata, Session, User, Project, Resource
 from clusterbank.upstream.userbase import Session
 
 
