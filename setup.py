@@ -1,29 +1,28 @@
 #!/usr/bin/env python
 
 import os
+
 try:
-    from setuptools import setup
+    from setuptools import setup, find_packages
 except ImportError:
-    from distutils.core import setup
+    from ez_setup import use_setuptools
+    use_setuptools()
+    from setuptools import setup, find_packages
 
 setup(
-    name = "clusterbank",
+    name="clusterbank",
     version = "0.2.x",
     description = "Accounting software for networked resources.",
-    author = "Jonathon Anderson",
-    author_email = "janderso@mcs.anl.gov",
+    author="Jonathon Anderson",
+    author_email="janderso@alcf.anl.gov",
     url = "http://trac.mcs.anl.gov/projects/clusterbank",
-    package_dir = {'': os.path.join("source", "packages")},
-    packages = ["clusterbank", "clusterbank.model",
-                "clusterbank.scripting",
-                "clusterbank.upstream",
-                "clusterbank.upstream.userbase"],
+    install_requires=["SQLAlchemy>=0.4.0"],
+    packages=find_packages("source/packages", exclude=['ez_setup']),
+    package_dir = {"":"source/packages"},
+    test_suite="nose.collector",
     zip_safe = True,
     scripts = [os.path.join("source", "scripts", script)
-               for script in ["cb-install", "cb-admin", "cb-request",
-                              "cb-allocate", "cb-lien", "cb-charge",
-                              "cb-refund"]],
-    provides = ["clusterbank"],
-    requires = ["sqlalchemy"],
-    install_requires = ["SQLAlchemy>=0.4"],
+               for script in ["cb-install", "cb-admin",
+                              "cb-request", "cb-allocate", "cb-lien",
+                              "cb-charge", "cb-refund"]],
 )
