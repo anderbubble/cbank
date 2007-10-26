@@ -25,28 +25,6 @@ def verify_configured ():
             raise Exception("upstream is not properly configured")
 
 
-class OptionParser (optparse.OptionParser):
-    """Extension of optparse.Options for declarative definition."""
-    
-    def __init__ (self, *args, **kwargs):
-        attributes = dict()
-        for attribute in ("version", "usage", "description"):
-            try:
-                value = getattr(self, "__%s__" % attribute)
-            except AttributeError:
-                pass
-            else:
-                attributes[attribute] = value
-        attributes.update(**kwargs)
-        optparse.OptionParser.__init__(self, *args, **attributes)
-        try:
-            defaults = getattr(self, "__defaults__")
-        except AttributeError:
-            pass
-        else:
-            self.set_defaults(**defaults)
-
-
 class Option (optparse.Option):
     """Extension of optparse.Options for clusterbank parsing.
     

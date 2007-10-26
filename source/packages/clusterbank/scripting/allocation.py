@@ -1,55 +1,47 @@
 import sys
 import os
+from optparse import OptionParser
 
 import clusterbank
 import clusterbank.model
-from clusterbank import scripting
-import clusterbank.scripting.options
 from clusterbank.model import Request, Allocation, CreditLimit
-from clusterbank.scripting import \
-    MissingArgument, InvalidArgument, ExtraArguments
+from clusterbank.scripting import options, verify_configured, \
+    ArgumentParser, MissingArgument, InvalidArgument, ExtraArguments
 
 
-class OptionParser (scripting.OptionParser):
-    
-    standard_option_list = [
-        scripting.options.list.having(help="list active allocations"),
-        scripting.options.user.having(help="allocate as or list allocations for USER"),
-        scripting.options.project.having(help="list allocations for PROJECT"),
-        scripting.options.resource.having(help="list allocations for RESOURCE"),
-        scripting.options.request.having(help="allocate for REQUEST"),
-        scripting.options.time.having(help="allocate TIME"),
-        scripting.options.credit.having(help="PROJECT can use up to LIMIT negative time"),
-        scripting.options.start.having(help="TIME becomes available on DATE"),
-        scripting.options.expiration.having(help="TIME expires on DATE"),
-        scripting.options.comment.having(help="misc. NOTES"),
-    ]
-    
-    __defaults__ = dict(
-        list = False,
-    )
-    
-    __version__ = clusterbank.__version__
-    __usage__ = os.linesep.join(["",
+parser = OptionParser(
+    version = clusterbank.__version__,
+    usage = os.linesep.join(["",
         "    %prog <user> <request> <start> <expiration> [options]",
         "    %prog <user> --list [options]",
-    ])
-    __description__ = "Allocate time on a resource for a project."
+    ]),
+    description = "Allocate time on a resource for a project.",
+)
+parser.add_option(options.list.having(help="list active allocations"))
+parser.add_option(options.user.having(help="allocate as or list allocations for USER"))
+parser.add_option(options.project.having(help="list allocations for PROJECT"))
+parser.add_option(options.resource.having(help="list allocations for RESOURCE"))
+parser.add_option(options.request.having(help="allocate for REQUEST"))
+parser.add_option(options.time.having(help="allocate TIME"))
+parser.add_option(options.credit.having(help="PROJECT can use up to LIMIT negative time"))
+parser.add_option(options.start.having(help="TIME becomes available on DATE"))
+parser.add_option(options.expiration.having(help="TIME expires on DATE"))
+parser.add_option(options.comment.having(help="misc. NOTES"))
+parser.set_defaults(list=False)
 
 
 def run (argv=None):
     if argv is None:
         argv = sys.argv
     
-    scripting.verify_configured()
+    verify_configured()
+    parser.prog = os.path.basename(argv[0])
+    opts, args = parser.parse_args(args=argv[1:])
+    arg_parser = ArgumentParser(args)
     
-    parser = OptionParser(prog=os.path.basename(argv[0]))
-    options, args = parser.parse_args(args=argv[1:])
-    arg_parser = scripting.ArgumentParser(args)
+    user = arg_parser.get(options.user, opts, arg="user")
     
-    user = arg_parser.get(scripting.options.user, options, arg="user")
-    
-    if options.list:
+    if opts.list:
         # list options:
         # user -- user whose project to list allocations for (required)
         # project -- project to list allocations for
@@ -61,19 +53,19 @@ def run (argv=None):
         
         allocations = Allocation.query
         
-        if options.request:
-            allocations = allocations.filter_by(request=options.request)
+        if opts.request:
+            allocations = allocations.filter_by(request=opts.request)
         
         allocations = allocations.join("request")
         
-        if options.project:
-            allocations = allocations.filter_by(project=options.project)
+        if opts.project:
+            allocations = allocations.filter_by(project=opts.project)
         else:
             project_ids = [project.id for project in user.projects]
             allocations = allocations.filter(Request.c.project_id.in_(project_ids))
         
-        if options.resource:
-            allocations = allocations.filter_by(resource=options.resource)
+        if opts.resource:
+            allocations = allocations.filter_by(resource=opts.resource)
         
         allocations = (
             allocation for allocation in allocations
@@ -90,9 +82,9 @@ def run (argv=None):
         # expiration -- specify an expiration date (required)
         # comment -- comment of the allocation
         
-        request = arg_parser.get(scripting.options.request, options, arg="request")
-        start = arg_parser.get(scripting.options.start, options, arg="start")
-        expiration = arg_parser.get(scripting.options.expiration, options, arg="expiration")
+        request = arg_parser.get(options.request, opts, arg="request")
+        start = arg_parser.get(options.start, opts, arg="start")
+        expiration = arg_parser.get(options.expiration, opts, arg="expiration")
         
         arg_parser.verify_empty()
         
@@ -103,20 +95,20 @@ def run (argv=None):
             start = start,
             expiration = expiration,
         )
-        if options.time is not None:
-            kwargs['time'] = options.time
+        if opts.time is not None:
+            kwargs['time'] = opts.time
         
         allocation = Allocation(**kwargs)
         
         # Set up a line of credit.
-        if options.credit is not None:
+        if opts.credit is not None:
             kwargs = dict(
                 poster = user,
                 resource = allocation.resource,
                 project = allocation.project,
                 start = allocation.start,
                 comment = allocation.comment,
-                time = options.credit,
+                time = opts.credit,
             )
             credit_limit = CreditLimit(**kwargs)
         

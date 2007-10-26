@@ -1,51 +1,39 @@
 import sys
 import os
+from optparse import OptionParser
 
 import clusterbank
 import clusterbank.model
-from clusterbank import scripting
-import clusterbank.scripting.options
-from clusterbank.scripting import \
-    MissingArgument, InvalidArgument, ExtraArguments
+from clusterbank.scripting import options, verify_configured, \
+    ArgumentParser, MissingArgument, InvalidArgument, ExtraArguments
 
-
-class OptionParser (scripting.OptionParser):
-    
-    standard_option_list = [
-        scripting.options.user.having(help="change or list PERMISSIONS for USER"),
-        scripting.options.grant.having(help="grant PERMISSIONS"),
-        scripting.options.revoke.having(help="revoke PERMISSIONS"),
-        scripting.options.list.having(help="list PERMISSIONS available for USER"),
-    ]
-
-    __defaults__ = dict(
-        grant = None,
-        revoke = None,
-        list = False,
-    )
-    
-    __version__ = clusterbank.__version__
-    __usage__ = "%prog <user> [OPTIONS]"
-    __description__ = "Grant or revoke PERMISSIONS for a user."
-
+parser = OptionParser(
+    version = clusterbank.__version__,
+    usage = "%prog <user> [OPTIONS]",
+    description = "Grant or revoke PERMISSIONS for a user."
+)
+parser.add_option(options.user.having(help="change or list PERMISSIONS for USER"))
+parser.add_option(options.grant.having(help="grant PERMISSIONS"))
+parser.add_option(options.revoke.having(help="revoke PERMISSIONS"))
+parser.add_option(options.list.having(help="list PERMISSIONS available for USER"))
+parser.set_defaults(grant=None, revoke=None, list=False)
 
 def run (argv=None):
     if argv is None:
         argv = sys.argv
     
-    scripting.verify_configured()
+    verify_configured()
+    parser.prog = os.path.basename(argv[0])
+    opts, args = parser.parse_args(args=argv[1:])
+    arg_parser = ArgumentParser(args)
     
-    parser = OptionParser(prog=os.path.basename(argv[0]))
-    options, args = parser.parse_args(args=argv[1:])
-    arg_parser = scripting.ArgumentParser(args)
+    user = arg_parser.get(options.user, opts, arg="user")
     
-    user = arg_parser.get(scripting.options.user, options, arg="user")
-    
-    if options.grant:
-        for permission in options.grant:
+    if opts.grant:
+        for permission in opts.grant:
             setattr(user, "can_" + permission, True)
-    if options.revoke:
-        for permission in options.revoke:
+    if opts.revoke:
+        for permission in opts.revoke:
             setattr(user, "can_" + permission, False)
     
     arg_parser.verify_empty()
@@ -53,7 +41,7 @@ def run (argv=None):
     clusterbank.model.Session.flush()
     clusterbank.model.Session.commit()
     
-    if options.list:
+    if opts.list:
         permissions = (
             permission for permission in ("request", "allocate", "lien", "charge", "refund")
             if getattr(user, "can_" + permission)

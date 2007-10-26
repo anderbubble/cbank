@@ -1,77 +1,68 @@
 import sys
 import os
+from optparse import OptionParser
 
 import clusterbank
 import clusterbank.model
-from clusterbank import scripting
-import clusterbank.scripting.options
 from clusterbank.model import Request, Refund
-from clusterbank.scripting import \
-    MissingArgument, InvalidArgument, ExtraArguments
+from clusterbank.scripting import options, verify_configured, \
+    ArgumentParser, MissingArgument, InvalidArgument, ExtraArguments
 
 
-class OptionParser (scripting.OptionParser):
-    
-    standard_option_list = [
-        scripting.options.list.having(help="list active refunds"),
-        scripting.options.user.having(help="post refund as USER"),
-        scripting.options.project.having(help="list refunds for PROJECT"),
-        scripting.options.resource.having(help="list refunds for RESOURCE"),
-        scripting.options.lien.having(help="list refunds under LIEN"),
-        scripting.options.charge.having(help="post or list refunds of CHARGE"),
-        scripting.options.time.having(help="refund TIME"),
-        scripting.options.comment.having(help="misc. NOTES"),
-    ]
-    
-    __defaults__ = dict(
-        list = False,
-    )
-    
-    __version__ = clusterbank.__version__
+parser = OptionParser(
+    version = clusterbank.__version__,
     usage = os.linesep.join(["",
         "    %prog <user> <charge> <time> [options]",
         "    %prog <user> --list [options]",
-    ])
-    __description__ = "Refund time previously charged against a project on a resource."
-
+    ]),
+    description = "Refund time previously charged against a project on a resource.",
+)
+parser.add_option(options.list.having(help="list active refunds"))
+parser.add_option(options.user.having(help="post refund as USER"))
+parser.add_option(options.project.having(help="list refunds for PROJECT"))
+parser.add_option(options.resource.having(help="list refunds for RESOURCE"))
+parser.add_option(options.lien.having(help="list refunds under LIEN"))
+parser.add_option(options.charge.having(help="post or list refunds of CHARGE"))
+parser.add_option(options.time.having(help="refund TIME"))
+parser.add_option(options.comment.having(help="misc. NOTES"))
+parser.set_defaults(list=False)
 
 def run (argv=None):
     if argv is None:
         argv = sys.argv
     
-    scripting.verify_configured()
+    verify_configured()
+    parser.prog = os.path.basename(argv[0])
+    opts, args = parser.parse_args(args=argv[1:])
+    arg_parser = ArgumentParser(args)
     
-    parser = OptionParser(prog=os.path.basename(argv[0]))
-    options, args = parser.parse_args(args=argv[1:])
-    arg_parser = scripting.ArgumentParser(args)
+    user = arg_parser.get(options.user, opts, arg="user")
     
-    user = arg_parser.get(scripting.options.user, options, arg="user")
-    
-    if options.list:
+    if opts.list:
         
         # At this point, no more arguments are used.
         arg_parser.verify_empty()
         
         refunds = Refund.query
         
-        if options.charge:
-            refunds = refunds.filter_by(charge=options.charge)
+        if opts.charge:
+            refunds = refunds.filter_by(charge=opts.charge)
         
         refunds = refunds.join("charge")
         
-        if options.lien:
-            refunds = refunds.filter_by(lien=options.lien)
+        if opts.lien:
+            refunds = refunds.filter_by(lien=opts.lien)
         
         refunds = refunds.join(["charge", "lien", "allocation", "request"])
         
-        if options.project:
-            refunds = refunds.filter_by(project=options.project)
+        if opts.project:
+            refunds = refunds.filter_by(project=opts.project)
         else:
             project_ids = [project.id for project in user.projects]
             refunds = refunds.filter(Request.c.project_id.in_(project_ids))
         
-        if options.resource:
-            refunds = refunds.filter_by(resource=options.resource)
+        if opts.resource:
+            refunds = refunds.filter_by(resource=opts.resource)
         
         refunds = (
             refund for refund in refunds
@@ -88,14 +79,14 @@ def run (argv=None):
         
         kwargs = dict(
             poster = user,
-            charge = arg_parser.get(scripting.options.charge, options, arg="charge"),
-            time = arg_parser.get(scripting.options.time, options, arg="time"),
+            charge = arg_parser.get(options.charge, opts, arg="charge"),
+            time = arg_parser.get(options.time, opts, arg="time"),
         )
         
         arg_parser.verify_empty()
         
-        if options.comment is not None:
-            kwargs['comment'] = options.comment
+        if opts.comment is not None:
+            kwargs['comment'] = opts.comment
         
         refund = Refund(**kwargs)
         
