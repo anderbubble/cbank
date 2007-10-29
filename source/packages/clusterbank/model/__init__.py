@@ -26,12 +26,12 @@ config.read(["/etc/clusterbank.conf"])
 try:
     uri = config.get("main", "database")
 except (NoSectionError, NoOptionError):
-    warnings.warn("no database specified", ImportWarning)
+    warnings.warn("no database specified", UserWarning)
 else:
     try:
         metadata.bind = create_engine(uri)
     except Exception, e:
-        warnings.warn("invalid database: %s (%s)" % (uri, e), ImportWarning)
+        warnings.warn("invalid database: %s (%s)" % (uri, e), UserWarning)
 
 Session = scoped_session(sessionmaker(transactional=True, autoflush=True))
 

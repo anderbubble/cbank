@@ -44,9 +44,9 @@ config.read(["/etc/clusterbank.conf"])
 try:
     uri = config.get("userbase", "database")
 except (NoSectionError, NoOptionError):
-    warnings.warn("no userbase database configured", ImportWarning)
+    warnings.warn("no userbase database configured", UserWarning)
 else:
     try:
         metadata.bind = create_engine(uri)
     except Exception, e:
-        warnings.warn("unable to connect to %s (%s)" % (uri, e), ImportWarning)
+        warnings.warn("unable to connect to %s (%s)" % (uri, e), UserWarning)
