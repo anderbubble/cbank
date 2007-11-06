@@ -12,13 +12,12 @@ from clusterbank.scripting import options, verify_configured, \
 parser = OptionParser(
     version = clusterbank.__version__,
     usage = os.linesep.join(["",
-        "    %prog <user> <charge> <time> [options]",
-        "    %prog <user> --list [options]",
+        "    %prog <charge> <time> [options]",
+        "    %prog --list [options]",
     ]),
     description = "Refund time previously charged against a project on a resource.",
 )
 parser.add_option(options.list.having(help="list active refunds"))
-parser.add_option(options.user.having(help="post refund as USER"))
 parser.add_option(options.project.having(help="list refunds for PROJECT"))
 parser.add_option(options.resource.having(help="list refunds for RESOURCE"))
 parser.add_option(options.lien.having(help="list refunds under LIEN"))
@@ -36,14 +35,12 @@ def run (argv=None):
     opts, args = parser.parse_args(args=argv[1:])
     arg_parser = ArgumentParser(args)
     
-    user = arg_parser.get(options.user, opts, arg="user")
-    
     if opts.list:
         
         # At this point, no more arguments are used.
         arg_parser.verify_empty()
         
-        refunds = Refund.query
+        refunds = Refund.query()
         
         if opts.charge:
             refunds = refunds.filter_by(charge=opts.charge)
@@ -57,9 +54,6 @@ def run (argv=None):
         
         if opts.project:
             refunds = refunds.filter_by(project=opts.project)
-        else:
-            project_ids = [project.id for project in user.projects]
-            refunds = refunds.filter(Request.c.project_id.in_(project_ids))
         
         if opts.resource:
             refunds = refunds.filter_by(resource=opts.resource)
@@ -72,13 +66,11 @@ def run (argv=None):
     
     else:
         # create options:
-        # user -- user performing the refund (required)
         # charge -- charge to refund (required)
         # time -- amount of refund (required)
         # comment -- reason for refund
         
         kwargs = dict(
-            poster = user,
             charge = arg_parser.get(options.charge, opts, arg="charge"),
             time = arg_parser.get(options.time, opts, arg="time"),
         )

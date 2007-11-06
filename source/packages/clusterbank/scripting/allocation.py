@@ -12,13 +12,12 @@ from clusterbank.scripting import options, verify_configured, \
 parser = OptionParser(
     version = clusterbank.__version__,
     usage = os.linesep.join(["",
-        "    %prog <user> <request> <start> <expiration> [options]",
-        "    %prog <user> --list [options]",
+        "    %prog <request> <start> <expiration> [options]",
+        "    %prog --list [options]",
     ]),
     description = "Allocate time on a resource for a project.",
 )
 parser.add_option(options.list.having(help="list active allocations"))
-parser.add_option(options.user.having(help="allocate as or list allocations for USER"))
 parser.add_option(options.project.having(help="list allocations for PROJECT"))
 parser.add_option(options.resource.having(help="list allocations for RESOURCE"))
 parser.add_option(options.request.having(help="allocate for REQUEST"))
@@ -39,11 +38,8 @@ def run (argv=None):
     opts, args = parser.parse_args(args=argv[1:])
     arg_parser = ArgumentParser(args)
     
-    user = arg_parser.get(options.user, opts, arg="user")
-    
     if opts.list:
         # list options:
-        # user -- user whose project to list allocations for (required)
         # project -- project to list allocations for
         # resource -- resource to list allocations for
         # request -- request to list allocations for
@@ -51,7 +47,7 @@ def run (argv=None):
         # At this point, no more arguments are used.
         arg_parser.verify_empty()
         
-        allocations = Allocation.query
+        allocations = Allocation.query()
         
         if opts.request:
             allocations = allocations.filter_by(request=opts.request)
@@ -60,9 +56,6 @@ def run (argv=None):
         
         if opts.project:
             allocations = allocations.filter_by(project=opts.project)
-        else:
-            project_ids = [project.id for project in user.projects]
-            allocations = allocations.filter(Request.c.project_id.in_(project_ids))
         
         if opts.resource:
             allocations = allocations.filter_by(resource=opts.resource)
@@ -75,7 +68,6 @@ def run (argv=None):
     
     else:
         # create options:
-        # user -- user allocating the request (required)
         # request -- request to allocation time for (required)
         # time -- time to allocate
         # start -- date the allocation becomes active (required)
@@ -90,7 +82,6 @@ def run (argv=None):
         
         # Create the new allocation.
         kwargs = dict(
-            poster = user,
             request = request,
             start = start,
             expiration = expiration,
@@ -103,7 +94,6 @@ def run (argv=None):
         # Set up a line of credit.
         if opts.credit is not None:
             kwargs = dict(
-                poster = user,
                 resource = allocation.resource,
                 project = allocation.project,
                 start = allocation.start,

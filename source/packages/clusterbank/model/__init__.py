@@ -10,7 +10,7 @@ from clusterbank.model.metadata import \
     credit_limits_table, requests_table, allocations_table, \
     liens_table, charges_table, refunds_table
 from clusterbank.model.entities import \
-    User, Project, Resource
+    Project, Resource
 from clusterbank.model.accounting import \
     CreditLimit, Request, Allocation, Lien, Charge, Refund
 
@@ -35,21 +35,6 @@ else:
 
 Session = scoped_session(sessionmaker(transactional=True, autoflush=True))
 
-Session.mapper(User, users_table, properties=dict(
-    id = users_table.c.id,
-    can_request = users_table.c.can_request,
-    can_allocate = users_table.c.can_allocate,
-    can_lien = users_table.c.can_lien,
-    can_charge = users_table.c.can_charge,
-    can_refund = users_table.c.can_refund,
-    requests = relation(Request, backref="_poster"),
-    allocations = relation(Allocation, backref="_poster"),
-    credit_limits = relation(CreditLimit, backref="_poster"),
-    liens = relation(Lien, backref="_poster"),
-    charges = relation(Charge, backref="_poster"),
-    refunds = relation(Refund, backref="_poster"),
-))
-
 Session.mapper(Project, projects_table, properties=dict(
     id = projects_table.c.id,
     credit_limits = relation(CreditLimit, backref="project"),
@@ -64,8 +49,6 @@ Session.mapper(CreditLimit, credit_limits_table, properties=dict(
     id = credit_limits_table.c.id,
     project = relation(Project, backref="credit_limits"),
     resource = relation(Resource, backref="credit_limits"),
-    _poster = relation(User, backref="credit_limits"),
-    poster = synonym("_poster"),
     start = credit_limits_table.c.start,
     _time = credit_limits_table.c.time,
     time = synonym("_time"),
@@ -75,10 +58,7 @@ Session.mapper(CreditLimit, credit_limits_table, properties=dict(
 Session.mapper(Request, requests_table, properties=dict(
     id = requests_table.c.id,
     resource = relation(Resource, backref="requests"),
-    _project = relation(Project, backref="requests"),
-    project = synonym("_project"),
-    _poster = relation(User, backref="requests"),
-    poster = synonym("_poster"),
+    project = relation(Project, backref="requests"),
     datetime = requests_table.c.datetime,
     _time = requests_table.c.time,
     time = synonym("_time"),
@@ -90,8 +70,6 @@ Session.mapper(Request, requests_table, properties=dict(
 Session.mapper(Allocation, allocations_table, properties=dict(
     id = allocations_table.c.id,
     request = relation(Request, backref="allocations"),
-    _poster = relation(User, backref="allocations"),
-    poster = synonym("_poster"),
     approver = allocations_table.c.approver,
     datetime = allocations_table.c.datetime,
     _time = allocations_table.c.time,
@@ -105,8 +83,6 @@ Session.mapper(Allocation, allocations_table, properties=dict(
 Session.mapper(Lien, liens_table, properties=dict(
     id = liens_table.c.id,
     allocation = relation(Allocation, backref="liens"),
-    _poster = relation(User, backref="liens"),
-    poster = synonym("_poster"),
     datetime = liens_table.c.datetime,
     _time = liens_table.c.time,
     time = synonym("_time"),
@@ -117,8 +93,6 @@ Session.mapper(Lien, liens_table, properties=dict(
 Session.mapper(Charge, charges_table, properties=dict(
     id = charges_table.c.id,
     lien = relation(Lien, backref="charges"),
-    _poster = relation(User, backref="charges"),
-    poster = synonym("_poster"),
     datetime = charges_table.c.datetime,
     _time = charges_table.c.time,
     time = synonym("_time"),
@@ -130,8 +104,6 @@ Session.mapper(Refund, refunds_table, properties=dict(
     id = refunds_table.c.id,
     _charge = relation(Charge, backref="refunds"),
     charge = synonym("_charge"),
-    _poster = relation(User, backref="refunds"),
-    poster = synonym("_poster"),
     datetime = refunds_table.c.datetime,
     _time = refunds_table.c.time,
     time = synonym("_time"),

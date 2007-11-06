@@ -14,7 +14,7 @@ import optparse
 from sqlalchemy import exceptions
 
 from clusterbank.model import \
-    User, Project, Resource, Request, Allocation, Lien, Charge
+    Project, Resource, Request, Allocation, Lien, Charge
 import clusterbank.upstream
 
 def verify_configured ():
@@ -123,21 +123,12 @@ class Option (optparse.Option):
             raise optparse.OptionValueError(
                 "option %s: unknown resource: %r" % (opt, value))
     
-    def check_user (self, opt, value):
-        """Return a user from its name."""
-        try:
-            return User.by_name(value)
-        except User.DoesNotExist:
-            raise optparse.OptionValueError(
-                "option %s: unknown user: %r" % (opt, value))
-    
     TYPES = (
-        "user", "resource", "project", "permissions", "date",
+        "resource", "project", "permissions", "date",
         "request", "allocation", "lien", "liens", "charge",
     ) + optparse.Option.TYPES
     
     TYPE_CHECKER = dict(
-        user = check_user,
         resource = check_resource,
         project = check_project,
         permissions = check_permissions,

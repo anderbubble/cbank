@@ -11,13 +11,12 @@ from clusterbank.scripting import options, verify_configured, \
 parser = OptionParser(
     version = clusterbank.__version__,
     usage = os.linesep.join(["",
-        "    %prog <user> <liens> <time> [options]",
-        "    %prog <user> --list [options]",
+        "    %prog <liens> <time> [options]",
+        "    %prog --list [options]",
     ]),
     description = "Charge time previously liened against a project on a resource.",
 )
 parser.add_option(options.list.having(help="list active charges"))
-parser.add_option(options.user.having(help="post charge as or list charges for USER"))
 parser.add_option(options.project.having(help="list charges for PROJECT"))
 parser.add_option(options.resource.having(help="list charges against RESOURCE"))
 parser.add_option(options.liens.having(help="post charges against LIENS"))
@@ -34,11 +33,8 @@ def run (argv=None):
     opts, args = parser.parse_args(args=argv[1:])
     arg_parser = ArgumentParser(args)
     
-    user = arg_parser.get(options.user, opts, arg="user")
-    
     if opts.list:
         # list options:
-        # user -- user whose project to list charges of (required)
         # project -- project to list charges of
         # resource -- resource to list charges for
         # liens -- liens to list charges for
@@ -46,7 +42,7 @@ def run (argv=None):
         # At this point, no more arguments are used.
         arg_parser.verify_empty()
         
-        charges = Charge.query
+        charges = Charge.query()
         
         if opts.liens:
             lien_ids = [lien.id for lien in opts.liens]
@@ -56,9 +52,6 @@ def run (argv=None):
         
         if opts.project:
             charges = charges.filter_by(project=opts.project)
-        else:
-            project_ids = [project.id for project in user.projects]
-            charges = charges.filter(Request.c.project_id.in_(project_ids))
         
         if opts.resource:
             charges = charges.filter_by(resource=opts.resource)
@@ -71,7 +64,6 @@ def run (argv=None):
         
     else:
         # create options:
-        # user -- user doing the charge (required)
         # liens -- lien(s) to charge (required)
         # time -- amount of time to charge (required)
         # comment -- comment for the charge
@@ -79,7 +71,6 @@ def run (argv=None):
         kwargs = dict(
             liens = arg_parser.get(options.liens, opts, arg="liens"),
             time = arg_parser.get(options.time, opts, arg="time"),
-            poster = user,
         )
         
         # At this point, no more arguments are used.

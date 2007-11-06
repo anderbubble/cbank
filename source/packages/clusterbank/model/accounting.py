@@ -45,7 +45,6 @@ class CreditLimit (AccountingEntity):
     comment -- A verbose comment of why credit was allocated.
     project -- project that has the credit limit
     resource -- resource the credit limit is for
-    poster -- user who posted the credit limit
     
     Constraints:
     unique by project, resource, and start
@@ -58,18 +57,6 @@ class CreditLimit (AccountingEntity):
         self.comment = kwargs.get("comment")
         self.project = kwargs.get("project")
         self.resource = kwargs.get("resource")
-        self.poster = kwargs.get("poster")
-    
-    def _get_poster (self):
-        return self._poster
-    
-    def _set_poster (self, user):
-        if user is not None:
-            if not user.can_allocate:
-                raise user.NotPermitted("%s cannot allocate credit" % user)
-        self._poster = user
-    
-    poster = property(_get_poster, _set_poster)
     
     def _get_time (self):
         return self._time
@@ -94,7 +81,6 @@ class Request (AccountingEntity):
     open -- the request remains unanswered
     resource -- the resource to be used
     project -- the project for which time is requested
-    poster -- the user requesting the time
     allocations -- allocations on the system in response to this request
     """
     
@@ -102,36 +88,11 @@ class Request (AccountingEntity):
         self.id = kwargs.get("id")
         self.resource = kwargs.get("resource")
         self.project = kwargs.get("project")
-        self.poster = kwargs.get("poster")
         self.datetime = kwargs.get("datetime")
         self.time = kwargs.get("time")
         self.comment = kwargs.get("comment")
         self.start = kwargs.get("start")
         self.allocations = kwargs.get("allocations", [])
-    
-    def _get_poster (self):
-        return self._poster
-    
-    def _set_poster (self, user):
-        if user is not None:
-            if not user.can_request:
-                raise user.NotPermitted("%s cannot make requests" % user)
-            if getattr(self, "project", None) is not None and not (user.member_of(self.project) or user.can_allocate):
-                raise user.NotPermitted("%s is not a member of %s" % (user, self.project))
-        self._poster = user
-    
-    poster = property(_get_poster, _set_poster)
-    
-    def _get_project (self):
-        return self._project
-    
-    def _set_project (self, project):
-        if project is not None:
-            if getattr(self, "poster", None) is not None and not (self.poster.member_of(project) or self.poster.can_allocate):
-                raise self.poster.NotPermitted("%s is not a member of %s" % (self.poster, project))
-        self._project = project
-    
-    project = property(_get_project, _set_project)
     
     def _get_time (self):
         return self._time
@@ -163,7 +124,6 @@ class Allocation (AccountingEntity):
     
     Properties:
     request -- request for time to which this is a response
-    poster -- user who entered the allocation into the system
     charges -- time used from the allocation
     datetime -- when the allocation was entered
     approver -- the person/group who approved the allocation
@@ -180,7 +140,6 @@ class Allocation (AccountingEntity):
     def __init__ (self, **kwargs):
         self.id = kwargs.get("id")
         self.request = kwargs.get("request")
-        self.poster = kwargs.get("poster")
         self.approver = kwargs.get("approver")
         self.datetime = kwargs.get("datetime")
         self.time = kwargs.get("time")
@@ -190,17 +149,6 @@ class Allocation (AccountingEntity):
         self.expiration = kwargs.get("expiration")
         self.comment = kwargs.get("comment")
         self.liens = kwargs.get("liens", [])
-    
-    def _get_poster (self):
-        return self._poster
-    
-    def _set_poster (self, user):
-        if user is not None:
-            if not user.can_allocate:
-                raise user.NotPermitted("%s cannot allocate time" % user)
-        self._poster = user
-    
-    poster = property(_get_poster, _set_poster)
     
     def _get_project (self):
         """Return the related project."""
@@ -290,7 +238,6 @@ class Lien (AccountingEntity):
     active -- the lien is against an active allocation
     open -- the lien is uncharged
     allocation -- the allocation the lien is against
-    poster -- the user who posted the lien
     charges -- charges resulting from the lien
     
     Methods:
@@ -337,24 +284,10 @@ class Lien (AccountingEntity):
     def __init__ (self, **kwargs):
         self.id = kwargs.get("id")
         self.allocation = kwargs.get("allocation")
-        self.poster = kwargs.get("poster")
         self.datetime = kwargs.get("datetime")
         self.time = kwargs.get("time")
         self.comment = kwargs.get("comment")
         self.charges = kwargs.get("charges", [])
-    
-    def _get_poster (self):
-        return self._poster
-    
-    def _set_poster (self, user):
-        if user is not None:
-            if not user.can_lien:
-                raise user.NotPermitted("%s cannot post liens" % user)
-            if getattr(self, "project", None) is not None and not (user.member_of(self.project) or user.can_charge):
-                raise user.NotPermitted("%s is not a member of %s" % (user, self.project))
-        self._poster = user
-    
-    poster = property(_get_poster, _set_poster)
     
     def _get_time (self):
         return self._time
@@ -429,7 +362,6 @@ class Charge (AccountingEntity):
     effective_charge -- The unit charge after any refunds
     active -- the charge is against an active lien
     lien -- the lien to which this charge applies
-    poster -- who posted the transaction
     refunds -- refunds against this charge
     
     Methods:
@@ -468,22 +400,10 @@ class Charge (AccountingEntity):
     def __init__ (self, **kwargs):
         self.id = kwargs.get("id")
         self.lien = kwargs.get("lien")
-        self.poster = kwargs.get("poster")
         self.datetime = kwargs.get("datetime")
         self.time = kwargs.get("time")
         self.comment = kwargs.get("comment")
         self.refunds = kwargs.get("refunds", [])
-    
-    def _get_poster (self):
-        return self._poster
-    
-    def _set_poster (self, user):
-        if user is not None:
-            if not user.can_charge:
-                raise user.NotPermitted("%s cannot post charges" % user)
-        self._poster = user
-    
-    poster = property(_get_poster, _set_poster)
     
     def _get_effective_charge (self):
         """Difference of charge time and refund times."""
@@ -532,14 +452,12 @@ class Refund (AccountingEntity):
     datetime -- when the refund was added
     time -- amount of time refunded
     comment -- description of the refund
-    poster -- who posted the refund
     active -- refund is against an active charge
     """
     
     def __init__ (self, **kwargs):
         self.id = kwargs.get("id")
         self.charge = kwargs.get("charge")
-        self.poster = kwargs.get("poster")
         self.datetime = kwargs.get("datetime")
         self.time = kwargs.get("time")
         self.comment = kwargs.get("comment")
@@ -553,17 +471,6 @@ class Refund (AccountingEntity):
         """Return the related resource."""
         return self.charge.resource
     resource = property(_get_resource)
-    
-    def _get_poster (self):
-        return self._poster
-    
-    def _set_poster (self, user):
-        if user is not None:
-            if not user.can_refund:
-                raise user.NotPermitted("%s cannot refund charges" % user)
-        self._poster = user
-    
-    poster = property(_get_poster, _set_poster)
     
     def _get_charge (self):
         return self._charge

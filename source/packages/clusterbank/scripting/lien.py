@@ -11,14 +11,13 @@ from clusterbank.scripting import options, verify_configured, \
 parser = OptionParser(
     version = clusterbank.__version__,
     usage = os.linesep.join(["",
-        "    %prog <user> <allocation> <time> [options]",
-        "    %prog <user> <time> -p <project> -r <resource> [options]",
-        "    %prog <user> --list [options]",
+        "    %prog <allocation> <time> [options]",
+        "    %prog <time> -p <project> -r <resource> [options]",
+        "    %prog --list [options]",
     ]),
     description = "Post a lien against allocations for a project on a resource.",
 )    
 parser.add_option(options.list.having(help="list open active liens"))
-parser.add_option(options.user.having(help="post lien as or list liens for USER"))
 parser.add_option(options.allocation.having(help="post lien against ALLOCATION"))
 parser.add_option(options.project.having(help="post lien against or list liens for PROJECT"))
 parser.add_option(options.resource.having(help="post lien against or list liens for RESOURCE"))
@@ -35,18 +34,15 @@ def run (argv=None):
     opts, args = parser.parse_args(args=argv[1:])
     arg_parser = ArgumentParser(args)
     
-    user = arg_parser.get(options.user, opts, arg="user")
-    
     if opts.list:
         # list options:
-        # user -- user whose projects to list liens on (required)
         # project -- project to list liens on
         # resource -- resource to list liens for
         
         # At this point, no more arguments are used.
         arg_parser.verify_empty()
         
-        liens = Lien.query
+        liens = Lien.query()
         
         if opts.allocation:
             liens = liens.filter_by(allocation=opts.allocation)
@@ -55,9 +51,6 @@ def run (argv=None):
         
         if opts.project:
             liens = liens.filter_by(project=opts.project)
-        else:
-            project_ids = [project.id for project in user.projects]
-            liens = liens.filter(Request.c.project_id.in_(project_ids))
         
         if opts.resource:
             liens = liens.filter_by(resource=opts.resource)
@@ -70,7 +63,6 @@ def run (argv=None):
     
     else:
         # create options:
-        # user -- user creating the lien (required)
         # allocation -- allocation for the lien (required for standard lien)
         # project -- project of the lien (required for smart lien)
         # resource -- resource of the lien (required for smart lien)
@@ -78,7 +70,6 @@ def run (argv=None):
         # comment -- comment for the lien
         
         kwargs = dict(
-            poster = user,
             comment = opts.comment,
         )
         

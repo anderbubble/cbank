@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 
 import clusterbank.model
-from clusterbank.model import User, Project, Resource
+from clusterbank.model import Project, Resource
 from clusterbank import upstream
 from clusterbank.upstream import userbase
 
