@@ -4,15 +4,6 @@ from sqlalchemy import MetaData, Table, Column, ForeignKey, UniqueConstraint, ty
 
 metadata = MetaData()
 
-users_table = Table("users", metadata,
-    Column("id", types.Integer, primary_key=True),
-    Column("can_request", types.Boolean, nullable=False, default=False),
-    Column("can_allocate", types.Boolean, nullable=False, default=False),
-    Column("can_lien", types.Boolean, nullable=False, default=False),
-    Column("can_charge", types.Boolean, nullable=False, default=False),
-    Column("can_refund", types.Boolean, nullable=False, default=False),
-)
-
 projects_table = Table("projects", metadata,
     Column("id", types.Integer, primary_key=True),
 )

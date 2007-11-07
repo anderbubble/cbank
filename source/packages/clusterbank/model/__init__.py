@@ -6,7 +6,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker, relation, synonym
 
 from clusterbank.model.metadata import \
     metadata, \
-    users_table, projects_table, resources_table, \
+    projects_table, resources_table, \
     credit_limits_table, requests_table, allocations_table, \
     liens_table, charges_table, refunds_table
 from clusterbank.model.entities import \
