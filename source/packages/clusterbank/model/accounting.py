@@ -1,8 +1,8 @@
 """Cluster accounting model.
 
 Classes:
-Request -- request for time on a resource
-Allocation -- record of time allocated to a project
+Request -- request for amount on a resource
+Allocation -- record of amount allocated to a project
 CreditLimit -- a maximum negative value for a project on a resource
 Lien -- a potential charge against a allocation
 Charge -- charge against a allocation
@@ -24,7 +24,7 @@ class AccountingEntity (object):
         except AttributeError:
             resource_name = "unknown"
         try:
-            return "%s %i" % (resource_name, self.time)
+            return "%s %i" % (resource_name, self.amount)
         except TypeError:
             return "%r ?" % resource_name
     
@@ -41,7 +41,7 @@ class CreditLimit (AccountingEntity):
     
     Attributes:
     start -- when this credit limit becomes active
-    time -- amount of credit authorized
+    amount -- amount of credit authorized
     comment -- A verbose comment of why credit was allocated.
     project -- project that has the credit limit
     resource -- resource the credit limit is for
@@ -53,34 +53,34 @@ class CreditLimit (AccountingEntity):
     def __init__ (self, **kwargs):
         self.id = kwargs.get("id")
         self.start = kwargs.get("start")
-        self.time = kwargs.get("time")
+        self.amount = kwargs.get("amount")
         self.comment = kwargs.get("comment")
         self.project = kwargs.get("project")
         self.resource = kwargs.get("resource")
     
-    def _get_time (self):
-        return self._time
+    def _get_amount (self):
+        return self._amount
     
-    def _set_time (self, value):
+    def _set_amount (self, value):
         if value < 0 and value is not None:
             raise ValueError("credit limit cannot be negative")
-        self._time = value
+        self._amount = value
     
-    time = property(_get_time, _set_time)
+    amount = property(_get_amount, _set_amount)
 
 
 class Request (AccountingEntity):
     
-    """A request for time on a resource.
+    """A request for amount on a resource.
     
     Attributes:
     datetime -- when the request was entered
-    time -- amount of time requested
+    amount -- amount of amount requested
     comment -- verbose description of need
     start -- when the allocation should become active
     open -- the request remains unanswered
     resource -- the resource to be used
-    project -- the project for which time is requested
+    project -- the project for which amount is requested
     allocations -- allocations on the system in response to this request
     """
     
@@ -89,24 +89,24 @@ class Request (AccountingEntity):
         self.resource = kwargs.get("resource")
         self.project = kwargs.get("project")
         self.datetime = kwargs.get("datetime")
-        self.time = kwargs.get("time")
+        self.amount = kwargs.get("amount")
         self.comment = kwargs.get("comment")
         self.start = kwargs.get("start")
         self.allocations = kwargs.get("allocations", [])
     
-    def _get_time (self):
-        return self._time
+    def _get_amount (self):
+        return self._amount
     
-    def _set_time (self, value):
+    def _set_amount (self, value):
         if value is not None:
             if value < 0:
-                raise ValueError("cannot request negative time")
-        self._time = value
+                raise ValueError("cannot request negative amount")
+        self._amount = value
     
-    time = property(_get_time, _set_time)
+    amount = property(_get_amount, _set_amount)
     
     def _get_allocated (self):
-        """Whether the request has had time allocated to it."""
+        """Whether the request has had amount allocated to it."""
         return len(self.allocations) > 0
     
     allocated = property(_get_allocated)
@@ -120,14 +120,14 @@ class Request (AccountingEntity):
 
 class Allocation (AccountingEntity):
     
-    """An amount of time allocated to a project.
+    """An amount allocated to a project.
     
     Properties:
-    request -- request for time to which this is a response
-    charges -- time used from the allocation
+    request -- request for amount to which this is a response
+    charges -- amount used from the allocation
     datetime -- when the allocation was entered
     approver -- the person/group who approved the allocation
-    time -- amount of time allocated
+    amount -- amount allocated
     start -- when the allocation becomes active
     comment -- verbose description of the allocation
     project -- project from associated request
@@ -142,9 +142,9 @@ class Allocation (AccountingEntity):
         self.request = kwargs.get("request")
         self.approver = kwargs.get("approver")
         self.datetime = kwargs.get("datetime")
-        self.time = kwargs.get("time")
-        if self.time is None and self.request:
-            self.time = self.request.time
+        self.amount = kwargs.get("amount")
+        if self.amount is None and self.request:
+            self.amount = self.request.amount
         self.start = kwargs.get("start")
         self.expiration = kwargs.get("expiration")
         self.comment = kwargs.get("comment")
@@ -162,16 +162,16 @@ class Allocation (AccountingEntity):
     
     resource = property(_get_resource)
     
-    def _get_time (self):
-        return self._time
+    def _get_amount (self):
+        return self._amount
     
-    def _set_time (self, value):
+    def _set_amount (self, value):
         if value is not None:
             if value < 0:
-                raise ValueError("cannot allocate negative time")
-        self._time = value
+                raise ValueError("cannot allocate negative amount")
+        self._amount = value
     
-    time = property(_get_time, _set_time)
+    amount = property(_get_amount, _set_amount)
     
     def _get_started (self):
         """The allocation has a start date before now."""
@@ -186,7 +186,7 @@ class Allocation (AccountingEntity):
     expired = property(_get_expired)
     
     def _get_active (self):
-        """The allocation's time affect's the project's time."""
+        """The allocation's amount affect's the project's amount."""
         return self.started and not self.expired
     
     active = property(_get_active)
@@ -197,29 +197,29 @@ class Allocation (AccountingEntity):
     
     charges = property(_get_charges)
     
-    def _get_time_charged (self):
+    def _get_amount_charged (self):
         """Return the sum of effective charges against this allocation."""
-        time_charged = 0
+        amount_charged = 0
         for charge in self.charges:
-            time_charged += charge.effective_charge
-        return time_charged
+            amount_charged += charge.effective_charge
+        return amount_charged
     
-    time_charged = property(_get_time_charged)
+    amount_charged = property(_get_amount_charged)
     
-    def _get_time_liened (self):
-        """Sum of time in open liens."""
-        time_liened = 0
+    def _get_amount_liened (self):
+        """Sum of amount in open liens."""
+        amount_liened = 0
         for lien in self.liens:
             if lien.open:
-                time_liened += lien.time or 0
-        return time_liened
+                amount_liened += lien.amount or 0
+        return amount_liened
     
-    time_liened = property(_get_time_liened)
+    amount_liened = property(_get_amount_liened)
     
-    def _get_time_available (self):
-        return self.time - self.time_liened - self.time_charged
+    def _get_amount_available (self):
+        return self.amount - self.amount_liened - self.amount_charged
     
-    time_available = property(_get_time_available)
+    amount_available = property(_get_amount_available)
 
 
 class Lien (AccountingEntity):
@@ -228,12 +228,12 @@ class Lien (AccountingEntity):
     
     Properties:
     datetime -- when the lien was entered
-    time -- how many time could be charged
+    amount -- how much could be charged
     comment -- verbose description of the lien
     project -- points to related project
     resource -- points to related resource
-    effective_charge -- total time charged (after refunds)
-    time_available -- difference of time and effective_charge
+    effective_charge -- total amount charged (after refunds)
+    amount_available -- difference of amount and effective_charge
     charged -- the lien has charges
     active -- the lien is against an active allocation
     open -- the lien is uncharged
@@ -241,7 +241,7 @@ class Lien (AccountingEntity):
     charges -- charges resulting from the lien
     
     Methods:
-    charge -- charge time against this lien
+    charge -- charge amount against this lien
     
     Exceptions:
     InsufficientFunds -- charges exceed liens
@@ -253,31 +253,31 @@ class Lien (AccountingEntity):
     @classmethod
     def distributed (cls, allocations, **kwargs):
         
-        time = kwargs.pop("time")
+        amount = kwargs.pop("amount")
         
         liens = list()
         for allocation in allocations:
-            if allocation.time_available <= 0:
+            if allocation.amount_available <= 0:
                 continue
             
-            if allocation.time_available >= time:
-                lien = cls(allocation=allocation, time=time, **kwargs)
+            if allocation.amount_available >= amount:
+                lien = cls(allocation=allocation, amount=amount, **kwargs)
             else:
-                lien = cls(allocation=allocation, time=allocation.time_available, **kwargs)
+                lien = cls(allocation=allocation, amount=allocation.amount_available, **kwargs)
             liens.append(lien)
-            time -= lien.time
-            if time <= 0:
+            amount -= lien.amount
+            if amount <= 0:
                 break
         
-        if time > 0:
+        if amount > 0:
             try:
-                liens[-1].time += time
+                liens[-1].amount += amount
             except IndexError:
                 try:
                     allocation = allocations[0]
                 except IndexError:
                     raise Exception("no allocations are available")
-                lien = Lien(allocation=allocation, time=time, **kwargs)
+                lien = Lien(allocation=allocation, amount=amount, **kwargs)
                 liens.append(lien)
         return liens
     
@@ -285,30 +285,30 @@ class Lien (AccountingEntity):
         self.id = kwargs.get("id")
         self.allocation = kwargs.get("allocation")
         self.datetime = kwargs.get("datetime")
-        self.time = kwargs.get("time")
+        self.amount = kwargs.get("amount")
         self.comment = kwargs.get("comment")
         self.charges = kwargs.get("charges", [])
     
-    def _get_time (self):
-        return self._time
+    def _get_amount (self):
+        return self._amount
     
-    def _set_time (self, value):
+    def _set_amount (self, value):
         """Check that the value of the lien is valid."""
         if value is not None:
             if value < 0:
-                raise ValueError("lien cannot be for negative time")
+                raise ValueError("lien cannot be for negative amount")
             if getattr(self, "allocation", None) is not None:
-                prev_value = getattr(self, "_time", None)
+                prev_value = getattr(self, "_amount", None)
                 try:
-                    self._time = 0
+                    self._amount = 0
                     credit_limit = self.allocation.project.credit_available(self.allocation.resource)
-                    if value > self.allocation.time - self.allocation.time_liened + credit_limit:
+                    if value > self.allocation.amount - self.allocation.amount_liened + credit_limit:
                         raise self.project.InsufficientFunds("credit limit exceeded")
                 finally:
-                    self._time = prev_value
-        self._time = value
+                    self._amount = prev_value
+        self._amount = value
     
-    time = property(_get_time, _set_time)
+    amount = property(_get_amount, _set_amount)
     
     def _get_project (self):
         """Return the related project."""
@@ -328,10 +328,10 @@ class Lien (AccountingEntity):
         return effective_charge
     effective_charge = property(_get_effective_charge)
     
-    def _get_time_available (self):
-        """Difference of time liened and effective charge."""
-        return self.time - self.effective_charge
-    time_available = property(_get_time_available)
+    def _get_amount_available (self):
+        """Difference of amount liened and effective charge."""
+        return self.amount - self.effective_charge
+    amount_available = property(_get_amount_available)
     
     def _get_charged (self):
         """The lien has been charged."""
@@ -357,7 +357,7 @@ class Charge (AccountingEntity):
     project -- project from related request
     resource -- resource from related request
     datetime -- when the charge was deducted
-    time -- amount of time used
+    amount -- amount used
     comment -- a verbose description of the charge
     effective_charge -- The unit charge after any refunds
     active -- the charge is against an active lien
@@ -365,35 +365,35 @@ class Charge (AccountingEntity):
     refunds -- refunds against this charge
     
     Methods:
-    refund -- refund time from this charge
+    refund -- refund amount from this charge
     """
     
     @classmethod
     def distributed (cls, liens, **kwargs):
         
-        time = kwargs.pop("time")
+        amount = kwargs.pop("amount")
         
         charges = list()
         for lien in liens:
-            if lien.time_available <= 0:
+            if lien.amount_available <= 0:
                 continue
             
-            if lien.time_available >= time:
-                charge = Charge(lien=lien, time=time, **kwargs)
+            if lien.amount_available >= amount:
+                charge = Charge(lien=lien, amount=amount, **kwargs)
             else:
-                charge = Charge(lien=lien, time=lien.time_available, **kwargs)
+                charge = Charge(lien=lien, amount=lien.amount_available, **kwargs)
             charges.append(charge)
-            time -= charge.time
+            amount -= charge.amount
         
-        if time > 0:
+        if amount > 0:
             try:
-                charges[-1].time += time
+                charges[-1].amount += amount
             except IndexError:
                 try:
                     lien = liens[0]
                 except IndexError:
                     raise Exception("no liens are available to be charged")
-                charge = Charge(lien=lien, time=time, **kwargs)
+                charge = Charge(lien=lien, amount=amount, **kwargs)
                 charges.append(charge)
         return charges
     
@@ -401,15 +401,15 @@ class Charge (AccountingEntity):
         self.id = kwargs.get("id")
         self.lien = kwargs.get("lien")
         self.datetime = kwargs.get("datetime")
-        self.time = kwargs.get("time")
+        self.amount = kwargs.get("amount")
         self.comment = kwargs.get("comment")
         self.refunds = kwargs.get("refunds", [])
     
     def _get_effective_charge (self):
-        """Difference of charge time and refund times."""
-        effective_charge = self.time or 0
+        """Difference of charge amount and refund amounts."""
+        effective_charge = self.amount or 0
         for refund in Refund.query.filter_by(charge=self):
-            effective_charge -= refund.time
+            effective_charge -= refund.amount
         return effective_charge
     effective_charge = property(_get_effective_charge)
     
@@ -423,17 +423,17 @@ class Charge (AccountingEntity):
         return self.lien.resource
     resource = property(_get_resource)
     
-    def _get_time (self):
-        return self._time
+    def _get_amount (self):
+        return self._amount
     
-    def _set_time (self, value):
+    def _set_amount (self, value):
         """Check that the values of the charge are valid."""
         if value is not None:
             if value < 0:
-                raise ValueError("cannot charge negative time")
-        self._time = value
+                raise ValueError("cannot charge negative amount")
+        self._amount = value
     
-    time = property(_get_time, _set_time)
+    amount = property(_get_amount, _set_amount)
     
     def _get_active (self):
         """Charge affects the project's current allocation."""
@@ -450,7 +450,7 @@ class Refund (AccountingEntity):
     resource -- resource from associated charge
     charge -- charge being refunded
     datetime -- when the refund was added
-    time -- amount of time refunded
+    amount -- amount refunded
     comment -- description of the refund
     active -- refund is against an active charge
     """
@@ -459,7 +459,7 @@ class Refund (AccountingEntity):
         self.id = kwargs.get("id")
         self.charge = kwargs.get("charge")
         self.datetime = kwargs.get("datetime")
-        self.time = kwargs.get("time")
+        self.amount = kwargs.get("amount")
         self.comment = kwargs.get("comment")
     
     def _get_project (self):
@@ -477,11 +477,11 @@ class Refund (AccountingEntity):
     
     def _set_charge (self, charge):
         if charge is not None:
-            if getattr(self, "time", None) is not None:
+            if getattr(self, "amount", None) is not None:
                 prev_charge = getattr(self, "_charge", None)
                 try:
                     self._charge = None
-                    if self.time > charge.effective_charge:
+                    if self.amount > charge.effective_charge:
                         raise ValueError("refunds cannot exceed charge")
                 finally:
                     self._charge = prev_charge
@@ -489,24 +489,24 @@ class Refund (AccountingEntity):
     
     charge = property(_get_charge, _set_charge)
     
-    def _get_time (self):
-        return self._time
+    def _get_amount (self):
+        return self._amount
     
-    def _set_time (self, value):
+    def _set_amount (self, value):
         if value is not None:
             if value < 0:
-                raise ValueError("cannot refund negative time")
+                raise ValueError("cannot refund negative amount")
             elif getattr(self, "charge", None) is not None:
-                prev_value = getattr(self, "_time", None)
+                prev_value = getattr(self, "_amount", None)
                 try:
-                    self._time = 0
+                    self._amount = 0
                     if value > self.charge.effective_charge:
                         raise ValueError("refunds cannot exceed charge")
                 finally:
-                    self._time = prev_value
-        self._time = value
+                    self._amount = prev_value
+        self._amount = value
     
-    time = property(_get_time, _set_time)
+    amount = property(_get_amount, _set_amount)
     
     def _get_active (self):
         """The charge affects the project's current allocation."""

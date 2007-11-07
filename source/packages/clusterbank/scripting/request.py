@@ -11,15 +11,15 @@ from clusterbank.scripting import options, verify_configured, \
 parser = OptionParser(
     version = clusterbank.__version__,
     usage = os.linesep.join(["",
-        "    %prog <project> <resource> <time> [options]",
+        "    %prog <project> <resource> <amount> [options]",
         "    %prog --list [options]",
     ]),
-    description = "Request an allocation of time for a project on a resource.",
+    description = "Request an allocation for a project on a resource.",
 )
 parser.add_option(options.list.having(help="list open requests"))
-parser.add_option(options.project.having(help="request time for or list requests for PROJECT"))
-parser.add_option(options.resource.having(help="request time on or list requests for RESOURCE"))
-parser.add_option(options.time.having(help="request amount of TIME"))
+parser.add_option(options.project.having(help="request amount for or list requests for PROJECT"))
+parser.add_option(options.resource.having(help="request amount of or list requests for RESOURCE"))
+parser.add_option(options.amount.having(help="request AMOUNT"))
 parser.add_option(options.start.having(help="request allocation to begin on DATE"))
 parser.add_option(options.comment.having(help="misc. NOTES"))
 parser.set_defaults(list=False)
@@ -58,21 +58,21 @@ def run (argv=None):
     else:
         # create options:
         # project -- project requesting for (required)
-        # resource -- resource requesting time on (required)
-        # start -- when time is needed
-        # time -- amount of time requested (required)
+        # resource -- resource requesting amount on (required)
+        # start -- when amount is needed
+        # amount -- amount requested (required)
         # comment -- reason for request
         
         project = arg_parser.get(options.project, opts, arg="project")
         resource = arg_parser.get(options.resource, opts, arg="resource")
-        time = arg_parser.get(options.time, opts, arg="time")
+        amount = arg_parser.get(options.amount, opts, arg="amount")
         
         arg_parser.verify_empty()
         
         kwargs = dict(
             project = project,
             resource = resource,
-            time = time,
+            amount = amount,
         )
         if opts.start is not None:
             kwargs['start'] = opts.start

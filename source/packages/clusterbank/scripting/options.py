@@ -3,7 +3,7 @@ from clusterbank.scripting.base import Option
 __all__ = [
     'allocation', 'charge', 'comment', 'credit', 'expiration',
     'grant', 'lien', 'liens', 'list', 'project', 'request',
-    'resource', 'revoke', 'start', 'time',
+    'resource', 'revoke', 'start', 'amount',
 ]
 
 allocation = Option("-a", "--allocation",
@@ -67,11 +67,11 @@ request = Option("-q", "--request",
     metavar = "REQUEST",
 )
 
-time = Option("-t", "--time",
-    dest = "time",
+amount = Option("-t", "--amount",
+    dest = "amount",
     type = "int",
     action = "store",
-    metavar = "TIME",
+    metavar = "AMOUNT",
 )
 
 credit = Option("-c", "--credit-limit",

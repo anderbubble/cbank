@@ -62,13 +62,13 @@ class Project (Entity):
     requests -- requests made for the project
     
     Methods:
-    time_allocated -- sum of time allocated to a resource
-    time_liened -- sum of time committed to uncharged liens
-    time_charged -- sum of effective charges
-    time_used -- sum of time liened and time charged
-    time_available -- difference of time allocated and time used
+    amount_allocated -- sum of amount allocated to a resource
+    amount_liened -- sum of amount committed to uncharged liens
+    amount_charged -- sum of effective charges
+    amount_used -- sum of amount liened and amount charged
+    amount_available -- difference of amount allocated and amount used
     credit_limit -- current credit limit (value) for the resource
-    credit_used -- negative time used
+    credit_used -- negative amount used
     credit_available -- difference of credit limit and credit used
     """
     
@@ -90,8 +90,8 @@ class Project (Entity):
     
     name = property(_get_name)
     
-    def time_allocated (self, resource):
-        """Sum of time in active allocations."""
+    def amount_allocated (self, resource):
+        """Sum of amount in active allocations."""
         allocations = Allocation.query.join("request").filter_by(
             project = self,
             resource = resource,
@@ -100,13 +100,13 @@ class Project (Entity):
             allocation for allocation in allocations
             if allocation.active
         )
-        time_allocated = 0
+        amount_allocated = 0
         for allocation in allocations:
-            time_allocated += allocation.time
-        return time_allocated
+            amount_allocated += allocation.amount
+        return amount_allocated
     
-    def time_liened (self, resource):
-        """Sum of time in active and open liens."""
+    def amount_liened (self, resource):
+        """Sum of amount in active and open liens."""
         liens = Lien.query.join(["allocation", "request"]).filter_by(
             project = self,
             resource = resource,
@@ -115,13 +115,13 @@ class Project (Entity):
             lien for lien in liens
             if lien.active and lien.open
         )
-        time_liened = 0
+        amount_liened = 0
         for lien in liens:
-            time_liened += lien.time
-        return time_liened
+            amount_liened += lien.amount
+        return amount_liened
     
-    def time_charged (self, resource):
-        """Sum of time in active charges."""
+    def amount_charged (self, resource):
+        """Sum of amount in active charges."""
         charges = Charge.query.join(["lien", "allocation", "request"]).filter_by(
             project = self,
             resource = resource,
@@ -130,20 +130,20 @@ class Project (Entity):
             charge for charge in charges
             if charge.active
         )
-        time_charged = 0
+        amount_charged = 0
         for charge in charges:
-            time_charged += charge.effective_charge
-        return time_charged
+            amount_charged += charge.effective_charge
+        return amount_charged
     
-    def time_used (self, resource):
-        """Sum of time committed to liens and charges."""
-        return self.time_liened(resource) \
-            + self.time_charged(resource)
+    def amount_used (self, resource):
+        """Sum of amount committed to liens and charges."""
+        return self.amount_liened(resource) \
+            + self.amount_charged(resource)
     
-    def time_available (self, resource):
-        """Difference of time allocated and time used."""
-        return self.time_allocated(resource) \
-            - self.time_used(resource)
+    def amount_available (self, resource):
+        """Difference of amount allocated and amount used."""
+        return self.amount_allocated(resource) \
+            - self.amount_used(resource)
     
     def credit_limit (self, resource):
         """The effective credit limit for a resource at a given date.
@@ -155,13 +155,13 @@ class Project (Entity):
             CreditLimit.c.start <= datetime.now()
         ).filter_by(project=self, resource=resource).order_by(desc(CreditLimit.c.start))
         try:
-            return credit_limits[0].time
+            return credit_limits[0].amount
         except IndexError:
             return 0
     
     def credit_used (self, resource):
-        delta = self.time_allocated(resource) \
-            - self.time_used(resource)
+        delta = self.amount_allocated(resource) \
+            - self.amount_used(resource)
         if delta < 0:
             return -1 * delta
         else:

@@ -15,16 +15,16 @@ parser = OptionParser(
         "    %prog <request> <start> <expiration> [options]",
         "    %prog --list [options]",
     ]),
-    description = "Allocate time on a resource for a project.",
+    description = "Allocate amount on a resource for a project.",
 )
 parser.add_option(options.list.having(help="list active allocations"))
 parser.add_option(options.project.having(help="list allocations for PROJECT"))
 parser.add_option(options.resource.having(help="list allocations for RESOURCE"))
 parser.add_option(options.request.having(help="allocate for REQUEST"))
-parser.add_option(options.time.having(help="allocate TIME"))
-parser.add_option(options.credit.having(help="PROJECT can use up to LIMIT negative time"))
-parser.add_option(options.start.having(help="TIME becomes available on DATE"))
-parser.add_option(options.expiration.having(help="TIME expires on DATE"))
+parser.add_option(options.amount.having(help="allocate AMOUNT"))
+parser.add_option(options.credit.having(help="PROJECT can use up to LIMIT negative amount"))
+parser.add_option(options.start.having(help="AMOUNT becomes available on DATE"))
+parser.add_option(options.expiration.having(help="AMOUNT expires on DATE"))
 parser.add_option(options.comment.having(help="misc. NOTES"))
 parser.set_defaults(list=False)
 
@@ -68,8 +68,8 @@ def run (argv=None):
     
     else:
         # create options:
-        # request -- request to allocation time for (required)
-        # time -- time to allocate
+        # request -- request to allocate amount for (required)
+        # amount -- amount to allocate
         # start -- date the allocation becomes active (required)
         # expiration -- specify an expiration date (required)
         # comment -- comment of the allocation
@@ -86,8 +86,8 @@ def run (argv=None):
             start = start,
             expiration = expiration,
         )
-        if opts.time is not None:
-            kwargs['time'] = opts.time
+        if opts.amount is not None:
+            kwargs['amount'] = opts.amount
         
         allocation = Allocation(**kwargs)
         
@@ -98,7 +98,7 @@ def run (argv=None):
                 project = allocation.project,
                 start = allocation.start,
                 comment = allocation.comment,
-                time = opts.credit,
+                amount = opts.credit,
             )
             credit_limit = CreditLimit(**kwargs)
         

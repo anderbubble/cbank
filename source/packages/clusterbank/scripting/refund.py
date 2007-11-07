@@ -12,17 +12,17 @@ from clusterbank.scripting import options, verify_configured, \
 parser = OptionParser(
     version = clusterbank.__version__,
     usage = os.linesep.join(["",
-        "    %prog <charge> <time> [options]",
+        "    %prog <charge> <amount> [options]",
         "    %prog --list [options]",
     ]),
-    description = "Refund time previously charged against a project on a resource.",
+    description = "Refund amount previously charged against a project on a resource.",
 )
 parser.add_option(options.list.having(help="list active refunds"))
 parser.add_option(options.project.having(help="list refunds for PROJECT"))
 parser.add_option(options.resource.having(help="list refunds for RESOURCE"))
 parser.add_option(options.lien.having(help="list refunds under LIEN"))
 parser.add_option(options.charge.having(help="post or list refunds of CHARGE"))
-parser.add_option(options.time.having(help="refund TIME"))
+parser.add_option(options.amount.having(help="refund AMOUNT"))
 parser.add_option(options.comment.having(help="misc. NOTES"))
 parser.set_defaults(list=False)
 
@@ -67,12 +67,12 @@ def run (argv=None):
     else:
         # create options:
         # charge -- charge to refund (required)
-        # time -- amount of refund (required)
+        # amount -- amount of refund (required)
         # comment -- reason for refund
         
         kwargs = dict(
             charge = arg_parser.get(options.charge, opts, arg="charge"),
-            time = arg_parser.get(options.time, opts, arg="time"),
+            amount = arg_parser.get(options.amount, opts, arg="amount"),
         )
         
         arg_parser.verify_empty()

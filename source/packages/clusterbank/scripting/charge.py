@@ -11,16 +11,16 @@ from clusterbank.scripting import options, verify_configured, \
 parser = OptionParser(
     version = clusterbank.__version__,
     usage = os.linesep.join(["",
-        "    %prog <liens> <time> [options]",
+        "    %prog <liens> <amount> [options]",
         "    %prog --list [options]",
     ]),
-    description = "Charge time previously liened against a project on a resource.",
+    description = "Charge amount previously liened against a project on a resource.",
 )
 parser.add_option(options.list.having(help="list active charges"))
 parser.add_option(options.project.having(help="list charges for PROJECT"))
 parser.add_option(options.resource.having(help="list charges against RESOURCE"))
 parser.add_option(options.liens.having(help="post charges against LIENS"))
-parser.add_option(options.time.having(help="charge TIME against liens"))
+parser.add_option(options.amount.having(help="charge AMOUNT against liens"))
 parser.add_option(options.comment.having(help="misc. NOTES"))
 parser.set_defaults(list=False)
 
@@ -65,12 +65,12 @@ def run (argv=None):
     else:
         # create options:
         # liens -- lien(s) to charge (required)
-        # time -- amount of time to charge (required)
+        # amount -- amount to charge (required)
         # comment -- comment for the charge
         
         kwargs = dict(
             liens = arg_parser.get(options.liens, opts, arg="liens"),
-            time = arg_parser.get(options.time, opts, arg="time"),
+            amount = arg_parser.get(options.amount, opts, arg="amount"),
         )
         
         # At this point, no more arguments are used.

@@ -11,8 +11,8 @@ from clusterbank.scripting import options, verify_configured, \
 parser = OptionParser(
     version = clusterbank.__version__,
     usage = os.linesep.join(["",
-        "    %prog <allocation> <time> [options]",
-        "    %prog <time> -p <project> -r <resource> [options]",
+        "    %prog <allocation> <amount> [options]",
+        "    %prog <amount> -p <project> -r <resource> [options]",
         "    %prog --list [options]",
     ]),
     description = "Post a lien against allocations for a project on a resource.",
@@ -21,7 +21,7 @@ parser.add_option(options.list.having(help="list open active liens"))
 parser.add_option(options.allocation.having(help="post lien against ALLOCATION"))
 parser.add_option(options.project.having(help="post lien against or list liens for PROJECT"))
 parser.add_option(options.resource.having(help="post lien against or list liens for RESOURCE"))
-parser.add_option(options.time.having(help="post lien for TIME"))
+parser.add_option(options.amount.having(help="post lien for AMOUNT"))
 parser.add_option(options.comment.having(help="misc. NOTES"))
 parser.set_defaults(list=False)
 
@@ -66,7 +66,7 @@ def run (argv=None):
         # allocation -- allocation for the lien (required for standard lien)
         # project -- project of the lien (required for smart lien)
         # resource -- resource of the lien (required for smart lien)
-        # time -- maximum charge of the lien
+        # amount -- maximum charge of the lien
         # comment -- comment for the lien
         
         kwargs = dict(
@@ -78,7 +78,7 @@ def run (argv=None):
         except MissingArgument:
             if not (opts.project and opts.resource):
                 raise
-            kwargs['time'] = arg_parser.get(options.time, opts, arg="time")
+            kwargs['amount'] = arg_parser.get(options.amount, opts, arg="amount")
             arg_parser.verify_empty()
             allocations = Allocation.query.join("request").filter_by(project=opts.project, resource=opts.resource)
             allocations = allocations.order_by([Allocation.c.expiration, Allocation.c.datetime])
@@ -88,7 +88,7 @@ def run (argv=None):
             ]
             liens = Lien.distributed(allocations, **kwargs)
         else:
-            kwargs['time'] = arg_parser.get(options.time, opts, arg="time")
+            kwargs['amount'] = arg_parser.get(options.amount, opts, arg="amount")
             arg_parser.verify_empty()
             return [Lien(**kwargs)]
         

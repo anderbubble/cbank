@@ -30,89 +30,89 @@ class TestProject (EntityTester):
     def test_name (self):
         assert self.project.name == "grail"
     
-    def test_time_allocated (self):
+    def test_amount_allocated (self):
         spam = Resource.by_name("spam")
         request = Request(
             project = self.project,
             resource = spam,
-            time = 1024,
+            amount = 1024,
         )
         
-        assert self.project.time_allocated(spam) == 0
+        assert self.project.amount_allocated(spam) == 0
         allocation = Allocation(
             request = request,
-            time = 1024,
+            amount = 1024,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
         )
-        assert self.project.time_allocated(spam) == 1024
+        assert self.project.amount_allocated(spam) == 1024
     
-    def test_time_liened (self):
+    def test_amount_liened (self):
         spam = Resource.by_name("spam")
         request = Request(
             project = self.project,
             resource = spam,
-            time = 1024,
+            amount = 1024,
         )
         allocation = Allocation(
             request = request,
-            time = 1024,
+            amount = 1024,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
         )
         
-        assert self.project.time_liened(spam) == 0
-        lien = Lien(allocation=allocation, time=512)
-        assert self.project.time_liened(spam) == 512
-        charge = Charge(lien=lien, time=256)
-        assert self.project.time_liened(spam) == 0
+        assert self.project.amount_liened(spam) == 0
+        lien = Lien(allocation=allocation, amount=512)
+        assert self.project.amount_liened(spam) == 512
+        charge = Charge(lien=lien, amount=256)
+        assert self.project.amount_liened(spam) == 0
     
-    def test_time_charged (self):
+    def test_amount_charged (self):
         spam = Resource.by_name("spam")
         request = Request(
             project = self.project,
             resource = spam,
-            time = 1024,
+            amount = 1024,
         )
         allocation = Allocation(
             request = request,
-            time = 1024,
+            amount = 1024,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
         )
         lien = Lien(
             allocation = allocation,
-            time = 512,
+            amount = 512,
         )
         
-        assert self.project.time_charged(spam) == 0
-        charge = Charge(lien=lien, time=256)
-        assert self.project.time_charged(spam) == 256
-        refund = Refund(charge=charge, time=64)
-        assert self.project.time_charged(spam) == 192
+        assert self.project.amount_charged(spam) == 0
+        charge = Charge(lien=lien, amount=256)
+        assert self.project.amount_charged(spam) == 256
+        refund = Refund(charge=charge, amount=64)
+        assert self.project.amount_charged(spam) == 192
     
-    def test_time_available (self):
+    def test_amount_available (self):
         spam = Resource.by_name("spam")
         request = Request(
             project = self.project,
             resource = spam,
-            time = 1024,
+            amount = 1024,
         )
         
-        assert self.project.time_available(spam) == 0
+        assert self.project.amount_available(spam) == 0
         allocation = Allocation(
             request = request,
-            time = 512,
+            amount = 512,
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
         )
-        assert self.project.time_available(spam) == 512
-        lien = Lien(allocation=allocation, time=128)
-        assert self.project.time_available(spam) == 384
-        charge = Charge(lien=lien, time=64)
-        assert self.project.time_available(spam) == 448
-        refund = Refund(charge=charge, time=16)
-        assert self.project.time_available(spam) == 464
+        assert self.project.amount_available(spam) == 512
+        lien = Lien(allocation=allocation, amount=128)
+        assert self.project.amount_available(spam) == 384
+        charge = Charge(lien=lien, amount=64)
+        assert self.project.amount_available(spam) == 448
+        refund = Refund(charge=charge, amount=16)
+        assert self.project.amount_available(spam) == 464
     
     def test_credit_limit (self):
         spam = Resource.by_name("spam")
@@ -120,7 +120,7 @@ class TestProject (EntityTester):
         credit = CreditLimit(
             project = self.project,
             resource = spam,
-            time = 128,
+            amount = 128,
             start = datetime.now() - timedelta(seconds=1),
         )
         assert self.project.credit_limit(spam) == 128

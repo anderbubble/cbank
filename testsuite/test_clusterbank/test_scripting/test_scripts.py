@@ -54,7 +54,7 @@ class TestRequest (ScriptTester):
             else:
                 assert False
         for command in (
-            "cb-request grail spam notatime",
+            "cb-request grail spam notanamount",
             "cb-request grail notaresource 1000",
             "cb-request notaproject spam 1000",
             "cb-request notauser grail spam 1000",
@@ -78,7 +78,7 @@ class TestRequest (ScriptTester):
         request = requests[0]
         assert request.project.name == "grail"
         assert request.resource.name == "spam"
-        assert request.time == 1000
+        assert request.amount == 1000
         assert request.start.strftime("%d-%m-%Y") == "01-01-2007"
         assert request.comment == "testing"
     
@@ -183,8 +183,8 @@ class TestLien (ScriptTester):
             "cb-lien",
             "cb-lien 1",
             "cb-lien --project grail --resource spam",
-            "cb-lien --project grail --time 100",
-            "cb-lien --resource spam --time 100",
+            "cb-lien --project grail --amount 100",
+            "cb-lien --resource spam --amount 100",
         ):
             try:
                 run(command)
@@ -194,7 +194,7 @@ class TestLien (ScriptTester):
                 assert False
         
         for command in (
-            "cb-lien 1 notatime",
+            "cb-lien 1 notanamount",
             "cb-lien notanallocation 100",
             "cb-lien notauser 1 100",
         ):
@@ -226,7 +226,7 @@ class TestLien (ScriptTester):
         run("cb-allocate 1 2007-01-01 2008-01-01")
         for command in (
             "cb-lien --list extra",
-            "cb-lien --allocation 1 --time 100 extra",
+            "cb-lien --allocation 1 --amount 100 extra",
         ):
             try:
                 run(command)
@@ -238,20 +238,20 @@ class TestLien (ScriptTester):
     def test_standard_lien (self):
         run("cb-request grail spam 1000")
         run("cb-allocate 1 2007-01-01 2008-01-01")
-        liens = list(run("cb-lien --allocation 1 --time 100 --comment testing"))
+        liens = list(run("cb-lien --allocation 1 --amount 100 --comment testing"))
         assert len(liens) == 1
     
     def test_smart_lien (self):
         run("cb-request grail spam 1000")
         run("cb-allocate 1 2007-01-01 2008-01-01")
-        liens = list(run("cb-lien --time 100 --project grail --resource spam --comment testing"))
+        liens = list(run("cb-lien --amount 100 --project grail --resource spam --comment testing"))
         assert len(liens) == 1
     
     def test_invalid_lien (self):
         run("cb-request grail spam 1000")
         run("cb-allocate 1 2007-01-01 2008-01-01")
         try:
-            run("cb-lien --allocation 1 --time -100 --comment testing")
+            run("cb-lien --allocation 1 --amount -100 --comment testing")
         except ValueError:
             pass
         else:
@@ -276,7 +276,7 @@ class TestCharge (ScriptTester):
                 assert False
         
         for command in (
-            "cb-charge 1 notatime",
+            "cb-charge 1 notanamount",
             "cb-charge notanallocation 75",
             "cb-charge notauser 1 75",
         ):
@@ -319,12 +319,12 @@ class TestCharge (ScriptTester):
         charges = list(run("cb-charge 1 50"))
         assert len(charges) == 1
     
-    def test_invalid_time (self):
+    def test_invalid_amount (self):
         run("cb-request grail spam 1000")
         run("cb-allocate 1 2007-01-01 2008-01-01")
         run("cb-lien 1 100")
         try:
-            run("cb-charge 1 --time -50")
+            run("cb-charge 1 --amount -50")
         except ValueError:
             pass
         else:
@@ -350,7 +350,7 @@ class TestRefund (ScriptTester):
                 assert False
         
         for command in (
-            "cb-refund 1 notatime",
+            "cb-refund 1 notanamount",
             "cb-refund notacharge 25",
             "cb-refund notauser 1 25",
         ):
@@ -396,13 +396,13 @@ class TestRefund (ScriptTester):
         refunds = list(run("cb-refund 1 25 --comment testing"))
         assert len(refunds) == 1
     
-    def test_invalid_time (self):
+    def test_invalid_amount (self):
         run("cb-request grail spam 1000")
         run("cb-allocate 1 2007-01-01 2008-01-01")
         run("cb-lien 1 100")
         run("cb-charge 1 50")
         try:
-            run("cb-refund 1 --time -25")
+            run("cb-refund 1 --amount -25")
         except ValueError:
             pass
         else:
