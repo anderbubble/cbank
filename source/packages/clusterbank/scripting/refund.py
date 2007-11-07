@@ -4,7 +4,7 @@ from optparse import OptionParser
 
 import clusterbank
 import clusterbank.model
-from clusterbank.model import Request, Refund
+from clusterbank.model import Request, Charge, Refund
 from clusterbank.scripting import options, verify_configured, \
     ArgumentParser, MissingArgument, InvalidArgument, ExtraArguments
 
@@ -43,20 +43,20 @@ def run (argv=None):
         refunds = Refund.query()
         
         if opts.charge:
-            refunds = refunds.filter_by(charge=opts.charge)
+            refunds = refunds.filter(Refund._charge==opts.charge)
         
         refunds = refunds.join("charge")
         
         if opts.lien:
-            refunds = refunds.filter_by(lien=opts.lien)
+            refunds = refunds.filter(Charge.lien==opts.lien)
         
         refunds = refunds.join(["charge", "lien", "allocation", "request"])
         
         if opts.project:
-            refunds = refunds.filter_by(project=opts.project)
+            refunds = refunds.filter(Request.project==opts.project)
         
         if opts.resource:
-            refunds = refunds.filter_by(resource=opts.resource)
+            refunds = refunds.filter(Request.resource==opts.resource)
         
         refunds = (
             refund for refund in refunds

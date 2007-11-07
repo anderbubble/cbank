@@ -50,15 +50,15 @@ def run (argv=None):
         allocations = Allocation.query()
         
         if opts.request:
-            allocations = allocations.filter_by(request=opts.request)
+            allocations = allocations.filter(Allocation.request==opts.request)
         
         allocations = allocations.join("request")
         
         if opts.project:
-            allocations = allocations.filter_by(project=opts.project)
+            allocations = allocations.filter(Request.project==opts.project)
         
         if opts.resource:
-            allocations = allocations.filter_by(resource=opts.resource)
+            allocations = allocations.filter(Request.resource==opts.resource)
         
         allocations = (
             allocation for allocation in allocations

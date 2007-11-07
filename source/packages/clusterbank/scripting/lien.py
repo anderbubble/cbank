@@ -45,15 +45,15 @@ def run (argv=None):
         liens = Lien.query()
         
         if opts.allocation:
-            liens = liens.filter_by(allocation=opts.allocation)
+            liens = liens.filter(Lien.allocation==opts.allocation)
         
         liens = liens.join(["allocation", "request"])
         
         if opts.project:
-            liens = liens.filter_by(project=opts.project)
+            liens = liens.filter(Request.project==opts.project)
         
         if opts.resource:
-            liens = liens.filter_by(resource=opts.resource)
+            liens = liens.filter(Request.resource==opts.resource)
         
         liens = (
             lien for lien in liens
@@ -80,8 +80,10 @@ def run (argv=None):
                 raise
             kwargs['amount'] = arg_parser.get(options.amount, opts, arg="amount")
             arg_parser.verify_empty()
-            allocations = Allocation.query.join("request").filter_by(project=opts.project, resource=opts.resource)
-            allocations = allocations.order_by([Allocation.c.expiration, Allocation.c.datetime])
+            allocations = Allocation.query.join("request")
+            allocations = allocations.filter(Request.project==opts.project)
+            allocations = allocations.filter(Request.resource==opts.resource)
+            allocations = allocations.order_by([Allocation.expiration, Allocation.datetime])
             allocations = [
                 allocation for allocation in allocations
                 if allocation.active

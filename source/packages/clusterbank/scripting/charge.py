@@ -46,15 +46,15 @@ def run (argv=None):
         
         if opts.liens:
             lien_ids = [lien.id for lien in opts.liens]
-            charges = charges.filter(Charge.c.lien_id.in_(lien_ids))
+            charges = charges.filter(Charge.lien_id.in_(lien_ids))
         
         charges = charges.join(["lien", "allocation", "request"])
         
         if opts.project:
-            charges = charges.filter_by(project=opts.project)
+            charges = charges.filter(Request.project==opts.project)
         
         if opts.resource:
-            charges = charges.filter_by(resource=opts.resource)
+            charges = charges.filter(Request.resource==opts.resource)
         
         charges = (
             charge for charge in charges

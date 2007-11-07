@@ -42,7 +42,7 @@ class Entity (object):
         except Upstream.DoesNotExist:
             raise cls.DoesNotExist()
         try:
-            return cls.query.filter_by(id=upstream_entity.id).one()
+            return cls.query.filter(cls.id==upstream_entity.id).one()
         except exceptions.InvalidRequestError:
             return cls(id=upstream_entity.id)
 
@@ -92,10 +92,9 @@ class Project (Entity):
     
     def amount_allocated (self, resource):
         """Sum of amount in active allocations."""
-        allocations = Allocation.query.join("request").filter_by(
-            project = self,
-            resource = resource,
-        )
+        allocations = Allocation.query.join("request")
+        allocations = allocations.filter(Request.project==self)
+        allocations = allocations.filter(Request.resource==resource)
         allocations = (
             allocation for allocation in allocations
             if allocation.active
@@ -107,10 +106,9 @@ class Project (Entity):
     
     def amount_liened (self, resource):
         """Sum of amount in active and open liens."""
-        liens = Lien.query.join(["allocation", "request"]).filter_by(
-            project = self,
-            resource = resource,
-        )
+        liens = Lien.query.join(["allocation", "request"])
+        liens = liens.filter(Request.project==self)
+        liens = liens.filter(Request.resource==resource)
         liens = (
             lien for lien in liens
             if lien.active and lien.open
@@ -122,10 +120,9 @@ class Project (Entity):
     
     def amount_charged (self, resource):
         """Sum of amount in active charges."""
-        charges = Charge.query.join(["lien", "allocation", "request"]).filter_by(
-            project = self,
-            resource = resource,
-        )
+        charges = Charge.query.join(["lien", "allocation", "request"])
+        charges = charges.filter(Request.project==self)
+        charges = charges.filter(Request.resource==resource)
         charges = (
             charge for charge in charges
             if charge.active
@@ -151,9 +148,10 @@ class Project (Entity):
         Arguments:
         resource -- The applicable resource.
         """
-        credit_limits = CreditLimit.query.filter(
-            CreditLimit.c.start <= datetime.now()
-        ).filter_by(project=self, resource=resource).order_by(desc(CreditLimit.c.start))
+        credit_limits = CreditLimit.query.filter(CreditLimit.start<=datetime.now())
+        credit_limits = credit_limits.filter(CreditLimit.project==self)
+        credit_limits = credit_limits.filter(CreditLimit.resource==resource)
+        credit_limits = credit_limits.order_by(desc(CreditLimit.start))
         try:
             return credit_limits[0].amount
         except IndexError:

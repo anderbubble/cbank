@@ -193,7 +193,7 @@ class Allocation (AccountingEntity):
     
     def _get_charges (self):
         """Return the set of charges made against this allocation."""
-        return Charge.query.join("lien").filter_by(allocation=self)
+        return Charge.query.join("lien").filter(Lien.allocation==self)
     
     charges = property(_get_charges)
     
@@ -408,7 +408,7 @@ class Charge (AccountingEntity):
     def _get_effective_charge (self):
         """Difference of charge amount and refund amounts."""
         effective_charge = self.amount or 0
-        for refund in Refund.query.filter_by(charge=self):
+        for refund in Refund.query.filter(Refund._charge==self):
             effective_charge -= refund.amount
         return effective_charge
     effective_charge = property(_get_effective_charge)

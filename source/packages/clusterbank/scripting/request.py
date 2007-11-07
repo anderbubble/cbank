@@ -44,10 +44,10 @@ def run (argv=None):
         requests = Request.query()
         
         if opts.project:
-            requests = requests.filter_by(project=opts.project)
+            requests = requests.filter(Request.project==opts.project)
         
         if opts.resource:
-            requests = requests.filter_by(resource=opts.resource)
+            requests = requests.filter(Request.resource==opts.resource)
         
         requests = (
             request for request in requests

@@ -51,7 +51,7 @@ class Option (optparse.Option):
     def check_allocation (self, opt, value):
         """Return an allocation from its id."""
         try:
-            return Allocation.query.filter_by(id=value).one()
+            return Allocation.query.filter(Allocation.id==value).one()
         except exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown allocation: %r" % (opt, value))
@@ -59,7 +59,7 @@ class Option (optparse.Option):
     def check_charge (self, opt, value):
         """Return a charge from its id."""
         try:
-            return Charge.query.filter_by(id=value).one()
+            return Charge.query.filter(Charge.id==value).one()
         except exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown charge: %r" % (opt, value))
@@ -77,7 +77,7 @@ class Option (optparse.Option):
     def check_lien (self, opt, value):
         """Return a lien from its id."""
         try:
-            return Lien.query.filter_by(id=value).one()
+            return Lien.query.filter(Lien.id==value).one()
         except exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown lien: %r" % (opt, value))
@@ -110,7 +110,7 @@ class Option (optparse.Option):
     def check_request (self, opt, value):
         """Return a request from its id."""
         try:
-            return Request.query.filter_by(id=value).one()
+            return Request.query.filter(Request.id==value).one()
         except exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown request: %r" % (opt, value))

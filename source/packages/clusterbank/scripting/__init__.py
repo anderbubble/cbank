@@ -1,4 +1,4 @@
-# Bring base api to package front (backwards-compatibility)
+# Bring base api to package front
 from base import *
 
 __all__ = [
