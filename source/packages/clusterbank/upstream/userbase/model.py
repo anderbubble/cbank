@@ -2,7 +2,6 @@
 
 Classes:
 UpstreamEntity -- base class for upstream entities
-User -- upstream user
 Project -- upstream project
 Resource -- upstream resource
 """
@@ -78,35 +77,12 @@ class UpstreamEntity (object):
         return entity
 
 
-class User (UpstreamEntity):
-    """Upstream user.
-    
-    Attributes:
-    id -- Canonical, immutable, integer identifier.
-    name -- Canonical string identifier.
-    projects -- Projects the user is a member of.
-    
-    Class methods:
-    by_id -- Retrieve a user by identifier.
-    by_name -- Retrieve a user by name.
-    
-    Exceptions:
-    DoesNotExist -- The specified user does not exist.
-    """
-    
-    class DoesNotExist (UpstreamEntity.DoesNotExist):
-        """The specified user does not exist."""
-        
-        label = "user"
-
-
 class Project (UpstreamEntity):
     """Upstream project.
     
     Attributes:
     id -- Canonical, immutable, integer identifier.
     name -- Canonical string id.
-    users -- Users that are members of the project.
     
     Class methods:
     by_id -- Retrieve a project by identifier.

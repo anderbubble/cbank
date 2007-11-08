@@ -11,25 +11,18 @@ from sqlalchemy import create_engine, exceptions
 from sqlalchemy.orm import scoped_session, sessionmaker, relation
 
 from clusterbank.upstream.userbase.metadata import \
-    metadata, user_table, projects_table, project_members_table, resource_types_table
-from clusterbank.upstream.userbase.model import User, Project, Resource
+    metadata, projects_table, resource_types_table
+from clusterbank.upstream.userbase.model import Project, Resource
     
 __all__ = [
-    "User", "Project", "Resource",
+    "Project", "Resource",
 ]
 
 Session = scoped_session(sessionmaker(transactional=True))
 
-Session.mapper(User, user_table, properties=dict(
-    id = user_table.c.userbase_id,
-    name = user_table.c.username,
-    projects = relation(Project, secondary=project_members_table),
-))
-
 Session.mapper(Project, projects_table, properties=dict(
     id = projects_table.c.project_id,
     name = projects_table.c.project_name,
-    users = relation(User, secondary=project_members_table),
 ))
 
 Session.mapper(Resource, resource_types_table, properties=dict(
