@@ -5,8 +5,7 @@ from optparse import OptionParser
 import clusterbank
 import clusterbank.model
 from clusterbank.model import Project, Request, Charge
-from clusterbank.scripting import options, verify_configured, \
-    ArgumentParser, MissingArgument, InvalidArgument, ExtraArguments
+from clusterbank.scripting import options, verify_configured
 
 parser = OptionParser(
     version = clusterbank.__version__,
@@ -31,57 +30,35 @@ def run (argv=None):
     verify_configured()
     parser.prog = os.path.basename(argv[0])
     opts, args = parser.parse_args(args=argv[1:])
-    arg_parser = ArgumentParser(args)
+    if args:
+        raise Exception("unknown argument(s): %s" % ", ".join(args))
     
     if opts.list:
-        # list options:
-        # project -- project to list charges of
-        # resource -- resource to list charges for
-        # liens -- liens to list charges for
-        
-        # At this point, no more arguments are used.
-        arg_parser.verify_empty()
-        
         charges = Charge.query()
-        
         if opts.liens:
             lien_ids = [lien.id for lien in opts.liens]
             charges = charges.filter(Charge.lien_id.in_(lien_ids))
-        
         charges = charges.join(["lien", "allocation", "request"])
-        
         if opts.project:
             charges = charges.filter(Request.project==opts.project)
-        
         if opts.resource:
             charges = charges.filter(Request.resource==opts.resource)
-        
         charges = (
             charge for charge in charges
             if charge.active
         )
         return charges
-        
+    
     else:
-        # create options:
-        # liens -- lien(s) to charge (required)
-        # amount -- amount to charge (required)
-        # comment -- comment for the charge
-        
-        kwargs = dict(
-            liens = arg_parser.get(options.liens, opts, arg="liens"),
-            amount = arg_parser.get(options.amount, opts, arg="amount"),
+        if not opts.liens:
+            raise Exception("must specify lien(s)")
+        if opts.amount is None:
+            raise Exception("must specify an amount")
+        charges = Charge.distributed(
+            liens = opts.liens,
+            amount = opts.amount,
+            comment = opts.comment,
         )
-        
-        # At this point, no more arguments are used.
-        arg_parser.verify_empty()
-        
-        if opts.comment is not None:
-            kwargs['comment'] = opts.comment
-        
-        charges = Charge.distributed(**kwargs)
-        
         clusterbank.model.Session.commit()
         clusterbank.model.Session.flush()
-        
         return charges

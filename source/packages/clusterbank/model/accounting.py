@@ -22,11 +22,11 @@ class AccountingEntity (object):
         try:
             resource_name = self.resource.name
         except AttributeError:
-            resource_name = "unknown"
+            resource_name = "?"
         try:
             return "%s %i" % (resource_name, self.amount)
         except TypeError:
-            return "%r ?" % resource_name
+            return "%s ?" % resource_name
     
     def __repr__ (self):
         try:

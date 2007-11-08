@@ -5,8 +5,7 @@ from optparse import OptionParser
 import clusterbank
 import clusterbank.model
 from clusterbank.model import Request, Allocation, CreditLimit
-from clusterbank.scripting import options, verify_configured, \
-    ArgumentParser, MissingArgument, InvalidArgument, ExtraArguments
+from clusterbank.scripting import options, verify_configured
 
 
 parser = OptionParser(
@@ -36,30 +35,18 @@ def run (argv=None):
     verify_configured()
     parser.prog = os.path.basename(argv[0])
     opts, args = parser.parse_args(args=argv[1:])
-    arg_parser = ArgumentParser(args)
+    if args:
+        raise Exception("unknown argument(s): %s" % ", ".join(args))
     
     if opts.list:
-        # list options:
-        # project -- project to list allocations for
-        # resource -- resource to list allocations for
-        # request -- request to list allocations for
-        
-        # At this point, no more arguments are used.
-        arg_parser.verify_empty()
-        
         allocations = Allocation.query()
-        
         if opts.request:
             allocations = allocations.filter(Allocation.request==opts.request)
-        
         allocations = allocations.join("request")
-        
         if opts.project:
             allocations = allocations.filter(Request.project==opts.project)
-        
         if opts.resource:
             allocations = allocations.filter(Request.resource==opts.resource)
-        
         allocations = (
             allocation for allocation in allocations
             if allocation.active
@@ -67,42 +54,26 @@ def run (argv=None):
         return allocations
     
     else:
-        # create options:
-        # request -- request to allocate amount for (required)
-        # amount -- amount to allocate
-        # start -- date the allocation becomes active (required)
-        # expiration -- specify an expiration date (required)
-        # comment -- comment of the allocation
-        
-        request = arg_parser.get(options.request, opts, arg="request")
-        start = arg_parser.get(options.start, opts, arg="start")
-        expiration = arg_parser.get(options.expiration, opts, arg="expiration")
-        
-        arg_parser.verify_empty()
-        
-        # Create the new allocation.
-        kwargs = dict(
-            request = request,
-            start = start,
-            expiration = expiration,
+        if not opts.request:
+            raise Exception("must specify a request")
+        if not opts.start:
+            raise Exception("must specify a start date")
+        if not opts.expiration:
+            raise Exception("must specify an expiration date")
+        allocation = Allocation(
+            request = opts.request,
+            start = opts.start,
+            expiration = opts.expiration,
+            amount = opts.amount,
         )
-        if opts.amount is not None:
-            kwargs['amount'] = opts.amount
-        
-        allocation = Allocation(**kwargs)
-        
-        # Set up a line of credit.
         if opts.credit is not None:
-            kwargs = dict(
+            credit_limit = CreditLimit(
                 resource = allocation.resource,
                 project = allocation.project,
                 start = allocation.start,
                 comment = allocation.comment,
                 amount = opts.credit,
             )
-            credit_limit = CreditLimit(**kwargs)
-        
         clusterbank.model.Session.flush()
         clusterbank.model.Session.commit()
-        
         return [allocation]

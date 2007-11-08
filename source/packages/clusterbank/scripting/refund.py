@@ -5,8 +5,7 @@ from optparse import OptionParser
 import clusterbank
 import clusterbank.model
 from clusterbank.model import Request, Charge, Refund
-from clusterbank.scripting import options, verify_configured, \
-    ArgumentParser, MissingArgument, InvalidArgument, ExtraArguments
+from clusterbank.scripting import options, verify_configured
 
 
 parser = OptionParser(
@@ -33,31 +32,21 @@ def run (argv=None):
     verify_configured()
     parser.prog = os.path.basename(argv[0])
     opts, args = parser.parse_args(args=argv[1:])
-    arg_parser = ArgumentParser(args)
+    if args:
+        raise Exception("unknown argument(s): %s" % ", ".join(args))
     
     if opts.list:
-        
-        # At this point, no more arguments are used.
-        arg_parser.verify_empty()
-        
         refunds = Refund.query()
-        
         if opts.charge:
             refunds = refunds.filter(Refund._charge==opts.charge)
-        
         refunds = refunds.join("charge")
-        
         if opts.lien:
             refunds = refunds.filter(Charge.lien==opts.lien)
-        
         refunds = refunds.join(["charge", "lien", "allocation", "request"])
-        
         if opts.project:
             refunds = refunds.filter(Request.project==opts.project)
-        
         if opts.resource:
             refunds = refunds.filter(Request.resource==opts.resource)
-        
         refunds = (
             refund for refund in refunds
             if refund.active
@@ -65,24 +54,14 @@ def run (argv=None):
         return refunds
     
     else:
-        # create options:
-        # charge -- charge to refund (required)
-        # amount -- amount of refund (required)
-        # comment -- reason for refund
-        
-        kwargs = dict(
-            charge = arg_parser.get(options.charge, opts, arg="charge"),
-            amount = arg_parser.get(options.amount, opts, arg="amount"),
+        if not opts.charge:
+            raise Exception("must specify a charge to refund")
+        if opts.amount is None:
+            raise Exception("must specify an amount")
+        refund = Refund(
+            charge = opts.charge,
+            amount = opts.amount,
+            comment = opts.comment,
         )
-        
-        arg_parser.verify_empty()
-        
-        if opts.comment is not None:
-            kwargs['comment'] = opts.comment
-        
-        refund = Refund(**kwargs)
-        
-        clusterbank.model.Session.flush()
         clusterbank.model.Session.commit()
-        
         return [refund]

@@ -5,8 +5,7 @@ from optparse import OptionParser
 import clusterbank
 import clusterbank.model
 from clusterbank.model import Request
-from clusterbank.scripting import options, verify_configured, \
-    ArgumentParser, MissingArgument, InvalidArgument, ExtraArguments
+from clusterbank.scripting import options, verify_configured
 
 parser = OptionParser(
     version = clusterbank.__version__,
@@ -31,24 +30,15 @@ def run (argv=None):
     verify_configured()
     parser.prog = os.path.basename(argv[0])
     opts, args = parser.parse_args(args=argv[1:])
-    arg_parser = ArgumentParser(args)
+    if args:
+        raise Exception("unknown argument(s): %s" % ", ".join(args))
     
     if opts.list:
-        # list options:
-        # project -- project to list requests for
-        # resource -- resource to list requests for
-        
-        # At this point, no more arguments are used.
-        arg_parser.verify_empty()
-        
         requests = Request.query()
-        
         if opts.project:
             requests = requests.filter(Request.project==opts.project)
-        
         if opts.resource:
             requests = requests.filter(Request.resource==opts.resource)
-        
         requests = (
             request for request in requests
             if request.open
@@ -56,32 +46,20 @@ def run (argv=None):
         return requests
     
     else:
-        # create options:
-        # project -- project requesting for (required)
-        # resource -- resource requesting amount on (required)
-        # start -- when amount is needed
-        # amount -- amount requested (required)
-        # comment -- reason for request
-        
-        project = arg_parser.get(options.project, opts, arg="project")
-        resource = arg_parser.get(options.resource, opts, arg="resource")
-        amount = arg_parser.get(options.amount, opts, arg="amount")
-        
-        arg_parser.verify_empty()
-        
-        kwargs = dict(
-            project = project,
-            resource = resource,
-            amount = amount,
+        if not opts.project:
+            raise Exception("must specify a project")
+        if not opts.resource:
+            raise Exception("must specify a resource")
+        if opts.amount is None:
+            raise Exception("must specify an amount")
+        clusterbank.model.Session.begin()
+        request = Request(
+            project = opts.project,
+            resource = opts.resource,
+            amount = opts.amount,
+            start = opts.start,
+            comment = opts.comment,
         )
-        if opts.start is not None:
-            kwargs['start'] = opts.start
-        if opts.comment is not None:
-            kwargs['comment'] = opts.comment
-        
-        request = Request(**kwargs)
-        
-        clusterbank.model.Session.flush()
         clusterbank.model.Session.commit()
-        
+        clusterbank.model.Session.flush()
         return [request]
