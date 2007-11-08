@@ -2,17 +2,17 @@
 
 import sys
 
-import clusterbank.scripting.lien
+import clusterbank.scripting.hold
 
 if __name__ == "__main__":
     try:
-        liens = clusterbank.scripting.lien.run()
+        holds = clusterbank.scripting.hold.run()
     except KeyboardInterrupt:
         sys.exit(1)
     except Exception, e:
         print >> sys.stderr, e
         sys.exit(1)
     
-    if liens:
-        for lien in liens:
-            print lien.id, lien
+    if holds:
+        for hold in holds:
+            print hold.id, hold

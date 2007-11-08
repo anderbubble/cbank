@@ -4,7 +4,7 @@ from optparse import OptionParser
 
 import clusterbank
 import clusterbank.model
-from clusterbank.model import Project, Request, Allocation, Lien
+from clusterbank.model import Project, Request, Allocation, Hold
 from clusterbank.scripting import options, verify_configured
 
 parser = OptionParser(
@@ -14,13 +14,13 @@ parser = OptionParser(
         "    %prog <amount> -p <project> -r <resource> [options]",
         "    %prog --list [options]",
     ]),
-    description = "Post a lien against allocations for a project on a resource.",
+    description = "Post a hold against allocations for a project on a resource.",
 )    
-parser.add_option(options.list.having(help="list open active liens"))
-parser.add_option(options.allocation.having(help="post lien against ALLOCATION"))
-parser.add_option(options.project.having(help="post lien against or list liens for PROJECT"))
-parser.add_option(options.resource.having(help="post lien against or list liens for RESOURCE"))
-parser.add_option(options.amount.having(help="post lien for AMOUNT"))
+parser.add_option(options.list.having(help="list open active holds"))
+parser.add_option(options.allocation.having(help="post hold against ALLOCATION"))
+parser.add_option(options.project.having(help="post hold against or list holds for PROJECT"))
+parser.add_option(options.resource.having(help="post hold against or list holds for RESOURCE"))
+parser.add_option(options.amount.having(help="post hold for AMOUNT"))
 parser.add_option(options.comment.having(help="misc. NOTES"))
 parser.set_defaults(list=False)
 
@@ -35,19 +35,19 @@ def run (argv=None):
         raise Exception("unknown argument(s): %s" % ", ".join(args))
     
     if opts.list:
-        liens = Lien.query()
+        holds = Hold.query()
         if opts.allocation:
-            liens = liens.filter(Lien.allocation==opts.allocation)
-        liens = liens.join(["allocation", "request"])
+            holds = holds.filter(Hold.allocation==opts.allocation)
+        holds = holds.join(["allocation", "request"])
         if opts.project:
-            liens = liens.filter(Request.project==opts.project)
+            holds = holds.filter(Request.project==opts.project)
         if opts.resource:
-            liens = liens.filter(Request.resource==opts.resource)
-        liens = (
-            lien for lien in liens
-            if lien.active and lien.open
+            holds = holds.filter(Request.resource==opts.resource)
+        holds = (
+            hold for hold in holds
+            if hold.active and hold.open
         )
-        return liens
+        return holds
     
     else:
         if opts.amount is None:
@@ -60,7 +60,7 @@ def run (argv=None):
             amount = opts.amount,
         )
         if opts.allocation:
-            liens = [Lien(allocation=opts.allocation, **kwargs)]
+            holds = [Hold(allocation=opts.allocation, **kwargs)]
         else:
             allocations = Allocation.query.join("request")
             allocations = allocations.filter(Request.project==opts.project)
@@ -70,8 +70,8 @@ def run (argv=None):
                 allocation for allocation in allocations
                 if allocation.active
             ]
-            liens = Lien.distributed(allocations, **kwargs)
+            holds = Hold.distributed(allocations, **kwargs)
         
         clusterbank.model.Session.commit()
         clusterbank.model.Session.flush()
-        return liens
+        return holds

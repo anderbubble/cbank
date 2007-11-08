@@ -19,7 +19,7 @@ parser = OptionParser(
 parser.add_option(options.list.having(help="list active refunds"))
 parser.add_option(options.project.having(help="list refunds for PROJECT"))
 parser.add_option(options.resource.having(help="list refunds for RESOURCE"))
-parser.add_option(options.lien.having(help="list refunds under LIEN"))
+parser.add_option(options.hold.having(help="list refunds under LIEN"))
 parser.add_option(options.charge.having(help="post or list refunds of CHARGE"))
 parser.add_option(options.amount.having(help="refund AMOUNT"))
 parser.add_option(options.comment.having(help="misc. NOTES"))
@@ -40,9 +40,9 @@ def run (argv=None):
         if opts.charge:
             refunds = refunds.filter(Refund._charge==opts.charge)
         refunds = refunds.join("charge")
-        if opts.lien:
-            refunds = refunds.filter(Charge.lien==opts.lien)
-        refunds = refunds.join(["charge", "lien", "allocation", "request"])
+        if opts.hold:
+            refunds = refunds.filter(Charge.hold==opts.hold)
+        refunds = refunds.join(["charge", "hold", "allocation", "request"])
         if opts.project:
             refunds = refunds.filter(Request.project==opts.project)
         if opts.resource:

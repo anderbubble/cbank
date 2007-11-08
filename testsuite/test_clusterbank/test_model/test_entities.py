@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import clusterbank.model
 from clusterbank.model.entities import Project, Resource
 from clusterbank.model.accounting import \
-    Request, Allocation, Lien, Charge, Refund, CreditLimit
+    Request, Allocation, Hold, Charge, Refund, CreditLimit
 
 __all__ = [
     "TestUser", "TestProject", "TestResource",
@@ -47,7 +47,7 @@ class TestProject (EntityTester):
         )
         assert self.project.amount_allocated(spam) == 1024
     
-    def test_amount_liened (self):
+    def test_amount_held (self):
         spam = Resource.by_name("spam")
         request = Request(
             project = self.project,
@@ -61,11 +61,11 @@ class TestProject (EntityTester):
             expiration = datetime.now() + timedelta(days=1),
         )
         
-        assert self.project.amount_liened(spam) == 0
-        lien = Lien(allocation=allocation, amount=512)
-        assert self.project.amount_liened(spam) == 512
-        charge = Charge(lien=lien, amount=256)
-        assert self.project.amount_liened(spam) == 0
+        assert self.project.amount_held(spam) == 0
+        hold = Hold(allocation=allocation, amount=512)
+        assert self.project.amount_held(spam) == 512
+        charge = Charge(hold=hold, amount=256)
+        assert self.project.amount_held(spam) == 0
     
     def test_amount_charged (self):
         spam = Resource.by_name("spam")
@@ -80,13 +80,13 @@ class TestProject (EntityTester):
             start = datetime.now(),
             expiration = datetime.now() + timedelta(days=1),
         )
-        lien = Lien(
+        hold = Hold(
             allocation = allocation,
             amount = 512,
         )
         
         assert self.project.amount_charged(spam) == 0
-        charge = Charge(lien=lien, amount=256)
+        charge = Charge(hold=hold, amount=256)
         assert self.project.amount_charged(spam) == 256
         refund = Refund(charge=charge, amount=64)
         assert self.project.amount_charged(spam) == 192
@@ -107,9 +107,9 @@ class TestProject (EntityTester):
             expiration = datetime.now() + timedelta(days=1),
         )
         assert self.project.amount_available(spam) == 512
-        lien = Lien(allocation=allocation, amount=128)
+        hold = Hold(allocation=allocation, amount=128)
         assert self.project.amount_available(spam) == 384
-        charge = Charge(lien=lien, amount=64)
+        charge = Charge(hold=hold, amount=64)
         assert self.project.amount_available(spam) == 448
         refund = Refund(charge=charge, amount=16)
         assert self.project.amount_available(spam) == 464

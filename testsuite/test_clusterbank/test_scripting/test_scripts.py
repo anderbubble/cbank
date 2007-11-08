@@ -2,7 +2,7 @@ import os
 
 import clusterbank.model
 from clusterbank import scripting
-from clusterbank.scripting import request, allocation, lien, charge, refund
+from clusterbank.scripting import request, allocation, hold, charge, refund
 
 def run (command):
     argv = command.split()
@@ -12,8 +12,8 @@ def run (command):
         return request.run(argv)
     elif exe == "cb-allocate":
         return allocation.run(argv)
-    elif exe == "cb-lien":
-        return lien.run(argv)
+    elif exe == "cb-hold":
+        return hold.run(argv)
     elif exe == "cb-charge":
         return charge.run(argv)
     elif exe == "cb-refund":
@@ -124,7 +124,7 @@ class TestAllocation (ScriptTester):
         assert len(allocations) == 1
 
 
-class TestLien (ScriptTester):
+class TestHold (ScriptTester):
     
     def test_required_options (self):
         import traceit
@@ -132,11 +132,11 @@ class TestLien (ScriptTester):
         run("cb-request --project grail --resource spam --amount 1000")
         run("cb-allocate --request 1 --start 2007-01-01 --expiration 2008-01-01")
         for command in (
-            "cb-lien",
-            "cb-lien --allocation 1",
-            "cb-lien --project grail --resource spam",
-            "cb-lien --project grail --amount 100",
-            "cb-lien --resource spam --amount 100",
+            "cb-hold",
+            "cb-hold --allocation 1",
+            "cb-hold --project grail --resource spam",
+            "cb-hold --project grail --amount 100",
+            "cb-hold --resource spam --amount 100",
         ):
             try:
                 run(command)
@@ -146,38 +146,38 @@ class TestLien (ScriptTester):
                 assert False
     
     def test_list (self):
-        liens = list(run("cb-lien --list"))
-        assert not liens
+        holds = list(run("cb-hold --list"))
+        assert not holds
         
         run("cb-request --project grail --resource spam --amount 1000")
         run("cb-allocate --request 1 --start 2007-01-01 --expiration 2008-01-01")
-        run("cb-lien --allocation 1 --amount 100")
-        liens = list(run("cb-lien --list"))
-        assert len(liens) == 1
-        liens = list(run("cb-lien --list --project grail"))
-        assert len(liens) == 1
-        liens = list(run("cb-lien --list --resource spam"))
-        assert len(liens) == 1
-        liens = list(run("cb-lien --list --allocation 1"))
-        assert len(liens) == 1
+        run("cb-hold --allocation 1 --amount 100")
+        holds = list(run("cb-hold --list"))
+        assert len(holds) == 1
+        holds = list(run("cb-hold --list --project grail"))
+        assert len(holds) == 1
+        holds = list(run("cb-hold --list --resource spam"))
+        assert len(holds) == 1
+        holds = list(run("cb-hold --list --allocation 1"))
+        assert len(holds) == 1
     
-    def test_standard_lien (self):
+    def test_standard_hold (self):
         run("cb-request --project grail --resource spam --amount 1000")
         run("cb-allocate --request 1 --start 2007-01-01 --expiration 2008-01-01")
-        liens = list(run("cb-lien --allocation 1 --amount 100 --comment testing"))
-        assert len(liens) == 1
+        holds = list(run("cb-hold --allocation 1 --amount 100 --comment testing"))
+        assert len(holds) == 1
     
-    def test_smart_lien (self):
+    def test_smart_hold (self):
         run("cb-request --project grail --resource spam --amount 1000")
         run("cb-allocate --request 1 --start 2007-01-01 --expiration 2008-01-01")
-        liens = list(run("cb-lien --amount 100 --project grail --resource spam --comment testing"))
-        assert len(liens) == 1
+        holds = list(run("cb-hold --amount 100 --project grail --resource spam --comment testing"))
+        assert len(holds) == 1
     
-    def test_invalid_lien (self):
+    def test_invalid_hold (self):
         run("cb-request --project grail --resource spam --amount 1000")
         run("cb-allocate --request 1 --start 2007-01-01 --expiration 2008-01-01")
         try:
-            run("cb-lien --allocation 1 --amount -100 --comment testing")
+            run("cb-hold --allocation 1 --amount -100 --comment testing")
         except ValueError:
             pass
         else:
@@ -189,10 +189,10 @@ class TestCharge (ScriptTester):
     def test_required_options (self):
         run("cb-request --project grail --resource spam --amount 1000")
         run("cb-allocate --request 1 --start 2007-01-01 --expiration 2008-01-01")
-        run("cb-lien --allocation 1 --amount 100")
+        run("cb-hold --allocation 1 --amount 100")
         for command in (
             "cb-charge",
-            "cb-charge --lien 1",
+            "cb-charge --hold 1",
         ):
             try:
                 run(command)
@@ -204,9 +204,9 @@ class TestCharge (ScriptTester):
     def test_extra_arguments (self):
         run("cb-request --project grail --resource spam --amount 1000")
         run("cb-allocate --request 1 --start 2007-01-01 --expiration 2008-01-01")
-        run("cb-lien --allocation 1 --amount 100")
+        run("cb-hold --allocation 1 --amount 100")
         for command in (
-            "cb-charge --lien 1 --amount 50 extra",
+            "cb-charge --hold 1 --amount 50 extra",
             "cb-charge --list extra",
         ):
             try:
@@ -219,26 +219,26 @@ class TestCharge (ScriptTester):
     def test_list (self):
         run("cb-request --project grail --resource spam --amount 1000")
         run("cb-allocate --request 1 --start 2007-01-01 --expiration 2008-01-01")
-        run("cb-lien --allocation 1 --amount 100")
+        run("cb-hold --allocation 1 --amount 100")
         charges = list(run("cb-charge --list"))
         assert not charges
-        run("cb-charge --lien 1 --amount 50")
-        charges = list(run("cb-charge --list --project grail --resource spam --lien 1"))
+        run("cb-charge --hold 1 --amount 50")
+        charges = list(run("cb-charge --list --project grail --resource spam --hold 1"))
         assert len(charges) == 1
     
     def test_standard_charge (self):
         run("cb-request --project grail --resource spam --amount 1000")
         run("cb-allocate --request 1 --start 2007-01-01 --expiration 2008-01-01")
-        run("cb-lien --allocation 1 --amount 100")
-        charges = list(run("cb-charge --lien 1 --amount 50"))
+        run("cb-hold --allocation 1 --amount 100")
+        charges = list(run("cb-charge --hold 1 --amount 50"))
         assert len(charges) == 1
     
     def test_invalid_amount (self):
         run("cb-request --project grail --resource spam --amount 1000")
         run("cb-allocate --request 1 --start 2007-01-01 --expiration 2008-01-01")
-        run("cb-lien --allocation 1 --amount 100")
+        run("cb-hold --allocation 1 --amount 100")
         try:
-            run("cb-charge --lien 1 --amount -50")
+            run("cb-charge --hold 1 --amount -50")
         except ValueError:
             pass
         else:
@@ -250,8 +250,8 @@ class TestRefund (ScriptTester):
     def test_required_options (self):
         run("cb-request --project grail --resource spam --amount 1000")
         run("cb-allocate --request 1 --start 2007-01-01 --expiration 2008-01-01")
-        run("cb-lien --allocation 1 --amount 100")
-        run("cb-charge --lien 1 --amount 50")
+        run("cb-hold --allocation 1 --amount 100")
+        run("cb-charge --hold 1 --amount 50")
         for command in (
             "cb-refund",
             "cb-refund --charge 1",
@@ -266,8 +266,8 @@ class TestRefund (ScriptTester):
     def test_extra_arguments (self):
         run("cb-request --project grail --resource spam --amount 1000")
         run("cb-allocate --request 1 --start 2007-01-01 --expiration 2008-01-01")
-        run("cb-lien --allocation 1 --amount 100")
-        run("cb-charge --lien 1 --amount 50")
+        run("cb-hold --allocation 1 --amount 100")
+        run("cb-charge --hold 1 --amount 50")
         for command in (
             "cb-refund --charge 1 --amount 25 extra",
             "cb-refund --list extra",
@@ -282,27 +282,27 @@ class TestRefund (ScriptTester):
     def test_list (self):
         run("cb-request --project grail --resource spam --amount 1000")
         run("cb-allocate --request 1 --start 2007-01-01 --expiration 2008-01-01")
-        run("cb-lien --allocation 1 --amount 100")
-        run("cb-charge --lien 1 --amount 50")
+        run("cb-hold --allocation 1 --amount 100")
+        run("cb-charge --hold 1 --amount 50")
         refunds = list(run("cb-refund --list"))
         assert not refunds
         run("cb-refund --charge 1 --amount 25")
-        refunds = list(run("cb-refund --list --project grail --resource spam --charge 1 --lien 1"))
+        refunds = list(run("cb-refund --list --project grail --resource spam --charge 1 --hold 1"))
         assert len(refunds) == 1
     
     def test_standard_refund (self):
         run("cb-request --project grail --resource spam --amount 1000")
         run("cb-allocate --request 1 --start 2007-01-01 --expiration 2008-01-01")
-        run("cb-lien --allocation 1 --amount 100")
-        run("cb-charge --lien 1 --amount 50")
+        run("cb-hold --allocation 1 --amount 100")
+        run("cb-charge --hold 1 --amount 50")
         refunds = list(run("cb-refund --charge 1 --amount 25 --comment testing"))
         assert len(refunds) == 1
     
     def test_invalid_amount (self):
         run("cb-request --project grail --resource spam --amount 1000")
         run("cb-allocate --request 1 --start 2007-01-01 --expiration 2008-01-01")
-        run("cb-lien --allocation 1 --amount 100")
-        run("cb-charge --lien 1 --amount 50")
+        run("cb-hold --allocation 1 --amount 100")
+        run("cb-charge --hold 1 --amount 50")
         try:
             run("cb-refund --charge 1 --amount -25")
         except ValueError:

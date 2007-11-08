@@ -4,7 +4,7 @@ Classes:
 Request -- request for amount on a resource
 Allocation -- record of amount allocated to a project
 CreditLimit -- a maximum negative value for a project on a resource
-Lien -- a potential charge against a allocation
+Hold -- a potential charge against a allocation
 Charge -- charge against a allocation
 Refund -- refund against a charge
 """
@@ -12,7 +12,7 @@ Refund -- refund against a charge
 from datetime import datetime
 
 __all__ = [
-    "CreditLimit", "Request", "Allocation", "Lien", "Charge", "Refund",
+    "CreditLimit", "Request", "Allocation", "Hold", "Charge", "Refund",
 ]
 
 
@@ -148,7 +148,7 @@ class Allocation (AccountingEntity):
         self.start = kwargs.get("start")
         self.expiration = kwargs.get("expiration")
         self.comment = kwargs.get("comment")
-        self.liens = kwargs.get("liens", [])
+        self.holds = kwargs.get("holds", [])
     
     def _get_project (self):
         """Return the related project."""
@@ -193,7 +193,7 @@ class Allocation (AccountingEntity):
     
     def _get_charges (self):
         """Return the set of charges made against this allocation."""
-        return Charge.query.join("lien").filter(Lien.allocation==self)
+        return Charge.query.join("hold").filter(Hold.allocation==self)
     
     charges = property(_get_charges)
     
@@ -206,80 +206,80 @@ class Allocation (AccountingEntity):
     
     amount_charged = property(_get_amount_charged)
     
-    def _get_amount_liened (self):
-        """Sum of amount in open liens."""
-        amount_liened = 0
-        for lien in self.liens:
-            if lien.open:
-                amount_liened += lien.amount or 0
-        return amount_liened
+    def _get_amount_held (self):
+        """Sum of amount in open holds."""
+        amount_held = 0
+        for hold in self.holds:
+            if hold.open:
+                amount_held += hold.amount or 0
+        return amount_held
     
-    amount_liened = property(_get_amount_liened)
+    amount_held = property(_get_amount_held)
     
     def _get_amount_available (self):
-        return self.amount - self.amount_liened - self.amount_charged
+        return self.amount - self.amount_held - self.amount_charged
     
     amount_available = property(_get_amount_available)
 
 
-class Lien (AccountingEntity):
+class Hold (AccountingEntity):
     
     """A potential charge against an allocation.
     
     Properties:
-    datetime -- when the lien was entered
+    datetime -- when the hold was entered
     amount -- how much could be charged
-    comment -- verbose description of the lien
+    comment -- verbose description of the hold
     project -- points to related project
     resource -- points to related resource
     effective_charge -- total amount charged (after refunds)
     amount_available -- difference of amount and effective_charge
-    charged -- the lien has charges
-    active -- the lien is against an active allocation
-    open -- the lien is uncharged
-    allocation -- the allocation the lien is against
-    charges -- charges resulting from the lien
+    charged -- the hold has charges
+    active -- the hold is against an active allocation
+    open -- the hold is uncharged
+    allocation -- the allocation the hold is against
+    charges -- charges resulting from the hold
     
     Methods:
-    charge -- charge amount against this lien
+    charge -- charge amount from this hold
     
     Exceptions:
-    InsufficientFunds -- charges exceed liens
+    InsufficientFunds -- hold exceed allocation
     """
     
     class InsufficientFunds (Exception):
-        """Charges exceed liens."""
+        """Hold exceed allocations."""
     
     @classmethod
     def distributed (cls, allocations, **kwargs):
         
         amount = kwargs.pop("amount")
         
-        liens = list()
+        holds = list()
         for allocation in allocations:
             if allocation.amount_available <= 0:
                 continue
             
             if allocation.amount_available >= amount:
-                lien = cls(allocation=allocation, amount=amount, **kwargs)
+                hold = cls(allocation=allocation, amount=amount, **kwargs)
             else:
-                lien = cls(allocation=allocation, amount=allocation.amount_available, **kwargs)
-            liens.append(lien)
-            amount -= lien.amount
+                hold = cls(allocation=allocation, amount=allocation.amount_available, **kwargs)
+            holds.append(hold)
+            amount -= hold.amount
             if amount <= 0:
                 break
         
         if amount > 0:
             try:
-                liens[-1].amount += amount
+                holds[-1].amount += amount
             except IndexError:
                 try:
                     allocation = allocations[0]
                 except IndexError:
                     raise Exception("no allocations are available")
-                lien = Lien(allocation=allocation, amount=amount, **kwargs)
-                liens.append(lien)
-        return liens
+                hold = Hold(allocation=allocation, amount=amount, **kwargs)
+                holds.append(hold)
+        return holds
     
     def __init__ (self, **kwargs):
         self.id = kwargs.get("id")
@@ -293,16 +293,16 @@ class Lien (AccountingEntity):
         return self._amount
     
     def _set_amount (self, value):
-        """Check that the value of the lien is valid."""
+        """Check that the value of the hold is valid."""
         if value is not None:
             if value < 0:
-                raise ValueError("lien cannot be for negative amount")
+                raise ValueError("hold cannot be for negative amount")
             if getattr(self, "allocation", None) is not None:
                 prev_value = getattr(self, "_amount", None)
                 try:
                     self._amount = 0
                     credit_limit = self.allocation.project.credit_available(self.allocation.resource)
-                    if value > self.allocation.amount - self.allocation.amount_liened + credit_limit:
+                    if value > self.allocation.amount - self.allocation.amount_held + credit_limit:
                         raise self.project.InsufficientFunds("credit limit exceeded")
                 finally:
                     self._amount = prev_value
@@ -321,7 +321,7 @@ class Lien (AccountingEntity):
     resource = property(_get_resource)
     
     def _get_effective_charge (self):
-        """Sum the effective charges of related charges for this lien."""
+        """Sum the effective charges of charges related to this hold."""
         effective_charge = 0
         for charge in self.charges:
             effective_charge += charge.effective_charge
@@ -329,22 +329,22 @@ class Lien (AccountingEntity):
     effective_charge = property(_get_effective_charge)
     
     def _get_amount_available (self):
-        """Difference of amount liened and effective charge."""
+        """Difference of amount held and effective charge."""
         return self.amount - self.effective_charge
     amount_available = property(_get_amount_available)
     
     def _get_charged (self):
-        """The lien has been charged."""
+        """The hold has been charged."""
         return len(self.charges) > 0
     charged = property(_get_charged)
     
     def _get_active (self):
-        """The lien affects the current allocation."""
+        """The hold affects the current allocation."""
         return self.allocation.active
     active = property(_get_active)
     
     def _get_open (self):
-        """The lien is still awaiting charges."""
+        """The hold is still awaiting charges."""
         return not self.charged
     open = property(_get_open)
 
@@ -360,8 +360,8 @@ class Charge (AccountingEntity):
     amount -- amount used
     comment -- a verbose description of the charge
     effective_charge -- The unit charge after any refunds
-    active -- the charge is against an active lien
-    lien -- the lien to which this charge applies
+    active -- the charge is against an active hold
+    hold -- the hold to which this charge applies
     refunds -- refunds against this charge
     
     Methods:
@@ -369,19 +369,19 @@ class Charge (AccountingEntity):
     """
     
     @classmethod
-    def distributed (cls, liens, **kwargs):
+    def distributed (cls, holds, **kwargs):
         
         amount = kwargs.pop("amount")
         
         charges = list()
-        for lien in liens:
-            if lien.amount_available <= 0:
+        for hold in holds:
+            if hold.amount_available <= 0:
                 continue
             
-            if lien.amount_available >= amount:
-                charge = Charge(lien=lien, amount=amount, **kwargs)
+            if hold.amount_available >= amount:
+                charge = Charge(hold=hold, amount=amount, **kwargs)
             else:
-                charge = Charge(lien=lien, amount=lien.amount_available, **kwargs)
+                charge = Charge(hold=hold, amount=hold.amount_available, **kwargs)
             charges.append(charge)
             amount -= charge.amount
         
@@ -390,16 +390,16 @@ class Charge (AccountingEntity):
                 charges[-1].amount += amount
             except IndexError:
                 try:
-                    lien = liens[0]
+                    hold = holds[0]
                 except IndexError:
-                    raise Exception("no liens are available to be charged")
-                charge = Charge(lien=lien, amount=amount, **kwargs)
+                    raise Exception("no holds are available to be charged")
+                charge = Charge(hold=hold, amount=amount, **kwargs)
                 charges.append(charge)
         return charges
     
     def __init__ (self, **kwargs):
         self.id = kwargs.get("id")
-        self.lien = kwargs.get("lien")
+        self.hold = kwargs.get("hold")
         self.datetime = kwargs.get("datetime")
         self.amount = kwargs.get("amount")
         self.comment = kwargs.get("comment")
@@ -415,12 +415,12 @@ class Charge (AccountingEntity):
     
     def _get_project (self):
         """Return the related project."""
-        return self.lien.project
+        return self.hold.project
     project = property(_get_project)
     
     def _get_resource (self):
         """Return the related resource."""
-        return self.lien.resource
+        return self.hold.resource
     resource = property(_get_resource)
     
     def _get_amount (self):
@@ -437,7 +437,7 @@ class Charge (AccountingEntity):
     
     def _get_active (self):
         """Charge affects the project's current allocation."""
-        return self.lien.active
+        return self.hold.active
     active = property(_get_active)
 
 

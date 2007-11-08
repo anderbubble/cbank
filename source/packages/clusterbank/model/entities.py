@@ -11,7 +11,7 @@ from sqlalchemy import exceptions, desc
 
 from clusterbank import upstream
 from clusterbank.model.accounting import \
-    Request, Allocation, CreditLimit, Lien, Charge, Refund
+    Request, Allocation, CreditLimit, Hold, Charge, Refund
 
 __all__ = [
     "Project", "Resource",
@@ -63,9 +63,9 @@ class Project (Entity):
     
     Methods:
     amount_allocated -- sum of amount allocated to a resource
-    amount_liened -- sum of amount committed to uncharged liens
+    amount_held -- sum of amount committed to uncharged holds
     amount_charged -- sum of effective charges
-    amount_used -- sum of amount liened and amount charged
+    amount_used -- sum of amount held and amount charged
     amount_available -- difference of amount allocated and amount used
     credit_limit -- current credit limit (value) for the resource
     credit_used -- negative amount used
@@ -104,23 +104,23 @@ class Project (Entity):
             amount_allocated += allocation.amount
         return amount_allocated
     
-    def amount_liened (self, resource):
-        """Sum of amount in active and open liens."""
-        liens = Lien.query.join(["allocation", "request"])
-        liens = liens.filter(Request.project==self)
-        liens = liens.filter(Request.resource==resource)
-        liens = (
-            lien for lien in liens
-            if lien.active and lien.open
+    def amount_held (self, resource):
+        """Sum of amount in active and open holds."""
+        holds = Hold.query.join(["allocation", "request"])
+        holds = holds.filter(Request.project==self)
+        holds = holds.filter(Request.resource==resource)
+        holds = (
+            hold for hold in holds
+            if hold.active and hold.open
         )
-        amount_liened = 0
-        for lien in liens:
-            amount_liened += lien.amount
-        return amount_liened
+        amount_held = 0
+        for hold in holds:
+            amount_held += hold.amount
+        return amount_held
     
     def amount_charged (self, resource):
         """Sum of amount in active charges."""
-        charges = Charge.query.join(["lien", "allocation", "request"])
+        charges = Charge.query.join(["hold", "allocation", "request"])
         charges = charges.filter(Request.project==self)
         charges = charges.filter(Request.resource==resource)
         charges = (
@@ -133,8 +133,8 @@ class Project (Entity):
         return amount_charged
     
     def amount_used (self, resource):
-        """Sum of amount committed to liens and charges."""
-        return self.amount_liened(resource) \
+        """Sum of amount committed to holds and charges."""
+        return self.amount_held(resource) \
             + self.amount_charged(resource)
     
     def amount_available (self, resource):

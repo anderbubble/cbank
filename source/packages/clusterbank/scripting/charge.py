@@ -10,16 +10,16 @@ from clusterbank.scripting import options, verify_configured
 parser = OptionParser(
     version = clusterbank.__version__,
     usage = os.linesep.join(["",
-        "    %prog <liens> <amount> [options]",
+        "    %prog <holds> <amount> [options]",
         "    %prog --list [options]",
     ]),
-    description = "Charge amount previously liened against a project on a resource.",
+    description = "Charge amount previously held against a project on a resource.",
 )
 parser.add_option(options.list.having(help="list active charges"))
 parser.add_option(options.project.having(help="list charges for PROJECT"))
 parser.add_option(options.resource.having(help="list charges against RESOURCE"))
-parser.add_option(options.liens.having(help="post charges against LIENS"))
-parser.add_option(options.amount.having(help="charge AMOUNT against liens"))
+parser.add_option(options.holds.having(help="post charges against LIENS"))
+parser.add_option(options.amount.having(help="charge AMOUNT against holds"))
 parser.add_option(options.comment.having(help="misc. NOTES"))
 parser.set_defaults(list=False)
 
@@ -35,10 +35,10 @@ def run (argv=None):
     
     if opts.list:
         charges = Charge.query()
-        if opts.liens:
-            lien_ids = [lien.id for lien in opts.liens]
-            charges = charges.filter(Charge.lien_id.in_(lien_ids))
-        charges = charges.join(["lien", "allocation", "request"])
+        if opts.holds:
+            hold_ids = [hold.id for hold in opts.holds]
+            charges = charges.filter(Charge.hold_id.in_(hold_ids))
+        charges = charges.join(["hold", "allocation", "request"])
         if opts.project:
             charges = charges.filter(Request.project==opts.project)
         if opts.resource:
@@ -50,12 +50,12 @@ def run (argv=None):
         return charges
     
     else:
-        if not opts.liens:
-            raise Exception("must specify lien(s)")
+        if not opts.holds:
+            raise Exception("must specify hold(s)")
         if opts.amount is None:
             raise Exception("must specify an amount")
         charges = Charge.distributed(
-            liens = opts.liens,
+            holds = opts.holds,
             amount = opts.amount,
             comment = opts.comment,
         )

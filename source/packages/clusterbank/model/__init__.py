@@ -8,16 +8,16 @@ from clusterbank.model.metadata import \
     metadata, \
     projects_table, resources_table, \
     credit_limits_table, requests_table, allocations_table, \
-    liens_table, charges_table, refunds_table
+    holds_table, charges_table, refunds_table
 from clusterbank.model.entities import \
     Project, Resource
 from clusterbank.model.accounting import \
-    CreditLimit, Request, Allocation, Lien, Charge, Refund
+    CreditLimit, Request, Allocation, Hold, Charge, Refund
 
 __all__ = [
     "Session",
     "User", "Project", "Resource",
-    "CreditLimit", "Request", "Allocation", "Lien", "Charge", "Refund",
+    "CreditLimit", "Request", "Allocation", "Hold", "Charge", "Refund",
 ]
 
 config = SafeConfigParser()
@@ -77,22 +77,22 @@ Session.mapper(Allocation, allocations_table, properties=dict(
     start = allocations_table.c.start,
     expiration = allocations_table.c.expiration,
     comment = allocations_table.c.comment,
-    liens = relation(Lien, backref="allocation"),
+    holds = relation(Hold, backref="allocation"),
 ))
 
-Session.mapper(Lien, liens_table, properties=dict(
-    id = liens_table.c.id,
-    allocation = relation(Allocation, backref="liens"),
-    datetime = liens_table.c.datetime,
-    _amount = liens_table.c.amount,
+Session.mapper(Hold, holds_table, properties=dict(
+    id = holds_table.c.id,
+    allocation = relation(Allocation, backref="holds"),
+    datetime = holds_table.c.datetime,
+    _amount = holds_table.c.amount,
     amount = synonym("_amount"),
-    comment = liens_table.c.comment,
-    charges = relation(Charge, backref="lien"),
+    comment = holds_table.c.comment,
+    charges = relation(Charge, backref="hold"),
 ))
 
 Session.mapper(Charge, charges_table, properties=dict(
     id = charges_table.c.id,
-    lien = relation(Lien, backref="charges"),
+    hold = relation(Hold, backref="charges"),
     datetime = charges_table.c.datetime,
     _amount = charges_table.c.amount,
     amount = synonym("_amount"),

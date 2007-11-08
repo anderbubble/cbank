@@ -43,7 +43,7 @@ allocations_table = Table("allocations", metadata,
     Column("comment", types.String),
 )
 
-liens_table = Table("liens", metadata,
+holds_table = Table("holds", metadata,
     Column("id", types.Integer, primary_key=True),
     Column("allocation_id", None, ForeignKey("allocations.id")),
     Column("datetime", types.DateTime, nullable=False, default=datetime.now),
@@ -53,7 +53,7 @@ liens_table = Table("liens", metadata,
 
 charges_table = Table("charges", metadata,
     Column("id", types.Integer, primary_key=True),
-    Column("lien_id", None, ForeignKey("liens.id")),
+    Column("hold_id", None, ForeignKey("holds.id")),
     Column("datetime", types.DateTime, nullable=False, default=datetime.now),
     Column("amount", types.Integer, nullable=False),
     Column("comment", types.String),

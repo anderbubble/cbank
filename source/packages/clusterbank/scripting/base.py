@@ -14,7 +14,7 @@ import optparse
 from sqlalchemy import exceptions
 
 from clusterbank.model import \
-    Project, Resource, Request, Allocation, Lien, Charge
+    Project, Resource, Request, Allocation, Hold, Charge
 import clusterbank.upstream
 
 def verify_configured ():
@@ -33,8 +33,8 @@ class Option (optparse.Option):
     check_allocation -- Return an allocation from its id.
     check_charge -- Return a charge from its id.
     check_date -- Return a datetime from YYYY-MM-DD.
-    check_lien -- Return a lien from its id.
-    check_liens -- Return a list of liens from a comma-separated list of ids.
+    check_hold -- Return a hold from its id.
+    check_holds -- Return a list of holds from a comma-separated list of ids.
     check_permissions -- Verify a comma-separated list of permissions.
     check_project -- Return a project from its name.
     check_request -- Return a request from its id.
@@ -74,21 +74,21 @@ class Option (optparse.Option):
             raise optparse.OptionValueError(
                 "option %s: invalid date: %r" % (opt, value))
     
-    def check_lien (self, opt, value):
-        """Return a lien from its id."""
+    def check_hold (self, opt, value):
+        """Return a hold from its id."""
         try:
-            return Lien.query.filter(Lien.id==value).one()
+            return Hold.query.filter(Hold.id==value).one()
         except exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
-                "option %s: unknown lien: %r" % (opt, value))
+                "option %s: unknown hold: %r" % (opt, value))
     
-    def check_liens (self, opt, value):
-        """Return a list of liens from a comma-separated list of ids."""
-        return [self.check_lien(opt, id) for id in value.split(",")]
+    def check_holds (self, opt, value):
+        """Return a list of holds from a comma-separated list of ids."""
+        return [self.check_hold(opt, id) for id in value.split(",")]
     
     def check_permissions (self, opt, value):
         """Verify a comma-separated list of permissions."""
-        all_permissions = ("request", "allocate", "lien", "charge", "refund")
+        all_permissions = ("request", "allocate", "hold", "charge", "refund")
         if value == "all":
             return all_permissions
         else:
@@ -125,7 +125,7 @@ class Option (optparse.Option):
     
     TYPES = (
         "resource", "project", "permissions", "date",
-        "request", "allocation", "lien", "liens", "charge",
+        "request", "allocation", "hold", "holds", "charge",
     ) + optparse.Option.TYPES
     
     TYPE_CHECKER = dict(
@@ -135,8 +135,8 @@ class Option (optparse.Option):
         date = check_date,
         request = check_request,
         allocation = check_allocation,
-        lien = check_lien,
-        liens = check_liens,
+        hold = check_hold,
+        holds = check_holds,
         charge = check_charge,
         **optparse.Option.TYPE_CHECKER
     )

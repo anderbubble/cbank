@@ -2,7 +2,7 @@ from clusterbank.scripting.base import Option
 
 __all__ = [
     'allocation', 'charge', 'comment', 'credit', 'expiration',
-    'grant', 'lien', 'liens', 'list', 'project', 'request',
+    'grant', 'hold', 'holds', 'list', 'project', 'request',
     'resource', 'revoke', 'start', 'amount',
 ]
 
@@ -32,16 +32,16 @@ list = Option("-l", "--list",
     action = "store_true",
 )
 
-lien = Option("-n", "--lien",
-    dest = "lien",
-    type = "lien",
+hold = Option("-n", "--hold",
+    dest = "hold",
+    type = "hold",
     action = "store",
     metavar = "LIEN",
 )
 
-liens = Option("-n", "--liens",
-    dest = "liens",
-    type = "liens",
+holds = Option("-n", "--holds",
+    dest = "holds",
+    type = "holds",
     action = "store",
     metavar="LIENS",
 )
