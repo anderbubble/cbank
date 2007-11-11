@@ -2,17 +2,16 @@
 
 import sys
 
-import clusterbank.scripting.hold
+import clusterbank.scripting.cbank
 
 if __name__ == "__main__":
     try:
-        holds = clusterbank.scripting.hold.run()
+        entities = clusterbank.scripting.cbank.main()
     except KeyboardInterrupt:
         sys.exit(1)
     except Exception, e:
         print >> sys.stderr, e
         sys.exit(1)
     
-    if holds:
-        for hold in holds:
-            print hold.id, hold
+    for entity in entities:
+        print entity.id, entity

@@ -1,2 +1,2 @@
 
-__all__ = ["test_scripts"]
+__all__ = ["test_cbank"]

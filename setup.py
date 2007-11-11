@@ -22,7 +22,5 @@ setup(
     test_suite="nose.collector",
     zip_safe = True,
     scripts = [os.path.join("source", "scripts", script)
-               for script in ["cb-install",
-                              "cb-request", "cb-allocate", "cb-hold",
-                              "cb-charge", "cb-refund"]],
+               for script in ["cb-install", "cbank"]],
 )
