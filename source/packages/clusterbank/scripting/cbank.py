@@ -270,7 +270,7 @@ def main (argv=None):
             return holds
     elif directive == "charge":
         if options.list:
-            return charge_list(hold=options.hold, allocation=options.allocation, request=options.request, project=options.project, resource=options.resource)
+            return charge_list(allocation=options.allocation, request=options.request, project=options.project, resource=options.resource)
         elif options.allocation is not None:
             for option in ("amount", ):
                 if getattr(options, option, None) is None:
@@ -324,9 +324,9 @@ def hold_list (**kwargs):
     holds = Hold.query()
     if kwargs.get("allocation") is not None:
         holds = holds.filter(Hold.allocation==kwargs.get("allocation"))
-    holds = holds.join("allocation")
-    holds = holds.filter(Allocation.start<=now)
-    holds = holds.filter(Allocation.expiration>now)
+    else:
+        holds = holds.filter(Allocation.start<=now)
+        holds = holds.filter(Allocation.expiration>now)
     if kwargs.get("project") is not None:
         holds = holds.filter(Request.project == kwargs.get("project"))
     if kwargs.get("resource") is not None:
@@ -336,11 +336,11 @@ def hold_list (**kwargs):
 def charge_list (**kwargs):
     now = datetime.now()
     charges = Charge.query()
-    if kwargs.get("hold") is not None:
-        charges = charges.filter(Charge.hold==kwargs.get("hold"))
-    charges = charges.join("allocation")
     if kwargs.get("allocation") is not None:
         charges = charges.filter(Charge.allocation==kwargs.get("allocation"))
+    else:
+        charges = charges.filter(Allocation.start<=now)
+        charges = charges.filter(Allocation.expiration>now)
     if kwargs.get("project") is not None:
         charges = charges.filter(Allocation.project==kwargs.get("project"))
     if kwargs.get("resource") is not None:
@@ -352,12 +352,11 @@ def refund_list (**kwargs):
     refunds = Refund.query()
     if kwargs.get("charge") is not None:
         refunds = refunds.filter(Refund.charge==kwargs.get("charge"))
-    refunds = refunds.join("charge")
     if kwargs.get("allocation") is not None:
+        refunds = refunds.filter(Charge.allocation==kwargs.get("allocation"))
+    else:
         refunds = refunds.filter(Allocation.start<=now)
         refunds = refunds.filter(Allocation.expiration>now)
-        refunds = refunds.filter(Charge.allocation==kwargs.get("allocation"))
-    refunds = refunds.join(["charge", "allocation"])
     if kwargs.get("project") is not None:
         refunds = refunds.filter(Allocation.project==kwargs.get("project"))
     if kwargs.get("resource") is not None:

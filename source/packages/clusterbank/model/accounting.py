@@ -11,7 +11,7 @@ Refund -- refund of a charge
 
 from datetime import datetime
 
-from sqlalchemy import desc
+from sqlalchemy import desc, and_
 
 __all__ = ["Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund"]
 
@@ -188,7 +188,7 @@ class Hold (AccountingEntity):
                 try:
                     self._amount = 0
                     try:
-                        credit_limit = CreditLimit.query.filter(CreditLimit.project==self.project).filter(CreditLimit.resource==self.resource).filter(CreditLimit.start<=datetime.now()).order_by(desc("start"))[0].amount
+                        credit_limit = CreditLimit.query.filter(and_(CreditLimit.project==self.project, CreditLimit.resource==self.resource)).filter(CreditLimit.start<=datetime.now()).order_by(desc("start"))[0].amount
                     except IndexError:
                         credit_limit = 0
                     if value > self.allocation.amount - Hold.query.filter(Hold.allocation==self.allocation).sum("amount") + credit_limit:
