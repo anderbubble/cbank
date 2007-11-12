@@ -6,14 +6,14 @@ Allocation -- record of amount allocated to a project
 CreditLimit -- a maximum negative value for a project on a resource
 Hold -- a potential charge against a allocation
 Charge -- charge against a allocation
-Refund -- refund against a charge
+Refund -- refund of a charge
 """
 
 from datetime import datetime
 
-__all__ = [
-    "CreditLimit", "Request", "Allocation", "Hold", "Charge", "Refund",
-]
+from sqlalchemy import desc
+
+__all__ = ["Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund"]
 
 
 class AccountingEntity (object):
@@ -35,64 +35,19 @@ class AccountingEntity (object):
             return "<%s ?>" % self.__class__.__name__
 
 
-class CreditLimit (AccountingEntity):
-    
-    """A limit on the charges a project can have.
-    
-    Attributes:
-    start -- when this credit limit becomes active
-    amount -- amount of credit authorized
-    comment -- A verbose comment of why credit was allocated.
-    project -- project that has the credit limit
-    resource -- resource the credit limit is for
-    
-    Constraints:
-    unique by project, resource, and start
-    """
-    
-    def __init__ (self, **kwargs):
-        self.id = kwargs.get("id")
-        self.start = kwargs.get("start")
-        self.amount = kwargs.get("amount")
-        self.comment = kwargs.get("comment")
-        self.project = kwargs.get("project")
-        self.resource = kwargs.get("resource")
-    
-    def _get_amount (self):
-        return self._amount
-    
-    def _set_amount (self, value):
-        if value < 0 and value is not None:
-            raise ValueError("credit limit cannot be negative")
-        self._amount = value
-    
-    amount = property(_get_amount, _set_amount)
-
-
 class Request (AccountingEntity):
     
-    """A request for amount on a resource.
-    
-    Attributes:
-    datetime -- when the request was entered
-    amount -- amount of amount requested
-    comment -- verbose description of need
-    start -- when the allocation should become active
-    open -- the request remains unanswered
-    resource -- the resource to be used
-    project -- the project for which amount is requested
-    allocations -- allocations on the system in response to this request
-    """
+    """A request for amount on a resource."""
     
     def __init__ (self, **kwargs):
         self.id = kwargs.get("id")
-        self.resource = kwargs.get("resource")
         self.project = kwargs.get("project")
+        self.resource = kwargs.get("resource")
         self.datetime = kwargs.get("datetime")
         self.amount = kwargs.get("amount")
-        self.comment = kwargs.get("comment")
         self.start = kwargs.get("start")
-        self.allocations = kwargs.get("allocations", [])
+        self.comment = kwargs.get("comment")
+        self.allocation = kwargs.get("allocation")
     
     def _get_amount (self):
         return self._amount
@@ -104,63 +59,23 @@ class Request (AccountingEntity):
         self._amount = value
     
     amount = property(_get_amount, _set_amount)
-    
-    def _get_allocated (self):
-        """Whether the request has had amount allocated to it."""
-        return len(self.allocations) > 0
-    
-    allocated = property(_get_allocated)
-    
-    def _get_open (self):
-        """Whether the request is awaiting a reply."""
-        return not self.allocated
-    
-    open = property(_get_open)
 
 
 class Allocation (AccountingEntity):
     
-    """An amount allocated to a project.
-    
-    Properties:
-    request -- request for amount to which this is a response
-    charges -- amount used from the allocation
-    datetime -- when the allocation was entered
-    approver -- the person/group who approved the allocation
-    amount -- amount allocated
-    start -- when the allocation becomes active
-    comment -- verbose description of the allocation
-    project -- project from associated request
-    resource -- resource from associated request
-    started -- allocation has started
-    expired -- allocation has expired
-    active -- allocation has started and has not expired
-    """
+    """An amount allocated to a project."""
     
     def __init__ (self, **kwargs):
         self.id = kwargs.get("id")
-        self.request = kwargs.get("request")
-        self.approver = kwargs.get("approver")
+        self.project = kwargs.get("project")
+        self.resource = kwargs.get("resource")
         self.datetime = kwargs.get("datetime")
         self.amount = kwargs.get("amount")
-        if self.amount is None and self.request:
-            self.amount = self.request.amount
         self.start = kwargs.get("start")
         self.expiration = kwargs.get("expiration")
         self.comment = kwargs.get("comment")
         self.holds = kwargs.get("holds", [])
-    
-    def _get_project (self):
-        """Return the related project."""
-        return self.request.project
-    
-    project = property(_get_project)
-    
-    def _get_resource (self):
-        """Return the related resource."""
-        return self.request.resource
-    
-    resource = property(_get_resource)
+        self.charges = kwargs.get("charges", [])
     
     def _get_amount (self):
         return self._amount
@@ -173,82 +88,61 @@ class Allocation (AccountingEntity):
     
     amount = property(_get_amount, _set_amount)
     
-    def _get_started (self):
-        """The allocation has a start date before now."""
-        return self.start <= datetime.now()
+    def _get_amount_available (self):
+        charges = Charge.query.filter(Charge.allocation==self)
+        amount_charged = (charges.sum("amount") or 0) - (charges.join("refunds").sum("amount") or 0)
+        return self.amount - amount_charged
     
-    started = property(_get_started)
-    
-    def _get_expired (self):
-        """The allocation has an expiration date before now."""
-        return self.expiration <= datetime.now()
-    
-    expired = property(_get_expired)
+    amount_available = property(_get_amount_available)
     
     def _get_active (self):
         """The allocation's amount affect's the project's amount."""
-        return self.started and not self.expired
+        return self.start <= datetime.now() < self.expiration
     
     active = property(_get_active)
+
+
+class CreditLimit (AccountingEntity):
     
-    def _get_charges (self):
-        """Return the set of charges made against this allocation."""
-        return Charge.query.join("hold").filter(Hold.allocation==self)
+    """A limit on the charges a project can have.
     
-    charges = property(_get_charges)
+    Constraints:
+    unique by project, resource, and start
+    """
     
-    def _get_amount_charged (self):
-        """Return the sum of effective charges against this allocation."""
-        amount_charged = 0
-        for charge in self.charges:
-            amount_charged += charge.effective_charge
-        return amount_charged
+    def __init__ (self, **kwargs):
+        self.id = kwargs.get("id")
+        self.project = kwargs.get("project")
+        self.resource = kwargs.get("resource")
+        self.datetime = kwargs.get("datetime")
+        self.start = kwargs.get("start")
+        self.amount = kwargs.get("amount")
+        self.comment = kwargs.get("comment")
     
-    amount_charged = property(_get_amount_charged)
+    def _get_amount (self):
+        return self._amount
     
-    def _get_amount_held (self):
-        """Sum of amount in open holds."""
-        amount_held = 0
-        for hold in self.holds:
-            if hold.open:
-                amount_held += hold.amount or 0
-        return amount_held
+    def _set_amount (self, value):
+        if value < 0 and value is not None:
+            raise ValueError("credit limit cannot be negative")
+        self._amount = value
     
-    amount_held = property(_get_amount_held)
-    
-    def _get_amount_available (self):
-        return self.amount - self.amount_held - self.amount_charged
-    
-    amount_available = property(_get_amount_available)
+    amount = property(_get_amount, _set_amount)
 
 
 class Hold (AccountingEntity):
     
-    """A potential charge against an allocation.
-    
-    Properties:
-    datetime -- when the hold was entered
-    amount -- how much could be charged
-    comment -- verbose description of the hold
-    project -- points to related project
-    resource -- points to related resource
-    effective_charge -- total amount charged (after refunds)
-    amount_available -- difference of amount and effective_charge
-    charged -- the hold has charges
-    active -- the hold is against an active allocation
-    open -- the hold is uncharged
-    allocation -- the allocation the hold is against
-    charges -- charges resulting from the hold
-    
-    Methods:
-    charge -- charge amount from this hold
-    
-    Exceptions:
-    InsufficientFunds -- hold exceed allocation
-    """
+    """A potential charge against an allocation."""
     
     class InsufficientFunds (Exception):
         """Hold exceed allocations."""
+    
+    def __init__ (self, **kwargs):
+        self.id = kwargs.get("id")
+        self.allocation = kwargs.get("allocation")
+        self.datetime = kwargs.get("datetime")
+        self.amount = kwargs.get("amount")
+        self.comment = kwargs.get("comment")
     
     @classmethod
     def distributed (cls, allocations, **kwargs):
@@ -281,14 +175,6 @@ class Hold (AccountingEntity):
                 holds.append(hold)
         return holds
     
-    def __init__ (self, **kwargs):
-        self.id = kwargs.get("id")
-        self.allocation = kwargs.get("allocation")
-        self.datetime = kwargs.get("datetime")
-        self.amount = kwargs.get("amount")
-        self.comment = kwargs.get("comment")
-        self.charges = kwargs.get("charges", [])
-    
     def _get_amount (self):
         return self._amount
     
@@ -301,8 +187,11 @@ class Hold (AccountingEntity):
                 prev_value = getattr(self, "_amount", None)
                 try:
                     self._amount = 0
-                    credit_limit = self.allocation.project.credit_available(self.allocation.resource)
-                    if value > self.allocation.amount - self.allocation.amount_held + credit_limit:
+                    try:
+                        credit_limit = CreditLimit.query.filter(CreditLimit.project==self.project).filter(CreditLimit.resource==self.resource).filter(CreditLimit.start<=datetime.now()).order_by(desc("start"))[0].amount
+                    except IndexError:
+                        credit_limit = 0
+                    if value > self.allocation.amount - Hold.query.filter(Hold.allocation==self.allocation).sum("amount") + credit_limit:
                         raise self.project.InsufficientFunds("credit limit exceeded")
                 finally:
                     self._amount = prev_value
@@ -319,69 +208,41 @@ class Hold (AccountingEntity):
         """Return the related resource."""
         return self.allocation.resource
     resource = property(_get_resource)
-    
-    def _get_effective_charge (self):
-        """Sum the effective charges of charges related to this hold."""
-        effective_charge = 0
-        for charge in self.charges:
-            effective_charge += charge.effective_charge
-        return effective_charge
-    effective_charge = property(_get_effective_charge)
-    
-    def _get_amount_available (self):
-        """Difference of amount held and effective charge."""
-        return self.amount - self.effective_charge
-    amount_available = property(_get_amount_available)
-    
-    def _get_charged (self):
-        """The hold has been charged."""
-        return len(self.charges) > 0
-    charged = property(_get_charged)
-    
-    def _get_active (self):
-        """The hold affects the current allocation."""
-        return self.allocation.active
-    active = property(_get_active)
-    
-    def _get_open (self):
-        """The hold is still awaiting charges."""
-        return not self.charged
-    open = property(_get_open)
 
 
 class Charge (AccountingEntity):
     
-    """A charge against an allocation.
+    """A charge against an allocation."""
     
-    Properties:
-    project -- project from related request
-    resource -- resource from related request
-    datetime -- when the charge was deducted
-    amount -- amount used
-    comment -- a verbose description of the charge
-    effective_charge -- The unit charge after any refunds
-    active -- the charge is against an active hold
-    hold -- the hold to which this charge applies
-    refunds -- refunds against this charge
-    
-    Methods:
-    refund -- refund amount from this charge
-    """
+    def __init__ (self, **kwargs):
+        self.id = kwargs.get("id")
+        self.allocation = kwargs.get("allocation")
+        self.amount = kwargs.get("amount")
+        if kwargs.get("hold") is not None:
+            hold = kwargs.get("hold")
+            hold.active = False
+            if self.allocation is None:
+                self.allocation = hold.allocation
+            if self.amount is None:
+                self.amount = hold.amount
+        self.datetime = kwargs.get("datetime")
+        self.comment = kwargs.get("comment")
+        self.refunds = kwargs.get("refunds", [])
     
     @classmethod
-    def distributed (cls, holds, **kwargs):
+    def distributed (cls, allocations, **kwargs):
         
         amount = kwargs.pop("amount")
         
         charges = list()
-        for hold in holds:
-            if hold.amount_available <= 0:
+        for allocation in allocations:
+            if allocation.amount_available <= 0:
                 continue
             
-            if hold.amount_available >= amount:
-                charge = Charge(hold=hold, amount=amount, **kwargs)
+            if allocation.amount_available >= amount:
+                charge = Charge(allocation=allocation, amount=amount, **kwargs)
             else:
-                charge = Charge(hold=hold, amount=hold.amount_available, **kwargs)
+                charge = Charge(allocation=allocation, amount=allocation.amount_available, **kwargs)
             charges.append(charge)
             amount -= charge.amount
         
@@ -390,38 +251,12 @@ class Charge (AccountingEntity):
                 charges[-1].amount += amount
             except IndexError:
                 try:
-                    hold = holds[0]
+                    allocation = allocations[0]
                 except IndexError:
-                    raise Exception("no holds are available to be charged")
-                charge = Charge(hold=hold, amount=amount, **kwargs)
+                    raise Exception("no allocations are available to be charged")
+                charge = Charge(allocation=allocation, amount=amount, **kwargs)
                 charges.append(charge)
         return charges
-    
-    def __init__ (self, **kwargs):
-        self.id = kwargs.get("id")
-        self.hold = kwargs.get("hold")
-        self.datetime = kwargs.get("datetime")
-        self.amount = kwargs.get("amount")
-        self.comment = kwargs.get("comment")
-        self.refunds = kwargs.get("refunds", [])
-    
-    def _get_effective_charge (self):
-        """Difference of charge amount and refund amounts."""
-        effective_charge = self.amount or 0
-        for refund in Refund.query.filter(Refund._charge==self):
-            effective_charge -= refund.amount
-        return effective_charge
-    effective_charge = property(_get_effective_charge)
-    
-    def _get_project (self):
-        """Return the related project."""
-        return self.hold.project
-    project = property(_get_project)
-    
-    def _get_resource (self):
-        """Return the related resource."""
-        return self.hold.resource
-    resource = property(_get_resource)
     
     def _get_amount (self):
         return self._amount
@@ -435,25 +270,25 @@ class Charge (AccountingEntity):
     
     amount = property(_get_amount, _set_amount)
     
-    def _get_active (self):
-        """Charge affects the project's current allocation."""
-        return self.hold.active
-    active = property(_get_active)
+    def _get_project (self):
+        """Return the related project."""
+        return self.allocation.project
+    project = property(_get_project)
+    
+    def _get_resource (self):
+        """Return the related resource."""
+        return self.allocation.resource
+    resource = property(_get_resource)
+    
+    def _get_effective_amount (self):
+        return self.amount - (Refund.query.filter(Refund._charge==self).sum("amount") or 0)
+    
+    effective_amount = property(_get_effective_amount)
 
 
 class Refund (AccountingEntity):
     
-    """A refund against a charge.
-    
-    Properties:
-    project -- project from associated charge
-    resource -- resource from associated charge
-    charge -- charge being refunded
-    datetime -- when the refund was added
-    amount -- amount refunded
-    comment -- description of the refund
-    active -- refund is against an active charge
-    """
+    """A refund against a charge."""
     
     def __init__ (self, **kwargs):
         self.id = kwargs.get("id")
@@ -472,23 +307,6 @@ class Refund (AccountingEntity):
         return self.charge.resource
     resource = property(_get_resource)
     
-    def _get_charge (self):
-        return self._charge
-    
-    def _set_charge (self, charge):
-        if charge is not None:
-            if getattr(self, "amount", None) is not None:
-                prev_charge = getattr(self, "_charge", None)
-                try:
-                    self._charge = None
-                    if self.amount > charge.effective_charge:
-                        raise ValueError("refunds cannot exceed charge")
-                finally:
-                    self._charge = prev_charge
-        self._charge = charge
-    
-    charge = property(_get_charge, _set_charge)
-    
     def _get_amount (self):
         return self._amount
     
@@ -496,19 +314,13 @@ class Refund (AccountingEntity):
         if value is not None:
             if value < 0:
                 raise ValueError("cannot refund negative amount")
-            elif getattr(self, "charge", None) is not None:
-                prev_value = getattr(self, "_amount", None)
-                try:
-                    self._amount = 0
-                    if value > self.charge.effective_charge:
-                        raise ValueError("refunds cannot exceed charge")
-                finally:
-                    self._amount = prev_value
+            prev_value = getattr(self, "_amount", None)
+            try:
+                self._amount = 0
+                if value > self.charge.effective_amount:
+                    raise ValueError("refunds cannot exceed charge")
+            finally:
+                self._amount = prev_value
         self._amount = value
     
     amount = property(_get_amount, _set_amount)
-    
-    def _get_active (self):
-        """The charge affects the project's current allocation."""
-        return self.charge.active
-    active = property(_get_active)
