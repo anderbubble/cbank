@@ -1,15 +1,26 @@
 """Userbase model for userbase plugin.
 
 Classes:
-UpstreamEntity -- base class for upstream entities
 Project -- upstream project
 Resource -- upstream resource
+
+Exceptions:
+DoesNotExist -- requested entity does not exist
 """
 
 from sqlalchemy import exceptions
 
 
-__all__ = ["User", "Project", "Resource"]
+__all__ = ["Project", "Resource"]
+
+
+class DoesNotExist (Exception):
+    """The specified entity does not exist."""
+    
+    label = "entity"
+    
+    def __str__ (self):
+        return "%s %r does not exist" % (self.label, self.message)
 
 
 class UpstreamEntity (object):
@@ -18,23 +29,7 @@ class UpstreamEntity (object):
     Class methods:
     by_id -- Retrieve an entity by canonical identifier.
     by_name -- Retrieve an entity by name.
-    
-    Exceptions:
-    DoesNotExist -- The specified entity does not exist.
     """
-    
-    
-    class DoesNotExist (Exception):
-        """The specified entity does not exist."""
-        
-        label = "entity"
-        
-        def __str__ (self):
-            try:
-                return "%s %i does not exist" % (self.label, self.message)
-            except TypeError:
-                return '%s "%s" does not exist' % (self.label, self.message)
-    
     
     def __init__ (self, **kwargs):
         self.id = kwargs.get("id")
@@ -92,7 +87,7 @@ class Project (UpstreamEntity):
     DoesNotExist -- The specified project does not exist.
     """
     
-    class DoesNotExist (UpstreamEntity.DoesNotExist):
+    class DoesNotExist (DoesNotExist):
         """The specified project does not exist."""
         
         label = "project"
@@ -113,7 +108,7 @@ class Resource (UpstreamEntity):
     DoesNotExist -- The specified resource does not exist.
     """
     
-    class DoesNotExist (UpstreamEntity.DoesNotExist):
+    class DoesNotExist (DoesNotExist):
         """The specified project does not exist."""
         
         label = "resource"

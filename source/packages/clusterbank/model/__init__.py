@@ -1,23 +1,46 @@
+"""The clusterbank model.
+
+This package contains the local data model, including reflected projects
+and resources from upstream, along with requests, allocations, charges, etc.
+
+Classes:
+Project -- a project that can use a resource
+Resource -- a resource that can be allocated
+Request -- request for an allocation
+Allocation -- allocation of a resource to a project
+Hold -- hold of funds from an account
+Charge -- charge against an account
+Refund -- refund of a charge
+
+Objects:
+metadata -- metadata collection
+Session -- sessionmaker (and default session)
+
+metadata will be automatically bound to an engine specified in a config
+file if present.
+
+Configuration:
+/etc/clusterbank.conf -- [main] database
+"""
+
 import warnings
 from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker, relation, synonym
 
-from clusterbank.model.metadata import \
-    metadata, \
+from clusterbank.model.metadata import metadata, \
     projects_table, resources_table, \
-    credit_limits_table, requests_table, allocations_table, \
+    requests_table, allocations_table, credit_limits_table, \
     holds_table, charges_table, refunds_table
-from clusterbank.model.entities import \
-    Project, Resource
+from clusterbank.model.entities import Project, Resource
 from clusterbank.model.accounting import \
-    CreditLimit, Request, Allocation, Hold, Charge, Refund
+    Request, Allocation, CreditLimit, Hold, Charge, Refund
 
 __all__ = [
     "Session",
-    "User", "Project", "Resource",
-    "CreditLimit", "Request", "Allocation", "Hold", "Charge", "Refund",
+    "Project", "Resource",
+    "Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund",
 ]
 
 config = SafeConfigParser()

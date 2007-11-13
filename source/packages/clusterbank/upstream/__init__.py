@@ -3,30 +3,39 @@
 Plugins should make the plugin interface available at the top level (whether
 that be a module or package).
 
-class Project:
+class Project (object):
     
-    id = int
-    name = str
-    
-    @classmethod
-    def by_id (cls, id): --> Resource | DoesNotExist
+    id = int()
+    name = str()
     
     @classmethod
-    def by_name (cls, name): --> Resource | DoesNotExist
+    def by_id (cls, id): pass # return Resource() or raise DoesNotExist()
+    
+    @classmethod
+    def by_name (cls, name): pass # return Resource() or raise DoesNotExist()
 
 
-class Resource:
+class Resource (object):
     
-    id = int
-    name = str
-    
-    @classmethod
-    def by_id (cls, id): --> Resource | DoesNotExist
+    id = int()
+    name = str()
     
     @classmethod
-    def by_name (cls, name): --> Resource | DoesNotExist
+    def by_id (cls, id): pass # return Resource() or raise DoesNotExist()
+    
+    @classmethod
+    def by_name (cls, name): pass # return Resource() or raise DoesNotExist()
 
-class DoesNotExist (Exception)
+class DoesNotExist (Exception): pass
+
+Packages:
+userbase -- uses the MCS userbase
+
+Project and Resource classes are imported into this module as directed by
+a config file.
+
+Configuration:
+/etc/clusterbank.conf -- [upstream] module
 """
 
 import warnings

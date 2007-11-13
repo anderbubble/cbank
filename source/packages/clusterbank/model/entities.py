@@ -1,21 +1,15 @@
 """Cluster entity model.
 
 Classes:
-Resource -- a resource (usually for computation)
-Project -- a project in the system
+Resource -- resource that can be allocated
+Project -- project to which resources can be allocated
 """
 
-from datetime import datetime
-
-from sqlalchemy import exceptions, desc
+from sqlalchemy import exceptions
 
 from clusterbank import upstream
-from clusterbank.model.accounting import \
-    Request, Allocation, CreditLimit, Hold, Charge, Refund
 
-__all__ = [
-    "Project", "Resource",
-]
+__all__ = ["Project", "Resource"]
 
 
 class Entity (object):
@@ -49,27 +43,18 @@ class Entity (object):
 
 class Project (Entity):
     
-    """A logical project.
+    """Project to which resources can be allocated.
+    
+    Properties:
+    id -- unique integer identifier
+    name -- canonical name of the project (from upstream)
+    requests -- request from the project
+    allocations -- allocations to the project
+    credit_limits -- credit limits for the project
     
     Exceptions:
     DoesNotExist -- the specified project does not exist
     InsufficientFunds -- not enough funds to perform an action
-    
-    Properties:
-    id -- canonical id of the project
-    name -- canonical name of the project (from upstream)
-    credit_limits -- available credit per-resource
-    requests -- requests made for the project
-    
-    Methods:
-    amount_allocated -- sum of amount allocated to a resource
-    amount_held -- sum of amount committed to uncharged holds
-    amount_charged -- sum of effective charges
-    amount_used -- sum of amount held and amount charged
-    amount_available -- difference of amount allocated and amount used
-    credit_limit -- current credit limit (value) for the resource
-    credit_used -- negative amount used
-    credit_available -- difference of credit limit and credit used
     """
     
     class DoesNotExist (Exception):
@@ -79,15 +64,21 @@ class Project (Entity):
         """Not enough funds to perform an action."""
     
     def __init__ (self, **kwargs):
+        """Initialize a project.
+        
+        Keyword arguments:
+        id -- unique integer identifier
+        requests -- requests from the project
+        allocations -- allocations to the project
+        credit_limits -- credit limits for the project
+        """
         self.id = kwargs.get("id")
         self.requests = kwargs.get("requests", [])
         self.allocations = kwargs.get("allocations", [])
         self.credit_limits = kwargs.get("credit_limits", [])
-        self.holds = kwargs.get("holds", [])
-        self.charges = kwargs.get("charges", [])
     
     def _get_name (self):
-        """Return the name of the upstream project."""
+        """Intelligent property accessor."""
         upstream_project = upstream.Project.by_id(self.id)
         return upstream_project.name
     
@@ -96,31 +87,37 @@ class Project (Entity):
 
 class Resource (Entity):
     
-    """A logical resource.
+    """Resource that can be allocated to a project.
     
     Properties:
     id -- canonical id of the resource
     name -- canonical name of the resource (from upstream)
-    credit_limits -- credit limits posted for the resource
-    requests -- requests posted for the resource
+    requests -- requests for the resource
+    allocations -- allocations of the resource
+    credit_limits -- credit limits on the resource
     
     Exceptions:
-    DoesNotExist -- The specified resource does not exist.
+    DoesNotExist -- the specified resource does not exist
     """
     
     class DoesNotExist (Exception):
         """The specified resource does not exist."""
     
     def __init__ (self, **kwargs):
+        """Initialize a resource.
+        
+        Keyword arguments:
+        id -- canonical id of the resource
+        requests -- requests for the resource
+        credit_limits -- credit limits on the resource
+        """
         self.id = kwargs.get("id")
         self.requests = kwargs.get("requests", [])
         self.allocations = kwargs.get("allocations", [])
         self.credit_limits = kwargs.get("credit_limits", [])
-        self.holds = kwargs.get("holds", [])
-        self.charges = kwargs.get("charges", [])
     
     def _get_name (self):
-        """Return the name of the upstream resource."""
+        """Intelligent property accessor."""
         upstream_resource = upstream.Resource.by_id(self.id)
         return upstream_resource.name
     

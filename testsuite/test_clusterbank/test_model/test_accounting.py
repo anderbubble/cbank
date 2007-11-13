@@ -48,10 +48,6 @@ class TestRequest (AccountingTester):
 
 class TestAllocation (AccountingTester):
     
-    def setup (self):
-        AccountingTester.setup(self)
-        self.request = Request(amount=2000)
-    
     def test_init (self):
         allocation = Allocation(
             project=self.project, resource=self.resource,
@@ -150,11 +146,6 @@ class TestHold (AccountingTester):
         assert sum(hold.amount for hold in holds) == 900
         for hold in holds:
             assert hold.allocation in (allocation1, allocation2)
-    
-    def test_convenience_properties (self):
-        hold = Hold(allocation=self.allocation, amount=900)
-        assert hold.project is self.allocation.project
-        assert hold.resource is self.allocation.resource
 
 
 class TestCharge (AccountingTester):
@@ -186,8 +177,8 @@ class TestCharge (AccountingTester):
         allocation1.amount = 600
         allocation2 = Allocation(amount=600,
             project=self.project, resource=self.resource,
-            start=datetime(year=2007, month=1, day=1), expiration=datetime(year=2008, month=1, day=1))
-        charges = Charge.distributed(allocations=(allocation1, allocation2), amount=900)
+            start=datetime.now(), expiration=datetime.now()+timedelta(days=1))
+        charges = Charge.distributed((allocation1, allocation2), amount=900)
         assert len(charges) == 2
         assert sum(charge.amount for charge in charges) == 900
         for charge in charges:
@@ -201,11 +192,6 @@ class TestCharge (AccountingTester):
             pass
         else:
             assert not "allowed negative amount"
-    
-    def test_convenience_properties (self):
-        charge = Charge(allocation=self.allocation, amount=300)
-        assert charge.project is self.allocation.project
-        assert charge.resource is self.allocation.resource
 
 
 class TestRefund (AccountingTester):
@@ -225,11 +211,6 @@ class TestRefund (AccountingTester):
         clusterbank.model.Session.commit()
         assert refund.id is not None
         assert datetime.now() - refund.datetime < timedelta(minutes=1)
-    
-    def test_convenience_properties (self):
-        refund = Refund(charge=self.charge)
-        assert refund.project is self.charge.project
-        assert refund.resource is self.charge.resource
     
     def test_negative_amount (self):
         refund = Refund()

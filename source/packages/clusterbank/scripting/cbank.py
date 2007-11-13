@@ -3,8 +3,23 @@
 Classes:
 Option -- extension of optparse.Option
 
+Exceptions:
+UnknownDirective -- unknown directive specified
+UnexpectedArguments -- extra unparsed arguments
+MissingOption -- a required option was not specified
+NotConfigured -- the library is not fully configured
+
 Functions:
+main -- main (argv-parsing) function
 verify_configured -- ensure that the library is properly configured
+request_list -- get existing requests
+allocation_list -- get existing allocations
+hold_list -- get existing holds
+charge_list -- get existing charges
+refund_list -- get existing refunds
+
+Objects:
+parser -- cbank option parser (instance of optparser.OptionParser)
 """
 
 import sys
@@ -19,24 +34,64 @@ from sqlalchemy import exceptions
 import clusterbank
 import clusterbank.model
 from clusterbank.model import \
-    Project, Resource, Request, Allocation, Hold, Charge, Refund
+    Session, Project, Resource, Request, Allocation, Hold, Charge, Refund
 import clusterbank.upstream
+
+__all__ = [
+    "Option", "parser",
+    "main", "verify_configured", "request_list", "allocation_list",
+    "hold_list", "charge_list", "refund_list",
+    "UnknownDirective", "UnexpectedArguments", "MissingOption",
+    "NotConfigured",
+]
 
 
 class Option (optparse.Option):
     """Extension of optparse.Options for clusterbank parsing.
     
     Methods:
+    check_project -- return a project from its name
+    check_resource -- return a resource from its name
+    check_date -- return a datetime from YYYY-MM-DD
     check_allocation -- return an allocation from its id
     check_charge -- return a charge from its id
-    check_date -- return a datetime from YYYY-MM-DD
     check_hold -- return a hold from its id
-    check_holds -- return a list of holds from a comma-separated list of ids
-    check_permissions -- verify a comma-separated list of permissions
-    check_project -- return a project from its name
     check_request -- return a request from its id
-    check_resource -- return a resource from its name
     """
+    
+    def check_date (self, opt, value):
+        """Return a datetime from YYYY-MM-DD."""
+        format = "%Y-%m-%d" # YYYY-MM-DD
+        try:
+            # return datetime.strptime(value, format) # requires Python >= 2.5
+            return datetime(*time.strptime(value, format)[0:6]) # backwards compatible
+        except ValueError:
+            raise optparse.OptionValueError(
+                "option %s: invalid date: %r" % (opt, value))
+    
+    def check_project (self, opt, value):
+        """Return a project from its name."""
+        try:
+            return Project.by_name(value)
+        except Project.DoesNotExist:
+            raise optparse.OptionValueError(
+                "option %s: unknown project: %r" % (opt, value))
+    
+    def check_resource (self, opt, value):
+        """Return a resource from its name."""
+        try:
+            return Resource.by_name(value)
+        except Resource.DoesNotExist:
+            raise optparse.OptionValueError(
+                "option %s: unknown resource: %r" % (opt, value))
+    
+    def check_request (self, opt, value):
+        """Return a request from its id."""
+        try:
+            return Request.query.filter(Request.id==value).one()
+        except exceptions.InvalidRequestError:
+            raise optparse.OptionValueError(
+                "option %s: unknown request: %r" % (opt, value))
     
     def check_allocation (self, opt, value):
         """Return an allocation from its id."""
@@ -54,16 +109,6 @@ class Option (optparse.Option):
             raise optparse.OptionValueError(
                 "option %s: unknown charge: %r" % (opt, value))
     
-    def check_date (self, opt, value):
-        """Return a datetime from YYYY-MM-DD."""
-        format = "%Y-%m-%d" # YYYY-MM-DD
-        try:
-            # return datetime.strptime(value, format) # requires Python >= 2.5
-            return datetime(*time.strptime(value, format)[0:6]) # backwards compatible
-        except ValueError:
-            raise optparse.OptionValueError(
-                "option %s: invalid date: %r" % (opt, value))
-    
     def check_hold (self, opt, value):
         """Return a hold from its id."""
         try:
@@ -72,62 +117,20 @@ class Option (optparse.Option):
             raise optparse.OptionValueError(
                 "option %s: unknown hold: %r" % (opt, value))
     
-    def check_holds (self, opt, value):
-        """Return a list of holds from a comma-separated list of ids."""
-        return [self.check_hold(opt, id) for id in value.split(",")]
-    
-    def check_permissions (self, opt, value):
-        """Verify a comma-separated list of permissions."""
-        all_permissions = ("request", "allocate", "hold", "charge", "refund")
-        if value == "all":
-            return all_permissions
-        else:
-            permissions = value.split(",")
-            for permission in permissions:
-                if permission not in all_permissions:
-                    raise optparse.OptionValueError(
-                        "option %s: unknown permission: %r" % (opt, permission))
-        return permissions
-    
-    def check_project (self, opt, value):
-        """Return a project from its name."""
-        try:
-            return Project.by_name(value)
-        except Project.DoesNotExist:
-            raise optparse.OptionValueError(
-                "option %s: unknown project: %r" % (opt, value))
-    
-    def check_request (self, opt, value):
-        """Return a request from its id."""
-        try:
-            return Request.query.filter(Request.id==value).one()
-        except exceptions.InvalidRequestError:
-            raise optparse.OptionValueError(
-                "option %s: unknown request: %r" % (opt, value))
-    
-    def check_resource (self, opt, value):
-        """Return a resource from its name."""
-        try:
-            return Resource.by_name(value)
-        except Resource.DoesNotExist:
-            raise optparse.OptionValueError(
-                "option %s: unknown resource: %r" % (opt, value))
-    
-    TYPES = (
-        "resource", "project", "permissions", "date",
-        "request", "allocation", "hold", "holds", "charge",
-    ) + optparse.Option.TYPES
+    TYPES = optparse.Option.TYPES + (
+        "date",
+        "resource", "project",
+        "request", "allocation", "hold", "charge",
+    )
     
     TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
     TYPE_CHECKER.update(dict(
         resource = check_resource,
         project = check_project,
-        permissions = check_permissions,
         date = check_date,
         request = check_request,
         allocation = check_allocation,
         hold = check_hold,
-        holds = check_holds,
         charge = check_charge,
     ))
 
@@ -181,6 +184,8 @@ parser.set_defaults(list=False)
 
 class UnknownDirective (Exception):
     
+    """An unknown directive was specified."""
+    
     def __init__ (self, directive):
         self.directive = directive
     
@@ -189,6 +194,8 @@ class UnknownDirective (Exception):
 
 
 class UnexpectedArguments (Exception):
+    
+    """Extra unparsed arguments."""
     
     def __init__ (self, arguments):
         self.arguments = arguments
@@ -199,6 +206,8 @@ class UnexpectedArguments (Exception):
 
 class MissingOption (Exception):
     
+    """A required option was not specified."""
+    
     def __init__ (self, option):
         self.option = option
     
@@ -207,6 +216,8 @@ class MissingOption (Exception):
 
 
 class NotConfigured (Exception):
+    
+    """The library is not configured."""
     
     def __str__ (self):
         return "not configured"
@@ -230,11 +241,11 @@ def main (argv=None):
         if options.list:
             return request_list(project=options.project, resource=options.resource)
         else:
-            for option in ("amount", ):
+            for option in ("project", "resource", "amount"):
                 if getattr(options, option, None) is None:
                     raise MissingOption(option)
             request = Request(project=options.project, resource=options.resource, amount=options.amount, start=options.start, comment=options.comment)
-            clusterbank.model.Session.commit()
+            Session.commit()
             return [request]
     elif directive == "allocation":
         if options.list:
@@ -246,7 +257,7 @@ def main (argv=None):
             allocation = Allocation(project=options.project, resource=options.resource, start=options.start, expiration=options.expiration, amount=options.amount, comment=options.comment)
             if options.request is not None and options.request.allocation is None:
                 options.request.allocation = allocation
-            clusterbank.model.Session.commit()
+            Session.commit()
             return [allocation]
     elif directive == "hold":
         if options.list:
@@ -256,7 +267,7 @@ def main (argv=None):
                 if getattr(options, option, None) is None:
                     raise MissingOption(option)
             hold = Hold(allocation=options.allocation, amount=options.amount, comment=options.comment)
-            clusterbank.model.Session.commit()
+            Session.commit()
             return [hold]
         else:
             for option in ("amount", ):
@@ -266,7 +277,7 @@ def main (argv=None):
                 raise MissingOption("allocation or project and resource")
             allocations = allocation_list(request=options.request, project=options.project, resource=options.resource)
             holds = Hold.distributed(allocations, amount=options.amount, comment=options.comment)
-            clusterbank.model.Session.commit()
+            Session.commit()
             return holds
     elif directive == "charge":
         if options.list:
@@ -276,7 +287,7 @@ def main (argv=None):
                 if getattr(options, option, None) is None:
                     raise MissingOption(option)
             charge = Charge(allocation=options.allocation, amount=options.amount, comment=options.comment)
-            clusterbank.model.Session.commit()
+            Session.commit()
             return [charge]
         else:
             for option in ("amount", ):
@@ -286,7 +297,7 @@ def main (argv=None):
                 raise MissingOption("allocation or project and resource")
             allocations = allocation_list(project=options.project, resource=options.resource)
             charges = Charge.distributed(allocations, amount=options.amount, comment=options.comment)
-            clusterbank.model.Session.commit()
+            Session.commit()
             return charges
     elif directive == "refund":
         if options.list:
@@ -296,12 +307,18 @@ def main (argv=None):
                 if getattr(options, option, None) is None:
                     raise MissingOption(option)
             refund = Refund(charge=options.charge, amount=options.amount, comment=options.comment)
-            clusterbank.model.Session.commit()
+            Session.commit()
             return [refund]
     else:
         raise UnknownDirective(directive)
 
 def request_list (**kwargs):
+    """Get existing requests.
+    
+    Keyword arguments:
+    project -- project the request is for
+    resource -- resource the request is for
+    """
     requests = Request.query.filter(Request.allocation==None)
     if kwargs.get("project"):
         requests = requests.filter(Request.project==kwargs['project'])
@@ -310,6 +327,12 @@ def request_list (**kwargs):
     return requests
 
 def allocation_list (**kwargs):
+    """Get active allocations.
+    
+    Keyword arguments:
+    project -- project the allocation is for
+    resource -- resource the allocation is for
+    """
     now = datetime.now()
     allocations = Allocation.query.filter(Allocation.start<=now)
     allocations = allocations.filter(Allocation.expiration>now)
@@ -320,25 +343,39 @@ def allocation_list (**kwargs):
     return allocations
 
 def hold_list (**kwargs):
-    now = datetime.now()
+    """Get holds on active allocations.
+    
+    Keyword arguments:
+    project -- project of the hold's allocation
+    resource -- resource of the hold's allocation
+    allocation -- holds on a specific allocaiton
+    """
     holds = Hold.query()
     if kwargs.get("allocation") is not None:
         holds = holds.filter(Hold.allocation==kwargs.get("allocation"))
     else:
+        now = datetime.now()
         holds = holds.filter(Allocation.start<=now)
         holds = holds.filter(Allocation.expiration>now)
     if kwargs.get("project") is not None:
-        holds = holds.filter(Request.project == kwargs.get("project"))
+        holds = holds.filter(Request.project==kwargs.get("project"))
     if kwargs.get("resource") is not None:
-        holds = holds.filter(Request.resource == kwargs.get("resource"))
+        holds = holds.filter(Request.resource==kwargs.get("resource"))
     return holds
 
 def charge_list (**kwargs):
-    now = datetime.now()
+    """Get charges on active allocations.
+    
+    Keyword arguments:
+    project -- project of the charge's allocation
+    resource -- resource of the charge's allocation
+    allocation -- charges on a specific allocaiton
+    """
     charges = Charge.query()
     if kwargs.get("allocation") is not None:
         charges = charges.filter(Charge.allocation==kwargs.get("allocation"))
     else:
+        now = datetime.now()
         charges = charges.filter(Allocation.start<=now)
         charges = charges.filter(Allocation.expiration>now)
     if kwargs.get("project") is not None:
@@ -348,13 +385,21 @@ def charge_list (**kwargs):
     return charges
 
 def refund_list (**kwargs):
-    now = datetime.now()
+    """Get refunds to active allocations.
+    
+    Keyword arguments:
+    project -- project of the refund's allocation
+    resource -- resource of the refund's allocation
+    allocation -- refunds to a specific allocaiton
+    charge -- refunds to a specific charge
+    """
     refunds = Refund.query()
     if kwargs.get("charge") is not None:
         refunds = refunds.filter(Refund.charge==kwargs.get("charge"))
     if kwargs.get("allocation") is not None:
         refunds = refunds.filter(Charge.allocation==kwargs.get("allocation"))
     else:
+        now = datetime.now()
         refunds = refunds.filter(Allocation.start<=now)
         refunds = refunds.filter(Allocation.expiration>now)
     if kwargs.get("project") is not None:

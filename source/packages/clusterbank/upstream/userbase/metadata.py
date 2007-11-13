@@ -1,9 +1,17 @@
+"""userbase metadata
+
+Objects:
+metadata -- master metadata object
+projects_table -- userbase projects
+resource_types_table -- userbase resources
+"""
+
 from sqlalchemy import MetaData, Table, Column, ForeignKey, types
 
 __all__ = [
     "metadata",
     "projects_table",
-    "project_members_table", "resource_types_table",
+    "resource_types_table",
 ]
 
 metadata = MetaData()
