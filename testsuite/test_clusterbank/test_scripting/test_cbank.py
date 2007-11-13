@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta
 
 import clusterbank.model
-from clusterbank.scripting import cbank
+from clusterbank.interfaces import cbank
 
 def run (command):
     argv = command.split()
