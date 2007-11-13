@@ -21,6 +21,7 @@ setup(
     package_dir = {"":"source/packages"},
     test_suite="nose.collector",
     zip_safe = True,
-    scripts = [os.path.join("source", "scripts", script)
-               for script in ["cb-install", "cbank"]],
+    entry_points = {'console_scripts': [
+            'cbank = clusterbank.scripting.cbank:console_main',
+    ]},
 )

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """clusterbank cli.
 
 Classes:
@@ -312,6 +314,19 @@ def main (argv=None):
     else:
         raise UnknownDirective(directive)
 
+def console_main (argv=None, **kwargs):
+    stderr = kwargs.get("stderr") or sys.stderr
+    try:
+        main(argv)
+    except KeyboardInterrupt:
+        sys.exit(1)
+    except Exception, e:
+        print >> stderr, e
+        sys.exit(1)
+    
+    for entity in entities:
+        print entity.id, entity
+
 def request_list (**kwargs):
     """Get existing requests.
     
@@ -407,3 +422,6 @@ def refund_list (**kwargs):
     if kwargs.get("resource") is not None:
         refunds = refunds.filter(Allocation.resource==kwargs.get("resource"))
     return refunds
+
+if __name__ == "__main__":
+    console_main()
