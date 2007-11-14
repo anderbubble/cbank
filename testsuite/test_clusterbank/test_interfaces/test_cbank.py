@@ -2,11 +2,11 @@ import os
 from datetime import datetime, timedelta
 
 import clusterbank.model
-from clusterbank.interfaces import cbank
+from clusterbank.interfaces.cbank import main, parse_directive
 
 def run (command):
     argv = command.split()
-    return cbank.main(argv)
+    return main(argv)
 
 
 class ScriptTester (object):
@@ -17,6 +17,13 @@ class ScriptTester (object):
     def teardown (self):
         clusterbank.model.Session.remove()
         clusterbank.model.metadata.drop_all()
+
+
+def test_parse_directive ():
+    assert parse_directive("req") == "request"
+    assert parse_directive("allo") == "allocation"
+    assert parse_directive("ref") == "refund"
+    assert parse_directive("re") == "re"
 
 
 class TestMain (ScriptTester):

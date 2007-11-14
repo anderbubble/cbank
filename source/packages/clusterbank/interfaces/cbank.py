@@ -225,6 +225,16 @@ class NotConfigured (Exception):
         return "not configured"
 
 
+def parse_directive (directive):
+    directives = ("request", "allocation", "allocate", "hold", "charge", "refund")
+    matches = [each for each in directives if each.startswith(directive)]
+    if len(matches) == 1:
+        return matches[0]
+    elif set(matches) == set(["allocation", "allocate"]):
+        return "allocation"
+    else:
+        return directive
+
 def main (argv=None):
     if argv is None:
         argv = sys.argv
@@ -236,6 +246,8 @@ def main (argv=None):
         directive = args.pop(0)
     except IndexError:
         raise UnknownDirective("not specified")
+    else:
+        directive = parse_directive(directive)
     if args:
         raise UnexpectedArguments(args)
     
