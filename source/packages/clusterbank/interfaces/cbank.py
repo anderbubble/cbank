@@ -325,7 +325,7 @@ def console_main (argv=None, **kwargs):
         sys.exit(1)
     
     for entity in entities:
-        print entity.id, entity
+        print entity
 
 def request_list (**kwargs):
     """Get existing requests.

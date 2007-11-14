@@ -16,7 +16,20 @@ from sqlalchemy import desc, and_
 __all__ = ["Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund"]
 
 
-class Request (object):
+class AccountingEntity (object):
+    """Base class for accounting entities.
+    
+    Provides a standard str/repr interface.
+    """
+    
+    def __str__ (self):
+        return "%i (%i)" % (self.id, self.amount)
+    
+    def __repr__ (self):
+        return "<%s %i>" % (self.__class__.__name__, self.id)
+
+
+class Request (AccountingEntity):
     
     """A request for amount on a resource.
     
@@ -71,7 +84,7 @@ class Request (object):
     amount = property(_get_amount, _set_amount)
 
 
-class Allocation (object):
+class Allocation (AccountingEntity):
     
     """An amount of a resource allocated to a project.
     
@@ -159,7 +172,7 @@ class Allocation (object):
     active = property(_get_active)
 
 
-class CreditLimit (object):
+class CreditLimit (AccountingEntity):
     
     """A credit limit for charges by a project on a resource.
     
@@ -213,7 +226,7 @@ class CreditLimit (object):
     amount = property(_get_amount, _set_amount)
 
 
-class Hold (object):
+class Hold (AccountingEntity):
     
     """Uncharged but unavailable amount of an allocation.
     
@@ -327,7 +340,7 @@ class Hold (object):
     amount = property(_get_amount, _set_amount)
 
 
-class Charge (object):
+class Charge (AccountingEntity):
     
     """A charge against an allocation.
     
@@ -450,7 +463,7 @@ class Charge (object):
     effective_amount = property(_get_effective_amount)
 
 
-class Refund (object):
+class Refund (AccountingEntity):
     
     """A refund against a charge.
     

@@ -5,7 +5,7 @@ from clusterbank.model import Project, Resource
 from clusterbank import upstream
 from clusterbank.upstream import userbase
 
-__all__ = ["test_models", "test_scripting"]
+__all__ = ["test_models", "test_interfaces"]
 
 def setup ():
     clusterbank.model.metadata.bind = create_engine("sqlite:///:memory:")
