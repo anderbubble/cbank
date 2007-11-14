@@ -5,9 +5,12 @@ Resource -- resource that can be allocated
 Project -- project to which resources can be allocated
 """
 
-from sqlalchemy import exceptions
+from datetime import datetime
+
+from sqlalchemy import desc, exceptions
 
 from clusterbank import upstream
+from clusterbank.model.accounting import CreditLimit
 
 __all__ = ["Project", "Resource"]
 
@@ -51,6 +54,7 @@ class Project (Entity):
     requests -- request from the project
     allocations -- allocations to the project
     credit_limits -- credit limits for the project
+    credit_limit -- credit limit for a resource at a given datetime
     
     Exceptions:
     DoesNotExist -- the specified project does not exist
@@ -83,6 +87,20 @@ class Project (Entity):
         return upstream_project.name
     
     name = property(_get_name)
+    
+    def credit_limit (self, resource, datetime=datetime.now):
+        try:
+            datetime = datetime()
+        except TypeError:
+            pass
+        credit_limits = CreditLimit.query.filter(CreditLimit.project==self)
+        credit_limits = credit_limits.filter(CreditLimit.resource==resource)
+        credit_limits = credit_limits = credit_limits.filter(CreditLimit.start<=datetime)
+        credit_limits = credit_limits.order_by(desc("start"))
+        try:
+            return credit_limits[0]
+        except IndexError:
+            return None
 
 
 class Resource (Entity):

@@ -11,7 +11,7 @@ Refund -- refund of a charge
 
 from datetime import datetime
 
-from sqlalchemy import desc, and_
+from sqlalchemy import desc
 
 __all__ = ["Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund"]
 
@@ -260,9 +260,9 @@ class Hold (AccountingEntity):
         self.datetime = kwargs.get("datetime")
         self.id = kwargs.get("id")
         self.allocation = kwargs.get("allocation")
-        self.amount = kwargs.get("amount")
         self.comment = kwargs.get("comment")
         self.active = kwargs.get("active", True)
+        self.amount = kwargs.get("amount")
     
     @classmethod
     def distributed (cls, allocations, **kwargs):
@@ -318,23 +318,26 @@ class Hold (AccountingEntity):
         """Intelligent property mutator.
         
         Arguments:
-        value -- new amount (must be >= 0)
+        value -- new amount (must be >= 0, and must not exceed active holds or effective charges)
         """
         if value is not None:
             if value < 0:
                 raise ValueError("hold cannot be for negative amount")
             if getattr(self, "allocation", None) is not None:
-                prev_value = getattr(self, "_amount", None)
+                previous_value = getattr(self, "_amount", None)
                 try:
                     self._amount = 0
-                    try:
-                        credit_limit = CreditLimit.query.filter(and_(CreditLimit.project==self.allocation.project, CreditLimit.resource==self.allocation.resource)).filter(CreditLimit.start<=datetime.now()).order_by(desc("start"))[0].amount
-                    except IndexError:
-                        credit_limit = 0
-                    if value > self.allocation.amount - Hold.query.filter(Hold.allocation==self.allocation).sum("amount") + credit_limit:
+                    amount_charged = Charge.query.filter(Charge.allocation==self.allocation).sum("amount") or 0
+                    amount_refunded = Refund.query.filter(Charge.allocation==self.allocation).sum("amount") or 0
+                    amount_held = Hold.query.filter(Hold.allocation==self.allocation).filter(Hold.active==True).sum("amount") or 0
+                    amount_available = self.allocation.amount - ((amount_charged - amount_refunded) + amount_held)
+                    credit_limit = self.allocation.project.credit_limit(self.allocation.resource)
+                    if credit_limit is not None:
+                        amount_available += credit_limit.amount
+                    if value > amount_available:
                         raise self.allocation.project.InsufficientFunds()
                 finally:
-                    self._amount = prev_value
+                    self._amount = previous_value
         self._amount = value
     
     amount = property(_get_amount, _set_amount)
@@ -368,6 +371,8 @@ class Charge (AccountingEntity):
         self.datetime = kwargs.get("datetime")
         self.id = kwargs.get("id")
         self.allocation = kwargs.get("allocation")
+        self.comment = kwargs.get("comment")
+        self.refunds = kwargs.get("refunds", [])
         self.amount = kwargs.get("amount")
         if kwargs.get("hold") is not None:
             hold = kwargs.get("hold")
@@ -376,8 +381,6 @@ class Charge (AccountingEntity):
                 self.allocation = hold.allocation
             if self.amount is None:
                 self.amount = hold.amount
-        self.comment = kwargs.get("comment")
-        self.refunds = kwargs.get("refunds", [])
     
     @classmethod
     def distributed (cls, allocations, **kwargs):
@@ -433,23 +436,26 @@ class Charge (AccountingEntity):
         """Intelligent property mutator.
         
         Arguments:
-        value -- new amount (must be >= 0)
+        value -- new amount (must be >= 0, and must not exceed active holds or effective charges)
         """
         if value is not None:
             if value < 0:
                 raise ValueError("charge cannot be for negative amount")
             if getattr(self, "allocation", None) is not None:
-                prev_value = getattr(self, "_amount", None)
+                previous_value = getattr(self, "_amount", None)
                 try:
                     self._amount = 0
-                    try:
-                        credit_limit = CreditLimit.query.filter(and_(CreditLimit.project==self.allocation.project, CreditLimit.resource==self.allocation.resource)).filter(CreditLimit.start<=datetime.now()).order_by(desc("start"))[0].amount
-                    except IndexError:
-                        credit_limit = 0
-                    if value > self.allocation.amount - Charge.query.filter(Charge.allocation==self.allocation).sum("amount") + credit_limit:
+                    amount_charged = Charge.query.filter(Charge.allocation==self.allocation).sum("amount") or 0
+                    amount_refunded = Refund.query.filter(Charge.allocation==self.allocation).sum("amount") or 0
+                    amount_held = Hold.query.filter(Hold.allocation==self.allocation).filter(Hold.active==True).sum("amount") or 0
+                    amount_available = self.allocation.amount - ((amount_charged - amount_refunded) + amount_held)
+                    credit_limit = self.allocation.project.credit_limit(self.allocation.resource)
+                    if credit_limit is not None:
+                        amount_available += credit_limit.amount
+                    if value > amount_available:
                         raise self.allocation.project.InsufficientFunds()
                 finally:
-                    self._amount = prev_value
+                    self._amount = previous_value
         self._amount = value
     
     amount = property(_get_amount, _set_amount)
@@ -488,10 +494,10 @@ class Refund (AccountingEntity):
         self.datetime = kwargs.get("datetime")
         self.id = kwargs.get("id")
         self.charge = kwargs.get("charge")
+        self.comment = kwargs.get("comment")
         self.amount = kwargs.get("amount")
         if self.amount is None and self.charge is not None:
             self.amount = self.charge.amount
-        self.comment = kwargs.get("comment")
     
     def _get_amount (self):
         """Intelligent property accessor."""
@@ -506,13 +512,13 @@ class Refund (AccountingEntity):
         if value is not None:
             if value < 0:
                 raise ValueError("cannot refund negative amount")
-            prev_value = getattr(self, "_amount", None)
+            previous_value = getattr(self, "_amount", None)
             try:
                 self._amount = 0
                 if value > self.charge.effective_amount:
                     raise ValueError("refunds cannot exceed charge")
             finally:
-                self._amount = prev_value
+                self._amount = previous_value
         self._amount = value
     
     amount = property(_get_amount, _set_amount)
