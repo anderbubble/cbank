@@ -217,6 +217,17 @@ class MissingOption (Exception):
         return "must specify %s" % self.option
 
 
+class InvalidOption (Exception):
+    
+    """An invalid option was specified."""
+    
+    def __init__ (self, option):
+        self.option = option
+    
+    def __str__ (self):
+        return "cannot specify %s" % self.option
+
+
 class NotConfigured (Exception):
     
     """The library is not configured."""
@@ -226,7 +237,7 @@ class NotConfigured (Exception):
 
 
 def parse_directive (directive):
-    directives = ("request", "allocation", "allocate", "hold", "charge", "refund")
+    directives = ("request", "allocation", "allocate", "hold", "release", "charge", "refund")
     matches = [each for each in directives if each.startswith(directive)]
     if len(matches) == 1:
         return matches[0]
@@ -293,6 +304,14 @@ def main (argv=None):
             holds = Hold.distributed(allocations, amount=options.amount, comment=options.comment)
             Session.commit()
             return holds
+    elif directive == "release":
+        if options.list:
+            raise InvalidOption("list")
+        holds = list(hold_list(project=options.project, resource=options.resource, allocation=options.allocation, hold=options.hold))
+        for hold in holds:
+            hold.active = False
+        Session.commit()
+        return holds
     elif directive == "charge":
         if options.list:
             return charge_list(allocation=options.allocation, request=options.request, project=options.project, resource=options.resource)
@@ -377,7 +396,10 @@ def hold_list (**kwargs):
     resource -- resource of the hold's allocation
     allocation -- holds on a specific allocaiton
     """
-    holds = Hold.query()
+    if kwargs.get("hold") is not None:
+        return [hold]
+    else:
+        holds = Hold.query.filter(Hold.active==True)
     if kwargs.get("allocation") is not None:
         holds = holds.filter(Hold.allocation==kwargs.get("allocation"))
     else:

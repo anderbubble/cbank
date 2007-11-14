@@ -97,6 +97,17 @@ class TestMain (ScriptTester):
         assert len(list(list_holds)) == len(new_holds)
         assert set(list_holds) == set(new_holds)
     
+    def test_clear (self):
+        allocations = run("cbank allocation --project grail --resource spam --amount 200 --start 2007-01-01 --expiration 2008-01-01")
+        holds = run("cbank hold --allocation %i --amount 100 --comment testing" % allocations[0].id)
+        assert list(holds)
+        released_holds = run("cbank release --allocation %i" % allocations[0].id)
+        assert set(released_holds) == set(holds)
+        for hold in released_holds:
+            assert not hold.active
+        remaining_holds = run("cbank hold --list --allocation %i" % allocations[0].id)
+        assert not list(remaining_holds)
+    
     def test_charge (self):
         allocations = run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2008-01-01")
         charges = run("cbank charge --allocation %i --amount 50" % allocations[0].id)
