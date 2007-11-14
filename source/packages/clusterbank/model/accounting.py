@@ -41,7 +41,7 @@ class Request (AccountingEntity):
     amount -- amount requested
     start -- date when the allocation is needed
     comment -- misc. comments
-    allocation -- allocation that was made in response to the request
+    allocations -- allocations that was made in response to the request
     """
     
     def __init__ (self, **kwargs):
@@ -55,7 +55,7 @@ class Request (AccountingEntity):
         amount -- amount requested
         start -- date when the allocation is needed
         comment -- misc. comments
-        allocation -- allocation that was made in response to the request
+        allocations -- allocations that was made in response to the request
         """
         self.datetime = kwargs.get("datetime")
         self.id = kwargs.get("id")
@@ -64,7 +64,7 @@ class Request (AccountingEntity):
         self.amount = kwargs.get("amount")
         self.start = kwargs.get("start")
         self.comment = kwargs.get("comment")
-        self.allocation = kwargs.get("allocation")
+        self.allocations = kwargs.get("allocations", [])
     
     def _get_amount (self):
         """Intelligent property accessor."""
@@ -97,6 +97,7 @@ class Allocation (AccountingEntity):
     start -- when the allocation becomes active
     expiration -- when the allocation expires
     comment -- misc. comments
+    requests -- requests answered by this allocation
     holds -- holds on this allocation
     charges -- charges against this allocation
     """
@@ -114,6 +115,7 @@ class Allocation (AccountingEntity):
         start -- when the allocation becomes active
         expiration -- when the allocation expires
         comment -- misc. comments
+        requests -- requests answered by this allocation
         holds -- holds on this allocation
         charges -- charges against this allocation
         amount_available -- allocated amount after charges, refunds, and holds
@@ -134,6 +136,7 @@ class Allocation (AccountingEntity):
         self.start = kwargs.get("start")
         self.expiration = kwargs.get("expiration")
         self.comment = kwargs.get("comment")
+        self.requests = kwargs.get("requests", [])
         self.holds = kwargs.get("holds", [])
         self.charges = kwargs.get("charges", [])
     

@@ -31,7 +31,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker, relation, synonym
 
 from clusterbank.model.metadata import metadata, \
     projects_table, resources_table, \
-    requests_table, allocations_table, credit_limits_table, \
+    requests_table, requests_allocations_table, allocations_table, credit_limits_table, \
     holds_table, charges_table, refunds_table
 from clusterbank.model.entities import Project, Resource
 from clusterbank.model.accounting import \
@@ -81,7 +81,7 @@ Session.mapper(Request, requests_table, properties=dict(
     amount = synonym("_amount"),
     comment = requests_table.c.comment,
     start = requests_table.c.start,
-    allocation = relation(Allocation),
+    allocations = relation(Allocation, secondary=requests_allocations_table, backref="requests"),
 ))
 
 Session.mapper(Allocation, allocations_table, properties=dict(
@@ -94,6 +94,7 @@ Session.mapper(Allocation, allocations_table, properties=dict(
     start = allocations_table.c.start,
     expiration = allocations_table.c.expiration,
     comment = allocations_table.c.comment,
+    requests = relation(Request, secondary=requests_allocations_table, backref="allocations"),
     holds = relation(Hold, backref="allocation"),
     charges = relation(Charge, backref="allocation"),
 ))

@@ -31,7 +31,7 @@ class TestRequest (AccountingTester):
         assert request.amount == 2000
         assert request.start == datetime(year=2007, month=1, day=1)
         assert request.comment == "testing"
-        assert request.allocation is None
+        assert not request.allocations
         clusterbank.model.Session.commit()
         assert request.id is not None
         assert request.datetime - datetime.now() < timedelta(minutes=1)

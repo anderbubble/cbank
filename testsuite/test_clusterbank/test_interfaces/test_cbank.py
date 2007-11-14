@@ -93,7 +93,11 @@ class TestMain (ScriptTester):
         assert not list(holds)
         allocations = run("cbank allocation --project grail --resource spam --amount 700 --start 2007-01-01 --expiration 2008-01-01")
         new_holds = run("cbank hold --allocation %i --amount 100" % allocations[0].id)
+        print "new_holds", new_holds
         list_holds = run("cbank hold --list --project grail --resource spam --allocation %i" % allocations[0].id)
+        list_holds = list(list_holds)
+        print "list_holds", list_holds
+        
         assert len(list(list_holds)) == len(new_holds)
         assert set(list_holds) == set(new_holds)
     

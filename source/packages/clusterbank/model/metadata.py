@@ -44,7 +44,6 @@ requests_table = Table("requests", metadata,
     Column("start", types.DateTime, nullable=True),
     Column("amount", types.Integer, nullable=False),
     Column("comment", types.String, nullable=True),
-    Column("allocation_id", None, ForeignKey("allocations.id"), nullable=True),
 )
 
 allocations_table = Table("allocations", metadata,
@@ -56,6 +55,11 @@ allocations_table = Table("allocations", metadata,
     Column("start", types.DateTime, nullable=False),
     Column("expiration", types.DateTime, nullable=False),
     Column("comment", types.String),
+)
+
+requests_allocations_table = Table("requests_allocations", metadata,
+    Column("request_id", None, ForeignKey("requests.id"), primary_key=True),
+    Column("allocation_id", None, ForeignKey("allocations.id"), primary_key=True),
 )
 
 credit_limits_table = Table("credit_limits", metadata,
