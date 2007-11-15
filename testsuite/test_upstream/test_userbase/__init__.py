@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from clusterbank.upstream import userbase
 
-__all__ = ["test_model", "test_interface"]
+__all__ = ["test_interface"]
 
 def setup ():
     userbase.metadata.bind = create_engine("sqlite:///:memory:")

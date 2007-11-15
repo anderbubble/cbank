@@ -18,10 +18,7 @@ __all__ = ["Project", "Resource"]
 class Entity (object):
     
     def __repr__ (self):
-        try:
-            return "<%s %i>" % (self.__class__.__name__, self.id)
-        except TypeError:
-            return "<%s ?>" % self.__class__.__name__
+        return "<%s %r>" % (self.__class__.__name__, self.id)
     
     def __str__ (self):
         return self.name or "unknown"

@@ -159,11 +159,9 @@ class Allocation (AccountingEntity):
     
     def _get_amount_available (self):
         """Intelligent property accessor."""
-        charges = Charge.query.filter(Charge.allocation==self)
-        amount_charged = charges.sum("amount") or 0
-        amount_refunded = charges.join("refunds").sum("amount") or 0
-        holds = Hold.query.filter(Hold.allocation==self).filter(Hold.active==True)
-        amount_held = holds.sum("amount") or 0
+        amount_charged = Charge.query.filter(Charge.allocation==self).sum(Charge._amount) or 0
+        amount_refunded = Refund.query.join("charge").filter(Charge.allocation==self).sum(Refund._amount) or 0
+        amount_held = Hold.query.filter(Hold.allocation==self).filter(Hold.active==True).sum(Hold._amount) or 0
         return self.amount - ((amount_charged - amount_refunded) + amount_held)
     
     amount_available = property(_get_amount_available)
@@ -330,10 +328,7 @@ class Hold (AccountingEntity):
                 previous_value = getattr(self, "_amount", None)
                 try:
                     self._amount = 0
-                    amount_charged = Charge.query.filter(Charge.allocation==self.allocation).sum("amount") or 0
-                    amount_refunded = Refund.query.filter(Charge.allocation==self.allocation).sum("amount") or 0
-                    amount_held = Hold.query.filter(Hold.allocation==self.allocation).filter(Hold.active==True).sum("amount") or 0
-                    amount_available = self.allocation.amount - ((amount_charged - amount_refunded) + amount_held)
+                    amount_available = self.allocation.amount_available
                     credit_limit = self.allocation.project.credit_limit(self.allocation.resource)
                     if credit_limit is not None:
                         amount_available += credit_limit.amount
@@ -448,10 +443,7 @@ class Charge (AccountingEntity):
                 previous_value = getattr(self, "_amount", None)
                 try:
                     self._amount = 0
-                    amount_charged = Charge.query.filter(Charge.allocation==self.allocation).sum("amount") or 0
-                    amount_refunded = Refund.query.filter(Charge.allocation==self.allocation).sum("amount") or 0
-                    amount_held = Hold.query.filter(Hold.allocation==self.allocation).filter(Hold.active==True).sum("amount") or 0
-                    amount_available = self.allocation.amount - ((amount_charged - amount_refunded) + amount_held)
+                    amount_available = self.allocation.amount_available
                     credit_limit = self.allocation.project.credit_limit(self.allocation.resource)
                     if credit_limit is not None:
                         amount_available += credit_limit.amount
@@ -466,7 +458,7 @@ class Charge (AccountingEntity):
     def _get_effective_amount (self):
         """Intelligent property accessor."""
         refunds = Refund.query.filter(Refund._charge==self)
-        amount_refunded = refunds.sum("amount") or 0
+        amount_refunded = refunds.sum(Refund._amount) or 0
         return self.amount - amount_refunded
     
     effective_amount = property(_get_effective_amount)

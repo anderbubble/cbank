@@ -23,19 +23,37 @@ class EntityTester (object):
 
 class TestProject (EntityTester):
     
-    def setup (self):
-        EntityTester.setup(self)
-        self.project = Project.by_name("grail")
+    def test_by_existing_name (self):
+        project = Project.by_name("grail")
+        assert project.id is not None
+    
+    def test_by_invalid_name (self):
+        try:
+            project = Project.by_name("doesnotexist")
+        except Project.DoesNotExist:
+            pass
+        else:
+            assert not "Got a project that should not exist."
     
     def test_name (self):
-        assert self.project.name == "grail"
+        project = Project.by_name("grail")
+        assert project.name == "grail"
 
 
 class TestResource (EntityTester):
     
-    def setup (self):
-        EntityTester.setup(self)
-        self.resource = Resource.by_name("spam")
+    def test_by_existing_name (self):
+        resource = Resource.by_name("spam")
+        assert resource.id is not None
+    
+    def test_by_invalid_name (self):
+        try:
+            resource = Resource.by_name("doesnotexist")
+        except Resource.DoesNotExist:
+            pass
+        else:
+            assert not "Got a resource that should not exist."
     
     def test_name (self):
-        assert self.resource.name == "spam"
+        resource = Resource.by_name("spam")
+        assert resource.name == "spam"
