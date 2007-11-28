@@ -55,7 +55,6 @@ else:
         base_name = upstream_module_name.split(".")[0]
         upstream_module = __import__(upstream_module_name, locals(), globals(), ["Project", "Resource"])
     except ImportError:
-        raise
         warnings.warn("invalid upstream module: %s" % (upstream_module_name), UserWarning)
     else:
         Project = upstream_module.Project
