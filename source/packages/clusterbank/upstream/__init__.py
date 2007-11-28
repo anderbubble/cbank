@@ -9,10 +9,10 @@ class Project (object):
     name = str()
     
     @classmethod
-    def by_id (cls, id): pass # return Resource() or raise DoesNotExist()
+    def by_id (cls, id): pass # return Project() or raise DoesNotExist()
     
     @classmethod
-    def by_name (cls, name): pass # return Resource() or raise DoesNotExist()
+    def by_name (cls, name): pass # return Project() or raise DoesNotExist()
 
 
 class Resource (object):
@@ -41,7 +41,7 @@ Configuration:
 import warnings
 from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 
-__all__ = ["userbase"]
+__all__ = []
 
 config = SafeConfigParser()
 config.read(["/etc/clusterbank.conf"])
