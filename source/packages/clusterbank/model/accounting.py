@@ -159,9 +159,10 @@ class Allocation (AccountingEntity):
     
     def _get_amount_available (self):
         """Intelligent property accessor."""
-        amount_charged = Charge.query.filter(Charge.allocation==self).sum(Charge._amount) or 0
-        amount_refunded = Refund.query.join("charge").filter(Charge.allocation==self).sum(Refund._amount) or 0
-        amount_held = Hold.query.filter(Hold.allocation==self).filter(Hold.active==True).sum(Hold._amount) or 0
+        # sums are typecast to integers because mysql returns strings when summing integers
+        amount_charged = int(Charge.query.filter(Charge.allocation==self).sum(Charge._amount) or 0)
+        amount_refunded = int(Refund.query.join("charge").filter(Charge.allocation==self).sum(Refund._amount) or 0)
+        amount_held = int(Hold.query.filter(Hold.allocation==self).filter(Hold.active==True).sum(Hold._amount) or 0)
         return self.amount - ((amount_charged - amount_refunded) + amount_held)
     
     amount_available = property(_get_amount_available)
@@ -457,8 +458,9 @@ class Charge (AccountingEntity):
     
     def _get_effective_amount (self):
         """Intelligent property accessor."""
+        # sums are typecast to integers because mysql returns strings when summing integers
         refunds = Refund.query.filter(Refund._charge==self)
-        amount_refunded = refunds.sum(Refund._amount) or 0
+        amount_refunded = int(refunds.sum(Refund._amount) or 0)
         return self.amount - amount_refunded
     
     effective_amount = property(_get_effective_amount)
