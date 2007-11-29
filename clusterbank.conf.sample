@@ -1,0 +1,11 @@
+# configuration will be read from /etc/clusterbank.conf
+
+[main]
+# database=engine://user:pass@host:port/database
+
+[upstream]
+# module=clusterbank.upstream.userbase
+
+[userbase]
+# database=engine://user:pass@host:port/database
+
