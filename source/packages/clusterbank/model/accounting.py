@@ -13,7 +13,7 @@ from datetime import datetime
 
 from sqlalchemy import desc
 
-__all__ = ["Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund"]
+__all__ = ["RemainingAmount", "Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund"]
 
 
 class AccountingEntity (object):
@@ -27,6 +27,10 @@ class AccountingEntity (object):
     
     def __repr__ (self):
         return "<%s %r>" % (self.__class__.__name__, self.id)
+
+
+class RemainingAmount (Exception):
+    """The entire amount was not able to be used."""
 
 
 class Request (AccountingEntity):
@@ -306,10 +310,14 @@ class Hold (AccountingEntity):
                 try:
                     allocation = allocations[0]
                 except IndexError:
-                    raise Exception("no allocations are available")
-                hold = cls(allocation=allocation, amount=amount, **kwargs)
-                holds.append(hold)
+                    pass
+                else:
+                    hold = cls(allocation=allocation, amount=amount, **kwargs)
+                    holds.append(hold)
+                    amount = 0
         
+        if amount > 0:
+            raise RemainingAmount("%i left unheld" % amount)
         return holds
     
     def _get_amount (self):
@@ -353,6 +361,9 @@ class Charge (AccountingEntity):
     datetime -- when the chage was entered
     comment -- misc. comments
     refunds -- refunds from the charge
+    
+    Classmethods:
+    distributed -- construct multiple charges across multiple allocations
     """
     
     def __init__ (self, **kwargs):
@@ -421,10 +432,14 @@ class Charge (AccountingEntity):
                 try:
                     allocation = allocations[0]
                 except IndexError:
-                    raise Exception("no allocations are available")
-                charge = cls(allocation=allocation, amount=amount, **kwargs)
-                charges.append(charge)
+                    pass
+                else:
+                    charge = cls(allocation=allocation, amount=amount, **kwargs)
+                    charges.append(charge)
+                    amount = 0
         
+        if amount > 0:
+            raise RemainingAmount("%i left uncharged" % amount)
         return charges
     
     def _get_amount (self):

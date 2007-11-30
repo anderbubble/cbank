@@ -1,5 +1,6 @@
 -- trunk --
 
+ * differentiated exceptions when distributing with no allocations (#101)
  * fixed repr() and str() on new accounting entities (#102)
  * fix amount summing when using mysql (#104)
  * removed a debugging raise from upstream module importing

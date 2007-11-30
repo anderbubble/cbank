@@ -35,7 +35,7 @@ from clusterbank.model.metadata import metadata, \
     holds_table, charges_table, refunds_table
 from clusterbank.model.entities import Project, Resource
 from clusterbank.model.accounting import \
-    Request, Allocation, CreditLimit, Hold, Charge, Refund
+    RemainingAmount, Request, Allocation, CreditLimit, Hold, Charge, Refund
 
 __all__ = [
     "Session",

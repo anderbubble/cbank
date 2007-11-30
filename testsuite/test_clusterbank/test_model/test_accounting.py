@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import clusterbank.model
 from clusterbank.model.entities import Project, Resource
 from clusterbank.model.accounting import \
-    Request, Allocation, CreditLimit, Hold, Charge, Refund
+    RemainingAmount, Request, Allocation, CreditLimit, Hold, Charge, Refund
 
 class AccountingTester (object):
     
@@ -243,6 +243,14 @@ class TestHold (AccountingTester):
         clusterbank.model.Session.commit()
         assert hold.active
     
+    def test_distributed_without_allocations (self):
+        try:
+            holds = Hold.distributed([], amount=900)
+        except RemainingAmount:
+            pass
+        else:
+            assert not "didn't raise exception"
+    
     def test_distributed (self):
         allocation1 = self.allocation
         allocation1.amount = 600
@@ -360,6 +368,14 @@ class TestCharge (AccountingTester):
         charge = Charge(allocation=self.allocation, amount=600)
         clusterbank.model.Session.commit()
         assert charge.datetime - datetime.now() < timedelta(minutes=1)
+    
+    def test_distributed_without_allocations (self):
+        try:
+            charges = Charge.distributed([], amount=900)
+        except RemainingAmount:
+            pass
+        else:
+            assert not "didn't raise exception"
     
     def test_distributed (self):
         allocation1 = self.allocation
