@@ -1,10 +1,11 @@
 -- trunk --
 
+ * specified InnoDB database engine on metadata for mysql (#105)
  * differentiated exceptions when distributing with no allocations (#101)
  * fixed repr() and str() on new accounting entities (#102)
  * fix amount summing when using mysql (#104)
  * removed a debugging raise from upstream module importing
+ * began tracking changes in CHANGELOG
 
 -- 0.2.8 --
 
- * began tracking changes

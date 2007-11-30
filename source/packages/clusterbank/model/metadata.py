@@ -30,10 +30,12 @@ metadata = MetaData()
 
 projects_table = Table("projects", metadata,
     Column("id", types.Integer, primary_key=True),
+    mysql_engine="InnoDB",
 )
 
 resources_table = Table("resources", metadata,
     Column("id", types.Integer, primary_key=True),
+    mysql_engine="InnoDB",
 )
 
 requests_table = Table("requests", metadata,
@@ -44,6 +46,7 @@ requests_table = Table("requests", metadata,
     Column("start", types.DateTime, nullable=True),
     Column("amount", types.Integer, nullable=False),
     Column("comment", types.String, nullable=True),
+    mysql_engine="InnoDB",
 )
 
 allocations_table = Table("allocations", metadata,
@@ -55,11 +58,13 @@ allocations_table = Table("allocations", metadata,
     Column("start", types.DateTime, nullable=False),
     Column("expiration", types.DateTime, nullable=False),
     Column("comment", types.String),
+    mysql_engine="InnoDB",
 )
 
 requests_allocations_table = Table("requests_allocations", metadata,
     Column("request_id", None, ForeignKey("requests.id"), primary_key=True),
     Column("allocation_id", None, ForeignKey("allocations.id"), primary_key=True),
+    mysql_engine="InnoDB",
 )
 
 credit_limits_table = Table("credit_limits", metadata,
@@ -71,6 +76,7 @@ credit_limits_table = Table("credit_limits", metadata,
     Column("amount", types.Integer, nullable=False),
     Column("comment", types.String),
     UniqueConstraint("project_id", "resource_id", "start"),
+    mysql_engine="InnoDB",
 )
 
 holds_table = Table("holds", metadata,
@@ -80,6 +86,7 @@ holds_table = Table("holds", metadata,
     Column("amount", types.Integer, nullable=False),
     Column("comment", types.String),
     Column("active", types.Boolean, nullable=False, default=True),
+    mysql_engine="InnoDB",
 )
 
 charges_table = Table("charges", metadata,
@@ -88,6 +95,7 @@ charges_table = Table("charges", metadata,
     Column("datetime", types.DateTime, nullable=False, default=datetime.now),
     Column("amount", types.Integer, nullable=False),
     Column("comment", types.String),
+    mysql_engine="InnoDB",
 )
 
 refunds_table = Table("refunds", metadata,
@@ -96,4 +104,5 @@ refunds_table = Table("refunds", metadata,
     Column("datetime", types.DateTime, nullable=False, default=datetime.now),
     Column("amount", types.Integer, nullable=False),
     Column("comment", types.String),
+    mysql_engine="InnoDB",
 )
