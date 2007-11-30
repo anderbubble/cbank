@@ -1,5 +1,6 @@
 -- trunk --
 
+ * fixed redundant relationships (#106)
  * specified InnoDB database engine on metadata for mysql (#105)
  * differentiated exceptions when distributing with no allocations (#101)
  * fixed repr() and str() on new accounting entities (#102)

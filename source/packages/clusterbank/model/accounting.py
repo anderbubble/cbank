@@ -474,7 +474,7 @@ class Charge (AccountingEntity):
     def _get_effective_amount (self):
         """Intelligent property accessor."""
         # sums are typecast to integers because mysql returns strings when summing integers
-        refunds = Refund.query.filter(Refund._charge==self)
+        refunds = Refund.query.filter(Refund.charge==self)
         amount_refunded = int(refunds.sum(Refund._amount) or 0)
         return self.amount - amount_refunded
     

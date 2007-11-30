@@ -60,16 +60,10 @@ Session = scoped_session(sessionmaker(transactional=True, autoflush=True))
 
 Session.mapper(Project, projects_table, properties=dict(
     id = projects_table.c.id,
-    requests = relation(Request, backref="project"),
-    allocations = relation(Allocation, backref="project"),
-    credit_limits = relation(CreditLimit, backref="project"),
 ))
 
 Session.mapper(Resource, resources_table, properties=dict(
     id = resources_table.c.id,
-    requests = relation(Request, backref="resource"),
-    allocaitons = relation(Allocation, backref="resource"),
-    credit_limits = relation(CreditLimit, backref="resource"),
 ))
 
 Session.mapper(Request, requests_table, properties=dict(
@@ -81,7 +75,6 @@ Session.mapper(Request, requests_table, properties=dict(
     amount = synonym("_amount"),
     comment = requests_table.c.comment,
     start = requests_table.c.start,
-    allocations = relation(Allocation, secondary=requests_allocations_table, backref="requests"),
 ))
 
 Session.mapper(Allocation, allocations_table, properties=dict(
@@ -95,8 +88,6 @@ Session.mapper(Allocation, allocations_table, properties=dict(
     expiration = allocations_table.c.expiration,
     comment = allocations_table.c.comment,
     requests = relation(Request, secondary=requests_allocations_table, backref="allocations"),
-    holds = relation(Hold, backref="allocation"),
-    charges = relation(Charge, backref="allocation"),
 ))
 
 Session.mapper(CreditLimit, credit_limits_table, properties=dict(
@@ -127,7 +118,6 @@ Session.mapper(Charge, charges_table, properties=dict(
     _amount = charges_table.c.amount,
     amount = synonym("_amount"),
     comment = charges_table.c.comment,
-    refunds = relation(Refund, backref="_charge"),
 ))
 
 Session.mapper(Refund, refunds_table, properties=dict(
