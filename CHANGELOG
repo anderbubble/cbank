@@ -1,1 +1,8 @@
-fix amount summing when using mysql (#104)
+-- trunk --
+
+ * fix amount summing when using mysql (#104)
+ * removed a debugging raise from upstream module importing
+
+-- 0.2.8 --
+
+ * began tracking changes
