@@ -23,10 +23,10 @@ class AccountingEntity (object):
     """
     
     def __str__ (self):
-        return "%i (%i)" % (self.id, self.amount)
+        return "%r (%r)" % (self.id, self.amount)
     
     def __repr__ (self):
-        return "<%s %i>" % (self.__class__.__name__, self.id)
+        return "<%s %r>" % (self.__class__.__name__, self.id)
 
 
 class Request (AccountingEntity):
