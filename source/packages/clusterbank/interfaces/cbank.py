@@ -388,6 +388,8 @@ def console_main (argv=None, **kwargs):
     stderr = kwargs.get("stderr") or sys.stderr
     try:
         entities = main(argv)
+    except SystemExit:
+        raise
     except KeyboardInterrupt:
         sys.exit(1)
     except Exception, e:
