@@ -17,10 +17,11 @@ __all__ = ["Project", "Resource"]
 class DoesNotExist (Exception):
     """The specified entity does not exist."""
     
-    label = "entity"
+    def __init__ (self, identifier):
+        self.identifier = identifier
     
     def __str__ (self):
-        return "%s %r does not exist" % (self.label, self.message)
+        return "entity %r does not exist" % self.identifier
 
 
 class UpstreamEntity (object):
@@ -36,14 +37,13 @@ class UpstreamEntity (object):
         self.name = kwargs.get("name")
     
     def __repr__ (self):
-        if self.id is None:
-            id_repr = "?"
-        else:
-            id_repr = self.id
-        return "<%s %s>" % (self.__class__.__name__, id_repr)
+        return "<%s %r>" % (self.__class__.__name__, self.id)
     
     def __str__ (self):
-        return self.name or "?"
+        if self.name is not None:
+            return str(self.name)
+        else:
+            return "?"
     
     @classmethod
     def by_id (cls, id):
@@ -90,7 +90,8 @@ class Project (UpstreamEntity):
     class DoesNotExist (DoesNotExist):
         """The specified project does not exist."""
         
-        label = "project"
+        def __str__ (self):
+            return "project %r does not exist" % self.identifier
 
 
 class Resource (UpstreamEntity):
@@ -111,4 +112,5 @@ class Resource (UpstreamEntity):
     class DoesNotExist (DoesNotExist):
         """The specified project does not exist."""
         
-        label = "resource"
+        def __str__ (self):
+            return "resource %r does not exist" % self.identifier

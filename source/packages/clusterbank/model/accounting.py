@@ -23,7 +23,15 @@ class AccountingEntity (object):
     """
     
     def __str__ (self):
-        return "%r (%r)" % (self.id, self.amount)
+        if self.id is None:
+            id = "?"
+        else:
+            id = self.id
+        if self.amount is None:
+            amount = "?"
+        else:
+            amount = self.amount
+        return "%s (%s)" % (id, amount)
     
     def __repr__ (self):
         return "<%s %r>" % (self.__class__.__name__, self.id)

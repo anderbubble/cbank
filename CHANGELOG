@@ -1,5 +1,6 @@
 -- trunk --
  
+ * stop using repr in str (#107)
  * fixed various problems with installation of cbank
  * fixed redundant relationships (#106)
  * specified InnoDB database engine on metadata for mysql (#105)

@@ -21,7 +21,10 @@ class Entity (object):
         return "<%s %r>" % (self.__class__.__name__, self.id)
     
     def __str__ (self):
-        return self.name or "unknown"
+        if self.name is not None:
+            return str(self.name)
+        else:
+            return "?"
     
     @classmethod
     def by_name (cls, name):
