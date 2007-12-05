@@ -31,7 +31,7 @@ import time
 import optparse
 from optparse import OptionParser
 
-from sqlalchemy import exceptions
+from sqlalchemy import exceptions, and_
 
 import clusterbank
 import clusterbank.model
@@ -276,11 +276,8 @@ def main (argv=None):
     
     if directive == "request":
         if options.list:
-            if options.request is not None:
-                print options.request
-            else:
-                for request in request_list(project=options.project, resource=options.resource):
-                    print request
+            for request in request_list(request=options.request, project=options.project, resource=options.resource):
+                print request
         else:
             for option in ("project", "resource", "amount"):
                 if getattr(options, option, None) is None:
@@ -290,11 +287,8 @@ def main (argv=None):
             print request
     elif directive == "allocation":
         if options.list:
-            if options.allocation is not None:
-                print options.allocation
-            else:
-                for allocation in allocation_list(project=options.project, resource=options.resource, request=options.request):
-                    print allocation
+            for allocation in allocation_list(allocation=options.allocation, project=options.project, resource=options.resource, request=options.request):
+                print allocation
         else:
             for option in ("project", "resource", "amount", "start", "expiration"):
                 if getattr(options, option, None) is None:
@@ -308,11 +302,8 @@ def main (argv=None):
             print allocation
     elif directive == "hold":
         if options.list:
-            if options.hold is not None:
-                print options.hold
-            else:
-                for hold in hold_list(project=options.project, resource=options.resource, request=options.request, allocation=options.allocation):
-                    print hold
+            for hold in hold_list(hold=options.hold, project=options.project, resource=options.resource, request=options.request, allocation=options.allocation):
+                print hold
         elif options.allocation is not None:
             for option in ("amount", ):
                 if getattr(options, option, None) is None:
@@ -349,11 +340,8 @@ def main (argv=None):
             print hold
     elif directive == "charge":
         if options.list:
-            if options.charge is not None:
-                print options.charge
-            else:
-                for charge in charge_list(project=options.project, resource=options.resource, request=options.request, allocation=options.allocation):
-                    print charge
+            for charge in charge_list(charge=options.charge, project=options.project, resource=options.resource, request=options.request, allocation=options.allocation):
+                print charge
         elif options.allocation is not None:
             for option in ("amount", ):
                 if getattr(options, option, None) is None:
@@ -377,11 +365,8 @@ def main (argv=None):
                 print charge
     elif directive == "refund":
         if options.list:
-            if options.refund is not None:
-                print options.refund
-            else:
-                for refund in refund_list(project=options.project, resource=options.resource, request=options.request, allocation=options.allocation, charge=options.charge):
-                    print refund
+            for refund in refund_list(refund=options.refund, project=options.project, resource=options.resource, request=options.request, allocation=options.allocation, charge=options.charge):
+                print refund
         else:
             for option in ("charge", "amount"):
                 if getattr(options, option, None) is None:
@@ -408,27 +393,36 @@ def request_list (**kwargs):
     """Get existing requests.
     
     Keyword arguments:
+    requests -- a specific request to list (default all unallocated)
     project -- project the request is for
     resource -- resource the request is for
     """
-    requests = Request.query.filter(~Request.allocations.any())
+    requests = Request.query()
+    if kwargs.get("request"):
+        requests = requests.filter(Request.id==kwargs.get("request").id)
+    else:
+        requests = requests.filter(~Request.allocations.any())
     if kwargs.get("project"):
-        requests = requests.filter(Request.project==kwargs['project'])
+        requests = requests.filter(Request.project==kwargs.get("project"))
     if kwargs.get("resource"):
-        requests = requests.filter(Request.resource==kwargs['resource'])
+        requests = requests.filter(Request.resource==kwargs.get("resource"))
     return requests
 
 def allocation_list (**kwargs):
     """Get active allocations.
     
     Keyword arguments:
+    allocation -- a specific allocation to list (default all active)
     project -- project the allocation is for
     resource -- resource the allocation is for
     request -- request answered by the allocation
     """
     now = datetime.now()
-    allocations = Allocation.query.filter(Allocation.start<=now)
-    allocations = allocations.filter(Allocation.expiration>now)
+    allocations = Allocation.query()
+    if kwargs.get("allocation") is not None:
+        allocations = allocations.filter(Allocation.id==kwargs.get("allocation").id)
+    else:
+        allocations = allocations.filter(and_(Allocation.start<=now, Allocation.expiration>now))
     if kwargs.get("project") is not None:
         allocations = allocations.filter(Allocation.project==kwargs.get("project"))
     if kwargs.get("resource") is not None:
@@ -441,12 +435,17 @@ def hold_list (**kwargs):
     """Get holds on active allocations.
     
     Keyword arguments:
+    hold -- a specific hold to list (default all active)
     project -- project of the hold's allocation
     resource -- resource of the hold's allocation
     request -- holds on allocations for a request
     allocation -- holds on a specific allocaiton
     """
-    holds = Hold.query.filter(Hold.active==True)
+    holds = Hold.query()
+    if kwargs.get("hold") is not None:
+        holds = holds.filter(Hold.id==kwargs.get("hold").id)
+    else:
+        holds = holds.filter(Hold.active==True)
     if kwargs.get("project") is not None:
         holds = holds.filter(Allocation.project==kwargs.get("project"))
     if kwargs.get("resource") is not None:
@@ -465,12 +464,15 @@ def charge_list (**kwargs):
     """Get charges on active allocations.
     
     Keyword arguments:
+    charge -- a specific charge to list
     project -- project of the charge's allocation
     resource -- resource of the charge's allocation
     request -- related request
     allocation -- charges on a specific allocaiton
     """
     charges = Charge.query()
+    if kwargs.get("charge") is not None:
+        charges = charges.filter(Charge.id==kwargs.get("charge").id)
     if kwargs.get("project") is not None:
         charges = charges.filter(Allocation.project==kwargs.get("project"))
     if kwargs.get("resource") is not None:
@@ -489,6 +491,7 @@ def refund_list (**kwargs):
     """Get refunds to active allocations.
     
     Keyword arguments:
+    refund -- a specific refund to list
     project -- project of the refund's allocation
     resource -- resource of the refund's allocation
     request -- related request
@@ -496,6 +499,8 @@ def refund_list (**kwargs):
     charge -- refunds to a specific charge
     """
     refunds = Refund.query()
+    if kwargs.get("refund") is not None:
+        refunds = refunds.filter(Refund.id==kwargs.get("refund").id)
     if kwargs.get("project") is not None:
         refunds = refunds.filter(Allocation.project==kwargs.get("project"))
     if kwargs.get("resource") is not None:
