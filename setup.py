@@ -11,12 +11,12 @@ except ImportError:
 
 setup(
     name="clusterbank",
-    version = "0.2.x",
+    version = "trunk",
     description = "Accounting software for networked resources.",
     author="Jonathon Anderson",
     author_email="janderso@alcf.anl.gov",
     url = "http://trac.mcs.anl.gov/projects/clusterbank",
-    install_requires=["SQLAlchemy>=0.4.0"],
+    install_requires=["SQLAlchemy>=0.4.1"],
     packages=find_packages("source/packages", exclude=['ez_setup']),
     package_dir = {"":"source/packages"},
     test_suite="nose.collector",

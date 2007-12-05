@@ -9,4 +9,4 @@ upstream -- pluggable upstream module (reflected in the model)
 """
 __all__ = ["model", "interfaces", "upstream"]
 
-__version__ = "0.2.x"
+__version__ = "trunk"
