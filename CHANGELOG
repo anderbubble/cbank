@@ -1,4 +1,4 @@
--- trunk --
+-- 0.2.9 --
  
  * cbank listing with a specified id accounts for other options (#111)
  * correctly handled internal SystemExit in cbank (#109)
