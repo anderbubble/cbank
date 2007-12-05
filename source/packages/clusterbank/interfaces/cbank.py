@@ -277,22 +277,24 @@ def main (argv=None):
     if directive == "request":
         if options.list:
             if options.request is not None:
-                return [options.request]
+                print options.request
             else:
-                return request_list(project=options.project, resource=options.resource)
+                for request in request_list(project=options.project, resource=options.resource):
+                    print request
         else:
             for option in ("project", "resource", "amount"):
                 if getattr(options, option, None) is None:
                     raise MissingOption(option)
             request = Request(project=options.project, resource=options.resource, amount=options.amount, start=options.start, comment=options.comment)
             Session.commit()
-            return [request]
+            print request
     elif directive == "allocation":
         if options.list:
             if options.allocation is not None:
-                return [options.allocation]
+                print options.allocation
             else:
-                return allocation_list(project=options.project, resource=options.resource, request=options.request)
+                for allocation in allocation_list(project=options.project, resource=options.resource, request=options.request):
+                    print allocation
         else:
             for option in ("project", "resource", "amount", "start", "expiration"):
                 if getattr(options, option, None) is None:
@@ -303,20 +305,21 @@ def main (argv=None):
                 requests = []
             allocation = Allocation(project=options.project, resource=options.resource, requests=requests, start=options.start, expiration=options.expiration, amount=options.amount, comment=options.comment)
             Session.commit()
-            return [allocation]
+            print allocation
     elif directive == "hold":
         if options.list:
             if options.hold is not None:
-                return [options.hold]
+                print options.hold
             else:
-                return hold_list(project=options.project, resource=options.resource, request=options.request, allocation=options.allocation)
+                for hold in hold_list(project=options.project, resource=options.resource, request=options.request, allocation=options.allocation):
+                    print hold
         elif options.allocation is not None:
             for option in ("amount", ):
                 if getattr(options, option, None) is None:
                     raise MissingOption(option)
             hold = Hold(allocation=options.allocation, amount=options.amount, comment=options.comment)
             Session.commit()
-            return [hold]
+            print hold
         else:
             for option in ("amount", ):
                 if getattr(options, option, None) is None:
@@ -329,7 +332,8 @@ def main (argv=None):
                 allocations = allocation_list(project=options.project, resource=options.resource, request=options.request)
             holds = Hold.distributed(allocations, amount=options.amount, comment=options.comment)
             Session.commit()
-            return holds
+            for hold in holds:
+                print hold
     elif directive == "release":
         if options.list:
             raise InvalidOption("list")
@@ -341,20 +345,22 @@ def main (argv=None):
         for hold in holds:
             hold.active = False
         Session.commit()
-        return holds
+        for hold in holds:
+            print hold
     elif directive == "charge":
         if options.list:
             if options.charge is not None:
-                return [options.charge]
+                print options.charge
             else:
-                return charge_list(project=options.project, resource=options.resource, request=options.request, allocation=options.allocation)
+                for charge in charge_list(project=options.project, resource=options.resource, request=options.request, allocation=options.allocation):
+                    print charge
         elif options.allocation is not None:
             for option in ("amount", ):
                 if getattr(options, option, None) is None:
                     raise MissingOption(option)
             charge = Charge(allocation=options.allocation, amount=options.amount, comment=options.comment)
             Session.commit()
-            return [charge]
+            print charge
         else:
             for option in ("amount", ):
                 if getattr(options, option, None) is None:
@@ -367,27 +373,29 @@ def main (argv=None):
                 allocations = allocation_list(project=options.project, resource=options.resource, request=options.request)
             charges = Charge.distributed(allocations, amount=options.amount, comment=options.comment)
             Session.commit()
-            return charges
+            for charge in charges:
+                print charge
     elif directive == "refund":
         if options.list:
             if options.refund is not None:
-                return [options.refund]
+                print options.refund
             else:
-                return refund_list(project=options.project, resource=options.resource, request=options.request, allocation=options.allocation, charge=options.charge)
+                for refund in refund_list(project=options.project, resource=options.resource, request=options.request, allocation=options.allocation, charge=options.charge):
+                    print refund
         else:
             for option in ("charge", "amount"):
                 if getattr(options, option, None) is None:
                     raise MissingOption(option)
             refund = Refund(charge=options.charge, amount=options.amount, comment=options.comment)
             Session.commit()
-            return [refund]
+            print refund
     else:
         raise UnknownDirective(directive)
 
 def console_main (argv=None, **kwargs):
     stderr = kwargs.get("stderr") or sys.stderr
     try:
-        entities = main(argv)
+        main(argv)
     except SystemExit:
         raise
     except KeyboardInterrupt:
@@ -395,9 +403,6 @@ def console_main (argv=None, **kwargs):
     except Exception, e:
         print >> stderr, e
         sys.exit(1)
-    
-    for entity in entities:
-        print entity
 
 def request_list (**kwargs):
     """Get existing requests.
