@@ -1,0 +1,96 @@
+Pieces to implement
+-------------------
+Accounting
+  User tools
+    check balance
+    default project?
+    web interface?
+  Admin tools
+    bank admin (grants, credit, debit, edit ledger, etc.)
+  Scheduler tools
+    pre-job debit
+    real debit
+    reservations
+    friendly users
+
+
+---
+From mail sent on March 12 2007
+
+Last week Susan and I spent some time dreaming up the first shot at a
+scheme for usage accounting on the BGP, and each of you have been
+hand-picked as somebody who might be remotely interested in the results.
+Below are the tables for the database, and below that are the methods of
+doing several common accounting actions with them.  There are a couple of
+tweaks that still need to be made, but this is _very_ close to what we
+think will get the job done.  I'd love to hear what some other people
+think.  Any comments/questions/insults will be happily
+considered/answered/returned.
+
+# This table is populated by users through a web interface or something
+# similar.
+Requests
+   ID             # request index
+   Date           # date of transaction
+   Account        # project name
+   Resource       # Resource name
+   Requestor      # username of requestor
+   RequestedSU    # requested amount in service units
+   Justification  # justification
+   Start          # requested start date (esp for edge cases)
+
+# This table is populated by the review committee in response to requests
+# made in the Requests table
+Grants
+   ID            # grant index
+   Date          # date of transaction
+   Account       # project name
+   GrantedSU     # granted amount in scalable units
+   Resource      # systemname (BGL, T&D, 100T, etc)
+   Start         # date the grant becomes active
+   Expiration    # date the grant expires
+   Reason        # reason for the transaction
+   Approver      # person/group who approved the grant
+   Grantor       # username of person who posted the grant
+
+# This table keeps track of all credits and debits to accounts, much like
+# a checkbook ledger.
+Ledger
+   ID             # ledger index
+   Date           # date of transaction
+   Account        # project name
+   User           # username if appropriate
+   Resource       # Resource name
+   CreditAmount   # Amount credit, in SUs.  Zero if a debit
+   DebitAmount    # Amount debited, in SUs.  Zero if a credit
+   CauseType      # job, grant, reservation, adjustment, etc
+   CauseID        # ID of the cuase (job id, grant id, etc.)
+   Reason         # reason for the transaction
+   Poster         # username of the person who posted this transaction
+                  # could be 'maui' for job transactions
+
+# All requests/grants are for service units (SUs); these get converted
+# into resource units (RUs) for each resource through this table.  If done
+# correctly, this should normalize SUs.
+RUFactors
+   ID            # factor index
+   Resource      # Resource name
+   Start         # When this factor goes into effect
+   Factor        # 1 RU = Factor SU
+
+Common actions
+--------------
+Grant:
+  Into Ledger: CreditAmount = GrantedSU
+Job run:
+  Into Ledger: DebitAmount = (usedwalltime*usedncpus)*RUFactors.Factor
+Reservation:
+  Into Ledger: DebitAmount = (reservation billing magic)
+Correction:
+  Choices:
+    Add a correction line to the Ledger
+    Update the Ledger entry with the correct CreditAmount or DebitAmount
+Refund:
+  Into Ledger: CreditAmount = RefundSU (calculated from job RU)
+Check balance:
+  sum(CreditAmount for resource) - sum(DebitAmount for resource)
