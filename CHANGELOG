@@ -1,6 +1,6 @@
 -- trunk --
  
- * listing with a specified id accounts for other options (#111)
+ * cbank listing with a specified id accounts for other options (#111)
  * correctly handled internal SystemExit in cbank (#109)
  * stop using repr in str (#107)
  * fixed various problems with installation of cbank
