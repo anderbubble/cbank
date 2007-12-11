@@ -1,6 +1,6 @@
 import sys
 from datetime import datetime, timedelta
-from tempfile import TemporaryFile
+from StringIO import StringIO
 
 import clusterbank.model
 from clusterbank.model import Request, Allocation, Hold, Charge, Refund
@@ -38,7 +38,7 @@ class ScriptTester (object):
     def setup (self):
         clusterbank.model.metadata.create_all()
         self._stdout = sys.stdout
-        sys.stdout = TemporaryFile()
+        sys.stdout = StringIO()
     
     def teardown (self):
         sys.stdout.close()
