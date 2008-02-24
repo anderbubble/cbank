@@ -26,6 +26,7 @@ __all__ = [
     "holds_table", "charges_table", "refunds_table",
 ]
 
+# types.TEXT was renamed types.Text in SA 0.4.3
 try:
     types.Text
 except NameError:

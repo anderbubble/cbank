@@ -114,6 +114,7 @@ class TestAllocation (AccountingTester):
         allocation = Allocation(amount=1500,
             project=self.project, resource=self.resource,
             start=self.now, expiration=self.now+timedelta(days=1))
+        clusterbank.model.Session.flush() # SA <= 0.4.3 has transient query bug
         hold = Hold(allocation=allocation, amount=100)
         clusterbank.model.Session.commit()
         assert set(allocation.holds) == set([hold])
@@ -147,6 +148,7 @@ class TestAllocation (AccountingTester):
         allocation = Allocation(amount=1500,
             project=self.project, resource=self.resource,
             start=self.now, expiration=self.now+timedelta(days=1))
+        clusterbank.model.Session.flush() # SA <= 0.4.3 has transient query bug
         assert allocation.amount_available == 1500
         hold1 = Hold(allocation=allocation, amount=100)
         assert allocation.amount_available == 1400
@@ -210,6 +212,7 @@ class TestHold (AccountingTester):
         self.allocation = Allocation(amount=1200,
             project=self.project, resource=self.resource,
             start=self.now, expiration=self.now+timedelta(days=1))
+        clusterbank.model.Session.flush() # SA <= 0.4.3 has transient query bug
     
     def test_init (self):
         hold = Hold(
@@ -323,6 +326,7 @@ class TestCharge (AccountingTester):
         self.allocation = Allocation(amount=1200,
             project=self.project, resource=self.resource,
             start=self.now, expiration=self.now+timedelta(days=1))
+        clusterbank.model.Session.flush() # SA <= 0.4.3 has transient query bug
     
     def test_standard_init (self):
         charge = Charge(
@@ -369,7 +373,6 @@ class TestCharge (AccountingTester):
         for charge in charges:
             assert charge.allocation in (allocation1, allocation2)
     
-    
     def test_distributed_with_insufficient_allocation (self):
         allocation1 = self.allocation
         allocation1.amount = 600
@@ -413,6 +416,7 @@ class TestCharge (AccountingTester):
         charge1 = Charge(allocation=self.allocation, amount=self.allocation.amount)
         refund = Refund(charge=charge1, amount=charge1.amount)
         charge2 = Charge(allocation=charge1.allocation, amount=charge1.allocation.amount)
+        clusterbank.model.Session.flush() # SA <= 0.4.3 has transient query bug
         try:
             clusterbank.model.Session.commit()
         except clusterbank.model.Project.InsufficientFunds:
@@ -422,6 +426,7 @@ class TestCharge (AccountingTester):
         charge1 = Charge(allocation=self.allocation, amount=self.allocation.amount)
         refund = Refund(charge=charge1, amount=charge1.amount//2)
         charge2 = Charge(allocation=charge1.allocation, amount=charge1.amount-refund.amount)
+        clusterbank.model.Session.flush() # SA <= 0.4.3 has transient query bug
         try:
             clusterbank.model.Session.commit()
         except clusterbank.model.Project.InsufficientFunds:
@@ -431,11 +436,13 @@ class TestCharge (AccountingTester):
         charge1 = Charge(allocation=self.allocation, amount=self.allocation.amount)
         refund = Refund(charge=charge1, amount=charge1.amount//2)
         charge2 = Charge(allocation=charge1.allocation, amount=(charge1.amount-refund.amount)+1)
+        clusterbank.model.Session.flush() # SA <= 0.4.3 has transient query bug
         clusterbank.model.Session.commit()
         assert self.allocation.amount_available == self.allocation.amount - (charge1.amount + charge2.amount - refund.amount)
     
     def test_effective_amount (self):
         charge = Charge(allocation=self.allocation, amount=100)
+        clusterbank.model.Session.flush() # SA <= 0.4.3 has transient query bug
         assert charge.effective_amount == 100
         refund1 = Refund(charge=charge, amount=10)
         assert charge.effective_amount == 90
@@ -451,6 +458,7 @@ class TestRefund (AccountingTester):
             project=self.project, resource=self.resource,
             start=self.now, expiration=self.now+timedelta(days=1))
         self.charge = Charge(allocation=self.allocation, amount=900)
+        clusterbank.model.Session.flush() # SA <= 0.4.3 has transient query bug
     
     def test_init (self):
         refund = Refund(id=1, datetime=self.now,
