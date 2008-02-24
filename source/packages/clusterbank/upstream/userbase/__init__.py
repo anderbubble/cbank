@@ -26,10 +26,10 @@ from sqlalchemy.orm import scoped_session, sessionmaker, relation
 
 from clusterbank.upstream.userbase.metadata import metadata, \
     projects_table, resource_types_table
-from clusterbank.upstream.userbase.model import Project, Resource
+from clusterbank.upstream.userbase.model import NotFound, Project, Resource
     
 __all__ = [
-    "metadata", "Session", "Project", "Resource",
+    "metadata", "Session", "Project", "Resource", "NotFound",
 ]
 
 Session = scoped_session(sessionmaker(transactional=True))

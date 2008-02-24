@@ -7,9 +7,11 @@ Project -- project to which resources can be allocated
 
 from datetime import datetime
 
-from sqlalchemy import desc, exceptions
+from sqlalchemy import desc
+import sqlalchemy.exceptions
 
-from clusterbank import upstream
+import clusterbank.upstream as upstream
+import clusterbank.exceptions as exceptions
 from clusterbank.model.accounting import CreditLimit
 
 __all__ = ["Project", "Resource"]
@@ -36,11 +38,11 @@ class Entity (object):
         Upstream = getattr(upstream, cls.__name__)
         try:
             upstream_entity = Upstream.by_name(name)
-        except Upstream.DoesNotExist:
-            raise cls.DoesNotExist()
+        except upstream.NotFound:
+            raise exceptions.NotFound("%s %r not found" % (cls.__name__.lower, name))
         try:
             return cls.query.filter(cls.id==upstream_entity.id).one()
-        except exceptions.InvalidRequestError:
+        except sqlalchemy.exceptions.InvalidRequestError:
             return cls(id=upstream_entity.id)
 
 
@@ -60,12 +62,6 @@ class Project (Entity):
     DoesNotExist -- the specified project does not exist
     InsufficientFunds -- not enough funds to perform an action
     """
-    
-    class DoesNotExist (Exception):
-        """The specified project does not exist."""
-    
-    class InsufficientFunds (Exception):
-        """Not enough funds to perform an action."""
     
     def __init__ (self, **kwargs):
         """Initialize a project.
@@ -117,9 +113,6 @@ class Resource (Entity):
     Exceptions:
     DoesNotExist -- the specified resource does not exist
     """
-    
-    class DoesNotExist (Exception):
-        """The specified resource does not exist."""
     
     def __init__ (self, **kwargs):
         """Initialize a resource.

@@ -31,10 +31,12 @@ import time
 import optparse
 from optparse import OptionParser
 
-from sqlalchemy import exceptions, and_
+from sqlalchemy import and_
+import sqlalchemy.exceptions
 
 import clusterbank
 import clusterbank.model
+import clusterbank.exceptions as exceptions
 from clusterbank.model import \
     Session, Project, Resource, Request, Allocation, Hold, Charge, Refund
 import clusterbank.upstream
@@ -75,7 +77,7 @@ class Option (optparse.Option):
         """Return a project from its name."""
         try:
             return Project.by_name(value)
-        except Project.DoesNotExist:
+        except exceptions.NotFound:
             raise optparse.OptionValueError(
                 "option %s: unknown project: %r" % (opt, value))
     
@@ -83,7 +85,7 @@ class Option (optparse.Option):
         """Return a resource from its name."""
         try:
             return Resource.by_name(value)
-        except Resource.DoesNotExist:
+        except exceptions.NotFound:
             raise optparse.OptionValueError(
                 "option %s: unknown resource: %r" % (opt, value))
     
@@ -91,7 +93,7 @@ class Option (optparse.Option):
         """Return a request from its id."""
         try:
             return Request.query.filter(Request.id==value).one()
-        except exceptions.InvalidRequestError:
+        except sqlalchemy.exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown request: %r" % (opt, value))
     
@@ -99,7 +101,7 @@ class Option (optparse.Option):
         """Return an allocation from its id."""
         try:
             return Allocation.query.filter(Allocation.id==value).one()
-        except exceptions.InvalidRequestError:
+        except sqlalchemy.exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown allocation: %r" % (opt, value))
     
@@ -107,7 +109,7 @@ class Option (optparse.Option):
         """Return a charge from its id."""
         try:
             return Charge.query.filter(Charge.id==value).one()
-        except exceptions.InvalidRequestError:
+        except sqlalchemy.exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown charge: %r" % (opt, value))
     
@@ -115,7 +117,7 @@ class Option (optparse.Option):
         """Return a hold from its id."""
         try:
             return Hold.query.filter(Hold.id==value).one()
-        except exceptions.InvalidRequestError:
+        except sqlalchemy.exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown hold: %r" % (opt, value))
     
@@ -123,7 +125,7 @@ class Option (optparse.Option):
         """Return a refund from its id."""
         try:
             return Refund.query.filter(Refund.id==value).one()
-        except exceptions.InvalidRequestError:
+        except sqlalchemy.exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "options %s: unknown refund: %r" % (opt, value))
     

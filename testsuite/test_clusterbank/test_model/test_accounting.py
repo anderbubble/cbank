@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from nose.tools import raises
 
 import clusterbank.model
+import clusterbank.exceptions as exceptions
 from clusterbank.model.entities import Project, Resource
 from clusterbank.model.accounting import \
     Request, Allocation, CreditLimit, Hold, Charge, Refund
@@ -262,13 +263,13 @@ class TestHold (AccountingTester):
         hold.amount = -100
         clusterbank.model.Session.commit()
     
-    @raises(clusterbank.model.Project.InsufficientFunds)
+    @raises(exceptions.InsufficientFunds)
     def test_excessive_amount (self):
         hold = Hold(allocation=self.allocation)
         hold.amount = self.allocation.amount + 1
         clusterbank.model.Session.commit()
     
-    @raises(clusterbank.model.Project.InsufficientFunds)
+    @raises(exceptions.InsufficientFunds)
     def test_amount_with_active_hold (self):
         hold1 = Hold(allocation=self.allocation, amount=self.allocation.amount)
         hold2 = Hold(allocation=hold1.allocation)
@@ -280,10 +281,10 @@ class TestHold (AccountingTester):
         hold2 = Hold(allocation=hold1.allocation, amount=hold1.allocation.amount)
         try:
             clusterbank.model.Session.commit()
-        except clusterbank.model.Project.InsufficientFunds:
+        except exceptions.InsufficientFunds:
             assert False, "didn't correctly deactivate hold"
     
-    @raises(clusterbank.model.Project.InsufficientFunds)
+    @raises(exceptions.InsufficientFunds)
     def test_amount_with_charge (self):
         charge = Charge(allocation=self.allocation, amount=self.allocation.amount)
         hold = Hold(allocation=charge.allocation)
@@ -307,10 +308,10 @@ class TestHold (AccountingTester):
         hold.amount = charge.amount - refund.amount
         try:
             clusterbank.model.Session.commit()
-        except clusterbank.model.Project.InsufficientFunds:
+        except exceptions.InsufficientFunds:
             assert False, "Didn't correctly refund charge."
     
-    @raises(clusterbank.model.Project.InsufficientFunds)
+    @raises(exceptions.InsufficientFunds)
     def test_greater_amount_after_refunded_charge (self):
         charge = Charge(allocation=self.allocation, amount=self.allocation.amount)
         refund = Refund(charge=charge, amount=charge.amount//2)
@@ -392,7 +393,7 @@ class TestCharge (AccountingTester):
         charge.amount = -100
         clusterbank.model.Session.commit()
     
-    @raises(clusterbank.model.Project.InsufficientFunds)
+    @raises(exceptions.InsufficientFunds)
     def test_amount_with_active_hold (self):
         hold = Hold(allocation=self.allocation, amount=self.allocation.amount)
         charge = Charge(allocation=hold.allocation, amount=1)
@@ -403,7 +404,7 @@ class TestCharge (AccountingTester):
         charge = Charge(allocation=hold.allocation, amount=hold.allocation.amount)
         try:
             clusterbank.model.Session.commit()
-        except clusterbank.model.Project.InsufficientFunds:
+        except exceptions.InsufficientFunds:
             assert False, "Didn't correctly deactivate other hold."
     
     def test_amount_with_other_charge (self):
@@ -419,7 +420,7 @@ class TestCharge (AccountingTester):
         clusterbank.model.Session.flush() # SA <= 0.4.3 has transient query bug
         try:
             clusterbank.model.Session.commit()
-        except clusterbank.model.Project.InsufficientFunds:
+        except exceptions.InsufficientFunds:
             assert False, "Didn't correctly refund charge."
     
     def test_amount_with_partially_refunded_charge (self):
@@ -429,7 +430,7 @@ class TestCharge (AccountingTester):
         clusterbank.model.Session.flush() # SA <= 0.4.3 has transient query bug
         try:
             clusterbank.model.Session.commit()
-        except clusterbank.model.Project.InsufficientFunds:
+        except exceptions.InsufficientFunds:
             assert False, "Didn't correctly refund charge."
     
     def test_greater_amount_with_partially_refunded_charge (self):

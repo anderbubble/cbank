@@ -13,6 +13,7 @@ def setup ():
     # attach an upstream module (userbase, for now)
     upstream.Project = userbase.Project
     upstream.Resource = userbase.Resource
+    upstream.NotFound = userbase.NotFound
     upstream.__all__ = list(set(upstream.__all__) | set(["Project", "Resource"]))
     # create the upstream database
     userbase.metadata.bind = create_engine("sqlite:///:memory:")
@@ -31,6 +32,7 @@ def teardown ():
     # detach the upstream module
     del upstream.Project
     del upstream.Resource
+    del upstream.NotFound
     upstream.__all__ = list(set(upstream.__all__).difference(set(["Project", "Resource"])))
     # clean up the local session
     clusterbank.model.Session.close()

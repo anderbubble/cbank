@@ -1,7 +1,7 @@
 from nose.tools import raises
 
-from clusterbank.upstream.userbase import metadata, Session, Project, Resource
-from clusterbank.upstream.userbase import Session
+from clusterbank.upstream.userbase import metadata, Session, \
+    NotFound, Project, Resource
 
 
 class UpstreamEntityTester (object):
@@ -21,7 +21,7 @@ class TestProject (UpstreamEntityTester):
         self.project = Project(id=1, name="Shrubbery")
         Session.flush()
     
-    @raises(Project.DoesNotExist)
+    @raises(NotFound)
     def test_missing_by_id (self):
         project = Project.by_id(2)
     
@@ -30,7 +30,7 @@ class TestProject (UpstreamEntityTester):
         assert isinstance(project, Project)
         assert project.id == 1
     
-    @raises(Project.DoesNotExist)
+    @raises(NotFound)
     def test_missing_by_name (self):
         project = Project.by_name("Spam")
     
@@ -47,7 +47,7 @@ class TestResource (UpstreamEntityTester):
         self.resource = Resource(id=1, name="Spam")
         Session.flush()
     
-    @raises(Resource.DoesNotExist)
+    @raises(NotFound)
     def test_missing_by_id (self):
         resource = Resource.by_id(2)
     
@@ -56,7 +56,7 @@ class TestResource (UpstreamEntityTester):
         assert isinstance(resource, Resource)
         assert resource.id == 1
     
-    @raises(Resource.DoesNotExist)
+    @raises(NotFound)
     def test_by_name (self):
         resource = Resource.by_name("more spam")
     

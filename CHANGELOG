@@ -1,5 +1,7 @@
 -- 0.2.10 --
 
+ * remove inner-class exception stupidness (#119)
+ * check compatibility with SA 0.4.0
  * allow charges to make a project go negative (#117)
  * move to session extensions for application-side integrity constraints (#118)
  * fix two broken tests around RemainingAmount (#120)

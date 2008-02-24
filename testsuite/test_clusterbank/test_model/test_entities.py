@@ -3,6 +3,7 @@ from nose.tools import raises
 from datetime import datetime, timedelta
 
 import clusterbank.model
+import clusterbank.exceptions as exceptions
 from clusterbank.model.entities import Project, Resource
 from clusterbank.model.accounting import \
     Request, Allocation, Hold, Charge, Refund, CreditLimit
@@ -29,7 +30,7 @@ class TestProject (EntityTester):
         project = Project.by_name("grail")
         assert project.id is not None
     
-    @raises(Project.DoesNotExist)
+    @raises(exceptions.NotFound)
     def test_by_invalid_name (self):
         project = Project.by_name("doesnotexist")
     
@@ -44,7 +45,7 @@ class TestResource (EntityTester):
         resource = Resource.by_name("spam")
         assert resource.id is not None
     
-    @raises(Resource.DoesNotExist)
+    @raises(exceptions.NotFound)
     def test_by_invalid_name (self):
         resource = Resource.by_name("doesnotexist")
     

@@ -18,6 +18,8 @@ try:
 except NameError:
     from sets import Set as set
 
+import clusterbank.exceptions as exceptions
+
 __all__ = ["Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund"]
 
 
@@ -261,7 +263,7 @@ class Hold (AccountingEntity):
                 else:
                     credit_limit = 0
                 if allocation.amount_available < -credit_limit:
-                    raise allocation.project.InsufficientFunds("not enough funds available")
+                    raise exceptions.InsufficientFunds("not enough funds available")
         
         def before_commit (self, session):
             self.forbid_negative_amounts(session)

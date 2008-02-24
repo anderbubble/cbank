@@ -3,28 +3,20 @@
 Classes:
 Project -- upstream project
 Resource -- upstream resource
-
-Exceptions:
-DoesNotExist -- requested entity does not exist
 """
 
-from sqlalchemy import exceptions
+import sqlalchemy.exceptions as exceptions
 
 
-__all__ = ["Project", "Resource"]
+__all__ = ["NotFound", "Project", "Resource"]
 
 
-class DoesNotExist (Exception):
+class NotFound (Exception):
     """The specified entity does not exist."""
-    
-    def __init__ (self, identifier):
-        self.identifier = identifier
-    
-    def __str__ (self):
-        return "entity %r does not exist" % self.identifier
 
 
 class UpstreamEntity (object):
+    
     """Superclass for entities in the upstream model.
     
     Class methods:
@@ -43,7 +35,7 @@ class UpstreamEntity (object):
         if self.name is not None:
             return str(self.name)
         else:
-            return "?"
+            return repr(self)
     
     @classmethod
     def by_id (cls, id):
@@ -53,10 +45,9 @@ class UpstreamEntity (object):
         id -- Canonical, immutable, integer identifier.
         """
         try:
-            entity = cls.query.filter_by(id=id).one()
+            return cls.query.filter_by(id=id).one()
         except exceptions.InvalidRequestError:
-            raise cls.DoesNotExist(id)
-        return entity
+            raise NotFound(id)
     
     @classmethod
     def by_name (cls, name):
@@ -66,13 +57,13 @@ class UpstreamEntity (object):
         name -- Canonical string identifier.
         """
         try:
-            entity = cls.query.filter_by(name=name).one()
+            return cls.query.filter_by(name=name).one()
         except exceptions.InvalidRequestError:
-            raise cls.DoesNotExist(name)
-        return entity
+            raise NotFound(name)
 
 
 class Project (UpstreamEntity):
+    
     """Upstream project.
     
     Attributes:
@@ -82,19 +73,11 @@ class Project (UpstreamEntity):
     Class methods:
     by_id -- Retrieve a project by identifier.
     by_name -- Retrieve a project by name.
-    
-    Exceptions:
-    DoesNotExist -- The specified project does not exist.
     """
-    
-    class DoesNotExist (DoesNotExist):
-        """The specified project does not exist."""
-        
-        def __str__ (self):
-            return "project %r does not exist" % self.identifier
 
 
 class Resource (UpstreamEntity):
+    
     """Upstream resource.
     
     Attributes:
@@ -104,13 +87,4 @@ class Resource (UpstreamEntity):
     Class methods:
     by_id -- Retrieve a resource by identifier.
     by_name -- Retrieve a resource by name.
-    
-    Exceptions:
-    DoesNotExist -- The specified resource does not exist.
     """
-    
-    class DoesNotExist (DoesNotExist):
-        """The specified project does not exist."""
-        
-        def __str__ (self):
-            return "resource %r does not exist" % self.identifier

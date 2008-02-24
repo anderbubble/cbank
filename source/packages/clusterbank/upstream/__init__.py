@@ -9,10 +9,10 @@ class Project (object):
     name = str()
     
     @classmethod
-    def by_id (cls, id): pass # return Project() or raise DoesNotExist()
+    def by_id (cls, id): pass # return Project() or raise NotFound()
     
     @classmethod
-    def by_name (cls, name): pass # return Project() or raise DoesNotExist()
+    def by_name (cls, name): pass # return Project() or raise NotFound()
 
 
 class Resource (object):
@@ -21,10 +21,10 @@ class Resource (object):
     name = str()
     
     @classmethod
-    def by_id (cls, id): pass # return Resource() or raise DoesNotExist()
+    def by_id (cls, id): pass # return Resource() or raise NotFound()
     
     @classmethod
-    def by_name (cls, name): pass # return Resource() or raise DoesNotExist()
+    def by_name (cls, name): pass # return Resource() or raise NotFound()
 
 class DoesNotExist (Exception): pass
 
@@ -58,4 +58,5 @@ else:
     else:
         Project = upstream_module.Project
         Resource = upstream_module.Resource
+        NotFound = upstream_module.NotFound
         __all__.extend(["Project", "Resource"])
