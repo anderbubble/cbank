@@ -1,3 +1,5 @@
+from nose.tools import raises
+
 from datetime import datetime, timedelta
 
 import clusterbank.model
@@ -27,13 +29,9 @@ class TestProject (EntityTester):
         project = Project.by_name("grail")
         assert project.id is not None
     
+    @raises(Project.DoesNotExist)
     def test_by_invalid_name (self):
-        try:
-            project = Project.by_name("doesnotexist")
-        except Project.DoesNotExist:
-            pass
-        else:
-            assert not "Got a project that should not exist."
+        project = Project.by_name("doesnotexist")
     
     def test_name (self):
         project = Project.by_name("grail")
@@ -46,13 +44,9 @@ class TestResource (EntityTester):
         resource = Resource.by_name("spam")
         assert resource.id is not None
     
+    @raises(Resource.DoesNotExist)
     def test_by_invalid_name (self):
-        try:
-            resource = Resource.by_name("doesnotexist")
-        except Resource.DoesNotExist:
-            pass
-        else:
-            assert not "Got a resource that should not exist."
+        resource = Resource.by_name("doesnotexist")
     
     def test_name (self):
         resource = Resource.by_name("spam")
