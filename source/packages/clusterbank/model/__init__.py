@@ -28,6 +28,7 @@ from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker, relation, synonym
+from sqlalchemy.orm.session import SessionExtension
 
 from clusterbank.model.metadata import metadata, \
     projects_table, resources_table, \
@@ -35,7 +36,7 @@ from clusterbank.model.metadata import metadata, \
     holds_table, charges_table, refunds_table
 from clusterbank.model.entities import Project, Resource
 from clusterbank.model.accounting import \
-    RemainingAmount, Request, Allocation, CreditLimit, Hold, Charge, Refund
+    Request, Allocation, CreditLimit, Hold, Charge, Refund
 
 __all__ = [
     "Session",
@@ -56,7 +57,48 @@ else:
     except Exception, e:
         warnings.warn("invalid database: %s (%s)" % (uri, e), UserWarning)
 
-Session = scoped_session(sessionmaker(transactional=True, autoflush=True))
+
+class MultiplexingSessionExtension (SessionExtension):
+    
+    def __init__ (self, extensions=None):
+        SessionExtension.__init__(self)
+        if extensions:
+            self.extensions = extensions[:]
+        else:
+            self.extensions = []
+    
+    def before_commit (self, session):
+        for extension in self.extensions:
+            extension.before_commit(session)
+
+    def after_commit (self, session):
+        for extension in self.extensions:
+            extension.after_commit(session)
+
+    def after_rollback (self, session):
+        for extension in self.extensions:
+            extension.after_rollback(session)
+
+    def before_flush (self, session, flush_context, objects):
+        for extension in self.extensions:
+            extension.before_flush(session, flush_context, objects)
+
+    def after_flush (self, session, flush_context):
+        for extension in self.extensions:
+            extension.after_flush(session, flush_context)
+        
+    def after_flush_postexec (self, session, flush_context):
+        for extension in self.extensions:
+            extension.after_flush_postexec(session, flush_context)
+
+
+Session = scoped_session(sessionmaker(
+    transactional=True, autoflush=True,
+    extension=MultiplexingSessionExtension([
+        Request.SessionExtension(), Allocation.SessionExtension(),
+        Hold.SessionExtension(), Charge.SessionExtension(),
+        Refund.SessionExtension(), CreditLimit.SessionExtension(),
+    ])))
 
 Session.mapper(Project, projects_table, properties=dict(
     id = projects_table.c.id,
@@ -71,8 +113,7 @@ Session.mapper(Request, requests_table, properties=dict(
     project = relation(Project, backref="requests"),
     resource = relation(Resource, backref="requests"),
     datetime = requests_table.c.datetime,
-    _amount = requests_table.c.amount,
-    amount = synonym("_amount"),
+    amount = requests_table.c.amount,
     comment = requests_table.c.comment,
     start = requests_table.c.start,
 ))
@@ -82,8 +123,7 @@ Session.mapper(Allocation, allocations_table, properties=dict(
     project = relation(Project, backref="allocations"),
     resource = relation(Resource, backref="allocations"),
     datetime = allocations_table.c.datetime,
-    _amount = allocations_table.c.amount,
-    amount = synonym("_amount"),
+    amount = allocations_table.c.amount,
     start = allocations_table.c.start,
     expiration = allocations_table.c.expiration,
     comment = allocations_table.c.comment,
@@ -96,8 +136,7 @@ Session.mapper(CreditLimit, credit_limits_table, properties=dict(
     resource = relation(Resource, backref="credit_limits"),
     start = credit_limits_table.c.start,
     datetime = credit_limits_table.c.datetime,
-    _amount = credit_limits_table.c.amount,
-    amount = synonym("_amount"),
+    amount = credit_limits_table.c.amount,
     comment = credit_limits_table.c.comment,
 ))
 
@@ -105,8 +144,7 @@ Session.mapper(Hold, holds_table, properties=dict(
     id = holds_table.c.id,
     allocation = relation(Allocation, backref="holds"),
     datetime = holds_table.c.datetime,
-    _amount = holds_table.c.amount,
-    amount = synonym("_amount"),
+    amount = holds_table.c.amount,
     comment = holds_table.c.comment,
     active = holds_table.c.active,
 ))
@@ -115,8 +153,7 @@ Session.mapper(Charge, charges_table, properties=dict(
     id = charges_table.c.id,
     allocation = relation(Allocation, backref="charges"),
     datetime = charges_table.c.datetime,
-    _amount = charges_table.c.amount,
-    amount = synonym("_amount"),
+    amount = charges_table.c.amount,
     comment = charges_table.c.comment,
 ))
 
@@ -124,7 +161,6 @@ Session.mapper(Refund, refunds_table, properties=dict(
     id = refunds_table.c.id,
     charge = relation(Charge, backref="refunds"),
     datetime = refunds_table.c.datetime,
-    _amount = refunds_table.c.amount,
-    amount = synonym("_amount"),
+    amount = refunds_table.c.amount,
     comment = refunds_table.c.comment,
 ))

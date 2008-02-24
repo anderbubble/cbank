@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta
 
+from nose.tools import raises
+
 import clusterbank.model
 from clusterbank.model.entities import Project, Resource
 from clusterbank.model.accounting import \
-    RemainingAmount, Request, Allocation, CreditLimit, Hold, Charge, Refund
+    Request, Allocation, CreditLimit, Hold, Charge, Refund
 
 class AccountingTester (object):
     
@@ -48,14 +50,11 @@ class TestRequest (AccountingTester):
         clusterbank.model.Session.commit()
         assert request.datetime - datetime.now() < timedelta(minutes=1)
     
+    @raises(ValueError)
     def test_negative_amount (self):
         request = Request()
-        try:
-            request.amount = -100
-        except ValueError:
-            pass
-        else:
-            assert not "allowed negative amount"
+        request.amount = -100
+        clusterbank.model.Session.commit()
     
     def test_allocations (self):
         request = Request(
@@ -138,14 +137,11 @@ class TestAllocation (AccountingTester):
         allocation.expiration = self.now + timedelta(days=1)
         assert allocation.active
     
+    @raises(ValueError)
     def test_negative_amount (self):
         allocation = Allocation()
-        try:
-            allocation.amount = -100
-        except ValueError:
-            pass
-        else:
-            assert not "Allowed negative amount."
+        allocation.amount = -100
+        clusterbank.model.Session.commit()
     
     def test_amount_available (self):
         allocation = Allocation(amount=1500,
@@ -199,14 +195,12 @@ class TestCreditLimit (AccountingTester):
         clusterbank.model.Session.commit()
         assert credit_limit.datetime - datetime.now() < timedelta(minutes=1)
     
+    @raises(ValueError)
     def test_negative (self):
-        credit_limit = CreditLimit()
-        try:
-            credit_limit.amount = -100
-        except ValueError:
-            pass
-        else:
-            assert not "allowed a negative amount"
+        credit_limit = CreditLimit(
+            project=self.project, resource=self.resource,
+            start=self.now, amount=-100)
+        clusterbank.model.Session.commit()
 
 
 class TestHold (AccountingTester):
@@ -243,13 +237,9 @@ class TestHold (AccountingTester):
         clusterbank.model.Session.commit()
         assert hold.active
     
+    @raises(Exception)
     def test_distributed_without_allocations (self):
-        try:
-            holds = Hold.distributed([], amount=900)
-        except RemainingAmount:
-            pass
-        else:
-            assert not "didn't raise exception"
+        holds = Hold.distributed([], amount=900)
     
     def test_distributed (self):
         allocation1 = self.allocation
@@ -263,75 +253,67 @@ class TestHold (AccountingTester):
         for hold in holds:
             assert hold.allocation in (allocation1, allocation2)
     
+    @raises(ValueError)
     def test_negative_amount (self):
         hold = Hold()
-        try:
-            hold.amount = -100
-        except ValueError:
-            pass
-        else:
-            assert not "allowed negative amount"
+        hold.amount = -100
+        clusterbank.model.Session.commit()
     
+    @raises(clusterbank.model.Project.InsufficientFunds)
     def test_excessive_amount (self):
         hold = Hold(allocation=self.allocation)
-        try:
-            hold.amount = self.allocation.amount + 1
-        except self.allocation.project.InsufficientFunds:
-            pass
-        else:
-            assert not "Allowed hold greater than allocation."
+        hold.amount = self.allocation.amount + 1
+        clusterbank.model.Session.commit()
     
+    @raises(clusterbank.model.Project.InsufficientFunds)
     def test_amount_with_active_hold (self):
         hold1 = Hold(allocation=self.allocation, amount=self.allocation.amount)
         hold2 = Hold(allocation=hold1.allocation)
-        try:
-            hold2.amount = 1
-        except self.allocation.project.InsufficientFunds:
-            pass
-        else:
-            assert not "Allowed holds greater than allocation."
+        hold2.amount = 1
+        clusterbank.model.Session.commit()
     
     def test_amount_with_inactive_hold (self):
         hold1 = Hold(allocation=self.allocation, amount=self.allocation.amount, active=False)
-        hold2 = Hold(allocation=hold1.allocation)
+        hold2 = Hold(allocation=hold1.allocation, amount=hold1.allocation.amount)
         try:
-            hold2.amount = hold1.allocation.amount
-        except self.allocation.project.InsufficientFunds:
-            assert not "Didn't correctly deactivate other hold."
+            clusterbank.model.Session.commit()
+        except clusterbank.model.Project.InsufficientFunds:
+            assert False, "didn't correctly deactivate hold"
     
+    @raises(clusterbank.model.Project.InsufficientFunds)
     def test_amount_with_charge (self):
         charge = Charge(allocation=self.allocation, amount=self.allocation.amount)
         hold = Hold(allocation=charge.allocation)
-        try:
-            hold.amount = 1
-        except self.allocation.project.InsufficientFunds:
-            pass
-        else:
-            assert not "Allowed charges/holds greater than allocation."
+        hold.amount = 1
+        clusterbank.model.Session.commit()
     
     def test_amount_with_refunded_charge (self):
         charge = Charge(allocation=self.allocation, amount=self.allocation.amount)
         refund = Refund(charge=charge, amount=charge.amount)
         hold = Hold(allocation=charge.allocation)
+        hold.amount = charge.allocation.amount
         try:
-            hold.amount = charge.allocation.amount
+            clusterbank.model.Session.commit()
         except self.allocation.project.InsufficientFunds:
-            assert not "Didn't correctly refund charge."
+            assert False, "Didn't correctly refund charge."
     
     def test_amount_with_partially_refunded_charge (self):
         charge = Charge(allocation=self.allocation, amount=self.allocation.amount)
         refund = Refund(charge=charge, amount=charge.amount//2)
         hold = Hold(allocation=charge.allocation)
+        hold.amount = charge.amount - refund.amount
         try:
-            hold.amount = charge.amount - refund.amount
-        except self.allocation.project.InsufficientFunds:
-            assert not "Didn't correctly refund charge."
-        try:
-            hold.amount += 1
-        except self.allocation.project.InsufficientFunds:
-            pass
-        else:
-            assert not "Allowed hold/charge greater than allocation."
+            clusterbank.model.Session.commit()
+        except clusterbank.model.Project.InsufficientFunds:
+            assert False, "Didn't correctly refund charge."
+    
+    @raises(clusterbank.model.Project.InsufficientFunds)
+    def test_greater_amount_after_refunded_charge (self):
+        charge = Charge(allocation=self.allocation, amount=self.allocation.amount)
+        refund = Refund(charge=charge, amount=charge.amount//2)
+        hold = Hold(allocation=charge.allocation)
+        hold.amount = (charge.amount - refund.amount) + 1
+        clusterbank.model.Session.commit()
 
 
 class TestCharge (AccountingTester):
@@ -369,13 +351,10 @@ class TestCharge (AccountingTester):
         clusterbank.model.Session.commit()
         assert charge.datetime - datetime.now() < timedelta(minutes=1)
     
+    @raises(ValueError)
     def test_distributed_without_allocations (self):
-        try:
-            charges = Charge.distributed([], amount=900)
-        except RemainingAmount:
-            pass
-        else:
-            assert not "didn't raise exception"
+        charges = Charge.distributed([], amount=900)
+        clusterbank.model.Session.commit()
     
     def test_distributed (self):
         allocation1 = self.allocation
@@ -384,80 +363,76 @@ class TestCharge (AccountingTester):
             project=allocation1.project, resource=allocation1.resource,
             start=allocation1.start, expiration=allocation1.start)
         charges = Charge.distributed((allocation1, allocation2), amount=900)
+        clusterbank.model.Session.commit()
         assert len(charges) == 2
         assert sum(charge.amount for charge in charges) == 900
         for charge in charges:
             assert charge.allocation in (allocation1, allocation2)
     
+    
+    def test_distributed_with_insufficient_allocation (self):
+        allocation1 = self.allocation
+        allocation1.amount = 600
+        allocation2 = Allocation(amount=600,
+            project=allocation1.project, resource=allocation1.resource,
+            start=allocation1.start, expiration=allocation1.start)
+        charges = Charge.distributed((allocation1, allocation2), amount=1300)
+        clusterbank.model.Session.commit()
+        assert len(charges) == 2
+        assert sum(charge.amount for charge in charges) == 1300
+        for charge in charges:
+            assert charge.allocation in (allocation1, allocation2)
+    
+    @raises(ValueError)
     def test_negative_amount (self):
         charge = Charge()
-        try:
-            charge.amount = -100
-        except ValueError:
-            pass
-        else:
-            assert not "allowed negative amount"
+        charge.amount = -100
+        clusterbank.model.Session.commit()
     
-    def test_excessive_amount (self):
-        charge = Charge(allocation=self.allocation)
-        try:
-            charge.amount = self.allocation.amount + 1
-        except self.allocation.project.InsufficientFunds:
-            pass
-        else:
-            assert not "Allowed charge greater than allocation."
-    
+    @raises(clusterbank.model.Project.InsufficientFunds)
     def test_amount_with_active_hold (self):
         hold = Hold(allocation=self.allocation, amount=self.allocation.amount)
-        charge = Charge(allocation=hold.allocation)
-        try:
-            charge.amount = 1
-        except self.allocation.project.InsufficientFunds:
-            pass
-        else:
-            assert not "Allowed holds greater than allocation."
+        charge = Charge(allocation=hold.allocation, amount=1)
+        clusterbank.model.Session.commit()
     
     def test_amount_with_inactive_hold (self):
         hold = Hold(allocation=self.allocation, amount=self.allocation.amount, active=False)
-        charge = Charge(allocation=hold.allocation)
+        charge = Charge(allocation=hold.allocation, amount=hold.allocation.amount)
         try:
-            charge.amount = hold.allocation.amount
-        except self.allocation.project.InsufficientFunds:
-            assert not "Didn't correctly deactivate other hold."
+            clusterbank.model.Session.commit()
+        except clusterbank.model.Project.InsufficientFunds:
+            assert False, "Didn't correctly deactivate other hold."
     
     def test_amount_with_other_charge (self):
         charge1 = Charge(allocation=self.allocation, amount=self.allocation.amount)
-        charge2 = Charge(allocation=charge1.allocation)
-        try:
-            charge2.amount = 1
-        except self.allocation.project.InsufficientFunds:
-            pass
-        else:
-            assert not "Allowed charges/holds greater than allocation."
+        charge2 = Charge(allocation=charge1.allocation, amount=1)
+        clusterbank.model.Session.commit()
+        assert self.allocation.amount_available == -1
     
     def test_amount_with_refunded_charge (self):
         charge1 = Charge(allocation=self.allocation, amount=self.allocation.amount)
         refund = Refund(charge=charge1, amount=charge1.amount)
-        charge2 = Charge(allocation=charge1.allocation)
+        charge2 = Charge(allocation=charge1.allocation, amount=charge1.allocation.amount)
         try:
-            charge2.amount = charge1.allocation.amount
-        except self.allocation.project.InsufficientFunds:
-            assert not "Didn't correctly refund charge."
+            clusterbank.model.Session.commit()
+        except clusterbank.model.Project.InsufficientFunds:
+            assert False, "Didn't correctly refund charge."
     
     def test_amount_with_partially_refunded_charge (self):
         charge1 = Charge(allocation=self.allocation, amount=self.allocation.amount)
         refund = Refund(charge=charge1, amount=charge1.amount//2)
-        charge2 = Charge(allocation=charge1.allocation)
+        charge2 = Charge(allocation=charge1.allocation, amount=charge1.amount-refund.amount)
         try:
-            charge2.amount = charge1.amount - refund.amount
-        except self.allocation.project.InsufficientFunds:
-            assert not "Didn't correctly refund charge."
-        try:
-            charge2.amount += 1
-        except self.allocation.project.InsufficientFunds:
-            pass
-        else:
-            assert not "Allowed hold/charge greater than allocation."
+            clusterbank.model.Session.commit()
+        except clusterbank.model.Project.InsufficientFunds:
+            assert False, "Didn't correctly refund charge."
+    
+    def test_greater_amount_with_partially_refunded_charge (self):
+        charge1 = Charge(allocation=self.allocation, amount=self.allocation.amount)
+        refund = Refund(charge=charge1, amount=charge1.amount//2)
+        charge2 = Charge(allocation=charge1.allocation, amount=(charge1.amount-refund.amount)+1)
+        clusterbank.model.Session.commit()
+        assert self.allocation.amount_available == self.allocation.amount - (charge1.amount + charge2.amount - refund.amount)
     
     def test_effective_amount (self):
         charge = Charge(allocation=self.allocation, amount=100)
@@ -496,20 +471,13 @@ class TestRefund (AccountingTester):
         clusterbank.model.Session.commit()
         assert datetime.now() - refund.datetime < timedelta(minutes=1)
     
+    @raises(ValueError)
     def test_negative_amount (self):
         refund = Refund()
-        try:
-            refund.amount = -100
-        except ValueError:
-            pass
-        else:
-            assert not "allowed negative amount"
+        refund.amount = -100
+        clusterbank.model.Session.commit()
     
+    @raises(ValueError)
     def test_excessive_amount (self):
-        refund = Refund(charge=self.charge)
-        try:
-            refund.amount = self.charge.amount + 1
-        except ValueError:
-            pass
-        else:
-            assert not "allowed refund greater than charge"
+        refund = Refund(charge=self.charge, amount=self.charge.amount+1)
+        clusterbank.model.Session.commit()

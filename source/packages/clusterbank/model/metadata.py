@@ -26,6 +26,11 @@ __all__ = [
     "holds_table", "charges_table", "refunds_table",
 ]
 
+try:
+    types.Text
+except NameError:
+    types.Text = types.TEXT
+
 metadata = MetaData()
 
 projects_table = Table("projects", metadata,
@@ -45,7 +50,7 @@ requests_table = Table("requests", metadata,
     Column("datetime", types.DateTime, nullable=False, default=datetime.now),
     Column("start", types.DateTime, nullable=True),
     Column("amount", types.Integer, nullable=False),
-    Column("comment", types.String, nullable=True),
+    Column("comment", types.Text, nullable=True),
     mysql_engine="InnoDB",
 )
 
@@ -57,7 +62,7 @@ allocations_table = Table("allocations", metadata,
     Column("amount", types.Integer, nullable=False),
     Column("start", types.DateTime, nullable=False),
     Column("expiration", types.DateTime, nullable=False),
-    Column("comment", types.String),
+    Column("comment", types.Text),
     mysql_engine="InnoDB",
 )
 
@@ -74,7 +79,7 @@ credit_limits_table = Table("credit_limits", metadata,
     Column("datetime", types.DateTime, nullable=False, default=datetime.now),
     Column("start", types.DateTime, nullable=False, default=datetime.now),
     Column("amount", types.Integer, nullable=False),
-    Column("comment", types.String),
+    Column("comment", types.Text),
     UniqueConstraint("project_id", "resource_id", "start"),
     mysql_engine="InnoDB",
 )
@@ -84,7 +89,7 @@ holds_table = Table("holds", metadata,
     Column("allocation_id", None, ForeignKey("allocations.id"), nullable=False),
     Column("datetime", types.DateTime, nullable=False, default=datetime.now),
     Column("amount", types.Integer, nullable=False),
-    Column("comment", types.String),
+    Column("comment", types.Text),
     Column("active", types.Boolean, nullable=False, default=True),
     mysql_engine="InnoDB",
 )
@@ -94,7 +99,7 @@ charges_table = Table("charges", metadata,
     Column("allocation_id", None, ForeignKey("allocations.id"), nullable=False),
     Column("datetime", types.DateTime, nullable=False, default=datetime.now),
     Column("amount", types.Integer, nullable=False),
-    Column("comment", types.String),
+    Column("comment", types.Text),
     mysql_engine="InnoDB",
 )
 
@@ -103,6 +108,6 @@ refunds_table = Table("refunds", metadata,
     Column("charge_id", None, ForeignKey("charges.id"), nullable=False),
     Column("datetime", types.DateTime, nullable=False, default=datetime.now),
     Column("amount", types.Integer, nullable=False),
-    Column("comment", types.String),
+    Column("comment", types.Text),
     mysql_engine="InnoDB",
 )

@@ -129,10 +129,10 @@ class TestMain (ScriptTester):
         assert hold.comment == "testing"
     
     def test_hold_distributed (self):
-        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2008-01-01")
+        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2020-01-01")
         allocations = parse_entities(Allocation)
         clear_stdout()
-        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2008-01-01")
+        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2020-01-01")
         allocations.extend(parse_entities(Allocation))
         clear_stdout()
         run("cbank hold --project grail --resource spam --amount 150 --comment testing")
@@ -191,10 +191,10 @@ class TestMain (ScriptTester):
         assert charge.allocation is allocations[0]
     
     def test_charge_distributed (self):
-        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2008-01-01")
+        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2020-01-01")
         allocations = parse_entities(Allocation)
         clear_stdout()
-        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2008-01-01")
+        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2020-01-01")
         allocations.extend(parse_entities(Allocation))
         clear_stdout()
         run("cbank charge --project grail --resource spam --amount 150 --comment testing")

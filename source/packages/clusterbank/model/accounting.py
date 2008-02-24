@@ -11,9 +11,14 @@ Refund -- refund of a charge
 
 from datetime import datetime
 
+import sqlalchemy.orm.session
 from sqlalchemy import desc
+try:
+    set
+except NameError:
+    from sets import Set as set
 
-__all__ = ["RemainingAmount", "Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund"]
+__all__ = ["Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund"]
 
 
 class AccountingEntity (object):
@@ -37,10 +42,6 @@ class AccountingEntity (object):
         return "<%s %r>" % (self.__class__.__name__, self.id)
 
 
-class RemainingAmount (Exception):
-    """The entire amount was not able to be used."""
-
-
 class Request (AccountingEntity):
     
     """A request for amount on a resource.
@@ -55,6 +56,17 @@ class Request (AccountingEntity):
     comment -- misc. comments
     allocations -- allocations that was made in response to the request
     """
+    
+    class SessionExtension (sqlalchemy.orm.session.SessionExtension):
+        
+        def forbid_negative_amounts (self, session):
+            requests = [instance for instance in (session.new | session.dirty) if isinstance(instance, Request)]
+            for request in requests:
+                if request.amount < 0:
+                    raise ValueError("cannot request negative amount")
+        
+        def before_commit (self, session):
+            self.forbid_negative_amounts(session)
     
     def __init__ (self, **kwargs):
         """Initialize a new request.
@@ -77,23 +89,6 @@ class Request (AccountingEntity):
         self.start = kwargs.get("start")
         self.comment = kwargs.get("comment")
         self.allocations = kwargs.get("allocations", [])
-    
-    def _get_amount (self):
-        """Intelligent property accessor."""
-        return self._amount
-    
-    def _set_amount (self, value):
-        """Intelligent property mutator.
-        
-        Arguments:
-        value -- new value for amount (must be >= 0)
-        """
-        if value is not None:
-            if value < 0:
-                raise ValueError("cannot request negative amount")
-        self._amount = value
-    
-    amount = property(_get_amount, _set_amount)
 
 
 class Allocation (AccountingEntity):
@@ -113,6 +108,17 @@ class Allocation (AccountingEntity):
     holds -- holds on this allocation
     charges -- charges against this allocation
     """
+    
+    class SessionExtension (sqlalchemy.orm.session.SessionExtension):
+        
+        def forbid_negative_amounts (self, session):
+            allocations = [instance for instance in (session.new | session.dirty) if isinstance(instance, Allocation)]
+            for allocation in allocations:
+                if allocation.amount < 0:
+                    raise ValueError("cannot allocate negative amount")
+        
+        def before_commit (self, session):
+            self.forbid_negative_amounts(session)
     
     def __init__ (self, **kwargs):
         """Initialize a new allocation.
@@ -152,29 +158,12 @@ class Allocation (AccountingEntity):
         self.holds = kwargs.get("holds", [])
         self.charges = kwargs.get("charges", [])
     
-    def _get_amount (self):
-        """Intelligent property accessor."""
-        return self._amount
-    
-    def _set_amount (self, value):
-        """Intelligent property mutator.
-        
-        Arguments:
-        value -- new amount (must be >= 0)
-        """
-        if value is not None:
-            if value < 0:
-                raise ValueError("cannot allocate negative amount")
-        self._amount = value
-    
-    amount = property(_get_amount, _set_amount)
-    
     def _get_amount_available (self):
         """Intelligent property accessor."""
         # sums are typecast to integers because mysql returns strings when summing integers
-        amount_charged = int(Charge.query.filter(Charge.allocation==self).sum(Charge._amount) or 0)
-        amount_refunded = int(Refund.query.join("charge").filter(Charge.allocation==self).sum(Refund._amount) or 0)
-        amount_held = int(Hold.query.filter(Hold.allocation==self).filter(Hold.active==True).sum(Hold._amount) or 0)
+        amount_charged = int(Charge.query.filter(Charge.allocation==self).sum(Charge.amount) or 0)
+        amount_refunded = int(Refund.query.join("charge").filter(Charge.allocation==self).sum(Refund.amount) or 0)
+        amount_held = int(Hold.query.filter(Hold.allocation==self).filter(Hold.active==True).sum(Hold.amount) or 0)
         return self.amount - ((amount_charged - amount_refunded) + amount_held)
     
     amount_available = property(_get_amount_available)
@@ -203,6 +192,17 @@ class CreditLimit (AccountingEntity):
     unique by project, resource, and start
     """
     
+    class SessionExtension (sqlalchemy.orm.session.SessionExtension):
+        
+        def forbid_negative_amounts (self, session):
+            credit_limits = [instance for instance in (session.new | session.dirty) if isinstance(instance, CreditLimit)]
+            for credit_limit in credit_limits:
+                if credit_limit.amount < 0:
+                    raise ValueError("credit limit cannot be negative")
+        
+        def before_commit (self, session):
+            self.forbid_negative_amounts(session)
+    
     def __init__ (self, **kwargs):
         """Initialize a new credit limit.
         
@@ -222,22 +222,6 @@ class CreditLimit (AccountingEntity):
         self.start = kwargs.get("start")
         self.amount = kwargs.get("amount")
         self.comment = kwargs.get("comment")
-    
-    def _get_amount (self):
-        """Intelligent property accessor."""
-        return self._amount
-    
-    def _set_amount (self, value):
-        """Intelligent property mutator.
-        
-        Arguments:
-        value -- new amount (must be >= 0)
-        """
-        if value < 0 and value is not None:
-            raise ValueError("credit limit cannot be negative")
-        self._amount = value
-    
-    amount = property(_get_amount, _set_amount)
 
 
 class Hold (AccountingEntity):
@@ -259,6 +243,29 @@ class Hold (AccountingEntity):
     Classmethods:
     distributed -- construct multiple holds across multiple allocations
     """
+    
+    class SessionExtension (sqlalchemy.orm.session.SessionExtension):
+        
+        def forbid_negative_amounts (self, session):
+            holds = [instance for instance in (session.new | session.dirty) if isinstance(instance, Hold)]
+            for hold in holds:
+                if hold.amount < 0:
+                    raise ValueError("hold cannot be for negative amount")
+        
+        def forbid_hold_greater_than_allocation (self, session):
+            holds = [instance for instance in (session.new | session.dirty) if isinstance(instance, Hold)]
+            for allocation in set([hold.allocation for hold in holds]):
+                credit_limit = allocation.project.credit_limit(allocation.resource)
+                if credit_limit:
+                    credit_limit = credit_limit.amount
+                else:
+                    credit_limit = 0
+                if allocation.amount_available < -credit_limit:
+                    raise allocation.project.InsufficientFunds("not enough funds available")
+        
+        def before_commit (self, session):
+            self.forbid_negative_amounts(session)
+            self.forbid_hold_greater_than_allocation(session)
     
     def __init__ (self, **kwargs):
         """Initialize a new hold.
@@ -313,49 +320,19 @@ class Hold (AccountingEntity):
         
         if amount > 0:
             try:
-                holds[-1].amount += amount
+                hold = holds[-1]
             except IndexError:
                 try:
                     allocation = allocations[0]
                 except IndexError:
-                    pass
+                    raise ValueError("no allocation to hold on")
                 else:
                     hold = cls(allocation=allocation, amount=amount, **kwargs)
                     holds.append(hold)
                     amount = 0
-        
-        if amount > 0:
-            raise RemainingAmount("%i left unheld" % amount)
+            else:
+                hold.amount += amount
         return holds
-    
-    def _get_amount (self):
-        """Intelligent property accessor."""
-        return self._amount
-    
-    def _set_amount (self, value):
-        """Intelligent property mutator.
-        
-        Arguments:
-        value -- new amount (must be >= 0, and must not exceed active holds or effective charges)
-        """
-        if value is not None:
-            if value < 0:
-                raise ValueError("hold cannot be for negative amount")
-            if getattr(self, "allocation", None) is not None:
-                previous_value = getattr(self, "_amount", None)
-                try:
-                    self._amount = 0
-                    amount_available = self.allocation.amount_available
-                    credit_limit = self.allocation.project.credit_limit(self.allocation.resource)
-                    if credit_limit is not None:
-                        amount_available += credit_limit.amount
-                    if value > amount_available:
-                        raise self.allocation.project.InsufficientFunds()
-                finally:
-                    self._amount = previous_value
-        self._amount = value
-    
-    amount = property(_get_amount, _set_amount)
 
 
 class Charge (AccountingEntity):
@@ -373,6 +350,17 @@ class Charge (AccountingEntity):
     Classmethods:
     distributed -- construct multiple charges across multiple allocations
     """
+    
+    class SessionExtension (sqlalchemy.orm.session.SessionExtension):
+        
+        def forbid_negative_amount (self, session):
+            charges = [instance for instance in (session.new | session.dirty) if isinstance(instance, Charge)]
+            for charge in charges:
+                if charge.amount < 0:
+                    raise ValueError("charge cannot be for negative amount")
+        
+        def before_commit (self, session):
+            self.forbid_negative_amount(session)
     
     def __init__ (self, **kwargs):
         """Initialize a new charge.
@@ -428,62 +416,32 @@ class Charge (AccountingEntity):
                 charge = cls(allocation=allocation, amount=amount, **kwargs)
             else:
                 charge = cls(allocation=allocation, amount=allocation.amount_available, **kwargs)
-            charges.append(charge)
             amount -= charge.amount
+            charges.append(charge)
             if amount <= 0:
                 break
         
         if amount > 0:
             try:
-                charges[-1].amount += amount
+                charge = charges[-1]
             except IndexError:
                 try:
                     allocation = allocations[0]
                 except IndexError:
-                    pass
+                    raise ValueError("no allocations to charge against")
                 else:
                     charge = cls(allocation=allocation, amount=amount, **kwargs)
                     charges.append(charge)
                     amount = 0
+            else:
+                charge.amount += amount
         
-        if amount > 0:
-            raise RemainingAmount("%i left uncharged" % amount)
         return charges
-    
-    def _get_amount (self):
-        """Intelligent property accessor."""
-        return self._amount
-    
-    def _set_amount (self, value):
-        """Intelligent property mutator.
-        
-        Arguments:
-        value -- new amount (must be >= 0, and must not exceed active holds or effective charges)
-        """
-        if value is not None:
-            if value < 0:
-                raise ValueError("charge cannot be for negative amount")
-            if getattr(self, "allocation", None) is not None:
-                previous_value = getattr(self, "_amount", None)
-                try:
-                    self._amount = 0
-                    amount_available = self.allocation.amount_available
-                    credit_limit = self.allocation.project.credit_limit(self.allocation.resource)
-                    if credit_limit is not None:
-                        amount_available += credit_limit.amount
-                    if value > amount_available:
-                        raise self.allocation.project.InsufficientFunds()
-                finally:
-                    self._amount = previous_value
-        self._amount = value
-    
-    amount = property(_get_amount, _set_amount)
     
     def _get_effective_amount (self):
         """Intelligent property accessor."""
         # sums are typecast to integers because mysql returns strings when summing integers
-        refunds = Refund.query.filter(Refund.charge==self)
-        amount_refunded = int(refunds.sum(Refund._amount) or 0)
+        amount_refunded = int(Refund.query.filter_by(charge=self).sum(Refund.amount) or 0)
         return self.amount - amount_refunded
     
     effective_amount = property(_get_effective_amount)
@@ -500,6 +458,25 @@ class Refund (AccountingEntity):
     amount -- amount refunded
     comment -- misc. comments
     """
+    
+    class SessionExtension (sqlalchemy.orm.session.SessionExtension):
+        
+        def forbid_negative_amount (self, session):
+            refunds = [instance for instance in (session.new | session.dirty) if isinstance(instance, Refund)]
+            for refund in refunds:
+                if refund.amount < 0:
+                    raise ValueError("cannot refund negative amount")
+        
+        def forbid_refund_greater_than_charge (self, session):
+            refunds = [instance for instance in (session.new | session.dirty) if isinstance(instance, Refund)]
+            charges = set([refund.charge for refund in refunds])
+            for charge in charges:
+                if charge.effective_amount < 0:
+                    raise ValueError("refunds cannot exceed charge")
+        
+        def before_commit (self, session):
+            self.forbid_negative_amount(session)
+            self.forbid_refund_greater_than_charge(session)
     
     def __init__ (self, **kwargs):
         """Initialize a new refund.
@@ -518,27 +495,3 @@ class Refund (AccountingEntity):
         self.amount = kwargs.get("amount")
         if self.amount is None and self.charge is not None:
             self.amount = self.charge.amount
-    
-    def _get_amount (self):
-        """Intelligent property accessor."""
-        return self._amount
-    
-    def _set_amount (self, value):
-        """Intelligent property mutator.
-        
-        Arguments:
-        value -- new amount (must be >= 0, and <= effective charge amount)
-        """
-        if value is not None:
-            if value < 0:
-                raise ValueError("cannot refund negative amount")
-            previous_value = getattr(self, "_amount", None)
-            try:
-                self._amount = 0
-                if value > self.charge.effective_amount:
-                    raise ValueError("refunds cannot exceed charge")
-            finally:
-                self._amount = previous_value
-        self._amount = value
-    
-    amount = property(_get_amount, _set_amount)
