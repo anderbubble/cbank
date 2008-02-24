@@ -1,7 +1,18 @@
 from nose.tools import raises
 
-from clusterbank.upstream.userbase import metadata, Session, \
+from sqlalchemy import create_engine
+
+import clusterbank.upstream.example as example
+from clusterbank.upstream.example import metadata, Session, \
     NotFound, Project, Resource
+
+__all__ = ["test_interface"]
+
+def setup ():
+    example.metadata.bind = create_engine("sqlite:///:memory:")
+
+def teardown ():
+    example.metadata.bind = None
 
 
 class UpstreamEntityTester (object):

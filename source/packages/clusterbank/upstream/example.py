@@ -1,11 +1,22 @@
-"""Userbase model for userbase plugin.
+"""example upstream plugin module
 
 Classes:
 Project -- upstream project
 Resource -- upstream resource
+
+Exceptions:
+NotFound -- requested resource not found
 """
 
+from sqlalchemy import MetaData, Table, Column, ForeignKey
+import sqlalchemy.types as types
+# types.TEXT was renamed types.Text in SA 0.4.3
+try:
+    types.Text
+except AttributeError:
+    types.Text = types.TEXT
 import sqlalchemy.exceptions as exceptions
+from sqlalchemy.orm import sessionmaker, scoped_session
 
 
 __all__ = ["NotFound", "Project", "Resource"]
@@ -88,3 +99,28 @@ class Resource (UpstreamEntity):
     by_id -- Retrieve a resource by identifier.
     by_name -- Retrieve a resource by name.
     """
+
+
+metadata = MetaData()
+
+projects_table = Table("projects", metadata,
+    Column("id", types.Integer, primary_key=True),
+    Column("name", types.Text, nullable=False, unique=True),
+)
+
+resource_types_table = Table("resource_types", metadata,
+    Column("id", types.Integer, nullable=False, primary_key=True),
+    Column("name", types.Text, nullable=False, unique=True),
+)
+
+Session = scoped_session(sessionmaker(autoflush=True, transactional=True))
+
+Session.mapper(Project, projects_table, properties=dict(
+    id = projects_table.c.id,
+    name = projects_table.c.name,
+))
+
+Session.mapper(Resource, resource_types_table, properties=dict(
+    id = resource_types_table.c.id,
+    name = resource_types_table.c.name,
+))
