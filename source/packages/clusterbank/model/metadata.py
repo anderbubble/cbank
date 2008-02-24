@@ -29,7 +29,7 @@ __all__ = [
 # types.TEXT was renamed types.Text in SA 0.4.3
 try:
     types.Text
-except NameError:
+except AttributeError:
     types.Text = types.TEXT
 
 metadata = MetaData()

@@ -11,7 +11,7 @@ from sqlalchemy import MetaData, Table, Column, ForeignKey, types
 # types.TEXT was renamed types.Text in SA 0.4.3
 try:
     types.Text
-except NameError:
+except AttributeError:
     types.Text = types.TEXT
 
 __all__ = [
