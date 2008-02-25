@@ -38,25 +38,4 @@ Configuration:
 /etc/clusterbank.conf -- [upstream] module
 """
 
-import warnings
-from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
-
 __all__ = []
-
-config = SafeConfigParser()
-config.read(["/etc/clusterbank.conf"])
-
-try:
-    upstream_module_name = config.get("upstream", "module")
-except (NoSectionError, NoOptionError):
-    warnings.warn("no upstream module specified", UserWarning)
-else:
-    try:
-        upstream_module = __import__(upstream_module_name, locals(), globals(), ["Project", "Resource"])
-    except ImportError:
-        warnings.warn("invalid upstream module: %s" % (upstream_module_name), UserWarning)
-    else:
-        Project = upstream_module.Project
-        Resource = upstream_module.Resource
-        NotFound = upstream_module.NotFound
-        __all__.extend(["Project", "Resource"])

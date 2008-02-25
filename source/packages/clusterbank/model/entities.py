@@ -10,7 +10,7 @@ from datetime import datetime
 from sqlalchemy import desc
 import sqlalchemy.exceptions
 
-import clusterbank.upstream as upstream
+import clusterbank
 import clusterbank.exceptions as exceptions
 from clusterbank.model.accounting import CreditLimit
 
@@ -35,15 +35,23 @@ class Entity (object):
         Arguments:
         name -- upstream name of the entity
         """
-        Upstream = getattr(upstream, cls.__name__)
+        Upstream = getattr(clusterbank.upstream, cls.__name__)
         try:
             upstream_entity = Upstream.by_name(name)
-        except upstream.NotFound:
+        except clusterbank.upstream.NotFound:
             raise exceptions.NotFound("%s %r not found" % (cls.__name__.lower, name))
         try:
             return cls.query.filter(cls.id==upstream_entity.id).one()
         except sqlalchemy.exceptions.InvalidRequestError:
             return cls(id=upstream_entity.id)
+    
+    def _get_name (self):
+        """Intelligent property accessor."""
+        Upstream = getattr(clusterbank.upstream, self.__class__.__name__)
+        upstream_entity = Upstream.by_id(self.id)
+        return upstream_entity.name
+    
+    name = property(_get_name)
 
 
 class Project (Entity):
@@ -76,13 +84,6 @@ class Project (Entity):
         self.requests = kwargs.get("requests", [])
         self.allocations = kwargs.get("allocations", [])
         self.credit_limits = kwargs.get("credit_limits", [])
-    
-    def _get_name (self):
-        """Intelligent property accessor."""
-        upstream_project = upstream.Project.by_id(self.id)
-        return upstream_project.name
-    
-    name = property(_get_name)
     
     def credit_limit (self, resource, datetime=datetime.now):
         try:
@@ -126,10 +127,3 @@ class Resource (Entity):
         self.requests = kwargs.get("requests", [])
         self.allocations = kwargs.get("allocations", [])
         self.credit_limits = kwargs.get("credit_limits", [])
-    
-    def _get_name (self):
-        """Intelligent property accessor."""
-        upstream_resource = upstream.Resource.by_id(self.id)
-        return upstream_resource.name
-    
-    name = property(_get_name)

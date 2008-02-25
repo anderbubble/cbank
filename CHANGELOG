@@ -1,5 +1,7 @@
 -- 0.2.10 --
 
+ * simplified upstream module loading (#116)
+ * userbase module replaced with upstream_example (not distributed)
  * remove inner-class exception stupidness (#119)
  * check compatibility with SA 0.4.0
  * allow charges to make a project go negative (#117)
