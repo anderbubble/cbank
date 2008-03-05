@@ -322,7 +322,7 @@ def main (argv=None):
                     raise MissingOption(option)
             request = Request(project=options.project, resource=options.resource, amount=options.amount, start=options.start, comment=options.comment)
             Session.commit()
-            print request
+            print request_format(request)
         
         elif directive == "allocation":
             for option in ("project", "resource", "amount", "start", "expiration"):
@@ -334,7 +334,7 @@ def main (argv=None):
                 requests = []
             allocation = Allocation(project=options.project, resource=options.resource, requests=requests, start=options.start, expiration=options.expiration, amount=options.amount, comment=options.comment)
             Session.commit()
-            print allocation
+            print allocation_format(allocation)
         
         elif directive == "hold":
             if options.allocation is not None:
@@ -352,7 +352,7 @@ def main (argv=None):
                 holds = Hold.distributed(allocations, amount=options.amount, comment=options.comment)
             Session.commit()
             for hold in holds:
-                print hold
+                print hold_format(hold)
             
         elif directive == "release":
             holds = filter_options(get_base_query(Hold), options)
@@ -361,7 +361,7 @@ def main (argv=None):
                 hold.active = False
             Session.commit()
             for hold in holds:
-                print hold
+                print hold_format(hold)
         
         elif directive == "charge":
             if options.allocation is not None:
@@ -379,7 +379,7 @@ def main (argv=None):
                 charges = Charge.distributed(allocations, amount=options.amount, comment=options.comment)
             Session.commit()
             for charge in charges:
-                print charge
+                print charge_format(charge)
         
         elif directive == "refund":
             for option in ("charge", "amount"):
@@ -387,7 +387,7 @@ def main (argv=None):
                     raise MissingOption(option)
             refund = Refund(charge=options.charge, amount=options.amount, comment=options.comment)
             Session.commit()
-            print refund
+            print refund_format(refund)
         
         else:
             raise UnknownDirective(directive)
