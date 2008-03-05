@@ -163,37 +163,37 @@ parser.add_option(Option("-l", "--list",
     help="list active instances",
     dest="list", action="store_true"))
 parser.add_option(Option("-p", "--project",
-    help="request amount for or list requests for PROJECT", metavar="PROJECT",
+    help="specify a project by NAME", metavar="NAME",
     dest="project", type="project", action="store"))
 parser.add_option(Option("-r", "--resource",
-    help="request amount of or list requests for RESOURCE", metavar="RESOURCE",
+    help="specify a resource by NAME", metavar="NAME",
     dest="resource", type="resource", action="store"))
 parser.add_option(Option("-t", "--amount",
-    help="request AMOUNT", metavar="AMOUNT",
+    help="specify an AMOUNT", metavar="AMOUNT",
     dest="amount", type="int", action="store"))
 parser.add_option(Option("-s", "--start",
     help="begin on DATE", metavar="DATE",
     dest="start", type="date", action="store"))
-parser.add_option(Option("-m", "--comment",
-    help="misc. NOTES", metavar="NOTES",
-    dest="comment", type="string", action="store"))
-parser.add_option(Option("-q", "--request",
-    help="specify REQUEST id", metavar = "REQUEST",
-    dest="request", type="request", action="store"))
-parser.add_option(Option("-a", "--allocation",
-    help="specify ALLOCATION id", metavar="ALLOCATION",
-    dest="allocation", type="allocation", action="store"))
-parser.add_option(Option("-d", "--hold",
-    help="specify HOLD id", metavar="HOLD",
-    dest="hold", type="hold", action="store"))
 parser.add_option(Option("-x", "--expiration",
     help="expire on DATE", metavar="DATE",
     dest="expiration", type="date", action="store"))
+parser.add_option(Option("-m", "--comment",
+    help="attach a COMMENT", metavar="COMMENT",
+    dest="comment", type="string", action="store"))
+parser.add_option(Option("-q", "--request",
+    help="specify a request by ID", metavar = "ID",
+    dest="request", type="request", action="store"))
+parser.add_option(Option("-a", "--allocation",
+    help="specify an allocation by ID", metavar="ID",
+    dest="allocation", type="allocation", action="store"))
+parser.add_option(Option("-d", "--hold",
+    help="specify a hold by ID", metavar="ID",
+    dest="hold", type="hold", action="store"))
 parser.add_option(Option("-c", "--charge",
-    help="specify CHARGE id", metavar="CHARGE",
+    help="specify a charge by ID", metavar="ID",
     dest="charge", type="charge", action="store"))
 parser.add_option(Option("-f", "--refund",
-    help="specify REFUND id", metavar="REFUND",
+    help="specify a refund by ID", metavar="ID",
     dest="refund", type="refund", action="store"))
 parser.set_defaults(list=False)
 
