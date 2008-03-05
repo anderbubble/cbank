@@ -58,7 +58,6 @@ class TestMain (ScriptTester):
     
     def test_request (self):
         run("cbank request --project grail --resource spam --amount 1000 --start 2007-01-01 --comment testing")
-        sys.stdout.seek(0)
         requests = parse_entities(Request)
         assert len(requests) == 1
         request = requests[0]

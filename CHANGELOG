@@ -1,3 +1,8 @@
+-- 0.2.11 --
+
+ * greatly improved cbank output (#125)
+ * rewrote cbank
+
 -- 0.2.10 --
 
  * simplified upstream module loading (#116)

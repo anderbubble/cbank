@@ -92,7 +92,7 @@ class Option (optparse.Option):
     def check_request (self, opt, value):
         """Return a request from its id."""
         try:
-            return Request.query.filter(Request.id==value).one()
+            return Request.query.filter_by(id=value).one()
         except sqlalchemy.exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown request: %r" % (opt, value))
@@ -100,7 +100,7 @@ class Option (optparse.Option):
     def check_allocation (self, opt, value):
         """Return an allocation from its id."""
         try:
-            return Allocation.query.filter(Allocation.id==value).one()
+            return Allocation.query.filter_by(id=value).one()
         except sqlalchemy.exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown allocation: %r" % (opt, value))
@@ -108,7 +108,7 @@ class Option (optparse.Option):
     def check_charge (self, opt, value):
         """Return a charge from its id."""
         try:
-            return Charge.query.filter(Charge.id==value).one()
+            return Charge.query.filter_by(id=value).one()
         except sqlalchemy.exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown charge: %r" % (opt, value))
@@ -116,7 +116,7 @@ class Option (optparse.Option):
     def check_hold (self, opt, value):
         """Return a hold from its id."""
         try:
-            return Hold.query.filter(Hold.id==value).one()
+            return Hold.query.filter_by(id=value).one()
         except sqlalchemy.exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown hold: %r" % (opt, value))
@@ -124,7 +124,7 @@ class Option (optparse.Option):
     def check_refund (self, opt, value):
         """Return a refund from its id."""
         try:
-            return Refund.query.filter(Refund.id==value).one()
+            return Refund.query.filter_by(id=value).one()
         except sqlalchemy.exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "options %s: unknown refund: %r" % (opt, value))
@@ -260,6 +260,20 @@ def parse_directive (directive):
     else:
         return directive
 
+def get_base_query (cls):
+    if issubclass(cls, Request):
+        return Request.query.outerjoin("resource").outerjoin("project").outerjoin(["allocations", "holds"]).outerjoin(["allocations", "charges", "refunds"]).reset_joinpoint()
+    elif issubclass(cls, Allocation):
+        return Allocation.query.outerjoin("resource").outerjoin("project").outerjoin("requests").outerjoin("holds").outerjoin(["charges", "refunds"]).reset_joinpoint()
+    elif issubclass(cls, Hold):
+        return Hold.query.filter_by(active=True).outerjoin(["allocation", "project"]).outerjoin(["allocation", "resource"]).outerjoin(["allocation", "requests"]).outerjoin(["allocation", "charges", "refunds"]).reset_joinpoint()
+    elif issubclass(cls, Charge):
+        return Charge.query.outerjoin(["allocation", "project"]).outerjoin(["allocation", "resource"]).outerjoin(["allocation", "requests"]).outerjoin(["allocation", "holds"]).outerjoin("refunds").reset_joinpoint()
+    elif issubclass(cls, Refund):
+        return Refund.query.outerjoin(["charge", "allocation", "project"]).outerjoin(["charge", "allocation", "resource"]).outerjoin(["charge", "allocation", "requests"]).outerjoin(["charge", "allocation", "holds"]).reset_joinpoint()
+    else:
+        raise UnknownDirective(directive)
+
 def main (argv=None):
     if argv is None:
         argv = sys.argv
@@ -271,27 +285,46 @@ def main (argv=None):
         directive = args.pop(0)
     except IndexError:
         raise UnknownDirective("not specified")
-    else:
-        directive = parse_directive(directive)
+    directive = parse_directive(directive)
     if args:
         raise UnexpectedArguments(args)
     
-    if directive == "request":
-        if options.list:
-            for request in request_list(request=options.request, project=options.project, resource=options.resource):
-                print request
+    if options.list:
+        
+        if directive == "request":
+            query = get_base_query(Request)
+            format = request_format
+        elif directive == "allocation":
+            query = get_base_query(Allocation)
+            format = allocation_format
+        elif directive == "hold":
+            query = get_base_query(Hold)
+            format = hold_format
+        elif directive == "charge":
+            query = get_base_query(Charge)
+            format = charge_format
+        elif directive == "refund":
+            query = get_base_query(Refund)
+            format = refund_format
         else:
+            raise UnknownDirective("list: %s" % directive)
+        
+        query = filter_options(query, options)
+        
+        for each in query:
+            print format(each)
+    
+    else:
+        
+        if directive == "request":
             for option in ("project", "resource", "amount"):
                 if getattr(options, option, None) is None:
                     raise MissingOption(option)
             request = Request(project=options.project, resource=options.resource, amount=options.amount, start=options.start, comment=options.comment)
             Session.commit()
             print request
-    elif directive == "allocation":
-        if options.list:
-            for allocation in allocation_list(allocation=options.allocation, project=options.project, resource=options.resource, request=options.request):
-                print allocation
-        else:
+        
+        elif directive == "allocation":
             for option in ("project", "resource", "amount", "start", "expiration"):
                 if getattr(options, option, None) is None:
                     raise MissingOption(option)
@@ -302,85 +335,65 @@ def main (argv=None):
             allocation = Allocation(project=options.project, resource=options.resource, requests=requests, start=options.start, expiration=options.expiration, amount=options.amount, comment=options.comment)
             Session.commit()
             print allocation
-    elif directive == "hold":
-        if options.list:
-            for hold in hold_list(hold=options.hold, project=options.project, resource=options.resource, request=options.request, allocation=options.allocation):
-                print hold
-        elif options.allocation is not None:
-            for option in ("amount", ):
-                if getattr(options, option, None) is None:
-                    raise MissingOption(option)
-            hold = Hold(allocation=options.allocation, amount=options.amount, comment=options.comment)
-            Session.commit()
-            print hold
-        else:
-            for option in ("amount", ):
-                if getattr(options, option, None) is None:
-                    raise MissingOption(option)
-            if options.project is None or options.resource is None:
-                raise MissingOption("allocation or project and resource")
+        
+        elif directive == "hold":
             if options.allocation is not None:
-                allocations = [options.allocation]
+                for option in ("amount", ):
+                    if getattr(options, option, None) is None:
+                        raise MissingOption(option)
+                holds = [Hold(allocation=options.allocation, amount=options.amount, comment=options.comment)]
             else:
-                allocations = allocation_list(project=options.project, resource=options.resource, request=options.request)
-            holds = Hold.distributed(allocations, amount=options.amount, comment=options.comment)
+                for option in ("amount", ):
+                    if getattr(options, option, None) is None:
+                        raise MissingOption(option)
+                if options.project is None or options.resource is None:
+                    raise MissingOption("allocation or project and resource")
+                allocations = filter_options(get_base_query(Allocation), options)
+                holds = Hold.distributed(allocations, amount=options.amount, comment=options.comment)
             Session.commit()
             for hold in holds:
                 print hold
-    elif directive == "release":
-        if options.list:
-            raise InvalidOption("list")
-        if options.hold is not None:
-            holds = [options.hold]
-        else:
-            holds = hold_list(project=options.project, resource=options.resource, request=options.request, allocation=options.allocation)
-            holds = list(holds)
-        for hold in holds:
-            hold.active = False
-        Session.commit()
-        for hold in holds:
-            print hold
-    elif directive == "charge":
-        if options.list:
-            for charge in charge_list(charge=options.charge, project=options.project, resource=options.resource, request=options.request, allocation=options.allocation):
-                print charge
-        elif options.allocation is not None:
-            for option in ("amount", ):
-                if getattr(options, option, None) is None:
-                    raise MissingOption(option)
-            charge = Charge(allocation=options.allocation, amount=options.amount, comment=options.comment)
+            
+        elif directive == "release":
+            holds = filter_options(get_base_query(Hold), options)
+            holds = list(holds) # remember which holds were active
+            for hold in holds:
+                hold.active = False
             Session.commit()
-            print charge
-        else:
-            for option in ("amount", ):
-                if getattr(options, option, None) is None:
-                    raise MissingOption(option)
-            if options.project is None or options.resource is None:
-                raise MissingOption("allocation or project and resource")
+            for hold in holds:
+                print hold
+        
+        elif directive == "charge":
             if options.allocation is not None:
-                allocations = [options.allocation]
+                for option in ("amount", ):
+                    if getattr(options, option, None) is None:
+                        raise MissingOption(option)
+                charges = [Charge(allocation=options.allocation, amount=options.amount, comment=options.comment)]
             else:
-                allocations = allocation_list(project=options.project, resource=options.resource, request=options.request)
-            charges = Charge.distributed(allocations, amount=options.amount, comment=options.comment)
+                for option in ("amount", ):
+                    if getattr(options, option, None) is None:
+                        raise MissingOption(option)
+                if options.project is None or options.resource is None:
+                    raise MissingOption("allocation or project and resource")
+                allocations = filter_options(get_base_query(Allocation), options)
+                charges = Charge.distributed(allocations, amount=options.amount, comment=options.comment)
             Session.commit()
             for charge in charges:
                 print charge
-    elif directive == "refund":
-        if options.list:
-            for refund in refund_list(refund=options.refund, project=options.project, resource=options.resource, request=options.request, allocation=options.allocation, charge=options.charge):
-                print refund
-        else:
+        
+        elif directive == "refund":
             for option in ("charge", "amount"):
                 if getattr(options, option, None) is None:
                     raise MissingOption(option)
             refund = Refund(charge=options.charge, amount=options.amount, comment=options.comment)
             Session.commit()
             print refund
-    else:
-        raise UnknownDirective(directive)
+        
+        else:
+            raise UnknownDirective(directive)
 
 def console_main (argv=None, **kwargs):
-    stderr = kwargs.get("stderr") or sys.stderr
+    stderr = kwargs.get("stderr", sys.stderr)
     try:
         main(argv)
     except SystemExit:
@@ -391,133 +404,61 @@ def console_main (argv=None, **kwargs):
         print >> stderr, e
         sys.exit(1)
 
-def request_list (**kwargs):
-    """Get existing requests.
-    
-    Keyword arguments:
-    requests -- a specific request to list (default all unallocated)
-    project -- project the request is for
-    resource -- resource the request is for
-    """
-    requests = Request.query()
-    if kwargs.get("request"):
-        requests = requests.filter(Request.id==kwargs.get("request").id)
-    else:
-        requests = requests.filter(~Request.allocations.any())
-    if kwargs.get("project"):
-        requests = requests.filter(Request.project==kwargs.get("project"))
-    if kwargs.get("resource"):
-        requests = requests.filter(Request.resource==kwargs.get("resource"))
-    return requests
+def filter_options (query, options):
+    if options.project:
+        query = query.filter(Project.id==options.project.id)
+    if options.resource:
+        query = query.filter(Resource.id==options.resource.id)
+    if options.request:
+        query = query.filter(Request.id==options.request.id)
+    if options.allocation:
+        query = query.filter(Allocation.id==options.allocation.id)
+    if options.hold:
+        query = query.filter(Hold.id==options.hold.id)
+    if options.charge:
+        query = query.filter(Charge.id==options.charge.id)
+    if options.refund:
+        query = query.filter(Refund.id==options.refund.id)
+    return query
 
-def allocation_list (**kwargs):
-    """Get active allocations.
-    
-    Keyword arguments:
-    allocation -- a specific allocation to list (default all active)
-    project -- project the allocation is for
-    resource -- resource the allocation is for
-    request -- request answered by the allocation
-    """
-    now = datetime.now()
-    allocations = Allocation.query()
-    if kwargs.get("allocation") is not None:
-        allocations = allocations.filter(Allocation.id==kwargs.get("allocation").id)
-    else:
-        allocations = allocations.filter(and_(Allocation.start<=now, Allocation.expiration>now))
-    if kwargs.get("project") is not None:
-        allocations = allocations.filter(Allocation.project==kwargs.get("project"))
-    if kwargs.get("resource") is not None:
-        allocations = allocations.filter(Allocation.resource==kwargs.get("resource"))
-    if kwargs.get("request") is not None:
-        allocations = allocations.filter(Allocation.requests.contains(kwargs.get("request")))
-    return allocations
+def request_format (request):
+    id = str(request.id).ljust(6)
+    project = str(request.project).ljust(15)
+    resource = str(request.resource).ljust(10)
+    amount = str(request.amount)
+    return " ".join([id, project, resource, amount])
 
-def hold_list (**kwargs):
-    """Get holds on active allocations.
-    
-    Keyword arguments:
-    hold -- a specific hold to list (default all active)
-    project -- project of the hold's allocation
-    resource -- resource of the hold's allocation
-    request -- holds on allocations for a request
-    allocation -- holds on a specific allocaiton
-    """
-    holds = Hold.query()
-    if kwargs.get("hold") is not None:
-        holds = holds.filter(Hold.id==kwargs.get("hold").id)
-    else:
-        holds = holds.filter(Hold.active==True)
-    if kwargs.get("project") is not None:
-        holds = holds.filter(Allocation.project==kwargs.get("project"))
-    if kwargs.get("resource") is not None:
-        holds = holds.filter(Allocation.resource==kwargs.get("resource"))
-    if kwargs.get("request") is not None:
-        holds = holds.filter(Allocation.requests.contains(kwargs.get("request")))
-    if kwargs.get("allocation") is not None:
-        holds = holds.filter(Hold.allocation==kwargs.get("allocation"))
-    else:
-        now = datetime.now()
-        holds = holds.filter(Allocation.start<=now)
-        holds = holds.filter(Allocation.expiration>now)
-    return holds
+def allocation_format (allocation):
+    id = str(allocation.id).ljust(6)
+    project = str(allocation.project).ljust(15)
+    resource = str(allocation.resource).ljust(10)
+    amount = str(allocation.amount)
+    return " ".join([id, project, resource, amount])
 
-def charge_list (**kwargs):
-    """Get charges on active allocations.
-    
-    Keyword arguments:
-    charge -- a specific charge to list
-    project -- project of the charge's allocation
-    resource -- resource of the charge's allocation
-    request -- related request
-    allocation -- charges on a specific allocaiton
-    """
-    charges = Charge.query()
-    if kwargs.get("charge") is not None:
-        charges = charges.filter(Charge.id==kwargs.get("charge").id)
-    if kwargs.get("project") is not None:
-        charges = charges.filter(Allocation.project==kwargs.get("project"))
-    if kwargs.get("resource") is not None:
-        charges = charges.filter(Allocation.resource==kwargs.get("resource"))
-    if kwargs.get("request") is not None:
-        charges = charges.filter(Allocation.requests.contains(kwargs.get("request")))
-    if kwargs.get("allocation") is not None:
-        charges = charges.filter(Charge.allocation==kwargs.get("allocation"))
-    else:
-        now = datetime.now()
-        charges = charges.filter(Allocation.start<=now)
-        charges = charges.filter(Allocation.expiration>now)
-    return charges
+def hold_format (hold):
+    id = str(hold.id).ljust(6)
+    allocation_id = str(hold.allocation.id).ljust(6)
+    project = str(hold.allocation.project).ljust(15)
+    resource = str(hold.allocation.resource).ljust(10)
+    amount = str(hold.amount)
+    return " ".join([id, allocation_id, project, resource, amount])
 
-def refund_list (**kwargs):
-    """Get refunds to active allocations.
-    
-    Keyword arguments:
-    refund -- a specific refund to list
-    project -- project of the refund's allocation
-    resource -- resource of the refund's allocation
-    request -- related request
-    allocation -- refunds to a specific allocaiton
-    charge -- refunds to a specific charge
-    """
-    refunds = Refund.query()
-    if kwargs.get("refund") is not None:
-        refunds = refunds.filter(Refund.id==kwargs.get("refund").id)
-    if kwargs.get("project") is not None:
-        refunds = refunds.filter(Allocation.project==kwargs.get("project"))
-    if kwargs.get("resource") is not None:
-        refunds = refunds.filter(Allocation.resource==kwargs.get("resource"))
-    if kwargs.get("request") is not None:
-        refunds = refunds.filter(Allocation.requests.contains(kwargs.get("request")))
-    if kwargs.get("allocation") is not None:
-        refunds = refunds.filter(Charge.allocation==kwargs.get("allocation"))
-    else:
-        now = datetime.now()
-        refunds = refunds.filter(Allocation.start<=now)
-        refunds = refunds.filter(Allocation.expiration>now)
-    if kwargs.get("charge") is not None:
-        refunds = refunds.filter(Refund.charge==kwargs.get("charge"))
-    return refunds
+def charge_format (charge):
+    id = str(charge.id).ljust(6)
+    allocation_id = str(charge.allocation.id).ljust(6)
+    project = str(charge.allocation.project).ljust(15)
+    resource = str(charge.allocation.resource).ljust(10)
+    amount = str(charge.effective_amount)
+    return " ".join([id, allocation_id, project, resource, amount])
+
+def refund_format (refund):
+    id = str(refund.id).ljust(6)
+    charge_id = str(refund.charge.id).ljust(6)
+    allocation_id = str(refund.charge.allocation.id).ljust(6)
+    project = str(refund.charge.allocation.project).ljust(15)
+    resource = str(refund.charge.allocation.resource).ljust(10)
+    amount = str(refund.amount)
+    return " ".join([id, allocation_id, project, resource, amount])
 
 if __name__ == "__main__":
     console_main()
