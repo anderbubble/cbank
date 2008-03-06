@@ -317,17 +317,13 @@ def main (argv=None):
     else:
         
         if directive == "request":
-            for option in ("project", "resource", "amount"):
-                if getattr(options, option, None) is None:
-                    raise MissingOption(option)
+            require_options(["project", "resource", "amount"], options)
             request = Request(project=options.project, resource=options.resource, amount=options.amount, start=options.start, comment=options.comment)
             Session.commit()
             print request_format(request)
         
         elif directive == "allocation":
-            for option in ("project", "resource", "amount", "start", "expiration"):
-                if getattr(options, option, None) is None:
-                    raise MissingOption(option)
+            require_options(["project", "resource", "amount", "start", "expiration"], options)
             if options.request:
                 requests = [options.request]
             else:
@@ -337,19 +333,19 @@ def main (argv=None):
             print allocation_format(allocation)
         
         elif directive == "hold":
-            if options.allocation is not None:
-                for option in ("amount", ):
-                    if getattr(options, option, None) is None:
-                        raise MissingOption(option)
-                holds = [Hold(allocation=options.allocation, amount=options.amount, comment=options.comment)]
+            require_options(["amount"], options)
+            try:
+                require_options(["allocation"], options)
+            except MissingOption, e:
+                try:
+                    require_options(["project", "resource"], options)
+                except MissingOption:
+                    raise e
+                else:
+                    allocations = filter_options(get_base_query(Allocation), options)
+                    holds = Hold.distributed(allocations, amount=options.amount, comment=options.comment)
             else:
-                for option in ("amount", ):
-                    if getattr(options, option, None) is None:
-                        raise MissingOption(option)
-                if options.project is None or options.resource is None:
-                    raise MissingOption("allocation or project and resource")
-                allocations = filter_options(get_base_query(Allocation), options)
-                holds = Hold.distributed(allocations, amount=options.amount, comment=options.comment)
+                holds = [Hold(allocation=options.allocation, amount=options.amount, comment=options.comment)]
             Session.commit()
             for hold in holds:
                 print hold_format(hold)
@@ -364,27 +360,25 @@ def main (argv=None):
                 print hold_format(hold)
         
         elif directive == "charge":
-            if options.allocation is not None:
-                for option in ("amount", ):
-                    if getattr(options, option, None) is None:
-                        raise MissingOption(option)
-                charges = [Charge(allocation=options.allocation, amount=options.amount, comment=options.comment)]
+            require_options(["amount"], options)
+            try:
+                require_options(["allocation"], options)
+            except MissingOption, e:
+                try:
+                    require_options(["project", "resource"], options)
+                except MissingOption:
+                    raise e
+                else:
+                    allocations = filter_options(get_base_query(Allocation), options)
+                    charges = Charge.distributed(allocations, amount=options.amount, comment=options.comment)
             else:
-                for option in ("amount", ):
-                    if getattr(options, option, None) is None:
-                        raise MissingOption(option)
-                if options.project is None or options.resource is None:
-                    raise MissingOption("allocation or project and resource")
-                allocations = filter_options(get_base_query(Allocation), options)
-                charges = Charge.distributed(allocations, amount=options.amount, comment=options.comment)
+                charges = [Charge(allocation=options.allocation, amount=options.amount, comment=options.comment)]
             Session.commit()
             for charge in charges:
                 print charge_format(charge)
         
         elif directive == "refund":
-            for option in ("charge", "amount"):
-                if getattr(options, option, None) is None:
-                    raise MissingOption(option)
+            require_options(["charge", "amount"], options)
             refund = Refund(charge=options.charge, amount=options.amount, comment=options.comment)
             Session.commit()
             print refund_format(refund)
@@ -403,6 +397,11 @@ def console_main (argv=None, **kwargs):
     except Exception, e:
         print >> stderr, e
         sys.exit(1)
+
+def require_options (option_list, options):
+    for option in option_list:
+        if getattr(options, option, None) is None:
+            raise MissingOption(option)
 
 def filter_options (query, options):
     if options.project:
