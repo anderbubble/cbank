@@ -157,7 +157,16 @@ def require_configured ():
 
 parser = OptionParser(
     version = clusterbank.__version__,
-    usage = "%prog <directive> [options]",
+    usage = os.linesep.join([
+        "%prog [options] <directive>",
+        "",
+        "Directives:",
+        "  request -- process allocation requests",
+        "  allocation -- process allocations",
+        "  hold -- process holds",
+        "  charge -- process charges",
+        "  refund -- process refunds",
+    ])
 )
 parser.add_option(Option("-l", "--list",
     help="list active instances",

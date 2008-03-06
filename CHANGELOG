@@ -1,5 +1,6 @@
 -- 0.2.11 --
 
+ * better help output (#114)
  * greatly improved cbank output (#125)
  * rewrote cbank
 
