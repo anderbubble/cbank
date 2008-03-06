@@ -1,8 +1,18 @@
 -- 0.2.11 --
 
+ * cbank displays amount remaining in allocation
+ * cbank enters the current time (by default) when creating an allocation (#126)
+ * removed the default datetime from the credit_limits table
+ * moved upstream example out of the packages directory
+ * merged accounting.py into entities.py (#122)
  * better help output (#114)
- * greatly improved cbank output (#125)
- * rewrote cbank
+ * only require configuration when necessary (#130)
+ * better declaration of required options in cbank (#128)
+ * cbank displays entity details using formatting functions
+ * cbank queries (-l) more intuitive through abstract base queries and filters
+ * rewrote cbank mostly from the ground up
+ * (very) minor testsuite cleanup (still needs a lot more)
+ * removed legacy upstream data from clusterbank.conf.sample
 
 -- 0.2.10 --
 
