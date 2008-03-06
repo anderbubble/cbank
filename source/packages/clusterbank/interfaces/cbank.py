@@ -440,7 +440,7 @@ def allocation_format (allocation):
     id = str(allocation.id).ljust(6)
     project = str(allocation.project).ljust(15)
     resource = str(allocation.resource).ljust(10)
-    amount = str(allocation.amount)
+    amount = "%i/%i" % (allocation.amount - allocation.amount_charged, allocation.amount)
     return " ".join([id, project, resource, amount])
 
 def hold_format (hold):

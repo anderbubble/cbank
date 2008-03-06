@@ -279,13 +279,18 @@ class Allocation (AccountingEntity):
         self.holds = kwargs.get("holds", [])
         self.charges = kwargs.get("charges", [])
     
-    def _get_amount_available (self):
-        """Intelligent property accessor."""
+    def _get_amount_charged (self):
         # sums are typecast to integers because mysql returns strings when summing integers
-        amount_charged = int(Charge.query.filter(Charge.allocation==self).sum(Charge.amount) or 0)
-        amount_refunded = int(Refund.query.join("charge").filter(Charge.allocation==self).sum(Refund.amount) or 0)
+        amount_charged = int(Charge.query.filter_by(allocation=self).sum(Charge.amount) or 0)
+        amount_refunded = int(Refund.query.join("charge").filter_by(allocation=self).sum(Refund.amount) or 0)
+        return amount_charged - amount_refunded
+    
+    amount_charged = property(_get_amount_charged)
+    
+    def _get_amount_available (self):
+        # sums are typecast to integers because mysql returns strings when summing integers
         amount_held = int(Hold.query.filter(Hold.allocation==self).filter(Hold.active==True).sum(Hold.amount) or 0)
-        return self.amount - ((amount_charged - amount_refunded) + amount_held)
+        return self.amount - self.amount_charged - amount_held
     
     amount_available = property(_get_amount_available)
     
