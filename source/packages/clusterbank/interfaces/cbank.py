@@ -13,7 +13,7 @@ NotConfigured -- the library is not fully configured
 
 Functions:
 main -- main (argv-parsing) function
-verify_configured -- ensure that the library is properly configured
+require_configured -- ensure that the library is properly configured
 request_list -- get existing requests
 allocation_list -- get existing allocations
 hold_list -- get existing holds
@@ -43,7 +43,7 @@ import clusterbank.upstream
 
 __all__ = [
     "Option", "parser",
-    "main", "verify_configured", "request_list", "allocation_list",
+    "main", "require_configured", "request_list", "allocation_list",
     "hold_list", "charge_list", "refund_list",
     "UnknownDirective", "UnexpectedArguments", "MissingOption",
     "NotConfigured",
@@ -148,7 +148,7 @@ class Option (optparse.Option):
     ))
 
 
-def verify_configured ():
+def require_configured ():
     if clusterbank.model.metadata.bind is None:
         raise NotConfigured("database")
     for entity in ("Project", "Resource"):
@@ -278,8 +278,6 @@ def main (argv=None):
     if argv is None:
         argv = sys.argv
     parser.prog = os.path.basename(argv[0])
-    
-    verify_configured()
     options, args = parser.parse_args(args=argv[1:])
     try:
         directive = args.pop(0)
@@ -288,6 +286,8 @@ def main (argv=None):
     directive = parse_directive(directive)
     if args:
         raise UnexpectedArguments(args)
+    
+    require_configured()
     
     if options.list:
         
