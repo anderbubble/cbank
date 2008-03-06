@@ -332,12 +332,12 @@ def main (argv=None):
             print request_format(request)
         
         elif directive == "allocation":
-            require_options(["project", "resource", "amount", "start", "expiration"], options)
+            require_options(["project", "resource", "amount", "expiration"], options)
             if options.request:
                 requests = [options.request]
             else:
                 requests = []
-            allocation = Allocation(project=options.project, resource=options.resource, requests=requests, start=options.start, expiration=options.expiration, amount=options.amount, comment=options.comment)
+            allocation = Allocation(project=options.project, resource=options.resource, requests=requests, start=options.start or datetime.now(), expiration=options.expiration, amount=options.amount, comment=options.comment)
             Session.commit()
             print allocation_format(allocation)
         
