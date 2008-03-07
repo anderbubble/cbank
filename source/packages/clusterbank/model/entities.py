@@ -30,10 +30,13 @@ __all__ = [
 ]
 
 
-class UpstreamEntity (object):
+class Entity (object):
     
     def __repr__ (self):
         return "<%s %r>" % (self.__class__.__name__, self.id)
+
+
+class UpstreamEntity (Entity):
     
     def __str__ (self):
         if self.name is not None:
@@ -48,21 +51,17 @@ class UpstreamEntity (object):
         Arguments:
         name -- upstream name of the entity
         """
-        Upstream = getattr(clusterbank.upstream, cls.__name__)
-        try:
-            upstream_entity = Upstream.by_name(name)
-        except clusterbank.upstream.NotFound:
+        upstream_id = cls._get_upstream_id(name)
+        if upstream_id is None:
             raise exceptions.NotFound("%s %r not found" % (cls.__name__.lower, name))
         try:
-            return cls.query.filter(cls.id==upstream_entity.id).one()
+            return cls.query.filter_by(id=upstream_id).one()
         except sqlalchemy.exceptions.InvalidRequestError:
-            return cls(id=upstream_entity.id)
+            return cls(id=upstream_id)
     
     def _get_name (self):
         """Intelligent property accessor."""
-        Upstream = getattr(clusterbank.upstream, self.__class__.__name__)
-        upstream_entity = Upstream.by_id(self.id)
-        return upstream_entity.name
+        return self._get_upstream_name(self.id)
     
     name = property(_get_name)
 
@@ -80,9 +79,16 @@ class Project (UpstreamEntity):
     credit_limit -- credit limit for a resource at a given datetime
     
     Exceptions:
-    DoesNotExist -- the specified project does not exist
     InsufficientFunds -- not enough funds to perform an action
     """
+    
+    @classmethod
+    def _get_upstream_id (cls, name):
+        return clusterbank.upstream.get_project_id(name)
+    
+    @classmethod
+    def _get_upstream_name (cls, id):
+        return clusterbank.upstream.get_project_name(id)
     
     def __init__ (self, **kwargs):
         """Initialize a project.
@@ -123,10 +129,15 @@ class Resource (UpstreamEntity):
     requests -- requests for the resource
     allocations -- allocations of the resource
     credit_limits -- credit limits on the resource
-    
-    Exceptions:
-    DoesNotExist -- the specified resource does not exist
     """
+    
+    @classmethod
+    def _get_upstream_id (cls, name):
+        return clusterbank.upstream.get_resource_id(name)
+    
+    @classmethod
+    def _get_upstream_name (cls, id):
+        return clusterbank.upstream.get_resource_name(id)
     
     def __init__ (self, **kwargs):
         """Initialize a resource.
@@ -142,7 +153,7 @@ class Resource (UpstreamEntity):
         self.credit_limits = kwargs.get("credit_limits", [])
 
 
-class AccountingEntity (object):
+class AccountingEntity (Entity):
     """Base class for accounting entities.
     
     Provides a standard str/repr interface.
@@ -158,9 +169,6 @@ class AccountingEntity (object):
         else:
             amount = self.amount
         return "%s (%s)" % (id, amount)
-    
-    def __repr__ (self):
-        return "<%s %r>" % (self.__class__.__name__, self.id)
 
 
 class Request (AccountingEntity):

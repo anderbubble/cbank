@@ -2,26 +2,21 @@ from nose.tools import raises
 
 from sqlalchemy import create_engine
 
-from upstream_example import metadata, Session, \
-    NotFound, Project, Resource
-
-__all__ = ["test_interface"]
-
-def setup ():
-    metadata.bind = create_engine("sqlite:///:memory:")
-
-def teardown ():
-    metadata.bind = None
+import upstream_example as example
+from upstream_example import metadata, Session, Project, Resource, \
+    get_project_id, get_project_name, get_resource_id, get_resource_name
 
 
 class UpstreamEntityTester (object):
     
     def setup (self):
+        metadata.bind = create_engine("sqlite:///:memory:")
         metadata.create_all()
     
     def teardown (self):
         Session.close()
         metadata.drop_all()
+        metadata.bind = None
 
 
 class TestProject (UpstreamEntityTester):
@@ -31,23 +26,17 @@ class TestProject (UpstreamEntityTester):
         self.project = Project(id=1, name="Shrubbery")
         Session.flush()
     
-    @raises(NotFound)
     def test_missing_by_id (self):
-        project = Project.by_id(2)
+        assert get_project_name(2) is None
     
     def test_existing_by_id (self):
-        project = Project.by_id(1)
-        assert isinstance(project, Project)
-        assert project.id == 1
+        assert get_project_name(1) == "Shrubbery"
     
-    @raises(NotFound)
     def test_missing_by_name (self):
-        project = Project.by_name("Spam")
+        assert get_project_id("Spam") is None
     
     def test_existing_by_name (self):
-        project = Project.by_name("Shrubbery")
-        assert isinstance(project, Project)
-        assert project.name == "Shrubbery"
+        assert get_project_id("Shrubbery") == 1
 
 
 class TestResource (UpstreamEntityTester):
@@ -57,20 +46,14 @@ class TestResource (UpstreamEntityTester):
         self.resource = Resource(id=1, name="Spam")
         Session.flush()
     
-    @raises(NotFound)
     def test_missing_by_id (self):
-        resource = Resource.by_id(2)
+        assert get_resource_name(2) is None
     
     def test_existing_by_id (self):
-        resource = Resource.by_id(1)
-        assert isinstance(resource, Resource)
-        assert resource.id == 1
+        assert get_resource_name(1) == "Spam"
     
-    @raises(NotFound)
     def test_by_name (self):
-        resource = Resource.by_name("more spam")
+        assert get_resource_id("more spam") is None
     
     def test_existing_by_name (self):
-        resource = Resource.by_name("Spam")
-        assert isinstance(resource, Resource)
-        assert resource.name == "Spam"
+        assert get_resource_id("Spam") == 1

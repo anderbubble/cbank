@@ -19,11 +19,34 @@ import sqlalchemy.exceptions as exceptions
 from sqlalchemy.orm import sessionmaker, scoped_session
 
 
-__all__ = ["NotFound", "Project", "Resource"]
+__all__ = [
+    "get_project_id", "get_project_name",
+    "get_resource_id", "get_resource_name",
+]
 
+def _get_entity_id (cls, name):
+    try:
+        return cls.query.filter_by(name=name).one().id
+    except exceptions.InvalidRequestError:
+        return None
 
-class NotFound (Exception):
-    """The specified entity does not exist."""
+def _get_entity_name (cls, id):
+    try:
+        return cls.query.filter_by(id=id).one().name
+    except exceptions.InvalidRequestError:
+        return None
+
+def get_project_id (name):
+    return _get_entity_id(Project, name)
+
+def get_project_name (id):
+    return _get_entity_name(Project, id)
+
+def get_resource_id (name):
+    return _get_entity_id(Resource, name)
+
+def get_resource_name (id):
+    return _get_entity_name(Resource, id)
 
 
 class UpstreamEntity (object):
@@ -47,18 +70,6 @@ class UpstreamEntity (object):
             return str(self.name)
         else:
             return repr(self)
-    
-    @classmethod
-    def by_id (cls, id):
-        """Retrieve an entity by identifier.
-        
-        Arguments:
-        id -- Canonical, immutable, integer identifier.
-        """
-        try:
-            return cls.query.filter_by(id=id).one()
-        except exceptions.InvalidRequestError:
-            raise NotFound(id)
     
     @classmethod
     def by_name (cls, name):

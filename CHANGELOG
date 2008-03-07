@@ -1,3 +1,5 @@
+ * changed upstream module interface to functions only (#133)
+
 -- 0.2.11 --
 
  * cbank displays amount remaining in allocation

@@ -28,6 +28,6 @@ except (NoSectionError, NoOptionError):
     warnings.warn("no upstream module specified", UserWarning)
 else:
     try:
-        upstream = __import__(upstream_module_name, locals(), globals(), ["Project", "Resource"])
+        upstream = __import__(upstream_module_name, locals(), globals(), ["get_project_name", "get_project_id", "get_resource_name", "get_resource_id"])
     except ImportError:
         warnings.warn("invalid upstream module: %s" % (upstream_module_name), UserWarning)
