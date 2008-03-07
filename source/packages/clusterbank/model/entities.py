@@ -25,7 +25,7 @@ import clusterbank
 import clusterbank.exceptions as exceptions
 
 __all__ = [
-    "Project", "Resource",
+    "User", "Project", "Resource",
     "Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund"
 ]
 
@@ -53,7 +53,7 @@ class UpstreamEntity (Entity):
         """
         upstream_id = cls._get_upstream_id(name)
         if upstream_id is None:
-            raise exceptions.NotFound("%s %r not found" % (cls.__name__.lower, name))
+            raise exceptions.NotFound("%s %r not found" % (cls.__name__.lower(), name))
         try:
             return cls.query.filter_by(id=upstream_id).one()
         except sqlalchemy.exceptions.InvalidRequestError:
@@ -64,6 +64,32 @@ class UpstreamEntity (Entity):
         return self._get_upstream_name(self.id)
     
     name = property(_get_name)
+
+
+class User (UpstreamEntity):
+    
+    """User associated with a hold or charge.
+    
+    Properties:
+    id -- unique integer identifier
+    name -- canonical name of the user (from upstream)
+    """
+    
+    @classmethod
+    def _get_upstream_id (cls, name):
+        return clusterbank.upstream.get_user_id(name)
+    
+    @classmethod
+    def _get_upstream_name (cls, id):
+        return clusterbank.upstream.get_user_name(id)
+    
+    def __init__ (self, **kwargs):
+        """Initialize a project.
+        
+        Keyword arguments:
+        id -- unique integer identifier
+        """
+        self.id = kwargs.get("id")
 
 
 class Project (UpstreamEntity):

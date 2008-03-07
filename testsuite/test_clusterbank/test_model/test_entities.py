@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import clusterbank.model
 import clusterbank.exceptions as exceptions
-from clusterbank.model.entities import Project, Resource, \
+from clusterbank.model.entities import User, Project, Resource, \
     Request, Allocation, Hold, Charge, Refund, CreditLimit
 
 __all__ = [
@@ -21,6 +21,21 @@ class UpstreamEntityTester (object):
         """drop the database after each test."""
         clusterbank.model.Session.close()
         clusterbank.model.metadata.drop_all()
+
+
+class TestUser (UpstreamEntityTester):
+    
+    def test_by_existing_name (self):
+        user = User.by_name("monty")
+        assert user.id is not None
+    
+    @raises(exceptions.NotFound)
+    def test_by_invalid_name (self):
+        user = User.by_name("python")
+    
+    def test_name (self):
+        user = User.by_name("monty")
+        assert user.name == "monty"
 
 
 class TestProject (UpstreamEntityTester):

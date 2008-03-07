@@ -31,15 +31,15 @@ from sqlalchemy.orm import scoped_session, sessionmaker, relation, synonym
 from sqlalchemy.orm.session import SessionExtension
 
 from clusterbank.model.metadata import metadata, \
-    projects_table, resources_table, \
+    users_table, projects_table, resources_table, \
     requests_table, requests_allocations_table, allocations_table, credit_limits_table, \
     holds_table, charges_table, refunds_table
-from clusterbank.model.entities import Project, Resource, Request, Allocation, CreditLimit, Hold, Charge, Refund
+from clusterbank.model.entities import User, Project, Resource, Request, Allocation, CreditLimit, Hold, Charge, Refund
     
 
 __all__ = [
     "Session",
-    "Project", "Resource",
+    "User", "Project", "Resource",
     "Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund",
 ]
 
@@ -98,6 +98,10 @@ Session = scoped_session(sessionmaker(
         Hold.SessionExtension(), Charge.SessionExtension(),
         Refund.SessionExtension(), CreditLimit.SessionExtension(),
     ])))
+
+Session.mapper(User, users_table, properties=dict(
+    id = users_table.c.id,
+))
 
 Session.mapper(Project, projects_table, properties=dict(
     id = projects_table.c.id,

@@ -13,6 +13,7 @@ def setup ():
     # create the upstream database
     example.metadata.bind = create_engine("sqlite:///:memory:")
     example.metadata.create_all()
+    example.User(id=1, name="monty")
     example.Project(id=1, name="grail")
     example.Resource(id=1, name="spam")
     example.Session.commit()

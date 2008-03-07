@@ -34,6 +34,11 @@ except AttributeError:
 
 metadata = MetaData()
 
+users_table = Table("users", metadata,
+    Column("id", types.Integer, primary_key=True),
+    mysql_engine="InnoDB",
+)
+
 projects_table = Table("projects", metadata,
     Column("id", types.Integer, primary_key=True),
     mysql_engine="InnoDB",
