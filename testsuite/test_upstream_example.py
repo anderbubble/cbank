@@ -3,8 +3,10 @@ from nose.tools import raises
 from sqlalchemy import create_engine
 
 import upstream_example as example
-from upstream_example import metadata, Session, Project, Resource, \
-    get_project_id, get_project_name, get_resource_id, get_resource_name
+from upstream_example import metadata, Session, User, Project, Resource, \
+    get_user_id, get_user_name, \
+    get_project_id, get_project_name, \
+    get_resource_id, get_resource_name
 
 
 class UpstreamEntityTester (object):
@@ -57,3 +59,23 @@ class TestResource (UpstreamEntityTester):
     
     def test_existing_by_name (self):
         assert get_resource_id("Spam") == 1
+
+
+class TestUser (UpstreamEntityTester):
+    
+    def setup (self):
+        UpstreamEntityTester.setup(self)
+        self.user = User(id=1, name="Monty")
+        Session.flush()
+    
+    def test_missing_by_id (self):
+        assert get_user_name(2) is None
+    
+    def test_existing_by_id (self):
+        assert get_user_name(1) == "Monty"
+    
+    def test_by_name (self):
+        assert get_user_id("Python") is None
+    
+    def test_existing_by_name (self):
+        assert get_user_id("Monty") == 1

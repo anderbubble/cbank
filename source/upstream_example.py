@@ -36,6 +36,12 @@ def _get_entity_name (cls, id):
     except exceptions.InvalidRequestError:
         return None
 
+def get_user_id (name):
+    return _get_entity_id(User, name)
+
+def get_user_name (id):
+    return _get_entity_name(User, id)
+
 def get_project_id (name):
     return _get_entity_id(Project, name)
 
@@ -70,18 +76,16 @@ class UpstreamEntity (object):
             return str(self.name)
         else:
             return repr(self)
+
+
+class User (UpstreamEntity):
     
-    @classmethod
-    def by_name (cls, name):
-        """Retrieve an entity by name.
-        
-        Arguments:
-        name -- Canonical string identifier.
-        """
-        try:
-            return cls.query.filter_by(name=name).one()
-        except exceptions.InvalidRequestError:
-            raise NotFound(name)
+    """Upstream user.
+    
+    Attributes:
+    id -- canonical, immutable integer identifier
+    name -- canonical string identifier
+    """
 
 
 class Project (UpstreamEntity):
@@ -89,12 +93,8 @@ class Project (UpstreamEntity):
     """Upstream project.
     
     Attributes:
-    id -- Canonical, immutable, integer identifier.
-    name -- Canonical string id.
-    
-    Class methods:
-    by_id -- Retrieve a project by identifier.
-    by_name -- Retrieve a project by name.
+    id -- canonical, immutable integer identifier
+    name -- canonical string identifier
     """
 
 
@@ -103,16 +103,17 @@ class Resource (UpstreamEntity):
     """Upstream resource.
     
     Attributes:
-    id -- Canonical, immutable, integer identifier.
-    name -- Canonical string identifier.
-    
-    Class methods:
-    by_id -- Retrieve a resource by identifier.
-    by_name -- Retrieve a resource by name.
+    id -- canonical, immutable integer identifier
+    name -- canonical string identifier
     """
 
 
 metadata = MetaData()
+
+users_table = Table("users", metadata,
+    Column("id", types.Integer, primary_key=True),
+    Column("name", types.Text, nullable=False, unique=True),
+)
 
 projects_table = Table("projects", metadata,
     Column("id", types.Integer, primary_key=True),
@@ -125,6 +126,11 @@ resource_types_table = Table("resource_types", metadata,
 )
 
 Session = scoped_session(sessionmaker(autoflush=True, transactional=True))
+
+Session.mapper(User, users_table, properties=dict(
+    id = users_table.c.id,
+    name=users_table.c.name,
+))
 
 Session.mapper(Project, projects_table, properties=dict(
     id = projects_table.c.id,
