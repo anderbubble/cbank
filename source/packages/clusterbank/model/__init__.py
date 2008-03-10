@@ -147,6 +147,7 @@ Session.mapper(Hold, holds_table, properties=dict(
     id = holds_table.c.id,
     allocation = relation(Allocation, backref="holds"),
     datetime = holds_table.c.datetime,
+    user = relation(User, backref="holds"),
     amount = holds_table.c.amount,
     comment = holds_table.c.comment,
     active = holds_table.c.active,

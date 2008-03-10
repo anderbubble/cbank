@@ -378,6 +378,25 @@ class TestHold (AccountingEntityTester):
         hold = Hold(allocation=charge.allocation)
         hold.amount = (charge.amount - refund.amount) + 1
         clusterbank.model.Session.commit()
+    
+    def test_no_user (self):
+        hold = Hold(allocation=self.allocation, amount=self.allocation.amount/2)
+        clusterbank.model.Session.commit()
+        assert hold.id is not None
+        clusterbank.model.Session.close()
+        hold = Hold.query.filter_by(id=hold.id).one()
+        assert hold.user is None, "Hold got a default user."
+    
+    def test_user (self):
+        user = User.by_name("monty")
+        assert user, "Couldn't find a user named 'monty'."
+        hold = Hold(user=user, allocation=self.allocation, amount=self.allocation.amount/2)
+        clusterbank.model.Session.commit()
+        assert hold.id is not None, "Couldn't get an id."
+        clusterbank.model.Session.close()
+        user = User.by_name("monty")
+        hold = Hold.query.filter_by(id=hold.id).one()
+        assert hold.user is user, "Hold did not retain user."
 
 
 class TestCharge (AccountingEntityTester):

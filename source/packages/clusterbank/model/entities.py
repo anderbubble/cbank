@@ -90,6 +90,7 @@ class User (UpstreamEntity):
         id -- unique integer identifier
         """
         self.id = kwargs.get("id")
+        self.holds = kwargs.get("holds", [])
 
 
 class Project (UpstreamEntity):
@@ -444,6 +445,7 @@ class Hold (AccountingEntity):
         self.comment = kwargs.get("comment")
         self.active = kwargs.get("active", True)
         self.amount = kwargs.get("amount")
+        self.user = kwargs.get("user")
     
     @classmethod
     def distributed (cls, allocations, **kwargs):
