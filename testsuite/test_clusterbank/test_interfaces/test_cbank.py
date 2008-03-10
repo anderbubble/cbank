@@ -127,6 +127,16 @@ class TestMain (ScriptTester):
         assert hold.amount == 100
         assert hold.comment == "testing"
     
+    def test_hold_user (self):
+        run("cbank allocation --project grail --resource spam --amount 700 --start 2007-01-01 --expiration 2008-01-01")
+        allocations = parse_entities(Allocation)
+        clear_stdout()
+        run("cbank hold --user monty --allocation %i --amount 100 --comment testing" % allocations[0].id)
+        holds = parse_entities(Hold)
+        assert len(holds) == 1
+        hold = holds[0]
+        assert hold.user.name == "monty"
+    
     def test_hold_distributed (self):
         run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2020-01-01")
         allocations = parse_entities(Allocation)
@@ -188,6 +198,16 @@ class TestMain (ScriptTester):
         assert datetime.now() - charge.datetime < timedelta(minutes=1)
         assert charge.amount == 50
         assert charge.allocation is allocations[0]
+    
+    def test_charge_user (self):
+        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2008-01-01")
+        allocations = parse_entities(Allocation)
+        clear_stdout()
+        run("cbank charge --user monty --allocation %i --amount 50" % allocations[0].id)
+        charges = parse_entities(Charge)
+        assert len(charges) == 1
+        charge = charges[0]
+        assert charge.user.name == "monty"
     
     def test_charge_distributed (self):
         run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2020-01-01")

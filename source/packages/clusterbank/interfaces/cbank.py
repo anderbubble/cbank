@@ -38,7 +38,7 @@ import clusterbank
 import clusterbank.model
 import clusterbank.exceptions as exceptions
 from clusterbank.model import \
-    Session, Project, Resource, Request, Allocation, Hold, Charge, Refund
+    Session, User, Project, Resource, Request, Allocation, Hold, Charge, Refund
 import clusterbank.upstream
 
 __all__ = [
@@ -89,6 +89,14 @@ class Option (optparse.Option):
             raise optparse.OptionValueError(
                 "option %s: unknown resource: %r" % (opt, value))
     
+    def check_user (self, opt, value):
+        """Return a user from its name."""
+        try:
+            return User.by_name(value)
+        except exceptions.NotFound:
+            raise optparse.OptionValueError(
+                "option %s: unknown user: %r" % (opt, value))
+    
     def check_request (self, opt, value):
         """Return a request from its id."""
         try:
@@ -131,7 +139,7 @@ class Option (optparse.Option):
     
     TYPES = optparse.Option.TYPES + (
         "date",
-        "resource", "project",
+        "resource", "project", "user",
         "request", "allocation", "hold", "charge", "refund",
     )
     
@@ -139,6 +147,7 @@ class Option (optparse.Option):
     TYPE_CHECKER.update(dict(
         resource = check_resource,
         project = check_project,
+        user = check_user,
         date = check_date,
         request = check_request,
         allocation = check_allocation,
@@ -177,6 +186,9 @@ parser.add_option(Option("-p", "--project",
 parser.add_option(Option("-r", "--resource",
     help="specify a resource by NAME", metavar="NAME",
     dest="resource", type="resource", action="store"))
+parser.add_option(Option("-u", "--user",
+    help="specify a user by NAME", metavar="NAME",
+    dest="user", type="user", action="store"))
 parser.add_option(Option("-t", "--amount",
     help="specify an AMOUNT", metavar="AMOUNT",
     dest="amount", type="int", action="store"))
@@ -352,9 +364,9 @@ def main (argv=None):
                     raise e
                 else:
                     allocations = filter_options(get_base_query(Allocation), options)
-                    holds = Hold.distributed(allocations, amount=options.amount, comment=options.comment)
+                    holds = Hold.distributed(allocations, user=options.user, amount=options.amount, comment=options.comment)
             else:
-                holds = [Hold(allocation=options.allocation, amount=options.amount, comment=options.comment)]
+                holds = [Hold(allocation=options.allocation, user=options.user, amount=options.amount, comment=options.comment)]
             Session.commit()
             for hold in holds:
                 print hold_format(hold)
@@ -379,9 +391,9 @@ def main (argv=None):
                     raise e
                 else:
                     allocations = filter_options(get_base_query(Allocation), options)
-                    charges = Charge.distributed(allocations, amount=options.amount, comment=options.comment)
+                    charges = Charge.distributed(allocations, user=options.user, amount=options.amount, comment=options.comment)
             else:
-                charges = [Charge(allocation=options.allocation, amount=options.amount, comment=options.comment)]
+                charges = [Charge(allocation=options.allocation, user=options.user, amount=options.amount, comment=options.comment)]
             Session.commit()
             for charge in charges:
                 print charge_format(charge)
