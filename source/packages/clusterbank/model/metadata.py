@@ -106,6 +106,7 @@ charges_table = Table("charges", metadata,
     Column("allocation_id", None, ForeignKey("allocations.id"), nullable=False),
     Column("datetime", types.DateTime, nullable=False, default=datetime.now),
     Column("amount", types.Integer, nullable=False),
+    Column("user_id", None, ForeignKey("users.id"), nullable=True),
     Column("comment", types.Text),
     mysql_engine="InnoDB",
 )

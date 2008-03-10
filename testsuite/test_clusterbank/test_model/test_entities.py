@@ -528,6 +528,25 @@ class TestCharge (AccountingEntityTester):
         assert charge.effective_amount == 90
         refund2 = Refund(charge=charge, amount=20)
         assert charge.effective_amount == 70
+    
+    def test_no_user (self):
+        charge = Charge(allocation=self.allocation, amount=self.allocation.amount/2)
+        clusterbank.model.Session.commit()
+        assert charge.id is not None
+        clusterbank.model.Session.close()
+        charge = Charge.query.filter_by(id=charge.id).one()
+        assert charge.user is None, "Charge got a default user."
+    
+    def test_user (self):
+        user = User.by_name("monty")
+        assert user, "Couldn't find a user named 'monty'."
+        charge = Charge(user=user, allocation=self.allocation, amount=self.allocation.amount/2)
+        clusterbank.model.Session.commit()
+        assert charge.id is not None, "Couldn't get an id."
+        clusterbank.model.Session.close()
+        user = User.by_name("monty")
+        charge = Charge.query.filter_by(id=charge.id).one()
+        assert charge.user is user, "Charge did not retain user."
 
 
 class TestRefund (AccountingEntityTester):

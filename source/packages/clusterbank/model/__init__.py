@@ -157,6 +157,7 @@ Session.mapper(Charge, charges_table, properties=dict(
     id = charges_table.c.id,
     allocation = relation(Allocation, backref="charges"),
     datetime = charges_table.c.datetime,
+    user = relation(User, backref="charges"),
     amount = charges_table.c.amount,
     comment = charges_table.c.comment,
 ))

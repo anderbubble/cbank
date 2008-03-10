@@ -91,6 +91,7 @@ class User (UpstreamEntity):
         """
         self.id = kwargs.get("id")
         self.holds = kwargs.get("holds", [])
+        self.charges = kwargs.get("charges", [])
 
 
 class Project (UpstreamEntity):
@@ -539,6 +540,7 @@ class Charge (AccountingEntity):
         self.datetime = kwargs.get("datetime")
         self.id = kwargs.get("id")
         self.allocation = kwargs.get("allocation")
+        self.user = kwargs.get("user")
         self.comment = kwargs.get("comment")
         self.refunds = kwargs.get("refunds", [])
         self.amount = kwargs.get("amount")
