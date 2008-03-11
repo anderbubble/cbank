@@ -283,15 +283,15 @@ def parse_directive (directive):
 
 def get_base_query (cls):
     if issubclass(cls, Request):
-        return Request.query.outerjoin("resource").outerjoin("project").outerjoin(["allocations", "holds"]).outerjoin(["allocations", "charges", "refunds"]).reset_joinpoint()
+        return Request.query.outerjoin("resource").outerjoin("project").outerjoin(["allocations", "holds", "user"]).outerjoin(["allocations", "charges", "user"]).outerjoin(["allocations", "charges", "refunds"]).reset_joinpoint()
     elif issubclass(cls, Allocation):
-        return Allocation.query.outerjoin("resource").outerjoin("project").outerjoin("requests").outerjoin("holds").outerjoin(["charges", "refunds"]).reset_joinpoint()
+        return Allocation.query.outerjoin("resource").outerjoin("project").outerjoin("requests").outerjoin(["holds", "user"]).outerjoin(["charges", "user"]).outerjoin(["charges", "refunds"]).reset_joinpoint()
     elif issubclass(cls, Hold):
-        return Hold.query.filter_by(active=True).outerjoin(["allocation", "project"]).outerjoin(["allocation", "resource"]).outerjoin(["allocation", "requests"]).outerjoin(["allocation", "charges", "refunds"]).reset_joinpoint()
+        return Hold.query.filter_by(active=True).outerjoin("user").outerjoin(["allocation", "project"]).outerjoin(["allocation", "resource"]).outerjoin(["allocation", "requests"]).outerjoin(["allocation", "charges", "user"]).outerjoin(["allocation", "charges", "refunds"]).reset_joinpoint()
     elif issubclass(cls, Charge):
-        return Charge.query.outerjoin(["allocation", "project"]).outerjoin(["allocation", "resource"]).outerjoin(["allocation", "requests"]).outerjoin(["allocation", "holds"]).outerjoin("refunds").reset_joinpoint()
+        return Charge.query.outerjoin("user").outerjoin(["allocation", "project"]).outerjoin(["allocation", "resource"]).outerjoin(["allocation", "requests"]).outerjoin(["allocation", "holds", "user"]).outerjoin("refunds").reset_joinpoint()
     elif issubclass(cls, Refund):
-        return Refund.query.outerjoin(["charge", "allocation", "project"]).outerjoin(["charge", "allocation", "resource"]).outerjoin(["charge", "allocation", "requests"]).outerjoin(["charge", "allocation", "holds"]).reset_joinpoint()
+        return Refund.query.outerjoin(["charge", "user"]).outerjoin(["charge", "allocation", "project"]).outerjoin(["charge", "allocation", "resource"]).outerjoin(["charge", "allocation", "requests"]).outerjoin(["charge", "allocation", "holds", "user"]).reset_joinpoint()
     else:
         raise UnknownDirective(directive)
 
@@ -439,6 +439,8 @@ def filter_options (query, options):
         query = query.filter(Charge.id==options.charge.id)
     if options.refund:
         query = query.filter(Refund.id==options.refund.id)
+    if options.user:
+        query = query.filter(User.id==options.user.id)
     return query
 
 def request_format (request):

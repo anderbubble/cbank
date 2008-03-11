@@ -1,3 +1,4 @@
+ * charges and holds can have a user associated
  * changed upstream module interface to functions only (#133)
 
 -- 0.2.11 --
