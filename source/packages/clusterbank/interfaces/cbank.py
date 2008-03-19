@@ -26,9 +26,11 @@ parser -- cbank option parser (instance of optparser.OptionParser)
 
 import sys
 import os
+import pwd
 from datetime import datetime
 import time
 import optparse
+from ConfigParser import SafeConfigParser as ConfigParser, NoSectionError, NoOptionError
 from optparse import OptionParser
 
 from sqlalchemy import and_
@@ -42,7 +44,7 @@ from clusterbank.model import \
 import clusterbank.upstream
 
 __all__ = [
-    "Option", "parser",
+    "Option", "parser", "config",
     "main", "require_configured", "request_list", "allocation_list",
     "hold_list", "charge_list", "refund_list",
     "UnknownDirective", "UnexpectedArguments", "MissingOption",
@@ -164,6 +166,22 @@ def require_configured ():
         if entity not in dir(clusterbank.upstream):
             raise NotConfigured("upstream")
 
+config = ConfigParser()
+config.read(["/etc/clusterbank.conf"])
+
+current_user = pwd.getpwuid(os.getuid())[0]
+
+def require_admin (user=None):
+    if user is None:
+        user = current_user
+    try:
+        admins = config.get("cbank", "admins")
+    except (NoSectionError, NoOptionError):
+        raise NotPermitted()
+    admins = admins.split(",")
+    if not user in admins:
+        raise NotPermitted()
+
 parser = OptionParser(
     version = clusterbank.__version__,
     usage = os.linesep.join([
@@ -217,6 +235,21 @@ parser.add_option(Option("-f", "--refund",
     help="specify a refund by ID", metavar="ID",
     dest="refund", type="refund", action="store"))
 parser.set_defaults(list=False)
+
+
+class NotPermitted (Exception):
+    
+    """The specified action is not allowed."""
+    
+    def __init__ (self, action=None):
+        self.action = action
+    
+    def __str__ (self):
+        error = "cbank: not permitted"
+        if self.action:
+            return "%s: %s" % (error, self.action)
+        else:
+            return error
 
 
 class UnknownDirective (Exception):
@@ -344,6 +377,7 @@ def main (argv=None):
             print request_format(request)
         
         elif directive == "allocation":
+            require_admin()
             require_options(["project", "resource", "amount", "expiration"], options)
             if options.request:
                 requests = [options.request]
@@ -354,6 +388,7 @@ def main (argv=None):
             print allocation_format(allocation)
         
         elif directive == "hold":
+            require_admin()
             require_options(["amount"], options)
             try:
                 require_options(["allocation"], options)
@@ -372,6 +407,7 @@ def main (argv=None):
                 print hold_format(hold)
             
         elif directive == "release":
+            require_admin()
             holds = filter_options(get_base_query(Hold), options)
             holds = list(holds) # remember which holds were active
             for hold in holds:
@@ -381,6 +417,7 @@ def main (argv=None):
                 print hold_format(hold)
         
         elif directive == "charge":
+            require_admin()
             require_options(["amount"], options)
             try:
                 require_options(["allocation"], options)
@@ -399,6 +436,7 @@ def main (argv=None):
                 print charge_format(charge)
         
         elif directive == "refund":
+            require_admin()
             require_options(["charge", "amount"], options)
             refund = Refund(charge=options.charge, amount=options.amount, comment=options.comment)
             Session.commit()

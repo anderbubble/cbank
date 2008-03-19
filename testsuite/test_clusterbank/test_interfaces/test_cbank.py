@@ -1,9 +1,12 @@
 import sys
+import os
+import pwd
 from datetime import datetime, timedelta
 from StringIO import StringIO
 
 import clusterbank.model
 from clusterbank.model import Request, Allocation, Hold, Charge, Refund
+import clusterbank.interfaces.cbank as cbank
 from clusterbank.interfaces.cbank import main, parse_directive
 
 def run (command):
@@ -55,6 +58,12 @@ def test_parse_directive ():
 
 
 class TestMain (ScriptTester):
+    
+    def setup (self):
+        ScriptTester.setup(self)
+        if "cbank" not in cbank.config.sections():
+            cbank.config.add_section("cbank")
+        cbank.config.set("cbank", "admins", pwd.getpwuid(os.getuid())[0])
     
     def test_request (self):
         run("cbank request --project grail --resource spam --amount 1000 --start 2007-01-01 --comment testing")
