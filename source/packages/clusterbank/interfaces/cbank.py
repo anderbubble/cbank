@@ -33,7 +33,7 @@ import optparse
 from ConfigParser import SafeConfigParser as ConfigParser, NoSectionError, NoOptionError
 from optparse import OptionParser
 
-from sqlalchemy import or_
+from sqlalchemy import and_
 import sqlalchemy.exceptions
 
 import clusterbank
@@ -171,18 +171,15 @@ config.read(["/etc/clusterbank.conf"])
 
 current_user = pwd.getpwuid(os.getuid())[0]
 
-def is_admin (user=None):
+def require_admin (user=None):
     if user is None:
         user = current_user
     try:
         admins = config.get("cbank", "admins")
     except (NoSectionError, NoOptionError):
-        return False
+        raise NotPermitted()
     admins = admins.split(",")
-    return user in admins
-
-def require_admin (user=None):
-    if not is_admin(user):
+    if not user in admins:
         raise NotPermitted()
 
 parser = OptionParser(
@@ -350,40 +347,18 @@ def main (argv=None):
         
         if directive == "request":
             query = get_base_query(Request)
-            if not is_admin():
-                query = query.filter(Request.project.in_(User.by_name(current_user).projects))
             format = request_format
         elif directive == "allocation":
             query = get_base_query(Allocation)
-            if not is_admin():
-                query = query.filter(Allocation.project.in_(User.by_name(current_user).projects))
             format = allocation_format
         elif directive == "hold":
             query = get_base_query(Hold)
-            if not is_admin():
-                query = query.filter(Allocation.project.in_(User.by_name(current_user).projects))
-                query = query.filter(or_(
-                    Allocation.project.in_(User.by_name(current_user).owned_projects),
-                    Hold.user==User.by_name(current_user),
-                ))
             format = hold_format
         elif directive == "charge":
             query = get_base_query(Charge)
-            if not is_admin():
-                query = query.filter(Allocation.project.in_(User.by_name(current_user).projects))
-                query = query.filter(or_(
-                    Allocation.project.in_(User.by_name(current_user).owned_projects),
-                    Charge.user==User.by_name(current_user),
-                ))
             format = charge_format
         elif directive == "refund":
             query = get_base_query(Refund)
-            if not is_admin():
-                query = query.filter(Allocation.project.in_(User.by_name(current_user).projects))
-                query = query.filter(or_(
-                    Allocation.project.in_(User.by_name(current_user).owned_projects),
-                    Charge.user==User.by_name(current_user),
-                ))
             format = refund_format
         else:
             raise UnknownDirective("list: %s" % directive)

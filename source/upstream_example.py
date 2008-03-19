@@ -16,7 +16,7 @@ try:
 except AttributeError:
     types.Text = types.TEXT
 import sqlalchemy.exceptions as exceptions
-from sqlalchemy.orm import sessionmaker, scoped_session, relation
+from sqlalchemy.orm import sessionmaker, scoped_session
 
 
 __all__ = [
@@ -47,15 +47,6 @@ def get_project_id (name):
 
 def get_project_name (id):
     return _get_entity_name(Project, id)
-
-def get_project_members (id):
-    return [user.id for user in User.query.join("projects").filter_by(id=id)]
-
-def get_user_projects (id):
-    return [project.id for project in Project.query.join("users").filter_by(id=id)]
-
-def get_project_owners (id):
-    return [user.id for user in User.query.join("projects").filter_by(id=id).filter(ProjectUserRelation.owner==True)]
 
 def get_resource_id (name):
     return _get_entity_id(Resource, name)
@@ -117,16 +108,6 @@ class Resource (UpstreamEntity):
     """
 
 
-class ProjectUserRelationship (object):
-    
-    """A relationship between a user and a project."""
-    
-    def __init__ (self, **kwargs):
-        self.project = kwargs.get("project")
-        self.user = kwargs.get("user")
-        self.owner = kwargs.get("owner", False)
-
-
 metadata = MetaData()
 
 users_table = Table("users", metadata,
@@ -139,13 +120,7 @@ projects_table = Table("projects", metadata,
     Column("name", types.Text, nullable=False, unique=True),
 )
 
-projects_users_table = Table("projects_users", metadata,
-    Column("user_id", None, ForeignKey("users.id"), primary_key=True),
-    Column("project_id", None, ForeignKey("projects.id"), primary_key=True),
-    Column("owner", types.Boolean, nullable=False, default=False),
-)
-
-resources_table = Table("resources", metadata,
+resource_types_table = Table("resource_types", metadata,
     Column("id", types.Integer, nullable=False, primary_key=True),
     Column("name", types.Text, nullable=False, unique=True),
 )
@@ -160,16 +135,9 @@ Session.mapper(User, users_table, properties=dict(
 Session.mapper(Project, projects_table, properties=dict(
     id = projects_table.c.id,
     name = projects_table.c.name,
-    users = relation(User, secondary=projects_users_table, backref="projects"),
 ))
 
-Session.mapper(Resource, resources_table, properties=dict(
-    id = resources_table.c.id,
-    name = resources_table.c.name,
-))
-
-Session.mapper(ProjectUserRelationship, projects_users_table, properties=dict(
-    project = relation(Project),
-    user = relation(User),
-    owner = projects_users_table.c.owner,
+Session.mapper(Resource, resource_types_table, properties=dict(
+    id = resource_types_table.c.id,
+    name = resource_types_table.c.name,
 ))
