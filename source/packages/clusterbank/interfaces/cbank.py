@@ -350,24 +350,40 @@ def main (argv=None):
         
         if directive == "request":
             query = get_base_query(Request)
+            if not is_admin():
+                query = query.filter(Request.project.in_(User.by_name(current_user).projects))
             format = request_format
         elif directive == "allocation":
             query = get_base_query(Allocation)
+            if not is_admin():
+                query = query.filter(Allocation.project.in_(User.by_name(current_user).projects))
             format = allocation_format
         elif directive == "hold":
             query = get_base_query(Hold)
             if not is_admin():
-                query = query.filter(Hold.user==User.by_name(current_user))
+                query = query.filter(Allocation.project.in_(User.by_name(current_user).projects))
+                query = query.filter(or_(
+                    Allocation.project.in_(User.by_name(current_user).owned_projects),
+                    Hold.user==User.by_name(current_user),
+                ))
             format = hold_format
         elif directive == "charge":
             query = get_base_query(Charge)
             if not is_admin():
-                query = query.filter(Charge.user==User.by_name(current_user))
+                query = query.filter(Allocation.project.in_(User.by_name(current_user).projects))
+                query = query.filter(or_(
+                    Allocation.project.in_(User.by_name(current_user).owned_projects),
+                    Charge.user==User.by_name(current_user),
+                ))
             format = charge_format
         elif directive == "refund":
             query = get_base_query(Refund)
             if not is_admin():
-                query = query.filter(Charge.user==User.by_name(current_user))
+                query = query.filter(Allocation.project.in_(User.by_name(current_user).projects))
+                query = query.filter(or_(
+                    Allocation.project.in_(User.by_name(current_user).owned_projects),
+                    Charge.user==User.by_name(current_user),
+                ))
             format = refund_format
         else:
             raise UnknownDirective("list: %s" % directive)
