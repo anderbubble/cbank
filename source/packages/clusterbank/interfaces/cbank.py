@@ -33,7 +33,7 @@ import optparse
 from ConfigParser import SafeConfigParser as ConfigParser, NoSectionError, NoOptionError
 from optparse import OptionParser
 
-from sqlalchemy import and_
+from sqlalchemy import or_
 import sqlalchemy.exceptions
 
 import clusterbank
@@ -356,18 +356,22 @@ def main (argv=None):
             format = allocation_format
         elif directive == "hold":
             query = get_base_query(Hold)
+            if not is_admin():
+                query = query.filter(Hold.user==User.by_name(current_user))
             format = hold_format
         elif directive == "charge":
             query = get_base_query(Charge)
+            if not is_admin():
+                query = query.filter(Charge.user==User.by_name(current_user))
             format = charge_format
         elif directive == "refund":
             query = get_base_query(Refund)
+            if not is_admin():
+                query = query.filter(Charge.user==User.by_name(current_user))
             format = refund_format
         else:
             raise UnknownDirective("list: %s" % directive)
         
-        if not is_admin():
-            query = query.filter(User.id==User.by_name(current_user).id)
         query = filter_options(query, options)
         
         for each in query:
