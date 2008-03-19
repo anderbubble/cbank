@@ -171,15 +171,18 @@ config.read(["/etc/clusterbank.conf"])
 
 current_user = pwd.getpwuid(os.getuid())[0]
 
-def require_admin (user=None):
+def is_admin (user=None):
     if user is None:
         user = current_user
     try:
         admins = config.get("cbank", "admins")
     except (NoSectionError, NoOptionError):
-        raise NotPermitted()
+        return False
     admins = admins.split(",")
-    if not user in admins:
+    return user in admins
+
+def require_admin (user=None):
+    if not is_admin(user):
         raise NotPermitted()
 
 parser = OptionParser(
@@ -363,6 +366,8 @@ def main (argv=None):
         else:
             raise UnknownDirective("list: %s" % directive)
         
+        if not is_admin():
+            query = query.filter(User.id==User.by_name(current_user).id)
         query = filter_options(query, options)
         
         for each in query:
