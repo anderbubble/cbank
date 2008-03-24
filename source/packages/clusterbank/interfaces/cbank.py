@@ -440,6 +440,8 @@ def console_main (argv=None, **kwargs):
         sys.exit(1)
     except Exception, e:
         print >> stderr, e
+        print >> stderr
+        parser.print_usage(stderr)
         sys.exit(1)
 
 def require_options (option_list, options):
