@@ -492,11 +492,11 @@ def hold_format (hold):
 
 def charge_format (charge):
     id = str(charge.id).ljust(6)
-    allocation_id = str(charge.allocation.id).ljust(6)
+    date = charge.allocation.datetime.strftime("%Y-%m-%d %H:%M")
     project = str(charge.allocation.project).ljust(15)
     resource = str(charge.allocation.resource).ljust(10)
     amount = str(charge.effective_amount)
-    return " ".join([id, allocation_id, project, resource, amount])
+    return " ".join([id, date, project, resource, amount])
 
 def refund_format (refund):
     id = str(refund.id).ljust(6)
