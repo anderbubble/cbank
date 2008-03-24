@@ -9,11 +9,9 @@ Exceptions:
 UnknownDirective -- unknown directive specified
 UnexpectedArguments -- extra unparsed arguments
 MissingOption -- a required option was not specified
-NotConfigured -- the library is not fully configured
 
 Functions:
 main -- main (argv-parsing) function
-require_configured -- ensure that the library is properly configured
 request_list -- get existing requests
 allocation_list -- get existing allocations
 hold_list -- get existing holds
@@ -45,7 +43,7 @@ import clusterbank.upstream
 
 __all__ = [
     "Option", "parser", "config",
-    "main", "require_configured", "request_list", "allocation_list",
+    "main", "request_list", "allocation_list",
     "hold_list", "charge_list", "refund_list",
     "UnknownDirective", "UnexpectedArguments", "MissingOption",
     "NotConfigured",
@@ -157,14 +155,6 @@ class Option (optparse.Option):
         charge = check_charge,
         refund = check_refund,
     ))
-
-
-def require_configured ():
-    if clusterbank.model.metadata.bind is None:
-        raise NotConfigured("database")
-    for entity in ("Project", "Resource"):
-        if entity not in dir(clusterbank.upstream):
-            raise NotConfigured("upstream")
 
 config = ConfigParser()
 config.read(["/etc/clusterbank.conf"])
@@ -296,14 +286,6 @@ class InvalidOption (Exception):
         return "cannot specify %s" % self.option
 
 
-class NotConfigured (Exception):
-    
-    """The library is not configured."""
-    
-    def __str__ (self):
-        return "not configured"
-
-
 def parse_directive (directive):
     directives = ("request", "allocation", "allocate", "hold", "release", "charge", "refund")
     matches = [each for each in directives if each.startswith(directive)]
@@ -341,7 +323,10 @@ def main (argv=None):
     if args:
         raise UnexpectedArguments(args)
     
-    require_configured()
+    assert (
+        clusterbank.model.metadata.bind is not None
+        and clusterbank.upstream is not None
+    ), "clusterbank is not configured"
     
     if options.list:
         
