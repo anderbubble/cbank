@@ -200,40 +200,40 @@ parser.add_option(Option("-l", "--list",
     dest="list", action="store_true"))
 parser.add_option(Option("-p", "--project",
     help="specify a project by NAME", metavar="NAME",
-    dest="project", type="project", action="store"))
+    dest="project", type="project"))
 parser.add_option(Option("-r", "--resource",
     help="specify a resource by NAME", metavar="NAME",
-    dest="resource", type="resource", action="store"))
+    dest="resource", type="resource"))
 parser.add_option(Option("-u", "--user",
     help="specify a user by NAME", metavar="NAME",
-    dest="user", type="user", action="store"))
+    dest="user", type="user"))
 parser.add_option(Option("-t", "--amount",
     help="specify an AMOUNT", metavar="AMOUNT",
-    dest="amount", type="int", action="store"))
+    dest="amount", type="int"))
 parser.add_option(Option("-s", "--start",
     help="begin on DATE", metavar="DATE",
-    dest="start", type="date", action="store"))
+    dest="start", type="date"))
 parser.add_option(Option("-x", "--expiration",
     help="expire on DATE", metavar="DATE",
-    dest="expiration", type="date", action="store"))
+    dest="expiration", type="date"))
 parser.add_option(Option("-m", "--comment",
     help="attach a COMMENT", metavar="COMMENT",
-    dest="comment", type="string", action="store"))
+    dest="comment", type="string"))
 parser.add_option(Option("-q", "--request",
     help="specify a request by ID", metavar = "ID",
-    dest="request", type="request", action="store"))
+    dest="request", type="request"))
 parser.add_option(Option("-a", "--allocation",
     help="specify an allocation by ID", metavar="ID",
-    dest="allocation", type="allocation", action="store"))
+    dest="allocation", type="allocation"))
 parser.add_option(Option("-d", "--hold",
     help="specify a hold by ID", metavar="ID",
-    dest="hold", type="hold", action="store"))
+    dest="hold", type="hold"))
 parser.add_option(Option("-c", "--charge",
     help="specify a charge by ID", metavar="ID",
-    dest="charge", type="charge", action="store"))
+    dest="charge", type="charge"))
 parser.add_option(Option("-f", "--refund",
     help="specify a refund by ID", metavar="ID",
-    dest="refund", type="refund", action="store"))
+    dest="refund", type="refund"))
 parser.set_defaults(list=False)
 
 
