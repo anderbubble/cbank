@@ -12,11 +12,7 @@ MissingOption -- a required option was not specified
 
 Functions:
 main -- main (argv-parsing) function
-request_list -- get existing requests
-allocation_list -- get existing allocations
-hold_list -- get existing holds
-charge_list -- get existing charges
-refund_list -- get existing refunds
+console_main -- wrapper for main that suppresses tracebacks
 
 Objects:
 parser -- cbank option parser (instance of optparser.OptionParser)
