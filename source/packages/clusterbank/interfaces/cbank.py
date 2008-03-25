@@ -332,26 +332,32 @@ def main (argv=None):
         
         if directive == "request":
             query = get_base_query(Request)
-            format = request_format
+            data = request_data
+            header = request_header
         elif directive == "allocation":
             query = get_base_query(Allocation)
-            format = allocation_format
+            data = allocation_data
+            header = allocation_header
         elif directive == "hold":
             query = get_base_query(Hold)
-            format = hold_format
+            data = hold_data
+            header = hold_header
         elif directive == "charge":
             query = get_base_query(Charge)
-            format = charge_format
+            data = charge_data
+            header = charge_header
         elif directive == "refund":
             query = get_base_query(Refund)
-            format = refund_format
+            data = refund_data
+            header = refund_header
         else:
             raise UnknownDirective("list: %s" % directive)
         
         query = filter_options(query, options)
         
+        print >> sys.stderr, format(header, header)
         for each in query:
-            print format(each)
+            print format(data(each), header)
     
     else:
         
@@ -359,7 +365,7 @@ def main (argv=None):
             require_options(["project", "resource", "amount"], options)
             request = Request(project=options.project, resource=options.resource, amount=options.amount, start=options.start, comment=options.comment)
             Session.commit()
-            print request_format(request)
+            print format(request_data(request), request_header)
         
         elif directive == "allocation":
             require_admin()
@@ -370,7 +376,7 @@ def main (argv=None):
                 requests = []
             allocation = Allocation(project=options.project, resource=options.resource, requests=requests, start=options.start or datetime.now(), expiration=options.expiration, amount=options.amount, comment=options.comment)
             Session.commit()
-            print allocation_format(allocation)
+            print format(allocation_data(allocation), allocation_header)
         
         elif directive == "hold":
             require_admin()
@@ -389,7 +395,7 @@ def main (argv=None):
                 holds = [Hold(allocation=options.allocation, user=options.user, amount=options.amount, comment=options.comment)]
             Session.commit()
             for hold in holds:
-                print hold_format(hold)
+                print format(hold_data(hold), hold_header)
             
         elif directive == "release":
             require_admin()
@@ -399,7 +405,7 @@ def main (argv=None):
                 hold.active = False
             Session.commit()
             for hold in holds:
-                print hold_format(hold)
+                print format(hold_data(hold), hold_header)
         
         elif directive == "charge":
             require_admin()
@@ -418,14 +424,14 @@ def main (argv=None):
                 charges = [Charge(allocation=options.allocation, user=options.user, amount=options.amount, comment=options.comment)]
             Session.commit()
             for charge in charges:
-                print charge_format(charge)
+                print format(charge_data(charge), charge_header)
         
         elif directive == "refund":
             require_admin()
             require_options(["charge", "amount"], options)
             refund = Refund(charge=options.charge, amount=options.amount, comment=options.comment)
             Session.commit()
-            print refund_format(refund)
+            print format(refund_data(refund), refund_header)
         
         else:
             raise UnknownDirective(directive)
@@ -468,44 +474,50 @@ def filter_options (query, options):
         query = query.filter(User.id==options.user.id)
     return query
 
-def request_format (request):
-    id = str(request.id).ljust(6)
-    project = str(request.project).ljust(15)
-    resource = str(request.resource).ljust(10)
+request_header = ["id      ", "project          ", "resource   ", "amount"]
+def request_data (request):
+    id = str(request.id)
+    project = str(request.project)
+    resource = str(request.resource)
     amount = str(request.amount)
-    return " ".join([id, project, resource, amount])
+    return [id, project, resource, amount]
 
-def allocation_format (allocation):
-    id = str(allocation.id).ljust(6)
-    project = str(allocation.project).ljust(15)
-    resource = str(allocation.resource).ljust(10)
+allocation_header = ["id      ", "project          ", "resource   ", "amount"]
+def allocation_data (allocation):
+    id = str(allocation.id)
+    project = str(allocation.project)
+    resource = str(allocation.resource)
     amount = "%i/%i" % (allocation.amount - allocation.amount_charged, allocation.amount)
-    return " ".join([id, project, resource, amount])
+    return [id, project, resource, amount]
 
-def hold_format (hold):
-    id = str(hold.id).ljust(6)
-    allocation_id = str(hold.allocation.id).ljust(6)
-    project = str(hold.allocation.project).ljust(15)
-    resource = str(hold.allocation.resource).ljust(10)
+hold_header = ["id      ", "project          ", "resource   ", "amount"]
+def hold_data (hold):
+    id = str(hold.id)
+    project = str(hold.allocation.project)
+    resource = str(hold.allocation.resource)
     amount = str(hold.amount)
-    return " ".join([id, allocation_id, project, resource, amount])
+    return [id, project, resource, amount]
 
-def charge_format (charge):
-    id = str(charge.id).ljust(6)
+charge_header = ["id      ", "date             ", "project          ", "resource   ", "amount"]
+def charge_data (charge):
+    id = str(charge.id)
     date = charge.allocation.datetime.strftime("%Y-%m-%d %H:%M")
-    project = str(charge.allocation.project).ljust(15)
-    resource = str(charge.allocation.resource).ljust(10)
+    project = str(charge.allocation.project)
+    resource = str(charge.allocation.resource)
     amount = str(charge.effective_amount)
-    return " ".join([id, date, project, resource, amount])
+    return [id, date, project, resource, amount]
 
-def refund_format (refund):
-    id = str(refund.id).ljust(6)
-    charge_id = str(refund.charge.id).ljust(6)
-    allocation_id = str(refund.charge.allocation.id).ljust(6)
-    project = str(refund.charge.allocation.project).ljust(15)
-    resource = str(refund.charge.allocation.resource).ljust(10)
+refund_header = ["id      ", "charge  ", "project          ", "resource   ", "amount"]
+def refund_data (refund):
+    id = str(refund.id)
+    charge = str(refund.charge.id)
+    project = str(refund.charge.allocation.project)
+    resource = str(refund.charge.allocation.resource)
     amount = str(refund.amount)
-    return " ".join([id, allocation_id, project, resource, amount])
+    return [id, charge, project, resource, amount]
+
+def format (data, header):
+    return "".join([data[i].ljust(len(header[i])) for i in xrange(len(header))])
 
 if __name__ == "__main__":
     console_main()
