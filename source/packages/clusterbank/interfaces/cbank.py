@@ -285,10 +285,19 @@ def console_main (argv=None, **kwargs):
         sys.exit(1)
 
 def main (argv=None):
+    
     if argv is None:
         argv = sys.argv
     parser.prog = os.path.basename(argv[0])
     options, args = parser.parse_args(args=argv[1:])
+    if options.resource is None:
+        try:
+            default_resource = config.get("cbank", "resource")
+        except (NoSectionError, NoOptionError):
+            pass
+        else:
+            options.resource = Resource.by_name(default_resource)
+    
     try:
         directive = args.pop(0)
     except IndexError:
@@ -297,10 +306,7 @@ def main (argv=None):
     if args:
         raise UnexpectedArguments(args)
     
-    assert (
-        clusterbank.model.metadata.bind is not None
-        and clusterbank.upstream is not None
-    ), "clusterbank is not configured"
+    assert is_configured(), "clusterbank is not configured"
     
     if options.list:
         
@@ -408,6 +414,11 @@ def main (argv=None):
         else:
             raise UnknownDirective(directive)
 
+
+def is_configured ():
+    return clusterbank.model.metadata.bind is not None \
+        and clusterbank.upstream is not None
+
 def parse_directive (directive):
     directives = ("request", "allocation", "hold", "release", "charge", "refund")
     matches = [each for each in directives if each.startswith(directive)]
@@ -422,8 +433,9 @@ def require_admin (user=None):
     try:
         admins = config.get("cbank", "admins")
     except (NoSectionError, NoOptionError):
-        raise NotPermitted()
-    admins = admins.split(",")
+        admins = []
+    else:
+        admins = admins.split(",")
     if not user in admins:
         raise NotPermitted()
 
