@@ -157,17 +157,6 @@ config.read(["/etc/clusterbank.conf"])
 
 current_user = pwd.getpwuid(os.getuid())[0]
 
-def require_admin (user=None):
-    if user is None:
-        user = current_user
-    try:
-        admins = config.get("cbank", "admins")
-    except (NoSectionError, NoOptionError):
-        raise NotPermitted()
-    admins = admins.split(",")
-    if not user in admins:
-        raise NotPermitted()
-
 parser = OptionParser(
     version = clusterbank.__version__,
     usage = os.linesep.join([
@@ -281,30 +270,19 @@ class InvalidOption (Exception):
     def __str__ (self):
         return "cannot specify %s" % self.option
 
-
-def parse_directive (directive):
-    directives = ("request", "allocation", "allocate", "hold", "release", "charge", "refund")
-    matches = [each for each in directives if each.startswith(directive)]
-    if len(matches) == 1:
-        return matches[0]
-    elif set(matches) == set(["allocation", "allocate"]):
-        return "allocation"
-    else:
-        return directive
-
-def get_base_query (cls):
-    if issubclass(cls, Request):
-        return Request.query.outerjoin("resource").outerjoin("project").outerjoin(["allocations", "holds", "user"]).outerjoin(["allocations", "charges", "user"]).outerjoin(["allocations", "charges", "refunds"]).reset_joinpoint()
-    elif issubclass(cls, Allocation):
-        return Allocation.query.outerjoin("resource").outerjoin("project").outerjoin("requests").outerjoin(["holds", "user"]).outerjoin(["charges", "user"]).outerjoin(["charges", "refunds"]).reset_joinpoint()
-    elif issubclass(cls, Hold):
-        return Hold.query.filter_by(active=True).outerjoin("user").outerjoin(["allocation", "project"]).outerjoin(["allocation", "resource"]).outerjoin(["allocation", "requests"]).outerjoin(["allocation", "charges", "user"]).outerjoin(["allocation", "charges", "refunds"]).reset_joinpoint()
-    elif issubclass(cls, Charge):
-        return Charge.query.outerjoin("user").outerjoin(["allocation", "project"]).outerjoin(["allocation", "resource"]).outerjoin(["allocation", "requests"]).outerjoin(["allocation", "holds", "user"]).outerjoin("refunds").reset_joinpoint()
-    elif issubclass(cls, Refund):
-        return Refund.query.outerjoin(["charge", "user"]).outerjoin(["charge", "allocation", "project"]).outerjoin(["charge", "allocation", "resource"]).outerjoin(["charge", "allocation", "requests"]).outerjoin(["charge", "allocation", "holds", "user"]).reset_joinpoint()
-    else:
-        raise UnknownDirective(directive)
+def console_main (argv=None, **kwargs):
+    stderr = kwargs.get("stderr", sys.stderr)
+    try:
+        main(argv)
+    except SystemExit:
+        raise
+    except KeyboardInterrupt:
+        sys.exit(1)
+    except Exception, e:
+        print >> stderr, e
+        print >> stderr
+        parser.print_usage(stderr)
+        sys.exit(1)
 
 def main (argv=None):
     if argv is None:
@@ -327,33 +305,31 @@ def main (argv=None):
     if options.list:
         
         if directive == "request":
-            query = get_base_query(Request)
+            entities = requests_by_options(options)
             data = request_data
             header = request_header
         elif directive == "allocation":
-            query = get_base_query(Allocation)
+            entities = allocations_by_options(options)
             data = allocation_data
             header = allocation_header
         elif directive == "hold":
-            query = get_base_query(Hold)
+            entities = holds_by_options(options)
             data = hold_data
             header = hold_header
         elif directive == "charge":
-            query = get_base_query(Charge)
+            entities = charges_by_options(options)
             data = charge_data
             header = charge_header
         elif directive == "refund":
-            query = get_base_query(Refund)
+            entities = refunds_by_options(options)
             data = refund_data
             header = refund_header
         else:
             raise UnknownDirective("list: %s" % directive)
         
-        query = filter_options(query, options)
-        
         print >> sys.stderr, format(header, header)
-        for each in query:
-            print format(data(each), header)
+        for entity in entities:
+            print format(data(entity), header)
     
     else:
         
@@ -385,7 +361,7 @@ def main (argv=None):
                 except MissingOption:
                     raise e
                 else:
-                    allocations = filter_options(get_base_query(Allocation), options)
+                    allocations = allocations_by_options(options)
                     holds = Hold.distributed(allocations, user=options.user, amount=options.amount, comment=options.comment)
             else:
                 holds = [Hold(allocation=options.allocation, user=options.user, amount=options.amount, comment=options.comment)]
@@ -395,7 +371,7 @@ def main (argv=None):
             
         elif directive == "release":
             require_admin()
-            holds = filter_options(get_base_query(Hold), options)
+            holds = holds_by_options(options)
             holds = list(holds) # remember which holds were active
             for hold in holds:
                 hold.active = False
@@ -414,7 +390,7 @@ def main (argv=None):
                 except MissingOption:
                     raise e
                 else:
-                    allocations = filter_options(get_base_query(Allocation), options)
+                    allocations = allocations_by_options(options)
                     charges = Charge.distributed(allocations, user=options.user, amount=options.amount, comment=options.comment)
             else:
                 charges = [Charge(allocation=options.allocation, user=options.user, amount=options.amount, comment=options.comment)]
@@ -432,43 +408,115 @@ def main (argv=None):
         else:
             raise UnknownDirective(directive)
 
-def console_main (argv=None, **kwargs):
-    stderr = kwargs.get("stderr", sys.stderr)
+def parse_directive (directive):
+    directives = ("request", "allocation", "hold", "release", "charge", "refund")
+    matches = [each for each in directives if each.startswith(directive)]
+    if len(matches) == 1:
+        return matches[0]
+    else:
+        return directive
+
+def require_admin (user=None):
+    if user is None:
+        user = current_user
     try:
-        main(argv)
-    except SystemExit:
-        raise
-    except KeyboardInterrupt:
-        sys.exit(1)
-    except Exception, e:
-        print >> stderr, e
-        print >> stderr
-        parser.print_usage(stderr)
-        sys.exit(1)
+        admins = config.get("cbank", "admins")
+    except (NoSectionError, NoOptionError):
+        raise NotPermitted()
+    admins = admins.split(",")
+    if not user in admins:
+        raise NotPermitted()
 
 def require_options (option_list, options):
     for option in option_list:
         if getattr(options, option, None) is None:
             raise MissingOption(option)
 
-def filter_options (query, options):
+def requests_by_options (options):
+    requests = Request.query()
     if options.project:
-        query = query.filter(Project.id==options.project.id)
+        requests = requests.filter_by(project=options.project)
     if options.resource:
-        query = query.filter(Resource.id==options.resource.id)
+        requests = requests.filter_by(resource=options.resource)
     if options.request:
-        query = query.filter(Request.id==options.request.id)
+        requests = requests.filter_by(id=options.request.id)
     if options.allocation:
-        query = query.filter(Allocation.id==options.allocation.id)
+        requests = requests.filter(Request.allocations.contains(options.allocation))
     if options.hold:
-        query = query.filter(Hold.id==options.hold.id)
+        requests = requests.filter(Request.allocations.any(Allocation.holds.contains(options.hold)))
     if options.charge:
-        query = query.filter(Charge.id==options.charge.id)
+        requests = requests.filter(Request.allocations.any(Allocation.charges.contains(options.charge)))
     if options.refund:
-        query = query.filter(Refund.id==options.refund.id)
+        requests = requests.filter(Request.allocations.any(Allocation.charges.any(Charge.refunds.contains(options.refund))))
+    return requests
+
+def allocations_by_options (options):
+    allocations = Allocation.query()
+    if options.project:
+        allocations = allocations.filter_by(project=options.project)
+    if options.resource:
+        allocations = allocations.filter_by(resource=options.resource)
+    if options.request:
+        allocations = allocations.filter(Allocations.requests.contains(options.request))
+    if options.allocation:
+        allocations = allocations.filter_by(id=options.allocation.id)
+    if options.hold:
+        allocations = allocations.filter(Allocation.holds.contains(options.hold))
+    if options.charge:
+        allocations = allocations.filter(Allocation.charges.contains(options.charge))
+    if options.refund:
+        allocations = allocations.filter(Allocation.charges.any(Charge.refunds.contains(options.refund)))
+    return allocations
+
+def holds_by_options (options):
+    holds = Hold.query.filter_by(active=True)
+    if options.project:
+        holds = holds.filter(Hold.allocation.has(project=options.project))
+    if options.resource:
+        holds = holds.filter(Hold.allocation.has(resource=options.resource))
+    if options.request:
+        holds = holds.filter(Hold.allocation.has(Allocation.requests.contains(options.request)))
+    if options.allocation:
+        holds = holds.filter_by(allocation=options.allocation)
+    if options.hold:
+        holds = holds.filter_by(id=options.hold.id)
     if options.user:
-        query = query.filter(User.id==options.user.id)
-    return query
+        holds = holds.filter_by(user=options.user)
+    return holds
+
+def charges_by_options (options):
+    charges = Charge.query()
+    if options.project:
+        charges = charges.filter(Charge.allocation.has(project=options.project))
+    if options.resource:
+        charges = charges.filter(Charge.allocation.has(resource=options.resource))
+    if options.request:
+        charges = charges.filter(Charge.allocation.has(Allocation.requests.contains(options.request)))
+    if options.allocation:
+        charges = charges.filter_by(allocation=options.allocation)
+    if options.charge:
+        charges = charges.filter_by(id=options.charge.id)
+    if options.refund:
+        charges = charges.filter(Charge.refunds.contains(options.refund))
+    if options.user:
+        charges = charges.filter_by(user=options.user)
+    return charges
+
+def refunds_by_options (options):
+    refunds = Refund.query()
+    if options.project:
+        refunds = refunds.filter(Refund.charge.has(Charge.allocation.has(project=options.project)))
+    if options.resource:
+        refunds = refunds.filter(Refund.charge.has(Charge.allocation.has(resource=options.resource)))
+    if options.request:
+        refunds = refunds.filter(Refund.charge.has(Charge.allocation.has(Allocation.requests.contains(options.request))))
+    if options.allocation:
+        refunds = refunds.filter(Refund.charge.has(allocation=options.allocation))
+    if options.charge:
+        refunds = refunds.filter_by(charge=options.charge)
+    if options.refund:
+        refunds = refunds.filter_by(id=options.refund.id)
+    return refunds
 
 request_header = ["id      ", "project          ", "resource   ", "amount"]
 def request_data (request):
