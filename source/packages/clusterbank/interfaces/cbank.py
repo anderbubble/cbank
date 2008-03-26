@@ -16,6 +16,7 @@ console_main -- wrapper for main that suppresses tracebacks
 
 Objects:
 parser -- cbank option parser (instance of optparser.OptionParser)
+config -- config parser
 """
 
 import sys
@@ -27,7 +28,6 @@ import optparse
 from ConfigParser import SafeConfigParser as ConfigParser, NoSectionError, NoOptionError
 from optparse import OptionParser
 
-from sqlalchemy import and_
 import sqlalchemy.exceptions
 
 import clusterbank
@@ -39,8 +39,7 @@ import clusterbank.upstream
 
 __all__ = [
     "Option", "parser", "config",
-    "main", "request_list", "allocation_list",
-    "hold_list", "charge_list", "refund_list",
+    "console_main", "main",
     "UnknownDirective", "UnexpectedArguments", "MissingOption",
     "NotConfigured",
 ]
@@ -210,6 +209,10 @@ parser.add_option(Option("-f", "--refund",
     help="specify a refund by ID", metavar="ID",
     dest="refund", type="refund"))
 parser.set_defaults(list=False)
+try:
+    parser.set_defaults(resource=Resource.by_name(config.get("cbank", "resource")))
+except (NoSectionError, NoOptionError):
+    pass
 
 
 class NotPermitted (Exception):
@@ -290,13 +293,6 @@ def main (argv=None):
         argv = sys.argv
     parser.prog = os.path.basename(argv[0])
     options, args = parser.parse_args(args=argv[1:])
-    if options.resource is None:
-        try:
-            default_resource = config.get("cbank", "resource")
-        except (NoSectionError, NoOptionError):
-            pass
-        else:
-            options.resource = Resource.by_name(default_resource)
     
     try:
         directive = args.pop(0)
@@ -414,7 +410,6 @@ def main (argv=None):
         else:
             raise UnknownDirective(directive)
 
-
 def is_configured ():
     return clusterbank.model.metadata.bind is not None \
         and clusterbank.upstream is not None
@@ -443,6 +438,9 @@ def require_options (option_list, options):
     for option in option_list:
         if getattr(options, option, None) is None:
             raise MissingOption(option)
+
+def format (data, header):
+    return "".join([data[i].ljust(len(header[i])) for i in xrange(len(header))])
 
 def requests_by_options (options):
     requests = Request.query()
@@ -571,9 +569,6 @@ def refund_data (refund):
     resource = str(refund.charge.allocation.resource)
     amount = str(refund.amount)
     return [id, charge, project, resource, amount]
-
-def format (data, header):
-    return "".join([data[i].ljust(len(header[i])) for i in xrange(len(header))])
 
 if __name__ == "__main__":
     console_main()
