@@ -92,6 +92,22 @@ class Option (optparse.Option):
             raise optparse.OptionValueError(
                 "option %s: unknown user: %r" % (opt, value))
     
+    def check_request (self, opt, value):
+        """Return a request from its id."""
+        try:
+            return Request.query.filter_by(id=value).one()
+        except sqlalchemy.exceptions.InvalidRequestError:
+            raise optparse.OptionValueError(
+                "option %s: unknown request: %r" % (opt, value))
+    
+    def check_allocation (self, opt, value):
+        """Return an allocation from its id."""
+        try:
+            return Allocation.query.filter_by(id=value).one()
+        except sqlalchemy.exceptions.InvalidRequestError:
+            raise optparse.OptionValueError(
+                "option %s: unknown allocation: %r" % (opt, value))
+    
     def check_charge (self, opt, value):
         """Return a charge from its id."""
         try:
@@ -119,7 +135,7 @@ class Option (optparse.Option):
     TYPES = optparse.Option.TYPES + (
         "date",
         "resource", "project", "user",
-        "hold", "charge", "refund",
+        "request", "allocation", "hold", "charge", "refund",
     )
     
     TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
@@ -128,6 +144,8 @@ class Option (optparse.Option):
         project = check_project,
         user = check_user,
         date = check_date,
+        request = check_request,
+        allocation = check_allocation,
         hold = check_hold,
         charge = check_charge,
         refund = check_refund,
@@ -177,10 +195,10 @@ parser.add_option(Option("-m", "--comment",
     dest="comment", type="string"))
 parser.add_option(Option("-q", "--request",
     help="specify a request by ID", metavar = "ID",
-    dest="request", type="int"))
+    dest="request", type="request"))
 parser.add_option(Option("-a", "--allocation",
     help="specify an allocation by ID", metavar="ID",
-    dest="allocation", type="int"))
+    dest="allocation", type="allocation"))
 parser.add_option(Option("-d", "--hold",
     help="specify a hold by ID", metavar="ID",
     dest="hold", type="hold"))
@@ -326,8 +344,8 @@ def main (argv=None):
         elif directive == "allocation":
             require_admin()
             require_options(["project", "resource", "amount", "expiration"], options)
-            if options.request is not None:
-                requests = Request.query.filter_by(id=options.request).all()
+            if options.request:
+                requests = [options.request]
             else:
                 requests = []
             allocation = Allocation(project=options.project, resource=options.resource, requests=requests, start=options.start or datetime.now(), expiration=options.expiration, amount=options.amount, comment=options.comment)
@@ -348,8 +366,7 @@ def main (argv=None):
                     allocations = allocations_by_options(options)
                     holds = Hold.distributed(allocations, user=options.user, amount=options.amount, comment=options.comment)
             else:
-                allocation = Allocation.query.filter_by(id=options.allocation).one()
-                holds = [Hold(allocation=allocation, user=options.user, amount=options.amount, comment=options.comment)]
+                holds = [Hold(allocation=options.allocation, user=options.user, amount=options.amount, comment=options.comment)]
             Session.commit()
             for hold in holds:
                 print format(hold_data(hold), hold_header)
@@ -378,8 +395,7 @@ def main (argv=None):
                     allocations = allocations_by_options(options)
                     charges = Charge.distributed(allocations, user=options.user, amount=options.amount, comment=options.comment)
             else:
-                allocation = Allocation.query.filter_by(id=options.allocation).one()
-                charges = [Charge(allocation=allocation, user=options.user, amount=options.amount, comment=options.comment)]
+                charges = [Charge(allocation=options.allocation, user=options.user, amount=options.amount, comment=options.comment)]
             Session.commit()
             for charge in charges:
                 print format(charge_data(charge), charge_header)
@@ -432,10 +448,10 @@ def requests_by_options (options):
         requests = requests.filter_by(project=options.project)
     if options.resource:
         requests = requests.filter_by(resource=options.resource)
-    if options.request is not None:
-        requests = requests.filter_by(id=options.request)
-    if options.allocation is not None:
-        requests = requests.filter(Request.allocations.any(id=options.allocation))
+    if options.request:
+        requests = requests.filter_by(id=options.request.id)
+    if options.allocation:
+        requests = requests.filter(Request.allocations.contains(options.allocation))
     if options.hold:
         requests = requests.filter(Request.allocations.any(Allocation.holds.contains(options.hold)))
     if options.charge:
@@ -450,10 +466,10 @@ def allocations_by_options (options):
         allocations = allocations.filter_by(project=options.project)
     if options.resource:
         allocations = allocations.filter_by(resource=options.resource)
-    if options.request is not None:
-        allocations = allocations.filter(Allocations.requests.any(id=options.request))
-    if options.allocation is not None:
-        allocations = allocations.filter_by(id=options.allocation)
+    if options.request:
+        allocations = allocations.filter(Allocations.requests.contains(options.request))
+    if options.allocation:
+        allocations = allocations.filter_by(id=options.allocation.id)
     if options.hold:
         allocations = allocations.filter(Allocation.holds.contains(options.hold))
     if options.charge:
@@ -468,10 +484,10 @@ def holds_by_options (options):
         holds = holds.filter(Hold.allocation.has(project=options.project))
     if options.resource:
         holds = holds.filter(Hold.allocation.has(resource=options.resource))
-    if options.request is not None:
-        holds = holds.filter(Hold.allocation.has(Allocation.requests.any(id=options.request)))
-    if options.allocation is not None:
-        holds = holds.filter(Hold.allocation.has(id=options.allocation))
+    if options.request:
+        holds = holds.filter(Hold.allocation.has(Allocation.requests.contains(options.request)))
+    if options.allocation:
+        holds = holds.filter_by(allocation=options.allocation)
     if options.hold:
         holds = holds.filter_by(id=options.hold.id)
     if options.user:
@@ -484,10 +500,10 @@ def charges_by_options (options):
         charges = charges.filter(Charge.allocation.has(project=options.project))
     if options.resource:
         charges = charges.filter(Charge.allocation.has(resource=options.resource))
-    if options.request is not None:
-        charges = charges.filter(Charge.allocation.has(Allocation.requests.any(id=options.request)))
-    if options.allocation is not None:
-        charges = charges.filter(Charge.allocation.has(id=options.allocation))
+    if options.request:
+        charges = charges.filter(Charge.allocation.has(Allocation.requests.contains(options.request)))
+    if options.allocation:
+        charges = charges.filter_by(allocation=options.allocation)
     if options.charge:
         charges = charges.filter_by(id=options.charge.id)
     if options.refund:
@@ -502,10 +518,10 @@ def refunds_by_options (options):
         refunds = refunds.filter(Refund.charge.has(Charge.allocation.has(project=options.project)))
     if options.resource:
         refunds = refunds.filter(Refund.charge.has(Charge.allocation.has(resource=options.resource)))
-    if options.request is not None:
-        refunds = refunds.filter(Refund.charge.has(Charge.allocation.has(Allocation.requests.any(id=options.request))))
-    if options.allocation is not None:
-        refunds = refunds.filter(Refund.charge.has(Charge.allocation.has(id=options.allocation)))
+    if options.request:
+        refunds = refunds.filter(Refund.charge.has(Charge.allocation.has(Allocation.requests.contains(options.request))))
+    if options.allocation:
+        refunds = refunds.filter(Refund.charge.has(allocation=options.allocation))
     if options.charge:
         refunds = refunds.filter_by(charge=options.charge)
     if options.refund:
