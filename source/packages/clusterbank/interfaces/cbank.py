@@ -92,14 +92,6 @@ class Option (optparse.Option):
             raise optparse.OptionValueError(
                 "option %s: unknown user: %r" % (opt, value))
     
-    def check_request (self, opt, value):
-        """Return a request from its id."""
-        try:
-            return Request.query.filter_by(id=value).one()
-        except sqlalchemy.exceptions.InvalidRequestError:
-            raise optparse.OptionValueError(
-                "option %s: unknown request: %r" % (opt, value))
-    
     def check_allocation (self, opt, value):
         """Return an allocation from its id."""
         try:
@@ -135,7 +127,7 @@ class Option (optparse.Option):
     TYPES = optparse.Option.TYPES + (
         "date",
         "resource", "project", "user",
-        "request", "allocation", "hold", "charge", "refund",
+        "allocation", "hold", "charge", "refund",
     )
     
     TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
@@ -144,7 +136,6 @@ class Option (optparse.Option):
         project = check_project,
         user = check_user,
         date = check_date,
-        request = check_request,
         allocation = check_allocation,
         hold = check_hold,
         charge = check_charge,
@@ -195,7 +186,7 @@ parser.add_option(Option("-m", "--comment",
     dest="comment", type="string"))
 parser.add_option(Option("-q", "--request",
     help="specify a request by ID", metavar = "ID",
-    dest="request", type="request"))
+    dest="request", type="int"))
 parser.add_option(Option("-a", "--allocation",
     help="specify an allocation by ID", metavar="ID",
     dest="allocation", type="allocation"))
@@ -344,8 +335,8 @@ def main (argv=None):
         elif directive == "allocation":
             require_admin()
             require_options(["project", "resource", "amount", "expiration"], options)
-            if options.request:
-                requests = [options.request]
+            if options.request is not None:
+                requests = Request.query.filter_by(id=options.request).all()
             else:
                 requests = []
             allocation = Allocation(project=options.project, resource=options.resource, requests=requests, start=options.start or datetime.now(), expiration=options.expiration, amount=options.amount, comment=options.comment)
@@ -448,8 +439,8 @@ def requests_by_options (options):
         requests = requests.filter_by(project=options.project)
     if options.resource:
         requests = requests.filter_by(resource=options.resource)
-    if options.request:
-        requests = requests.filter_by(id=options.request.id)
+    if options.request is not None:
+        requests = requests.filter_by(id=options.request)
     if options.allocation:
         requests = requests.filter(Request.allocations.contains(options.allocation))
     if options.hold:
@@ -466,8 +457,8 @@ def allocations_by_options (options):
         allocations = allocations.filter_by(project=options.project)
     if options.resource:
         allocations = allocations.filter_by(resource=options.resource)
-    if options.request:
-        allocations = allocations.filter(Allocations.requests.contains(options.request))
+    if options.request is not None:
+        allocations = allocations.filter(Allocations.requests.any(id=options.request))
     if options.allocation:
         allocations = allocations.filter_by(id=options.allocation.id)
     if options.hold:
@@ -484,8 +475,8 @@ def holds_by_options (options):
         holds = holds.filter(Hold.allocation.has(project=options.project))
     if options.resource:
         holds = holds.filter(Hold.allocation.has(resource=options.resource))
-    if options.request:
-        holds = holds.filter(Hold.allocation.has(Allocation.requests.contains(options.request)))
+    if options.request is not None:
+        holds = holds.filter(Hold.allocation.has(Allocation.requests.any(id=options.request)))
     if options.allocation:
         holds = holds.filter_by(allocation=options.allocation)
     if options.hold:
@@ -500,8 +491,8 @@ def charges_by_options (options):
         charges = charges.filter(Charge.allocation.has(project=options.project))
     if options.resource:
         charges = charges.filter(Charge.allocation.has(resource=options.resource))
-    if options.request:
-        charges = charges.filter(Charge.allocation.has(Allocation.requests.contains(options.request)))
+    if options.request is not None:
+        charges = charges.filter(Charge.allocation.has(Allocation.requests.any(id=options.request)))
     if options.allocation:
         charges = charges.filter_by(allocation=options.allocation)
     if options.charge:
@@ -518,8 +509,8 @@ def refunds_by_options (options):
         refunds = refunds.filter(Refund.charge.has(Charge.allocation.has(project=options.project)))
     if options.resource:
         refunds = refunds.filter(Refund.charge.has(Charge.allocation.has(resource=options.resource)))
-    if options.request:
-        refunds = refunds.filter(Refund.charge.has(Charge.allocation.has(Allocation.requests.contains(options.request))))
+    if options.request is not None:
+        refunds = refunds.filter(Refund.charge.has(Charge.allocation.has(Allocation.requests.any(id=options.request))))
     if options.allocation:
         refunds = refunds.filter(Refund.charge.has(allocation=options.allocation))
     if options.charge:
