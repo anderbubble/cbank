@@ -133,7 +133,7 @@ class Option (optparse.Option):
                 "options %s: unknown refund: %r" % (opt, value))
     
     TYPES = optparse.Option.TYPES + (
-        "date",
+        "date", "normalized_amount",
         "resource", "project", "user",
         "request", "allocation", "hold", "charge", "refund",
     )
@@ -155,6 +155,14 @@ config = ConfigParser()
 config.read(["/etc/clusterbank.conf"])
 
 current_user = pwd.getpwuid(os.getuid())[0]
+try:
+    unit_factor = config.getfloat("cbank", "unit_factor")
+except (NoSectionError, NoOptionError):
+    unit_factor = 1
+try:
+    unit_label = config.get("cbank", "unit_label")
+except (NoSectionError, NoOptionError):
+    unit_label = ""
 
 parser = OptionParser(
     version = clusterbank.__version__,
@@ -183,7 +191,10 @@ parser.add_option(Option("-u", "--user",
     dest="user", type="user"))
 parser.add_option(Option("-t", "--amount",
     help="specify an AMOUNT", metavar="AMOUNT",
-    dest="amount", type="int"))
+    dest="amount", type="float"))
+parser.add_option(Option("-w", "--raw-amount",
+    help="AMOUNT is in raw units",
+    dest="raw_amount", action="store_true"))
 parser.add_option(Option("-s", "--start",
     help="begin on DATE", metavar="DATE",
     dest="start", type="date"))
@@ -208,7 +219,7 @@ parser.add_option(Option("-c", "--charge",
 parser.add_option(Option("-f", "--refund",
     help="specify a refund by ID", metavar="ID",
     dest="refund", type="refund"))
-parser.set_defaults(list=False)
+parser.set_defaults(list=False, raw_amount=False)
 try:
     parser.set_defaults(resource=Resource.by_name(config.get("cbank", "resource")))
 except (NoSectionError, NoOptionError):
@@ -302,6 +313,15 @@ def main (argv=None):
     if args:
         raise UnexpectedArguments(args)
     
+    # normalize amount based on unit_factor and raw_units
+    if options.amount is not None:
+        if options.raw_amount:
+            normalized_amount = int(options.amount)
+        else:
+            normalized_amount = int(options.amount / unit_factor)
+    else:
+        normalized_amount = None
+    
     assert is_configured(), "clusterbank is not configured"
     
     if options.list:
@@ -337,7 +357,7 @@ def main (argv=None):
         
         if directive == "request":
             require_options(["project", "resource", "amount"], options)
-            request = Request(project=options.project, resource=options.resource, amount=options.amount, start=options.start, comment=options.comment)
+            request = Request(project=options.project, resource=options.resource, amount=normalized_amount, start=options.start, comment=options.comment)
             Session.commit()
             print format(request_data(request), request_header)
         
@@ -348,7 +368,7 @@ def main (argv=None):
                 requests = [options.request]
             else:
                 requests = []
-            allocation = Allocation(project=options.project, resource=options.resource, requests=requests, start=options.start or datetime.now(), expiration=options.expiration, amount=options.amount, comment=options.comment)
+            allocation = Allocation(project=options.project, resource=options.resource, requests=requests, start=options.start or datetime.now(), expiration=options.expiration, amount=normalized_amount, comment=options.comment)
             Session.commit()
             print format(allocation_data(allocation), allocation_header)
         
@@ -364,9 +384,9 @@ def main (argv=None):
                     raise e
                 else:
                     allocations = allocations_by_options(options)
-                    holds = Hold.distributed(allocations, user=options.user, amount=options.amount, comment=options.comment)
+                    holds = Hold.distributed(allocations, user=options.user, amount=normalized_amount, comment=options.comment)
             else:
-                holds = [Hold(allocation=options.allocation, user=options.user, amount=options.amount, comment=options.comment)]
+                holds = [Hold(allocation=options.allocation, user=options.user, amount=normalized_amount, comment=options.comment)]
             Session.commit()
             for hold in holds:
                 print format(hold_data(hold), hold_header)
@@ -393,9 +413,9 @@ def main (argv=None):
                     raise e
                 else:
                     allocations = allocations_by_options(options)
-                    charges = Charge.distributed(allocations, user=options.user, amount=options.amount, comment=options.comment)
+                    charges = Charge.distributed(allocations, user=options.user, amount=normalized_amount, comment=options.comment)
             else:
-                charges = [Charge(allocation=options.allocation, user=options.user, amount=options.amount, comment=options.comment)]
+                charges = [Charge(allocation=options.allocation, user=options.user, amount=normalized_amount, comment=options.comment)]
             Session.commit()
             for charge in charges:
                 print format(charge_data(charge), charge_header)
@@ -403,7 +423,7 @@ def main (argv=None):
         elif directive == "refund":
             require_admin()
             require_options(["charge", "amount"], options)
-            refund = Refund(charge=options.charge, amount=options.amount, comment=options.comment)
+            refund = Refund(charge=options.charge, amount=normalized_amount, comment=options.comment)
             Session.commit()
             print format(refund_data(refund), refund_header)
         
@@ -533,7 +553,7 @@ def request_data (request):
     id = str(request.id)
     project = str(request.project)
     resource = str(request.resource)
-    amount = str(request.amount)
+    amount = "".join([str(request.amount * unit_factor), unit_label])
     return [id, project, resource, amount]
 
 allocation_header = ["id      ", "project          ", "resource   ", "amount"]
@@ -541,7 +561,8 @@ def allocation_data (allocation):
     id = str(allocation.id)
     project = str(allocation.project)
     resource = str(allocation.resource)
-    amount = "%i/%i" % (allocation.amount - allocation.amount_charged, allocation.amount)
+    amount_remaining = allocation.amount - allocation.amount_charged
+    amount = "%s/%s%s" % (amount_remaining * unit_factor, allocation.amount * unit_factor, unit_label)
     return [id, project, resource, amount]
 
 hold_header = ["id      ", "project          ", "resource   ", "amount"]
@@ -549,7 +570,7 @@ def hold_data (hold):
     id = str(hold.id)
     project = str(hold.allocation.project)
     resource = str(hold.allocation.resource)
-    amount = str(hold.amount)
+    amount = "".join([str(hold.amount * unit_factor), unit_label])
     return [id, project, resource, amount]
 
 charge_header = ["id      ", "date             ", "project          ", "resource   ", "amount"]
@@ -558,7 +579,7 @@ def charge_data (charge):
     date = charge.allocation.datetime.strftime("%Y-%m-%d %H:%M")
     project = str(charge.allocation.project)
     resource = str(charge.allocation.resource)
-    amount = str(charge.effective_amount)
+    amount = "".join([str(charge.effective_amount * unit_factor), unit_label])
     return [id, date, project, resource, amount]
 
 refund_header = ["id      ", "charge  ", "project          ", "resource   ", "amount"]
@@ -567,7 +588,7 @@ def refund_data (refund):
     charge = str(refund.charge.id)
     project = str(refund.charge.allocation.project)
     resource = str(refund.charge.allocation.resource)
-    amount = str(refund.amount)
+    amount = "".join([str(refund.amount * unit_factor), unit_label])
     return [id, charge, project, resource, amount]
 
 if __name__ == "__main__":

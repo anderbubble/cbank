@@ -66,7 +66,7 @@ class TestMain (ScriptTester):
         cbank.config.set("cbank", "admins", pwd.getpwuid(os.getuid())[0])
     
     def test_request (self):
-        run("cbank request --project grail --resource spam --amount 1000 --start 2007-01-01 --comment testing")
+        run("cbank request --project grail --resource spam --raw-amount --amount 1000 --start 2007-01-01 --comment testing")
         requests = parse_entities(Request)
         assert len(requests) == 1
         request = requests[0]
@@ -85,7 +85,7 @@ class TestMain (ScriptTester):
         assert not list(requests)
     
     def test_request_list (self):
-        run("cbank request --project grail --resource spam --amount 1000")
+        run("cbank request --project grail --resource spam --raw-amount --amount 1000")
         requests = parse_entities(Request)
         clear_stdout()
         run("cbank request --list --request %i --project grail --resource spam" % requests[0].id)
@@ -94,10 +94,10 @@ class TestMain (ScriptTester):
         assert set(listed_requests) == set(requests)
     
     def test_allocation (self):
-        run("cbank request --project grail --resource spam --amount 1000 --start 2007-01-01 --comment testing")
+        run("cbank request --project grail --resource spam --raw-amount --amount 1000 --start 2007-01-01 --comment testing")
         requests = parse_entities(Request)
         clear_stdout()
-        run("cbank allocation --amount 700 --project grail --resource spam --request %i --start 2007-01-01 --expiration 2008-01-01" % requests[0].id)
+        run("cbank allocation --raw-amount --amount 700 --project grail --resource spam --request %i --start 2007-01-01 --expiration 2008-01-01" % requests[0].id)
         allocations = parse_entities(Allocation)
         assert len(allocations) == 1
         allocation = allocations[0]
@@ -114,7 +114,7 @@ class TestMain (ScriptTester):
         assert not list(allocations)
     
     def test_allocation_list (self):
-        run("cbank allocation --project grail --resource spam --amount 700 --start 2007-01-01 --expiration 2008-01-01")
+        run("cbank allocation --project grail --resource spam --raw-amount --amount 700 --start 2007-01-01 --expiration 2008-01-01")
         allocations = parse_entities(Allocation)
         clear_stdout()
         run("cbank allocation --list --allocation %i --project grail --resource spam" % allocations[0].id)
@@ -123,10 +123,10 @@ class TestMain (ScriptTester):
         assert set(listed_allocations) == set(allocations)
     
     def test_hold (self):
-        run("cbank allocation --project grail --resource spam --amount 700 --start 2007-01-01 --expiration 2008-01-01")
+        run("cbank allocation --project grail --resource spam --raw-amount --amount 700 --start 2007-01-01 --expiration 2008-01-01")
         allocations = parse_entities(Allocation)
         clear_stdout()
-        run("cbank hold --allocation %i --amount 100 --comment testing" % allocations[0].id)
+        run("cbank hold --allocation %i --raw-amount --amount 100 --comment testing" % allocations[0].id)
         holds = parse_entities(Hold)
         assert len(holds) == 1
         hold = holds[0]
@@ -137,23 +137,23 @@ class TestMain (ScriptTester):
         assert hold.comment == "testing"
     
     def test_hold_user (self):
-        run("cbank allocation --project grail --resource spam --amount 700 --start 2007-01-01 --expiration 2008-01-01")
+        run("cbank allocation --project grail --resource spam --raw-amount --amount 700 --start 2007-01-01 --expiration 2008-01-01")
         allocations = parse_entities(Allocation)
         clear_stdout()
-        run("cbank hold --user monty --allocation %i --amount 100 --comment testing" % allocations[0].id)
+        run("cbank hold --user monty --allocation %i --raw-amount --amount 100 --comment testing" % allocations[0].id)
         holds = parse_entities(Hold)
         assert len(holds) == 1
         hold = holds[0]
         assert hold.user.name == "monty"
     
     def test_hold_distributed (self):
-        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2020-01-01")
+        run("cbank allocation --project grail --resource spam --raw-amount --amount 100 --start 2007-01-01 --expiration 2020-01-01")
         allocations = parse_entities(Allocation)
         clear_stdout()
-        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2020-01-01")
+        run("cbank allocation --project grail --resource spam --raw-amount --amount 100 --start 2007-01-01 --expiration 2020-01-01")
         allocations.extend(parse_entities(Allocation))
         clear_stdout()
-        run("cbank hold --project grail --resource spam --amount 150 --comment testing")
+        run("cbank hold --project grail --resource spam --raw-amount --amount 150 --comment testing")
         holds = parse_entities(Hold)
         assert len(holds) == 2
         assert sum(hold.amount for hold in holds) == 150, "sum was %r" % sum(hold.amount for hold in holds)
@@ -167,10 +167,10 @@ class TestMain (ScriptTester):
         assert not list(holds)
     
     def test_hold_list (self):
-        run("cbank allocation --project grail --resource spam --amount 700 --start 2007-01-01 --expiration 2008-01-01")
+        run("cbank allocation --project grail --resource spam --raw-amount --amount 700 --start 2007-01-01 --expiration 2008-01-01")
         allocations = parse_entities(Allocation)
         clear_stdout()
-        run("cbank hold --allocation %i --amount 100" % allocations[0].id)
+        run("cbank hold --allocation %i --raw-amount --amount 100" % allocations[0].id)
         holds = parse_entities(Hold)
         clear_stdout()
         run("cbank hold --list --hold %i --project grail --resource spam --allocation %i" % (holds[0].id, allocations[0].id))
@@ -179,13 +179,13 @@ class TestMain (ScriptTester):
         assert set(listed_holds) == set(holds)
     
     def test_hold_list_user_filter (self):
-        run("cbank allocation --project grail --resource spam --amount 700 --start 2007-01-01 --expiration 2008-01-01")
+        run("cbank allocation --project grail --resource spam --raw-amount --amount 700 --start 2007-01-01 --expiration 2008-01-01")
         allocations = parse_entities(Allocation)
         clear_stdout()
-        run("cbank hold --allocation %i --amount 100" % allocations[0].id)
+        run("cbank hold --allocation %i --raw-amount --amount 100" % allocations[0].id)
         no_user_holds = parse_entities(Hold)
         clear_stdout()
-        run("cbank hold --user monty --allocation %i --amount 100" % allocations[0].id)
+        run("cbank hold --user monty --allocation %i --raw-amount --amount 100" % allocations[0].id)
         user_holds = parse_entities(Hold)
         clear_stdout()
         run("cbank hold --list --project grail --resource spam --allocation %i" % (allocations[0].id))
@@ -200,10 +200,10 @@ class TestMain (ScriptTester):
         assert set(listed_holds) == set(user_holds)
     
     def test_hold_release (self):
-        run("cbank allocation --project grail --resource spam --amount 200 --start 2007-01-01 --expiration 2008-01-01")
+        run("cbank allocation --project grail --resource spam --raw-amount --amount 200 --start 2007-01-01 --expiration 2008-01-01")
         allocations = parse_entities(Allocation)
         clear_stdout()
-        run("cbank hold --allocation %i --amount 100 --comment testing" % allocations[0].id)
+        run("cbank hold --allocation %i --raw-amount --amount 100 --comment testing" % allocations[0].id)
         holds = parse_entities(Hold)
         clear_stdout()
         run("cbank release --allocation %i" % allocations[0].id)
@@ -217,10 +217,10 @@ class TestMain (ScriptTester):
         assert not remaining_holds
     
     def test_charge (self):
-        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2008-01-01")
+        run("cbank allocation --project grail --resource spam --raw-amount --amount 100 --start 2007-01-01 --expiration 2008-01-01")
         allocations = parse_entities(Allocation)
         clear_stdout()
-        run("cbank charge --allocation %i --amount 50" % allocations[0].id)
+        run("cbank charge --allocation %i --raw-amount --amount 50" % allocations[0].id)
         charges = parse_entities(Charge)
         assert len(charges) == 1
         charge = charges[0]
@@ -230,23 +230,23 @@ class TestMain (ScriptTester):
         assert charge.allocation is allocations[0]
     
     def test_charge_user (self):
-        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2008-01-01")
+        run("cbank allocation --project grail --resource spam --raw-amount --amount 100 --start 2007-01-01 --expiration 2008-01-01")
         allocations = parse_entities(Allocation)
         clear_stdout()
-        run("cbank charge --user monty --allocation %i --amount 50" % allocations[0].id)
+        run("cbank charge --user monty --allocation %i --raw-amount --amount 50" % allocations[0].id)
         charges = parse_entities(Charge)
         assert len(charges) == 1
         charge = charges[0]
         assert charge.user.name == "monty"
     
     def test_charge_distributed (self):
-        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2020-01-01")
+        run("cbank allocation --project grail --resource spam --raw-amount --amount 100 --start 2007-01-01 --expiration 2020-01-01")
         allocations = parse_entities(Allocation)
         clear_stdout()
-        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2020-01-01")
+        run("cbank allocation --project grail --resource spam --raw-amount --amount 100 --start 2007-01-01 --expiration 2020-01-01")
         allocations.extend(parse_entities(Allocation))
         clear_stdout()
-        run("cbank charge --project grail --resource spam --amount 150 --comment testing")
+        run("cbank charge --project grail --resource spam --raw-amount --amount 150 --comment testing")
         charges = parse_entities(Charge)
         assert len(charges) == 2
         assert sum(charge.amount for charge in charges)
@@ -260,10 +260,10 @@ class TestMain (ScriptTester):
         assert not list(charges)
     
     def test_charge_list (self):
-        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2008-01-01")
+        run("cbank allocation --project grail --resource spam --raw-amount --amount 100 --start 2007-01-01 --expiration 2008-01-01")
         allocations = parse_entities(Allocation)
         clear_stdout()
-        run("cbank charge --allocation %i --amount 50" % allocations[0].id)
+        run("cbank charge --allocation %i --raw-amount --amount 50" % allocations[0].id)
         charges = parse_entities(Charge)
         clear_stdout()
         run("cbank charge --list --charge %i --project grail --resource spam --allocation %i" % (charges[0].id, allocations[0].id))
@@ -272,13 +272,13 @@ class TestMain (ScriptTester):
         assert set(listed_charges) == set(charges)
     
     def test_charge_list_user_filter (self):
-        run("cbank allocation --project grail --resource spam --amount 700 --start 2007-01-01 --expiration 2008-01-01")
+        run("cbank allocation --project grail --resource spam --raw-amount --amount 700 --start 2007-01-01 --expiration 2008-01-01")
         allocations = parse_entities(Allocation)
         clear_stdout()
-        run("cbank charge --allocation %i --amount 100" % allocations[0].id)
+        run("cbank charge --allocation %i --raw-amount --amount 100" % allocations[0].id)
         no_user_charges = parse_entities(Charge)
         clear_stdout()
-        run("cbank charge --user monty --allocation %i --amount 100" % allocations[0].id)
+        run("cbank charge --user monty --allocation %i --raw-amount --amount 100" % allocations[0].id)
         user_charges = parse_entities(Charge)
         clear_stdout()
         run("cbank charge --list --project grail --resource spam --allocation %i" % (allocations[0].id))
@@ -293,13 +293,13 @@ class TestMain (ScriptTester):
         assert set(listed_charges) == set(user_charges)
     
     def test_refund (self):
-        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2008-01-01")
+        run("cbank allocation --project grail --resource spam --raw-amount --amount 100 --start 2007-01-01 --expiration 2008-01-01")
         allocations = parse_entities(Allocation)
         clear_stdout()
-        run("cbank charge --allocation %i --amount 50" % allocations[0].id)
+        run("cbank charge --allocation %i --raw-amount --amount 50" % allocations[0].id)
         charges = parse_entities(Charge)
         clear_stdout()
-        run("cbank refund --charge %i --amount 25 --comment testing" % charges[0].id)
+        run("cbank refund --charge %i --raw-amount --amount 25 --comment testing" % charges[0].id)
         refunds = parse_entities(Refund)
         assert len(refunds) == 1
         refund = refunds[0]
@@ -314,13 +314,13 @@ class TestMain (ScriptTester):
         assert not list(refunds)
     
     def test_refund_list (self):
-        run("cbank allocation --project grail --resource spam --amount 100 --start 2007-01-01 --expiration 2008-01-01")
+        run("cbank allocation --project grail --resource spam --raw-amount --amount 100 --start 2007-01-01 --expiration 2008-01-01")
         allocations = parse_entities(Allocation)
         clear_stdout()
-        run("cbank charge --allocation %i --amount 50" % allocations[0].id)
+        run("cbank charge --allocation %i --raw-amount --amount 50" % allocations[0].id)
         charges = parse_entities(Charge)
         clear_stdout()
-        run("cbank refund --charge %i --amount 25" % charges[0].id)
+        run("cbank refund --charge %i --raw-amount --amount 25" % charges[0].id)
         refunds = parse_entities(Refund)
         clear_stdout()
         run("cbank refund --list --refund %i --project grail --resource spam --charge %i --allocation %i" % (refunds[0].id, charges[0].id, allocations[0].id))
