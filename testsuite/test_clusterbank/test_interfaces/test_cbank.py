@@ -74,7 +74,7 @@ class TestMain (ScriptTester):
         assert datetime.now() - request.datetime < timedelta(minutes=1)
         assert request.project.name == "grail"
         assert request.resource.name == "spam"
-        assert request.amount == 1000
+        assert request.amount == 1000, "amount was %r" % request.amount
         assert request.start == datetime(year=2007, month=1, day=1)
         assert request.comment == "testing"
     
@@ -133,7 +133,7 @@ class TestMain (ScriptTester):
         assert hold.id is not None
         assert datetime.now() - hold.datetime < timedelta(minutes=1)
         assert hold.allocation is allocations[0]
-        assert hold.amount == 100
+        assert hold.amount == 100, "amount was %r" % hold.amount
         assert hold.comment == "testing"
     
     def test_hold_user (self):
@@ -156,7 +156,7 @@ class TestMain (ScriptTester):
         run("cbank hold --project grail --resource spam --amount 150 --comment testing")
         holds = parse_entities(Hold)
         assert len(holds) == 2
-        assert sum(hold.amount for hold in holds) == 150
+        assert sum(hold.amount for hold in holds) == 150, "sum was %r" % sum(hold.amount for hold in holds)
         for hold in holds:
             assert hold.allocation in allocations
     
@@ -226,7 +226,7 @@ class TestMain (ScriptTester):
         charge = charges[0]
         assert charge.id is not None
         assert datetime.now() - charge.datetime < timedelta(minutes=1)
-        assert charge.amount == 50
+        assert charge.amount == 50, "amount is %r" % charge.amount
         assert charge.allocation is allocations[0]
     
     def test_charge_user (self):
@@ -305,7 +305,7 @@ class TestMain (ScriptTester):
         refund = refunds[0]
         assert refund.id is not None
         assert refund.charge is charges[0]
-        assert refund.amount == 25
+        assert refund.amount == 25, "amount was %r" % refund.amount
         assert refund.comment == "testing"
     
     def test_refund_list_empty (self):
