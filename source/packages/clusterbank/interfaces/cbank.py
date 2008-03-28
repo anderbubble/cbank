@@ -548,47 +548,47 @@ def refunds_by_options (options):
         refunds = refunds.filter_by(id=options.refund.id)
     return refunds
 
-request_header = ["id      ", "project          ", "resource   ", "amount"]
+request_header = ["id      ", "project          ", "resource   ", "amount (%s)" % unit_label or "?"]
 def request_data (request):
     id = str(request.id)
     project = str(request.project)
     resource = str(request.resource)
-    amount = "".join([str(request.amount * unit_factor), unit_label])
+    amount = str(request.amount * unit_factor)
     return [id, project, resource, amount]
 
-allocation_header = ["id      ", "project          ", "resource   ", "amount"]
+allocation_header = ["id      ", "project          ", "resource   ", "amount (%s)" % unit_label or "?"]
 def allocation_data (allocation):
     id = str(allocation.id)
     project = str(allocation.project)
     resource = str(allocation.resource)
     amount_remaining = allocation.amount - allocation.amount_charged
-    amount = "%s/%s%s" % (amount_remaining * unit_factor, allocation.amount * unit_factor, unit_label)
+    amount = "/".join([str(amount_remaining * unit_factor), str(allocation.amount * unit_factor)])
     return [id, project, resource, amount]
 
-hold_header = ["id      ", "project          ", "resource   ", "amount"]
+hold_header = ["id      ", "project          ", "resource   ", "amount (%s)" % unit_label or "?"]
 def hold_data (hold):
     id = str(hold.id)
     project = str(hold.allocation.project)
     resource = str(hold.allocation.resource)
-    amount = "".join([str(hold.amount * unit_factor), unit_label])
+    amount = str(hold.amount * unit_factor)
     return [id, project, resource, amount]
 
-charge_header = ["id      ", "date             ", "project          ", "resource   ", "amount"]
+charge_header = ["id      ", "date             ", "project          ", "resource   ", "amount (%s)" % unit_label or "?"]
 def charge_data (charge):
     id = str(charge.id)
     date = charge.allocation.datetime.strftime("%Y-%m-%d %H:%M")
     project = str(charge.allocation.project)
     resource = str(charge.allocation.resource)
-    amount = "".join([str(charge.effective_amount * unit_factor), unit_label])
+    amount = str(charge.effective_amount * unit_factor)
     return [id, date, project, resource, amount]
 
-refund_header = ["id      ", "charge  ", "project          ", "resource   ", "amount"]
+refund_header = ["id      ", "charge  ", "project          ", "resource   ", "amount (%s)" % unit_label or "?"]
 def refund_data (refund):
     id = str(refund.id)
     charge = str(refund.charge.id)
     project = str(refund.charge.allocation.project)
     resource = str(refund.charge.allocation.resource)
-    amount = "".join([str(refund.amount * unit_factor), unit_label])
+    amount = str(refund.amount * unit_factor)
     return [id, charge, project, resource, amount]
 
 if __name__ == "__main__":
