@@ -45,7 +45,7 @@ def get_user_name (id):
 def get_member_projects (id):
     try:
         user = User.query.filter_by(id=id).one()
-    except InvalidRequestError:
+    except exceptions.InvalidRequestError:
         return []
     else:
         return [project.id for project in user.projects]
@@ -53,7 +53,7 @@ def get_member_projects (id):
 def get_owner_projects (id):
     try:
         user = User.query.filter_by(id=id).one()
-    except InvalidRequestError:
+    except exceptions.InvalidRequestError:
         return []
     else:
         return [project.id for project in user.projects_owned]
@@ -67,7 +67,7 @@ def get_project_name (id):
 def get_project_members (id):
     try:
         project = Project.query.filter_by(id=id).one()
-    except InvalidRequestError:
+    except exceptions.InvalidRequestError:
         return []
     else:
         return [user.id for user in project.members]
@@ -75,7 +75,7 @@ def get_project_members (id):
 def get_project_owners (id):
     try:
         project = Project.query.filter_by(id=id).one()
-    except InvalidRequestError:
+    except exceptions.InvalidRequestError:
         return []
     else:
         return [user.id for user in project.owners]
@@ -118,6 +118,11 @@ class User (UpstreamEntity):
     id -- canonical, immutable integer identifier
     name -- canonical string identifier
     """
+    
+    def __init__ (self, **kwargs):
+        UpstreamEntity.__init__(self, **kwargs)
+        self.projects = kwargs.get("projects", [])
+        self.projects_owned = kwargs.get("projects_owned", [])
 
 
 class Project (UpstreamEntity):
@@ -128,6 +133,11 @@ class Project (UpstreamEntity):
     id -- canonical, immutable integer identifier
     name -- canonical string identifier
     """
+    
+    def __init__ (self, **kwargs):
+        UpstreamEntity.__init__(self, **kwargs)
+        self.members = kwargs.get("members", [])
+        self.owners = kwargs.get("owners", [])
 
 
 class Resource (UpstreamEntity):

@@ -2,17 +2,14 @@ from nose.tools import raises
 
 from sqlalchemy import create_engine
 
-import upstream_example as example
-from upstream_example import metadata, Session, User, Project, Resource, \
-    get_user_id, get_user_name, \
-    get_project_id, get_project_name, \
-    get_resource_id, get_resource_name
+from upstream_example import *
+from upstream_example import Session, metadata, User, Project, Resource
 
 
 class UpstreamEntityTester (object):
     
     def setup (self):
-        metadata.bind = create_engine("sqlite:///:memory:")
+        metadata.bind = create_engine("sqlite:///:memory:", echo=True)
         metadata.create_all()
     
     def teardown (self):
@@ -25,20 +22,34 @@ class TestProject (UpstreamEntityTester):
     
     def setup (self):
         UpstreamEntityTester.setup(self)
-        self.project = Project(id=1, name="Shrubbery")
+        self.project = Project(id=1, name="Shrubbery",
+            members=[User(id=1, name="Monty")],
+            owners=[User(id=2, name="Python")])
         Session.flush()
     
-    def test_missing_by_id (self):
+    def test_missing_name (self):
         assert get_project_name(2) is None
     
-    def test_existing_by_id (self):
+    def test_existing_name (self):
         assert get_project_name(1) == "Shrubbery"
     
-    def test_missing_by_name (self):
+    def test_missing_id (self):
         assert get_project_id("Spam") is None
     
-    def test_existing_by_name (self):
+    def test_existing_id (self):
         assert get_project_id("Shrubbery") == 1
+    
+    def test_missing_members (self):
+        assert get_project_members(2) == []
+    
+    def test_existing_members (self):
+        assert get_project_members(1) == [1], get_project_members(1)
+    
+    def test_missing_owners (self):
+        assert get_project_owners(2) == []
+    
+    def test_existing_owners (self):
+        assert get_project_owners(1) == [2], get_project_owners(1)
 
 
 class TestResource (UpstreamEntityTester):
@@ -65,17 +76,31 @@ class TestUser (UpstreamEntityTester):
     
     def setup (self):
         UpstreamEntityTester.setup(self)
-        self.user = User(id=1, name="Monty")
+        self.user = User(id=1, name="Monty",
+            projects=[Project(id=1, name="Shrubbery")],
+            projects_owned=[Project(id=2, name="Spam")])
         Session.flush()
     
-    def test_missing_by_id (self):
+    def test_missing_name (self):
         assert get_user_name(2) is None
     
-    def test_existing_by_id (self):
+    def test_existing_name (self):
         assert get_user_name(1) == "Monty"
     
-    def test_by_name (self):
+    def test_missing_id (self):
         assert get_user_id("Python") is None
     
-    def test_existing_by_name (self):
+    def test_existing_id (self):
         assert get_user_id("Monty") == 1
+    
+    def test_missing_projects (self):
+        assert get_member_projects(2) == []
+    
+    def test_existing_projects (self):
+        assert get_member_projects(1) == [1]
+    
+    def test_missing_projects_owned (self):
+        assert get_owner_projects(2) == []
+    
+    def test_existing_projects_owned (self):
+        assert get_owner_projects(1) == [2]
