@@ -14,7 +14,7 @@ try:
 except AttributeError:
     types.Text = types.TEXT
 import sqlalchemy.exceptions as exceptions
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker, scoped_session, relation
 
 __all__ = [
     "get_project_id", "get_project_name",
@@ -181,7 +181,7 @@ Session.mapper(Project, projects_table, properties=dict(
     owners = relation(User, secondary=projects_owners_table, backref="projects_owned"),
 ))
 
-Session.mapper(Resource, resource_types_table, properties=dict(
-    id = resource_types_table.c.id,
-    name = resource_types_table.c.name,
+Session.mapper(Resource, resources_table, properties=dict(
+    id = resources_table.c.id,
+    name = resources_table.c.name,
 ))
