@@ -3,9 +3,7 @@
 Classes:
 Project -- upstream project
 Resource -- upstream resource
-
-Exceptions:
-NotFound -- requested resource not found
+User -- upstream user
 """
 
 from sqlalchemy import MetaData, Table, Column, ForeignKey
@@ -18,10 +16,12 @@ except AttributeError:
 import sqlalchemy.exceptions as exceptions
 from sqlalchemy.orm import sessionmaker, scoped_session
 
-
 __all__ = [
     "get_project_id", "get_project_name",
+    "get_project_members", "get_project_owners",
     "get_resource_id", "get_resource_name",
+    "get_user_id", "get_user_name",
+    "get_member_projects", "get_owner_projects",
 ]
 
 def _get_entity_id (cls, name):
@@ -42,11 +42,43 @@ def get_user_id (name):
 def get_user_name (id):
     return _get_entity_name(User, id)
 
+def get_member_projects (id):
+    try:
+        user = User.query.filter_by(id=id).one()
+    except InvalidRequestError:
+        return []
+    else:
+        return [project.id for project in user.projects]
+
+def get_owner_projects (id):
+    try:
+        user = User.query.filter_by(id=id).one()
+    except InvalidRequestError:
+        return []
+    else:
+        return [project.id for project in user.projects_owned]
+
 def get_project_id (name):
     return _get_entity_id(Project, name)
 
 def get_project_name (id):
     return _get_entity_name(Project, id)
+
+def get_project_members (id):
+    try:
+        project = Project.query.filter_by(id=id).one()
+    except InvalidRequestError:
+        return []
+    else:
+        return [user.id for user in project.members]
+
+def get_project_owners (id):
+    try:
+        project = Project.query.filter_by(id=id).one()
+    except InvalidRequestError:
+        return []
+    else:
+        return [user.id for user in project.owners]
 
 def get_resource_id (name):
     return _get_entity_id(Resource, name)
@@ -120,7 +152,17 @@ projects_table = Table("projects", metadata,
     Column("name", types.Text, nullable=False, unique=True),
 )
 
-resource_types_table = Table("resource_types", metadata,
+projects_members_table = Table("projects_members", metadata,
+    Column("project_id", None, ForeignKey("projects.id"), primary_key=True),
+    Column("user_id", None, ForeignKey("users.id"), primary_key=True),
+)
+
+projects_owners_table = Table("projects_owners", metadata,
+    Column("project_id", None, ForeignKey("projects.id"), primary_key=True),
+    Column("user_id", None, ForeignKey("users.id"), primary_key=True),
+)
+
+resources_table = Table("resources", metadata,
     Column("id", types.Integer, nullable=False, primary_key=True),
     Column("name", types.Text, nullable=False, unique=True),
 )
@@ -129,12 +171,14 @@ Session = scoped_session(sessionmaker(autoflush=True, transactional=True))
 
 Session.mapper(User, users_table, properties=dict(
     id = users_table.c.id,
-    name=users_table.c.name,
+    name = users_table.c.name,
 ))
 
 Session.mapper(Project, projects_table, properties=dict(
     id = projects_table.c.id,
     name = projects_table.c.name,
+    members = relation(User, secondary=projects_members_table, backref="projects"),
+    owners = relation(User, secondary=projects_owners_table, backref="projects_owned"),
 ))
 
 Session.mapper(Resource, resource_types_table, properties=dict(
