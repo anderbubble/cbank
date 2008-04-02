@@ -14,12 +14,15 @@ class CbankException (Exception): pass
 
 class CbankError (CbankException): pass
 
-class UnknownUser (CbankError): pass
+class UnknownUser (CbankError):
+    
+    def __str__ (self):
+        return "cbank: unknown user: %s" % CbankError.__str__(self)
 
 class UnknownReport (CbankError):
     
     def __str__ (self):
-        return "unknown report: %s" % CbankError.__str__(self)
+        return "cbank: unknown report: %s" % CbankError.__str__(self)
 
 def main ():
     handle_exceptions(run)
@@ -30,7 +33,7 @@ def handle_exceptions (func, *args, **kwargs):
     except KeyboardInterrupt:
         sys.exit(1)
     except CbankError, e:
-        print >> sys.stderr, "cbank:", e
+        print >> sys.stderr, e
         sys.exit(1)
 
 def run ():
