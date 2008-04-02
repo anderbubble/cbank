@@ -7,6 +7,8 @@ from itertools import izip
 import string
 from optparse import OptionParser, Option
 
+from sqlalchemy import or_, and_
+
 from clusterbank import upstream
 from clusterbank.model import User, Project, Allocation, Charge, Refund
 
@@ -80,8 +82,13 @@ def get_allocations (**kwargs):
 
 def get_charges (**kwargs):
     user = get_current_user()
-    project_ids = [project.id for project in user.projects]
-    charges = Charge.query.filter_by(user=user).filter(Charge.allocation.has(Allocation.project.has(Project.id.in_(project_ids))))
+    member_project_ids = [project.id for project in user.projects]
+    owner_project_ids = [project.id for project in user.projects_owned]
+    charges = Charge.query.filter(or_(
+        and_(
+            Charge.allocation.has(Allocation.project.has(Project.id.in_(member_project_ids))),
+            Charge.user==user),
+        Charge.allocation.has(Allocation.project.has(Project.id.in_(owner_project_ids)))))
     if kwargs.get("project"):
         project_id = upstream.get_project_id(kwargs.get("project"))
         charges = charges.filter(Charge.allocation.has(Allocation.project.has(id=project_id)))
