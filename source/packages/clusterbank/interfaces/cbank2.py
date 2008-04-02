@@ -8,7 +8,18 @@ import string
 
 from clusterbank.model import User, Project, Allocation
 
-class UnknownUser (Exception): pass
+reports_available = ["allocations"]
+
+class CbankException (Exception): pass
+
+class CbankError (CbankException): pass
+
+class UnknownUser (CbankError): pass
+
+class UnknownReport (CbankError):
+    
+    def __str__ (self):
+        return "unknown report: %s" % CbankError.__str__(self)
 
 def main ():
     handle_exceptions(run)
@@ -18,20 +29,44 @@ def handle_exceptions (func, *args, **kwargs):
         return func(*args, **kwargs)
     except KeyboardInterrupt:
         sys.exit(1)
-    except UnknownUser, e:
-        print >> sys.stderr, e
+    except CbankError, e:
+        print >> sys.stderr, "cbank:", e
         sys.exit(1)
 
 def run ():
+    report_type = get_report_type()
+    if report_type == "allocations":
+        allocations = get_allocations()
+        display_allocations(allocations)
+    else:
+        raise UnknownReport(report_type)
+
+def get_report_type ():
+    try:
+        requested_report = sys.argv[1]
+    except IndexError:
+        return "allocations" # default report type
+    else:
+        possible_reports = [
+            report for report in reports_available
+            if report.startswith(requested_report)]
+        if not possible_reports:
+            raise UnknownReport(requested_report)
+        elif len(possible_reports) > 1:
+            raise UnknownReport("could be %s" % ", ".join(possible_reports))
+        else:
+            return possible_reports[0]
+
+def get_allocations ():
     user = get_current_user()
     project_ids = [project.id for project in user.projects]
     allocations = Allocation.query.join("project").filter(Project.id.in_(project_ids))
-    display_allocations(allocations)
+    return allocations
 
 def display_allocations (allocations):
     format = Formatter([15, 15, (10, string.rjust), (10, string.rjust), (10, string.rjust)])
-    print format(["Resource", "Project", "Total", "Charged", "Available"])
-    print format(["-"*15, "-"*15, "-"*10, "-"*10, "-"*10])
+    print >> sys.stderr, format(["Resource", "Project", "Total", "Charged", "Available"])
+    print >> sys.stderr, format(["-"*15, "-"*15, "-"*10, "-"*10, "-"*10])
     for allocation in allocations:
         print format([allocation.resource, allocation.project, allocation.amount, allocation.amount_charged, allocation.amount_available])
 
@@ -68,3 +103,4 @@ def get_current_user ():
     if not user:
         raise UnknownUser("User '%s' was not found." % username)
     return user
+

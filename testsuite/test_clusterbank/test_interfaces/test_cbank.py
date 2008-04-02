@@ -35,6 +35,9 @@ def clear_stdout (stdout=None):
     stdout.seek(0)
     stdout.truncate()
 
+def test_default_admins ():
+    assert False, "verifiying test exists"
+
 
 class ScriptTester (object):
     
