@@ -6,9 +6,9 @@ import pwd
 from itertools import izip
 import string
 
-from clusterbank.model import User, Project, Allocation
+from clusterbank.model import User, Project, Allocation, Charge, Refund
 
-reports_available = ["allocations"]
+reports_available = ["allocations", "charges"]
 
 class CbankException (Exception): pass
 
@@ -38,6 +38,9 @@ def run ():
     if report_type == "allocations":
         allocations = get_allocations()
         display_allocations(allocations)
+    elif report_type == "charges":
+        charges = get_charges()
+        display_charges(charges)
     else:
         raise UnknownReport(report_type)
 
@@ -60,8 +63,14 @@ def get_report_type ():
 def get_allocations ():
     user = get_current_user()
     project_ids = [project.id for project in user.projects]
-    allocations = Allocation.query.join("project").filter(Project.id.in_(project_ids))
+    allocations = Allocation.query.filter(Allocation.project.has(Project.id.in_(project_ids)))
     return allocations
+
+def get_charges ():
+    user = get_current_user()
+    project_ids = [project.id for project in user.projects]
+    charges = Charge.query.filter_by(user=user).filter(Charge.allocation.has(Allocation.project.has(Project.id.in_(project_ids))))
+    return charges
 
 def display_allocations (allocations):
     format = Formatter([10, 15, 15, (10, string.rjust), (10, string.rjust), (10, string.rjust)])
@@ -69,6 +78,16 @@ def display_allocations (allocations):
     print >> sys.stderr, format(["-"*10, "-"*15, "-"*15, "-"*10, "-"*10, "-"*10])
     for allocation in allocations:
         print format([allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, allocation.amount, allocation.amount_charged, allocation.amount_available])
+
+def display_charges (charges):
+    format = Formatter([10, 15, 15, (10, string.rjust)])
+    print >> sys.stderr, format(["Date", "Resource", "Project", "Amount"])
+    print >> sys.stderr, format(["-"*10, "-"*15, "-"*15, "-"*10])
+    for charge in charges:
+        print format([charge.datetime.strftime("%Y-%m-%d"), charge.allocation.resource, charge.allocation.project, charge.effective_amount])
+    print >> sys.stderr, format(["", "", "", "-"*10])
+    total = int(charges.sum(Charge.amount) or 0) - int(charges.join("refunds").sum(Refund.amount) or 0)
+    print >> sys.stderr, format(["", "", "", total])
 
 class Formatter (object):
     
