@@ -53,14 +53,24 @@ class UpstreamEntity (Entity):
         """
         upstream_id = cls._get_upstream_id(name)
         if upstream_id is None:
-            raise exceptions.NotFound("%s %r not found" % (cls.__name__.lower(), name))
+            raise exceptions.NotFound("%s '%s' not found" % (cls.__name__.lower(), name))
+        return cls.by_id(upstream_id, _check=False)
+    
+    @classmethod
+    def by_id (cls, id, _check=True):
+        """Get (or create) an entity based on its id upstream.
+        
+        Arguments:
+        id -- upstream id of the entity
+        """
+        if _check and cls._get_upstream_name(id) is None:
+            raise exceptions.NotFound("%s with id '%s' not found" % (cls.__name__.lower(), id))
         try:
-            return cls.query.filter_by(id=upstream_id).one()
+            return cls.query.filter_by(id=id).one()
         except sqlalchemy.exceptions.InvalidRequestError:
-            return cls(id=upstream_id)
+            return cls(id=id)
     
     def _get_name (self):
-        """Intelligent property accessor."""
         return self._get_upstream_name(self.id)
     
     name = property(_get_name)
@@ -92,6 +102,11 @@ class User (UpstreamEntity):
         self.id = kwargs.get("id")
         self.holds = kwargs.get("holds", [])
         self.charges = kwargs.get("charges", [])
+    
+    def _get_projects (self):
+        return [Project.by_id(id) for id in clusterbank.upstream.get_member_projects(self.id)]
+    
+    projects = property(_get_projects)
 
 
 class Project (UpstreamEntity):
@@ -105,9 +120,6 @@ class Project (UpstreamEntity):
     allocations -- allocations to the project
     credit_limits -- credit limits for the project
     credit_limit -- credit limit for a resource at a given datetime
-    
-    Exceptions:
-    InsufficientFunds -- not enough funds to perform an action
     """
     
     @classmethod
