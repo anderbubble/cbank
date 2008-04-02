@@ -73,11 +73,11 @@ def get_charges ():
     return charges
 
 def display_allocations (allocations):
-    format = Formatter([10, 15, 15, (10, string.rjust), (10, string.rjust), (10, string.rjust)])
-    print >> sys.stderr, format(["Expires", "Resource", "Project", "Total", "Charged", "Available"])
-    print >> sys.stderr, format(["-"*10, "-"*15, "-"*15, "-"*10, "-"*10, "-"*10])
+    format = Formatter([10, 15, 15, (10, string.rjust), (10, string.rjust)])
+    print >> sys.stderr, format(["Expires", "Resource", "Project", "Total", "Available"])
+    print >> sys.stderr, format(["-"*10, "-"*15, "-"*15, "-"*10, "-"*10])
     for allocation in allocations:
-        print format([allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, allocation.amount, allocation.amount_charged, allocation.amount_available])
+        print format([allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, allocation.amount, allocation.amount_available])
 
 def display_charges (charges):
     format = Formatter([10, 15, 15, (10, string.rjust)])
@@ -87,7 +87,7 @@ def display_charges (charges):
         print format([charge.datetime.strftime("%Y-%m-%d"), charge.allocation.resource, charge.allocation.project, charge.effective_amount])
     print >> sys.stderr, format(["", "", "", "-"*10])
     total = int(charges.sum(Charge.amount) or 0) - int(charges.join("refunds").sum(Refund.amount) or 0)
-    print >> sys.stderr, format(["", "", "", total])
+    print >> sys.stderr, format(["", "", "", total]), "(total)"
 
 class Formatter (object):
     
