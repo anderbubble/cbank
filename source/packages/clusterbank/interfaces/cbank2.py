@@ -64,11 +64,11 @@ def get_allocations ():
     return allocations
 
 def display_allocations (allocations):
-    format = Formatter([15, 15, (10, string.rjust), (10, string.rjust), (10, string.rjust)])
-    print >> sys.stderr, format(["Resource", "Project", "Total", "Charged", "Available"])
-    print >> sys.stderr, format(["-"*15, "-"*15, "-"*10, "-"*10, "-"*10])
+    format = Formatter([10, 15, 15, (10, string.rjust), (10, string.rjust), (10, string.rjust)])
+    print >> sys.stderr, format(["Expires", "Resource", "Project", "Total", "Charged", "Available"])
+    print >> sys.stderr, format(["-"*10, "-"*15, "-"*15, "-"*10, "-"*10, "-"*10])
     for allocation in allocations:
-        print format([allocation.resource, allocation.project, allocation.amount, allocation.amount_charged, allocation.amount_available])
+        print format([allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, allocation.amount, allocation.amount_charged, allocation.amount_available])
 
 class Formatter (object):
     
