@@ -5,8 +5,13 @@ import os
 import pwd
 from itertools import izip
 import string
+from optparse import OptionParser, Option
 
+from clusterbank import upstream
 from clusterbank.model import User, Project, Allocation, Charge, Refund
+
+argv = OptionParser()
+argv.add_option(Option("-p", "--project", dest="project", metavar="ID"))
 
 reports_available = ["allocations", "charges"]
 
@@ -25,7 +30,9 @@ class UnknownReport (CbankError):
         return "cbank: unknown report: %s" % CbankError.__str__(self)
 
 def main ():
-    handle_exceptions(run)
+    options, args = argv.parse_args()
+    report = handle_exceptions(get_requested_report, args)
+    handle_exceptions(run, report, project=options.project)
 
 def handle_exceptions (func, *args, **kwargs):
     try:
@@ -36,20 +43,19 @@ def handle_exceptions (func, *args, **kwargs):
         print >> sys.stderr, e
         sys.exit(1)
 
-def run ():
-    report_type = get_report_type()
-    if report_type == "allocations":
-        allocations = get_allocations()
+def run (report, **kwargs):
+    if report == "allocations":
+        allocations = get_allocations(**kwargs)
         display_allocations(allocations)
-    elif report_type == "charges":
-        charges = get_charges()
+    elif report == "charges":
+        charges = get_charges(**kwargs)
         display_charges(charges)
     else:
-        raise UnknownReport(report_type)
+        raise UnknownReport(report)
 
-def get_report_type ():
+def get_requested_report (args):
     try:
-        requested_report = sys.argv[1]
+        requested_report = args[0]
     except IndexError:
         return "allocations" # default report type
     else:
@@ -63,16 +69,22 @@ def get_report_type ():
         else:
             return possible_reports[0]
 
-def get_allocations ():
+def get_allocations (**kwargs):
     user = get_current_user()
     project_ids = [project.id for project in user.projects]
     allocations = Allocation.query.filter(Allocation.project.has(Project.id.in_(project_ids)))
+    if kwargs.get("project"):
+        project_id = upstream.get_project_id(kwargs.get("project"))
+        allocations = Allocation.query.filter(Allocation.project.has(id=project_id))
     return allocations
 
-def get_charges ():
+def get_charges (**kwargs):
     user = get_current_user()
     project_ids = [project.id for project in user.projects]
     charges = Charge.query.filter_by(user=user).filter(Charge.allocation.has(Allocation.project.has(Project.id.in_(project_ids))))
+    if kwargs.get("project"):
+        project_id = upstream.get_project_id(kwargs.get("project"))
+        charges = charges.filter(Charge.allocation.has(Allocation.project.has(id=project_id)))
     return charges
 
 def display_allocations (allocations):
