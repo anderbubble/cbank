@@ -54,17 +54,16 @@ class UpstreamEntity (Entity):
         upstream_id = cls._get_upstream_id(name)
         if upstream_id is None:
             raise exceptions.NotFound("%s '%s' not found" % (cls.__name__.lower(), name))
-        return cls.by_id(upstream_id, _check=False)
+        return cls.by_id(upstream_id)
     
     @classmethod
-    def by_id (cls, id, _check=True):
+    def by_id (cls, id):
         """Get (or create) an entity based on its id upstream.
         
         Arguments:
         id -- upstream id of the entity
         """
-        if _check and cls._get_upstream_name(id) is None:
-            raise exceptions.NotFound("%s with id '%s' not found" % (cls.__name__.lower(), id))
+        assert cls._get_upstream_name(id) is not None, "Project '%s' does not exist." % id
         try:
             return cls.query.filter_by(id=id).one()
         except sqlalchemy.exceptions.InvalidRequestError:
@@ -107,6 +106,11 @@ class User (UpstreamEntity):
         return [Project.by_id(id) for id in clusterbank.upstream.get_member_projects(self.id)]
     
     projects = property(_get_projects)
+    
+    def _get_projects_owned (self):
+        return [Project.by_id(id) for id in clusterbank.upstream.get_owner_projects(self.id)]
+    
+    projects_owned = property(_get_projects_owned)
 
 
 class Project (UpstreamEntity):
