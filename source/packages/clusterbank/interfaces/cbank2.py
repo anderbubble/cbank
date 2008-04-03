@@ -5,12 +5,16 @@ import os
 import pwd
 from itertools import izip
 import string
+from ConfigParser import SafeConfigParser as ConfigParser, NoSectionError, NoOptionError
 from optparse import OptionParser, Option
 
 from sqlalchemy import or_, and_
 
 from clusterbank import upstream
 from clusterbank.model import User, Project, Allocation, Charge, Refund
+
+config = ConfigParser()
+config.read(["/etc/clusterbank.conf"])
 
 argv = OptionParser()
 argv.add_option(Option("-p", "--project", dest="project",
@@ -19,6 +23,10 @@ argv.add_option(Option("-u", "--user", dest="user",
     help="filter by user NAME", metavar="NAME"))
 argv.add_option(Option("-r", "--resource", dest="resource",
     help="filter by resource NAME", metavar="NAME"))
+try:
+    argv.set_defaults(resource=config.get("cbank", "resource"))
+except (NoSectionError, NoOptionError):
+    pass
 
 reports_available = ["allocations", "charges"]
 
@@ -117,17 +125,35 @@ def display_allocations (allocations):
     print >> sys.stderr, format(["Expires", "Resource", "Project", "Total", "Available"])
     print >> sys.stderr, format(["-"*10, "-"*15, "-"*15, "-"*10, "-"*10])
     for allocation in allocations:
-        print format([allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, allocation.amount, allocation.amount_available])
+        print format([allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, display_units(allocation.amount), display_units(allocation.amount_available)])
 
 def display_charges (charges):
     format = Formatter([10, 15, 15, (10, string.rjust)])
     print >> sys.stderr, format(["Date", "Resource", "Project", "Amount"])
     print >> sys.stderr, format(["-"*10, "-"*15, "-"*15, "-"*10])
     for charge in charges:
-        print format([charge.datetime.strftime("%Y-%m-%d"), charge.allocation.resource, charge.allocation.project, charge.effective_amount])
+        print format([charge.datetime.strftime("%Y-%m-%d"), charge.allocation.resource, charge.allocation.project, display_units(charge.effective_amount)])
     print >> sys.stderr, format(["", "", "", "-"*10])
-    total = int(charges.sum(Charge.amount) or 0) - int(charges.join("refunds").sum(Refund.amount) or 0)
+    total = display_units(int(charges.sum(Charge.amount) or 0) - int(charges.join("refunds").sum(Refund.amount) or 0))
     print >> sys.stderr, format(["", "", "", total]), "(total)"
+
+def display_units (amount):
+    try:
+        factor = config.get("cbank", "unit_factor")
+    except (NoSectionError, NoOptionError):
+        return amount
+    try:
+        mul, div = factor.split("/")
+    except ValueError:
+        mul = factor
+        div = 1
+    mul = float(mul)
+    div = float(div)
+    converted_amount = amount * mul / div
+    if 0 < converted_amount < 0.1:
+        return "<0.1"
+    else:
+        return "%.1f" % converted_amount
 
 class Formatter (object):
     
