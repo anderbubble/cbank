@@ -20,6 +20,13 @@ locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 config = ConfigParser()
 config.read(["/etc/clusterbank.conf"])
 
+try:
+    unit_label = config.get("cbank", "unit_label")
+except (NoSectionError, NoOptionError):
+    unit_definition = None
+else:
+    unit_definition = "Units are in %s." % unit_label
+
 argv = OptionParser()
 argv.add_option(Option("-p", "--project", dest="project",
     help="filter by project NAME", metavar="NAME"))
@@ -130,6 +137,8 @@ def display_allocations (allocations):
     print >> sys.stderr, format(["-"*10, "-"*10, "-"*15, "-"*15, "-"*15])
     for allocation in allocations:
         print format([allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, display_units(allocation.amount), display_units(allocation.amount_available)])
+    if unit_definition:
+        print >> sys.stderr, unit_definition
 
 def display_charges (charges):
     format = Formatter([10, 10, 15, (10, string.rjust)])
@@ -140,6 +149,8 @@ def display_charges (charges):
     print >> sys.stderr, format(["", "", "", "-"*10])
     total = display_units(int(charges.sum(Charge.amount) or 0) - int(charges.join("refunds").sum(Refund.amount) or 0))
     print >> sys.stderr, format(["", "", "", total]), "(total)"
+    if unit_definition:
+        print >> sys.stderr, unit_definition
 
 def display_units (amount):
     try:
