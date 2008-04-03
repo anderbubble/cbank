@@ -17,6 +17,8 @@ argv.add_option(Option("-p", "--project", dest="project",
     help="filter by project NAME", metavar="NAME"))
 argv.add_option(Option("-u", "--user", dest="user",
     help="filter by user NAME", metavar="NAME"))
+argv.add_option(Option("-r", "--resource", dest="resource",
+    help="filter by resource NAME", metavar="NAME"))
 
 reports_available = ["allocations", "charges"]
 
@@ -37,7 +39,7 @@ class UnknownReport (CbankError):
 def main ():
     options, args = argv.parse_args()
     report = handle_exceptions(get_requested_report, args)
-    handle_exceptions(run, report, project=options.project, user=options.user)
+    handle_exceptions(run, report, project=options.project, user=options.user, resource=options.resource)
 
 def handle_exceptions (func, *args, **kwargs):
     try:
@@ -85,6 +87,9 @@ def get_allocations (**kwargs):
         user_id = upstream.get_user_id(kwargs.get("user"))
         other_project_ids = upstream.get_member_projects(user_id)
         allocations = allocations.filter(Allocation.project.has(Project.id.in_(other_project_ids)))
+    if kwargs.get("resource"):
+        resource_id = upstream.get_resource_id(kwargs.get("resource"))
+        allocations = allocations.filter(Allocation.resource.has(id=resource_id))
     return allocations
 
 def get_charges (**kwargs):
@@ -102,6 +107,9 @@ def get_charges (**kwargs):
     if kwargs.get("user"):
         user_id = upstream.get_user_id(kwargs.get("user"))
         charges = charges.filter(Charge.user.has(id=user_id))
+    if kwargs.get("resource"):
+        resource_id = upstream.get_resource_id(kwargs.get("resource"))
+        charges = charges.filter(Charge.allocation.has(Allocation.resource.has(id=resource_id)))
     return charges
 
 def display_allocations (allocations):
