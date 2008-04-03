@@ -125,16 +125,16 @@ def get_charges (**kwargs):
     return charges
 
 def display_allocations (allocations):
-    format = Formatter([10, 15, 15, (10, string.rjust), (10, string.rjust)])
+    format = Formatter([10, 10, 15, (15, string.rjust), (15, string.rjust)])
     print >> sys.stderr, format(["Expires", "Resource", "Project", "Total", "Available"])
-    print >> sys.stderr, format(["-"*10, "-"*15, "-"*15, "-"*10, "-"*10])
+    print >> sys.stderr, format(["-"*10, "-"*10, "-"*15, "-"*15, "-"*15])
     for allocation in allocations:
         print format([allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, display_units(allocation.amount), display_units(allocation.amount_available)])
 
 def display_charges (charges):
-    format = Formatter([10, 15, 15, (10, string.rjust)])
+    format = Formatter([10, 10, 15, (10, string.rjust)])
     print >> sys.stderr, format(["Date", "Resource", "Project", "Amount"])
-    print >> sys.stderr, format(["-"*10, "-"*15, "-"*15, "-"*10])
+    print >> sys.stderr, format(["-"*10, "-"*10, "-"*15, "-"*10])
     for charge in charges:
         print format([charge.datetime.strftime("%Y-%m-%d"), charge.allocation.resource, charge.allocation.project, display_units(charge.effective_amount)])
     print >> sys.stderr, format(["", "", "", "-"*10])
