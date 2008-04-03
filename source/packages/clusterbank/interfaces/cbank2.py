@@ -8,11 +8,14 @@ import string
 from ConfigParser import SafeConfigParser as ConfigParser, NoSectionError, NoOptionError
 from optparse import OptionParser, Option
 from warnings import warn
+import locale
 
 from sqlalchemy import or_, and_
 
 from clusterbank import upstream
 from clusterbank.model import User, Project, Allocation, Charge, Refund
+
+locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 
 config = ConfigParser()
 config.read(["/etc/clusterbank.conf"])
@@ -157,9 +160,9 @@ def display_units (amount):
         val = 1
     converted_amount = amount * mul / div
     if 0 < converted_amount < 0.1:
-        return "<0.1"
+        return "< 0.1"
     else:
-        return "%.1f" % converted_amount
+        return locale.format("%.1f", converted_amount, True)
 
 class Formatter (object):
     
