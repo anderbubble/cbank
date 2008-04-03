@@ -13,7 +13,8 @@ from clusterbank import upstream
 from clusterbank.model import User, Project, Allocation, Charge, Refund
 
 argv = OptionParser()
-argv.add_option(Option("-p", "--project", dest="project", metavar="ID"))
+argv.add_option(Option("-p", "--project", dest="project",
+    help="filter by project NAME", metavar="NAME"))
 
 reports_available = ["allocations", "charges"]
 
