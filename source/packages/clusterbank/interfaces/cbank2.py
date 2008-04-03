@@ -15,6 +15,8 @@ from clusterbank.model import User, Project, Allocation, Charge, Refund
 argv = OptionParser()
 argv.add_option(Option("-p", "--project", dest="project",
     help="filter by project NAME", metavar="NAME"))
+argv.add_option(Option("-u", "--user", dest="user",
+    help="filter by user NAME", metavar="NAME"))
 
 reports_available = ["allocations", "charges"]
 
@@ -35,7 +37,7 @@ class UnknownReport (CbankError):
 def main ():
     options, args = argv.parse_args()
     report = handle_exceptions(get_requested_report, args)
-    handle_exceptions(run, report, project=options.project)
+    handle_exceptions(run, report, project=options.project, user=options.user)
 
 def handle_exceptions (func, *args, **kwargs):
     try:
@@ -79,6 +81,10 @@ def get_allocations (**kwargs):
     if kwargs.get("project"):
         project_id = upstream.get_project_id(kwargs.get("project"))
         allocations = Allocation.query.filter(Allocation.project.has(id=project_id))
+    if kwargs.get("user"):
+        user_id = upstream.get_user_id(kwargs.get("user"))
+        other_project_ids = upstream.get_member_projects(user_id)
+        allocations = allocations.filter(Allocation.project.has(Project.id.in_(other_project_ids)))
     return allocations
 
 def get_charges (**kwargs):
@@ -93,6 +99,9 @@ def get_charges (**kwargs):
     if kwargs.get("project"):
         project_id = upstream.get_project_id(kwargs.get("project"))
         charges = charges.filter(Charge.allocation.has(Allocation.project.has(id=project_id)))
+    if kwargs.get("user"):
+        user_id = upstream.get_user_id(kwargs.get("user"))
+        charges = charges.filter(Charge.user.has(id=user_id))
     return charges
 
 def display_allocations (allocations):
