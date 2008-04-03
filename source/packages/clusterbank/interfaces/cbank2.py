@@ -80,7 +80,7 @@ def get_allocations (**kwargs):
     allocations = Allocation.query.filter(Allocation.project.has(Project.id.in_(project_ids)))
     if kwargs.get("project"):
         project_id = upstream.get_project_id(kwargs.get("project"))
-        allocations = Allocation.query.filter(Allocation.project.has(id=project_id))
+        allocations = allocations.filter(Allocation.project.has(id=project_id))
     if kwargs.get("user"):
         user_id = upstream.get_user_id(kwargs.get("user"))
         other_project_ids = upstream.get_member_projects(user_id)
