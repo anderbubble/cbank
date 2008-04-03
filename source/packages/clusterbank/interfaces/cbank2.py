@@ -7,6 +7,7 @@ from itertools import izip
 import string
 from ConfigParser import SafeConfigParser as ConfigParser, NoSectionError, NoOptionError
 from optparse import OptionParser, Option
+from warnings import warn
 
 from sqlalchemy import or_, and_
 
@@ -141,14 +142,19 @@ def display_units (amount):
     try:
         factor = config.get("cbank", "unit_factor")
     except (NoSectionError, NoOptionError):
-        return amount
+        factor = 1
     try:
         mul, div = factor.split("/")
     except ValueError:
         mul = factor
         div = 1
-    mul = float(mul)
-    div = float(div)
+    try:
+        mul = float(mul)
+        div = float(div)
+    except ValueError:
+        warn("invalid unit factor: %s" % factor)
+        mul = 1
+        val = 1
     converted_amount = amount * mul / div
     if 0 < converted_amount < 0.1:
         return "<0.1"
