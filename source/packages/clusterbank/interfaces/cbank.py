@@ -156,6 +156,9 @@ def get_charges (**kwargs):
     return charges
 
 def display_projects (projects):
+    if not projects.count():
+        print >> sys.stderr, "No projects found."
+        return
     user = get_current_user()
     format = Formatter([15, 7, 5])
     print >> sys.stderr, format(["Name", "Members", "Owner"])
@@ -168,6 +171,9 @@ def display_projects (projects):
         print format([project.name, len(project.members), is_owner])
 
 def display_allocations (allocations):
+    if not allocations.count():
+        print >> sys.stderr, "No allocations found."
+        return
     format = Formatter([10, 10, 15, (15, string.rjust), (15, string.rjust)])
     print >> sys.stderr, format(["Expires", "Resource", "Project", "Total", "Available"])
     print >> sys.stderr, format(["-"*10, "-"*10, "-"*15, "-"*15, "-"*15])
@@ -177,6 +183,9 @@ def display_allocations (allocations):
         print >> sys.stderr, unit_definition
 
 def display_charges (charges):
+    if not charges.count():
+        print >> sys.stderr, "No charges found."
+        return
     format = Formatter([10, 10, 15, (10, string.rjust)])
     print >> sys.stderr, format(["Date", "Resource", "Project", "Amount"])
     print >> sys.stderr, format(["-"*10, "-"*10, "-"*15, "-"*10])
