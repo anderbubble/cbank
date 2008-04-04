@@ -84,12 +84,12 @@ class User (UpstreamEntity):
     name -- canonical name of the user (from upstream)
     """
     
-    @classmethod
-    def _get_upstream_id (cls, name):
+    @staticmethod
+    def _get_upstream_id (name):
         return clusterbank.upstream.get_user_id(name)
     
-    @classmethod
-    def _get_upstream_name (cls, id):
+    @staticmethod
+    def _get_upstream_name (id):
         return clusterbank.upstream.get_user_name(id)
     
     def __init__ (self, **kwargs):
@@ -126,12 +126,12 @@ class Project (UpstreamEntity):
     credit_limit -- credit limit for a resource at a given datetime
     """
     
-    @classmethod
-    def _get_upstream_id (cls, name):
+    @staticmethod
+    def _get_upstream_id (name):
         return clusterbank.upstream.get_project_id(name)
     
-    @classmethod
-    def _get_upstream_name (cls, id):
+    @staticmethod
+    def _get_upstream_name (id):
         return clusterbank.upstream.get_project_name(id)
     
     def __init__ (self, **kwargs):
@@ -147,6 +147,16 @@ class Project (UpstreamEntity):
         self.requests = kwargs.get("requests", [])
         self.allocations = kwargs.get("allocations", [])
         self.credit_limits = kwargs.get("credit_limits", [])
+    
+    def _get_members (self):
+        return [User.by_id(id) for id in clusterbank.upstream.get_project_members(self.id)]
+    
+    members = property(_get_members)
+    
+    def _get_owners (self):
+        return [User.by_id(id) for id in clusterbank.upstream.get_project_owners(self.id)]
+    
+    owners = property(_get_owners)
     
     def credit_limit (self, resource, datetime=datetime.now):
         try:
@@ -175,12 +185,12 @@ class Resource (UpstreamEntity):
     credit_limits -- credit limits on the resource
     """
     
-    @classmethod
-    def _get_upstream_id (cls, name):
+    @staticmethod
+    def _get_upstream_id (name):
         return clusterbank.upstream.get_resource_id(name)
     
-    @classmethod
-    def _get_upstream_name (cls, id):
+    @staticmethod
+    def _get_upstream_name (id):
         return clusterbank.upstream.get_resource_name(id)
     
     def __init__ (self, **kwargs):

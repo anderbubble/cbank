@@ -39,7 +39,7 @@ try:
 except (NoSectionError, NoOptionError):
     pass
 
-reports_available = ["allocations", "charges"]
+reports_available = ["projects", "allocations", "charges"]
 
 class CbankException (Exception): pass
 
@@ -73,6 +73,9 @@ def run (report, **kwargs):
     if report == "allocations":
         allocations = get_allocations(**kwargs)
         display_allocations(allocations)
+    elif report == "projects":
+        projects = get_projects(**kwargs)
+        display_projects(projects)
     elif report == "charges":
         charges = get_charges(**kwargs)
         display_charges(charges)
@@ -94,6 +97,22 @@ def get_requested_report (args):
             raise UnknownReport("could be %s" % ", ".join(possible_reports))
         else:
             return possible_reports[0]
+
+def get_projects (**kwargs):
+    user = get_current_user()
+    project_ids = [project.id for project in user.projects]
+    projects = Project.query.filter(Project.id.in_(project_ids))
+    if kwargs.get("project"):
+        project_id = upstream.get_project_id(kwargs.get("project"))
+        projects = projects.filter_by(id=project_id)
+    if kwargs.get("user"):
+        user_id = upstream.get_user_id(kwargs.get("user"))
+        other_project_ids = upstream.get_member_projects(user_id)
+        projects = projects.filter(Project.id.in_(other_project_ids))
+    if kwargs.get("resource"):
+        resource_id = upstream.get_resource_id(kwargs.get("resource"))
+        projects = projects.filter(Project.allocations.any(Allocation.resource.has(id=resource_id)))
+    return projects
 
 def get_allocations (**kwargs):
     user = get_current_user()
@@ -130,6 +149,18 @@ def get_charges (**kwargs):
         resource_id = upstream.get_resource_id(kwargs.get("resource"))
         charges = charges.filter(Charge.allocation.has(Allocation.resource.has(id=resource_id)))
     return charges
+
+def display_projects (projects):
+    user = get_current_user()
+    format = Formatter([15, (7, string.rjust), (5, string.center)])
+    print >> sys.stderr, format(["Name", "Members", "Owner"])
+    print >> sys.stderr, format(["-"*15, "-"*7, "-"*5])
+    for project in projects:
+        if user in project.owners:
+            is_owner = "+"
+        else:
+            is_owner = ""
+        print format([project.name, len(project.members), is_owner])
 
 def display_allocations (allocations):
     format = Formatter([10, 10, 15, (15, string.rjust), (15, string.rjust)])
