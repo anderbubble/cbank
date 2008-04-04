@@ -12,6 +12,7 @@ import locale
 
 from sqlalchemy import or_, and_
 
+import clusterbank
 from clusterbank import upstream
 from clusterbank.model import User, Project, Allocation, Charge, Refund
 
@@ -27,7 +28,13 @@ except (NoSectionError, NoOptionError):
 else:
     unit_definition = "Units are in %s." % unit_label
 
-argv = OptionParser()
+reports_available = ["projects", "allocations", "charges"]
+
+argv = OptionParser(usage=os.linesep.join([
+    "cbank [options] [report]",
+    "",
+    "reports:",
+    "  %s" % ", ".join(reports_available)]), version="cbank %s" % clusterbank.__version__)
 argv.add_option(Option("-p", "--project", dest="project",
     help="filter by project NAME", metavar="NAME"))
 argv.add_option(Option("-u", "--user", dest="user",
@@ -38,8 +45,6 @@ try:
     argv.set_defaults(resource=config.get("cbank", "resource"))
 except (NoSectionError, NoOptionError):
     pass
-
-reports_available = ["projects", "allocations", "charges"]
 
 class CbankException (Exception): pass
 
@@ -152,14 +157,14 @@ def get_charges (**kwargs):
 
 def display_projects (projects):
     user = get_current_user()
-    format = Formatter([15, (7, string.rjust), (5, string.center)])
+    format = Formatter([15, 7, 5])
     print >> sys.stderr, format(["Name", "Members", "Owner"])
     print >> sys.stderr, format(["-"*15, "-"*7, "-"*5])
     for project in projects:
         if user in project.owners:
-            is_owner = "+"
+            is_owner = "yes"
         else:
-            is_owner = ""
+            is_owner = "no"
         print format([project.name, len(project.members), is_owner])
 
 def display_allocations (allocations):
