@@ -23,6 +23,6 @@ setup(
     zip_safe = True,
     entry_points = {'console_scripts': [
             "cbank_old = clusterbank.interfaces.cbank_old:console_main",
-            "cbank2 = clusterbank.interfaces.cbank2:main",
+            "cbank = clusterbank.interfaces.cbank:main",
     ]},
 )
