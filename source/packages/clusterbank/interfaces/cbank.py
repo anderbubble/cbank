@@ -164,7 +164,7 @@ def display_projects (projects):
     user = get_current_user()
     format = Formatter([15, 7, 5, (15, string.rjust), (15, string.rjust)])
     print >> sys.stderr, format(["Name", "Members", "Owner", "Allocated", "Available"])
-    print >> sys.stderr, format(["-"*15, "-"*7, "-"*5, "-"*15, "-"*15])
+    print >> sys.stderr, format.linesep
     for project in projects:
         if user in project.owners:
             is_owner = "yes"
@@ -184,7 +184,7 @@ def display_allocations (allocations):
         return
     format = Formatter([10, 10, 15, (15, string.rjust), (15, string.rjust)])
     print >> sys.stderr, format(["Expires", "Resource", "Project", "Allocated", "Available"])
-    print >> sys.stderr, format(["-"*10, "-"*10, "-"*15, "-"*15, "-"*15])
+    print >> sys.stderr, format.linesep
     for allocation in allocations:
         print format([allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, display_units(allocation.amount), display_units(allocation.amount_available)])
     if unit_definition:
@@ -196,7 +196,7 @@ def display_charges (charges):
         return
     format = Formatter([10, 10, 15, (10, string.rjust)])
     print >> sys.stderr, format(["Date", "Resource", "Project", "Amount"])
-    print >> sys.stderr, format(["-"*10, "-"*10, "-"*15, "-"*10])
+    print >> sys.stderr, format.linesep
     for charge in charges:
         print format([charge.datetime.strftime("%Y-%m-%d"), charge.allocation.resource, charge.allocation.project, display_units(charge.effective_amount)])
     print >> sys.stderr, format(["", "", "", "-"*10])
@@ -249,6 +249,11 @@ class Formatter (object):
     def format (self, args):
         assert len(args) == len(self.cols), "Too many arguments to format."
         return self.sep.join([align(str(arg), width) for (arg, (width, align)) in izip(args, self.cols)])
+    
+    def _get_linesep (self):
+        return self.format(["-"*width for (width, align) in self.cols])
+    
+    linesep = property(_get_linesep)
 
 def get_current_user ():
     uid = os.getuid()
@@ -262,4 +267,3 @@ def get_current_user ():
     except clusterbank.exceptions.NotFound:
         raise UnknownUser("User '%s' was not found." % username)
     return user
-
