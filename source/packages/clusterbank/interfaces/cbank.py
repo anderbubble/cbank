@@ -9,6 +9,7 @@ from ConfigParser import SafeConfigParser as ConfigParser, NoSectionError, NoOpt
 from optparse import OptionParser, Option
 from warnings import warn
 import locale
+from datetime import datetime
 
 from sqlalchemy import or_, and_
 
@@ -92,7 +93,7 @@ def get_requested_report (args):
     try:
         requested_report = args[0]
     except IndexError:
-        return "allocations" # default report type
+        return "projects" # default report type
     else:
         possible_reports = [
             report for report in reports_available
@@ -161,22 +162,28 @@ def display_projects (projects):
         print >> sys.stderr, "No projects found."
         return
     user = get_current_user()
-    format = Formatter([15, 7, 5])
-    print >> sys.stderr, format(["Name", "Members", "Owner"])
-    print >> sys.stderr, format(["-"*15, "-"*7, "-"*5])
+    format = Formatter([15, 7, 5, (15, string.rjust), (15, string.rjust)])
+    print >> sys.stderr, format(["Name", "Members", "Owner", "Allocated", "Available"])
+    print >> sys.stderr, format(["-"*15, "-"*7, "-"*5, "-"*15, "-"*15])
     for project in projects:
         if user in project.owners:
             is_owner = "yes"
         else:
             is_owner = "no"
-        print format([project.name, len(project.members), is_owner])
+        now = datetime.now()
+        allocations = Allocation.query.filter_by(project=project).filter(Allocation.start<=now).filter(Allocation.expiration>now)
+        allocated = int(allocations.sum(Allocation.amount) or 0)
+        available = allocated - int(allocations.join("charges").sum(Charge.amount) or 0) - int(allocations.join(["charges", "refunds"]).sum(Refund.amount) or 0)
+        print format([project.name, len(project.members), is_owner, display_units(allocated), display_units(available)])
+    if unit_definition:
+        print >> sys.stderr, unit_definition
 
 def display_allocations (allocations):
     if not allocations.count():
         print >> sys.stderr, "No allocations found."
         return
     format = Formatter([10, 10, 15, (15, string.rjust), (15, string.rjust)])
-    print >> sys.stderr, format(["Expires", "Resource", "Project", "Total", "Available"])
+    print >> sys.stderr, format(["Expires", "Resource", "Project", "Allocated", "Available"])
     print >> sys.stderr, format(["-"*10, "-"*10, "-"*15, "-"*15, "-"*15])
     for allocation in allocations:
         print format([allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, display_units(allocation.amount), display_units(allocation.amount_available)])
