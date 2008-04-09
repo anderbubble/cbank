@@ -79,7 +79,7 @@ argv = OptionParser(usage=os.linesep.join([
     "  %s" % ", ".join(reports_available)]), version="cbank %s" % clusterbank.__version__)
 argv.add_option(Option("-p", "--projects", dest="projects", type="csv",
     help="filter by project NAMES", metavar="NAMES"))
-argv.add_option(Option("-u", "--user", dest="users", type="csv",
+argv.add_option(Option("-u", "--users", dest="users", type="csv",
     help="filter by user NAME", metavar="NAME"))
 argv.add_option(Option("-r", "--resource", dest="resource",
     help="filter by resource NAME", metavar="NAME"))
