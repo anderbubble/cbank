@@ -17,6 +17,10 @@ except AttributeError:
     import time
     def strptime (value, format):
         return datetime(*time.strptime(value, format)[0:6])
+try:
+    set
+except NameError:
+    from sets import Set as set
 
 from sqlalchemy import or_, and_
 
@@ -75,7 +79,7 @@ argv = OptionParser(usage=os.linesep.join([
     "  %s" % ", ".join(reports_available)]), version="cbank %s" % clusterbank.__version__)
 argv.add_option(Option("-p", "--projects", dest="projects", type="csv",
     help="filter by project NAMES", metavar="NAMES"))
-argv.add_option(Option("-u", "--user", dest="user",
+argv.add_option(Option("-u", "--user", dest="users", type="csv",
     help="filter by user NAME", metavar="NAME"))
 argv.add_option(Option("-r", "--resource", dest="resource",
     help="filter by resource NAME", metavar="NAME"))
@@ -105,7 +109,7 @@ class UnknownReport (CbankError):
 def main ():
     options, args = argv.parse_args()
     report = handle_exceptions(get_requested_report, args)
-    handle_exceptions(run, report, projects=options.projects, user=options.user, resource=options.resource, after=options.after, before=options.before)
+    handle_exceptions(run, report, projects=options.projects, users=options.users, resource=options.resource, after=options.after, before=options.before)
 
 def handle_exceptions (func, *args, **kwargs):
     try:
@@ -152,10 +156,12 @@ def get_projects (**kwargs):
     if kwargs.get("projects"):
         spec_project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
         projects = projects.filter(Project.id.in_(spec_project_ids))
-    if kwargs.get("user"):
-        user_id = upstream.get_user_id(kwargs.get("user"))
-        other_project_ids = upstream.get_member_projects(user_id)
-        projects = projects.filter(Project.id.in_(other_project_ids))
+    if kwargs.get("users"):
+        user_ids = [upstream.get_user_id(user) for user in kwargs.get("users")]
+        user_project_ids = []
+        for user_id in user_ids:
+            user_project_ids += upstream.get_member_projects(user_id)
+        projects = projects.filter(Project.id.in_(set(user_project_ids)))
     if kwargs.get("resource"):
         resource_id = upstream.get_resource_id(kwargs.get("resource"))
         projects = projects.filter(Project.allocations.any(Allocation.resource.has(id=resource_id)))
@@ -180,10 +186,12 @@ def get_allocations (**kwargs):
     if kwargs.get("projects"):
         spec_project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
         allocations = allocations.filter(Allocation.project.has(Project.id.in_(spec_project_ids)))
-    if kwargs.get("user"):
-        user_id = upstream.get_user_id(kwargs.get("user"))
-        other_project_ids = upstream.get_member_projects(user_id)
-        allocations = allocations.filter(Allocation.project.has(Project.id.in_(other_project_ids)))
+    if kwargs.get("users"):
+        user_ids = [upstream.get_user_id(user) for user in kwargs.get("users")]
+        user_project_ids = []
+        for user_id in user_ids:
+            user_project_ids += upstream.get_member_projects(user_id)
+        allocations = allocations.filter(Allocation.project.has(Project.id.in_(set(user_project_ids))))
     if kwargs.get("resource"):
         resource_id = upstream.get_resource_id(kwargs.get("resource"))
         allocations = allocations.filter(Allocation.resource.has(id=resource_id))
@@ -210,9 +218,9 @@ def get_charges (**kwargs):
     if kwargs.get("projects"):
         spec_project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
         charges = charges.filter(Charge.allocation.has(Allocation.project.has(Project.id.in_(spec_project_ids))))
-    if kwargs.get("user"):
-        user_id = upstream.get_user_id(kwargs.get("user"))
-        charges = charges.filter(Charge.user.has(id=user_id))
+    if kwargs.get("users"):
+        user_ids = [upstream.get_user_id(user) for user in kwargs.get("users")]
+        charges = charges.filter(Charge.user.has(User.id.in_(user_ids)))
     if kwargs.get("resource"):
         resource_id = upstream.get_resource_id(kwargs.get("resource"))
         charges = charges.filter(Charge.allocation.has(Allocation.resource.has(id=resource_id)))
