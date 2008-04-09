@@ -45,10 +45,14 @@ class Option (optparse.Option):
         raise optparse.OptionValueError(
             "option %s: invalid date: %r" % (opt, value))
     
-    TYPES = optparse.Option.TYPES + ("date", )
+    def check_csv (self, opt, value):
+        return value.split(",")
+    
+    TYPES = optparse.Option.TYPES + ("date", "csv")
     
     TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
     TYPE_CHECKER['date'] = check_date
+    TYPE_CHECKER['csv'] = check_csv
 
 locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 
@@ -69,8 +73,8 @@ argv = OptionParser(usage=os.linesep.join([
     "",
     "reports:",
     "  %s" % ", ".join(reports_available)]), version="cbank %s" % clusterbank.__version__)
-argv.add_option(Option("-p", "--project", dest="project",
-    help="filter by project NAME", metavar="NAME"))
+argv.add_option(Option("-p", "--projects", dest="projects", type="csv",
+    help="filter by project NAMES", metavar="NAMES"))
 argv.add_option(Option("-u", "--user", dest="user",
     help="filter by user NAME", metavar="NAME"))
 argv.add_option(Option("-r", "--resource", dest="resource",
@@ -101,7 +105,7 @@ class UnknownReport (CbankError):
 def main ():
     options, args = argv.parse_args()
     report = handle_exceptions(get_requested_report, args)
-    handle_exceptions(run, report, project=options.project, user=options.user, resource=options.resource, after=options.after, before=options.before)
+    handle_exceptions(run, report, projects=options.projects, user=options.user, resource=options.resource, after=options.after, before=options.before)
 
 def handle_exceptions (func, *args, **kwargs):
     try:
@@ -145,9 +149,9 @@ def get_projects (**kwargs):
     user = get_current_user()
     project_ids = [project.id for project in user.projects]
     projects = Project.query.filter(Project.id.in_(project_ids))
-    if kwargs.get("project"):
-        project_id = upstream.get_project_id(kwargs.get("project"))
-        projects = projects.filter_by(id=project_id)
+    if kwargs.get("projects"):
+        spec_project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
+        projects = projects.filter(Project.id.in_(spec_project_ids))
     if kwargs.get("user"):
         user_id = upstream.get_user_id(kwargs.get("user"))
         other_project_ids = upstream.get_member_projects(user_id)
@@ -173,9 +177,9 @@ def get_allocations (**kwargs):
     user = get_current_user()
     project_ids = [project.id for project in user.projects]
     allocations = Allocation.query.filter(Allocation.project.has(Project.id.in_(project_ids)))
-    if kwargs.get("project"):
-        project_id = upstream.get_project_id(kwargs.get("project"))
-        allocations = allocations.filter(Allocation.project.has(id=project_id))
+    if kwargs.get("projects"):
+        spec_project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
+        allocations = allocations.filter(Allocation.project.has(Project.id.in_(spec_project_ids)))
     if kwargs.get("user"):
         user_id = upstream.get_user_id(kwargs.get("user"))
         other_project_ids = upstream.get_member_projects(user_id)
@@ -203,9 +207,9 @@ def get_charges (**kwargs):
             Charge.allocation.has(Allocation.project.has(Project.id.in_(member_project_ids))),
             Charge.user==user),
         Charge.allocation.has(Allocation.project.has(Project.id.in_(owner_project_ids)))))
-    if kwargs.get("project"):
-        project_id = upstream.get_project_id(kwargs.get("project"))
-        charges = charges.filter(Charge.allocation.has(Allocation.project.has(id=project_id)))
+    if kwargs.get("projects"):
+        spec_project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
+        charges = charges.filter(Charge.allocation.has(Allocation.project.has(Project.id.in_(spec_project_ids))))
     if kwargs.get("user"):
         user_id = upstream.get_user_id(kwargs.get("user"))
         charges = charges.filter(Charge.user.has(id=user_id))
