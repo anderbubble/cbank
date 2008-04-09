@@ -13,6 +13,7 @@ import locale
 from sqlalchemy import or_, and_
 
 import clusterbank
+import clusterbank.exceptions
 from clusterbank import upstream
 from clusterbank.model import User, Project, Allocation, Charge, Refund
 
@@ -249,8 +250,9 @@ def get_current_user ():
     except KeyError:
         raise UnknownUser("Unable to determine the current user.")
     username = passwd_entry[0]
-    user = User.by_name(username)
-    if not user:
+    try:
+        user = User.by_name(username)
+    except clusterbank.exceptions.NotFound:
         raise UnknownUser("User '%s' was not found." % username)
     return user
 
