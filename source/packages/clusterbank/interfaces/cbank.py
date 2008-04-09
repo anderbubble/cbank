@@ -27,7 +27,7 @@ from sqlalchemy import or_, and_
 import clusterbank
 import clusterbank.exceptions
 from clusterbank import upstream
-from clusterbank.model import User, Project, Allocation, Charge, Refund
+from clusterbank.model import User, Project, Resource, Allocation, Charge, Refund
 
 class Option (optparse.Option):
     
@@ -80,15 +80,15 @@ argv = OptionParser(usage=os.linesep.join([
 argv.add_option(Option("-p", "--projects", dest="projects", type="csv",
     help="filter by project NAMES", metavar="NAMES"))
 argv.add_option(Option("-u", "--users", dest="users", type="csv",
-    help="filter by user NAME", metavar="NAME"))
-argv.add_option(Option("-r", "--resource", dest="resource",
-    help="filter by resource NAME", metavar="NAME"))
+    help="filter by user NAMES", metavar="NAMES"))
+argv.add_option(Option("-r", "--resources", dest="resources", type="csv",
+    help="filter by resource NAMES", metavar="NAMES"))
 argv.add_option(Option("-a", "--after", dest="after", type="date",
     help="filter by start DATE", metavar="DATE"))
 argv.add_option(Option("-b", "--before", dest="before", type="date",
     help="filter by end DATE", metavar="DATE"))
 try:
-    argv.set_defaults(resource=config.get("cbank", "resource"))
+    argv.set_defaults(resources=config.get("cbank", "resource"))
 except (NoSectionError, NoOptionError):
     pass
 
@@ -109,7 +109,7 @@ class UnknownReport (CbankError):
 def main ():
     options, args = argv.parse_args()
     report = handle_exceptions(get_requested_report, args)
-    handle_exceptions(run, report, projects=options.projects, users=options.users, resource=options.resource, after=options.after, before=options.before)
+    handle_exceptions(run, report, projects=options.projects, users=options.users, resources=options.resources, after=options.after, before=options.before)
 
 def handle_exceptions (func, *args, **kwargs):
     try:
@@ -162,9 +162,9 @@ def get_projects (**kwargs):
         for user_id in user_ids:
             user_project_ids += upstream.get_member_projects(user_id)
         projects = projects.filter(Project.id.in_(set(user_project_ids)))
-    if kwargs.get("resource"):
-        resource_id = upstream.get_resource_id(kwargs.get("resource"))
-        projects = projects.filter(Project.allocations.any(Allocation.resource.has(id=resource_id)))
+    if kwargs.get("resources"):
+        resource_ids = [upstream.get_resource_id(resource) for resource in kwargs.get("resources")]
+        projects = projects.filter(Project.allocations.any(Allocation.resource.has(Resource.id.in_(resource_ids))))
     if kwargs.get("after"):
         projects = projects.filter(or_(
             Project.allocations.any(Allocation.datetime>=kwargs.get("after")),
@@ -192,9 +192,9 @@ def get_allocations (**kwargs):
         for user_id in user_ids:
             user_project_ids += upstream.get_member_projects(user_id)
         allocations = allocations.filter(Allocation.project.has(Project.id.in_(set(user_project_ids))))
-    if kwargs.get("resource"):
-        resource_id = upstream.get_resource_id(kwargs.get("resource"))
-        allocations = allocations.filter(Allocation.resource.has(id=resource_id))
+    if kwargs.get("resources"):
+        resource_ids = [upstream.get_resource_id(resource) for resource in kwargs.get("resources")]
+        allocations = allocations.filter(Allocation.resource.has(Resource.id.in_(resource_ids)))
     if kwargs.get("after") or kwargs.get("before"):
         if kwargs.get("after"):
             allocations = allocations.filter(Allocation.expiration>=kwargs.get("after"))
@@ -221,9 +221,9 @@ def get_charges (**kwargs):
     if kwargs.get("users"):
         user_ids = [upstream.get_user_id(user) for user in kwargs.get("users")]
         charges = charges.filter(Charge.user.has(User.id.in_(user_ids)))
-    if kwargs.get("resource"):
-        resource_id = upstream.get_resource_id(kwargs.get("resource"))
-        charges = charges.filter(Charge.allocation.has(Allocation.resource.has(id=resource_id)))
+    if kwargs.get("resources"):
+        resource_ids = [upstream.get_resource_id(resource) for resource in kwargs.get("resources")]
+        charges = charges.filter(Charge.allocation.has(Allocation.resource.has(Resource.id.in_(resource_ids))))
     if kwargs.get("after"):
         charges = charges.filter(Charge.datetime>=kwargs.get("after"))
     if kwargs.get("before"):
