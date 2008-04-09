@@ -317,6 +317,19 @@ class TestHold (AccountingEntityTester):
         for hold in holds:
             assert hold.allocation in (allocation1, allocation2)
     
+    def test_distributed_zero_amount (self):
+        allocation1 = self.allocation
+        allocation1.amount = 600
+        allocation2 = Allocation(amount=600,
+            project=allocation1.project, resource=allocation1.resource,
+            start=allocation1.start, expiration=allocation1.start)
+        holds = Hold.distributed((allocation1, allocation2), amount=0)
+        clusterbank.model.Session.commit()
+        assert len(holds) == 1, "holds: %i" % len(holds)
+        hold = holds[0]
+        assert hold.amount == 0, "hold: %i" % hold.amount
+        assert hold.allocation in (allocation1, allocation2), "allocation: %s" % hold.allocation
+    
     @raises(ValueError)
     def test_negative_amount (self):
         hold = Hold()
@@ -452,6 +465,19 @@ class TestCharge (AccountingEntityTester):
         assert sum(charge.amount for charge in charges) == 900
         for charge in charges:
             assert charge.allocation in (allocation1, allocation2)
+    
+    def test_distributed_zero_amount (self):
+        allocation1 = self.allocation
+        allocation1.amount = 600
+        allocation2 = Allocation(amount=600,
+            project=allocation1.project, resource=allocation1.resource,
+            start=allocation1.start, expiration=allocation1.start)
+        charges = Charge.distributed((allocation1, allocation2), amount=0)
+        clusterbank.model.Session.commit()
+        assert len(charges) == 1, "charges: %i" % len(charges)
+        charge = charges[0]
+        assert charge.amount == 0, "charge: %i" % charge.amount
+        assert charge.allocation in (allocation1, allocation2), "allocation: %s" % charge.allocation
     
     def test_distributed_with_insufficient_allocation (self):
         allocation1 = self.allocation
