@@ -6,10 +6,17 @@ import pwd
 from itertools import izip
 import string
 from ConfigParser import SafeConfigParser as ConfigParser, NoSectionError, NoOptionError
-from optparse import OptionParser, Option
+import optparse
+from optparse import OptionParser
 from warnings import warn
 import locale
 from datetime import datetime
+try:
+    strptime = datetime.strprime
+except AttributeError:
+    import time
+    def strptime (value, format):
+        return datetime(*time.strptime(value, format)[0:6])
 
 from sqlalchemy import or_, and_
 
@@ -17,6 +24,31 @@ import clusterbank
 import clusterbank.exceptions
 from clusterbank import upstream
 from clusterbank.model import User, Project, Allocation, Charge, Refund
+
+class Option (optparse.Option):
+    
+    DATE_FORMATS = [
+        "%Y-%m-%d",
+        "%y-%m-%d",
+        "%m/%d/%Y",
+        "%m/%d/%Y",
+        "%Y%m%d",
+    ]
+    
+    def check_date (self, opt, value):
+        """Return a datetime from YYYY-MM-DD."""
+        for format in self.DATE_FORMATS:
+            try:
+                return strptime(value, format)
+            except ValueError:
+                continue
+        raise optparse.OptionValueError(
+            "option %s: invalid date: %r" % (opt, value))
+    
+    TYPES = optparse.Option.TYPES + ("date", )
+    
+    TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
+    TYPE_CHECKER['date'] = check_date
 
 locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 
@@ -43,6 +75,10 @@ argv.add_option(Option("-u", "--user", dest="user",
     help="filter by user NAME", metavar="NAME"))
 argv.add_option(Option("-r", "--resource", dest="resource",
     help="filter by resource NAME", metavar="NAME"))
+argv.add_option(Option("-a", "--after", dest="after", type="date",
+    help="filter by start DATE", metavar="DATE"))
+argv.add_option(Option("-b", "--before", dest="before", type="date",
+    help="filter by end DATE", metavar="DATE"))
 try:
     argv.set_defaults(resource=config.get("cbank", "resource"))
 except (NoSectionError, NoOptionError):
@@ -65,7 +101,7 @@ class UnknownReport (CbankError):
 def main ():
     options, args = argv.parse_args()
     report = handle_exceptions(get_requested_report, args)
-    handle_exceptions(run, report, project=options.project, user=options.user, resource=options.resource)
+    handle_exceptions(run, report, project=options.project, user=options.user, resource=options.resource, after=options.after, before=options.before)
 
 def handle_exceptions (func, *args, **kwargs):
     try:
@@ -119,6 +155,18 @@ def get_projects (**kwargs):
     if kwargs.get("resource"):
         resource_id = upstream.get_resource_id(kwargs.get("resource"))
         projects = projects.filter(Project.allocations.any(Allocation.resource.has(id=resource_id)))
+    if kwargs.get("after"):
+        projects = projects.filter(or_(
+            Project.allocations.any(Allocation.datetime>=kwargs.get("after")),
+            Project.allocations.any(Allocation.holds.any(datetime>=kwargs.get("after"))),
+            Project.allocations.any(Allocation.charges.any(datetime>=kwargs.get("after"))),
+            Project.allocations.any(Allocation.charges.any(Charge.refunds.any(datetime>=kwargs.get("after"))))))
+    if kwargs.get("before"):
+        projects = projects.filter(or_(
+            Project.allocations.any(Allocation.datetime<kwargs.get("before")),
+            Project.allocations.any(Allocation.holds.any(datetime<kwargs.get("before"))),
+            Project.allocations.any(Allocation.charges.any(datetime<kwargs.get("before"))),
+            Project.allocations.any(Allocation.charges.any(Charge.refunds.any(datetime<kwargs.get("before"))))))
     return projects
 
 def get_allocations (**kwargs):
@@ -135,6 +183,15 @@ def get_allocations (**kwargs):
     if kwargs.get("resource"):
         resource_id = upstream.get_resource_id(kwargs.get("resource"))
         allocations = allocations.filter(Allocation.resource.has(id=resource_id))
+    if kwargs.get("after") or kwargs.get("before"):
+        if kwargs.get("after"):
+            allocations = allocations.filter(Allocation.expiration>=kwargs.get("after"))
+        if kwargs.get("before"):
+            allocations = allocations.filter(Allocation.start<kwargs.get("before"))
+    else:
+        now = datetime.now()
+        allocations = allocations.filter(Allocation.start<=now)
+        allocations = allocations.filter(Allocation.expiration>now)
     return allocations
 
 def get_charges (**kwargs):
@@ -155,6 +212,10 @@ def get_charges (**kwargs):
     if kwargs.get("resource"):
         resource_id = upstream.get_resource_id(kwargs.get("resource"))
         charges = charges.filter(Charge.allocation.has(Allocation.resource.has(id=resource_id)))
+    if kwargs.get("after"):
+        charges = charges.filter(Charge.datetime>=kwargs.get("after"))
+    if kwargs.get("before"):
+        charges = charges.filter(Charge.datetime<kwargs.get("before"))
     return charges
 
 def display_projects (projects):
