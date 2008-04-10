@@ -50,7 +50,10 @@ class Option (optparse.Option):
             "option %s: invalid date: %r" % (opt, value))
     
     def check_csv (self, opt, value):
-        return value.split(",")
+        if value:
+            return value.split(",")
+        else:
+            return []
     
     TYPES = optparse.Option.TYPES + ("date", "csv")
     
