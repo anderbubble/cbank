@@ -282,14 +282,14 @@ def display_charges (charges):
     if not charges.count():
         print >> sys.stderr, "No charges found."
         return
-    format = Formatter([10, 10, 15, (10, string.rjust)])
-    print >> sys.stderr, format(["Date", "Resource", "Project", "Amount"])
+    format = Formatter([10, 10, 15, 8, (10, string.rjust)])
+    print >> sys.stderr, format(["Date", "Resource", "Project", "User", "Amount"])
     print >> sys.stderr, format.linesep
     for charge in charges:
-        print format([charge.datetime.strftime("%Y-%m-%d"), charge.allocation.resource, charge.allocation.project, display_units(charge.effective_amount)])
-    print >> sys.stderr, format(["", "", "", "-"*10])
+        print format([charge.datetime.strftime("%Y-%m-%d"), charge.allocation.resource, charge.allocation.project, charge.user, display_units(charge.effective_amount)])
+    print >> sys.stderr, format(["", "", "", "", "-"*10])
     total = display_units(int(charges.sum(Charge.amount) or 0) - int(charges.join("refunds").sum(Refund.amount) or 0))
-    print >> sys.stderr, format(["", "", "", total]), "(total)"
+    print >> sys.stderr, format(["", "", "", "", total]), "(total)"
     if unit_definition:
         print >> sys.stderr, unit_definition
 
