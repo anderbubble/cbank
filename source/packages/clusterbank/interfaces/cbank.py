@@ -72,6 +72,12 @@ except (NoSectionError, NoOptionError):
     unit_definition = None
 else:
     unit_definition = "Units are in %s." % unit_label
+try:
+    admins = config.get("cbank", "admins")
+except (NoSectionError, NoOptionError):
+    admins = []
+else:
+    admins = admins.split(",")
 
 reports_available = ["projects", "allocations", "charges"]
 
@@ -154,8 +160,10 @@ def get_requested_report (args):
 
 def get_projects (**kwargs):
     user = get_current_user()
-    project_ids = [project.id for project in user.projects]
-    projects = Project.query.filter(Project.id.in_(project_ids))
+    projects = Project.query()
+    if user.name not in admins or not kwargs.get("projects"):
+        project_ids = [project.id for project in user.projects]
+        projects = projects.filter(Project.id.in_(project_ids))
     if kwargs.get("projects"):
         spec_project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
         projects = projects.filter(Project.id.in_(spec_project_ids))
@@ -184,8 +192,10 @@ def get_projects (**kwargs):
 
 def get_allocations (**kwargs):
     user = get_current_user()
-    project_ids = [project.id for project in user.projects]
-    allocations = Allocation.query.filter(Allocation.project.has(Project.id.in_(project_ids)))
+    allocations = Allocation.query()
+    if user.name not in admins or not kwargs.get("projects"):
+        project_ids = [project.id for project in user.projects]
+        allocations = allocations.filter(Allocation.project.has(Project.id.in_(project_ids)))
     if kwargs.get("projects"):
         spec_project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
         allocations = allocations.filter(Allocation.project.has(Project.id.in_(spec_project_ids)))
@@ -211,13 +221,15 @@ def get_allocations (**kwargs):
 
 def get_charges (**kwargs):
     user = get_current_user()
-    member_project_ids = [project.id for project in user.projects]
-    owner_project_ids = [project.id for project in user.projects_owned]
-    charges = Charge.query.filter(or_(
-        and_(
-            Charge.allocation.has(Allocation.project.has(Project.id.in_(member_project_ids))),
-            Charge.user==user),
-        Charge.allocation.has(Allocation.project.has(Project.id.in_(owner_project_ids)))))
+    charges = Charge.query()
+    if user.name not in admins or not kwargs.get("projects"):
+        member_project_ids = [project.id for project in user.projects]
+        owner_project_ids = [project.id for project in user.projects_owned]
+        charges = charges.filter(or_(
+            and_(
+                Charge.allocation.has(Allocation.project.has(Project.id.in_(member_project_ids))),
+                Charge.user==user),
+            Charge.allocation.has(Allocation.project.has(Project.id.in_(owner_project_ids)))))
     if kwargs.get("projects"):
         spec_project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
         charges = charges.filter(Charge.allocation.has(Allocation.project.has(Project.id.in_(spec_project_ids))))
