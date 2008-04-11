@@ -35,7 +35,7 @@ class Option (optparse.Option):
         "%Y-%m-%d",
         "%y-%m-%d",
         "%m/%d/%Y",
-        "%m/%d/%Y",
+        "%m/%d/%y",
         "%Y%m%d",
     ]
     
