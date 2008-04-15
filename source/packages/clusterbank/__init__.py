@@ -5,13 +5,10 @@ A library for managing and accounting for the use of resources.
 Packages:
 model -- data model
 scripting -- interface layers
-upstream -- pluggable upstream module (reflected in the model)
 """
 
 import warnings
 from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
-
-import clusterbank.upstream
 
 __all__ = ["model", "interfaces", "upstream"]
 
