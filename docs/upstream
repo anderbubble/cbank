@@ -25,3 +25,13 @@ get_user_id (user_name) => user_id
 get_user_name (user_id) => user_name
 get_member_projects (user_id) => [project_id_1, project_id_2, ..., project_id_n]
 get_owner_projects (user_id) => [project_id_1, project_id_2, ..., project_id_n]
+
+Exceptional conditions:
+
+When a call is made for an entity that does not exist, None, or an empty list
+([]) should be returned as appropriate.
+
+Examples:
+
+get_project_id(does_not_exist) => None
+get_project_members(does_not_exist) => []
