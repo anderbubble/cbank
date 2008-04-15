@@ -132,16 +132,16 @@ def handle_exceptions (func, *args, **kwargs):
         print >> sys.stderr, e
         sys.exit(1)
 
-def run (report, **kwargs):
+def run (report, extra=False, **kwargs):
     if report == "allocations":
         allocations = get_allocations(**kwargs)
-        display_allocations(allocations, **kwargs)
+        display_allocations(allocations, extra=extra)
     elif report == "projects":
         projects = get_projects(**kwargs)
-        display_projects(projects, **kwargs)
+        display_projects(projects, extra=extra)
     elif report == "charges":
         charges = get_charges(**kwargs)
-        display_charges(charges, **kwargs)
+        display_charges(charges, extra=extra)
     else:
         raise UnknownReport(report)
 
