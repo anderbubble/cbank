@@ -1,7 +1,8 @@
 # configuration will be read from /etc/clusterbank.conf
 
 [main]
-# database=engine://user:pass@host:port/database
+database=engine://user:pass@host:port/schema
 
 [upstream]
-# module=sample_upstream
+# module=clusterbank.upstream.default
+database=engine://user:pass@host:port/schema

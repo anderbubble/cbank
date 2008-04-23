@@ -6,13 +6,10 @@ Resource -- upstream resource
 User -- upstream user
 """
 
+from ConfigParser import SafeConfigParser as ConfigParser
+
 from sqlalchemy import MetaData, Table, Column, ForeignKey
 import sqlalchemy.types as types
-# types.TEXT was renamed types.Text in SA 0.4.3
-try:
-    types.Text
-except AttributeError:
-    types.Text = types.TEXT
 import sqlalchemy.exceptions as exceptions
 from sqlalchemy.orm import sessionmaker, scoped_session, relation
 
@@ -195,3 +192,15 @@ Session.mapper(Resource, resources_table, properties=dict(
     id = resources_table.c.id,
     name = resources_table.c.name,
 ))
+
+def configure ():
+    config = ConfigParser()
+    config.read(["/etc/clusterbank.conf"])
+    uri = config.get("upstream", "database")
+    metadata.bind = create_engine(uri)
+    Session.bind = metadata.bind
+
+try:
+    configure()
+except:
+    pass
