@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 import clusterbank
 import clusterbank.model
 from clusterbank.model import Project, Resource
-import upstream_example as example
+import clusterbank.upstream.default as example
 
 __all__ = ["test_model", "test_interfaces"]
 
