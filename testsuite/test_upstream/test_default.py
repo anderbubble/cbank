@@ -2,8 +2,8 @@ from nose.tools import raises
 
 from sqlalchemy import create_engine
 
-from clusterbank.upstream.default import *
-from clusterbank.upstream.default import Session, metadata, User, Project, Resource
+from clusterbank.upstreams.default import *
+from clusterbank.upstreams.default import Session, metadata, User, Project, Resource
 
 
 class UpstreamEntityTester (object):

@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 import clusterbank
 import clusterbank.model
 from clusterbank.model import Project, Resource
-import clusterbank.upstream.default as example
+import clusterbank.upstreams.default as upstream
 
 __all__ = ["test_model", "test_interfaces"]
 
@@ -11,21 +11,21 @@ def setup ():
     # bind the local database to memory
     clusterbank.model.metadata.bind = create_engine("sqlite:///:memory:")
     # create the upstream database
-    example.metadata.bind = create_engine("sqlite:///:memory:")
-    example.metadata.create_all()
-    example.User(id=1, name="monty")
-    example.Project(id=1, name="grail")
-    example.Resource(id=1, name="spam")
-    example.Session.commit()
+    upstream.metadata.bind = create_engine("sqlite:///:memory:")
+    upstream.metadata.create_all()
+    upstream.User(id=1, name="monty")
+    upstream.Project(id=1, name="grail")
+    upstream.Resource(id=1, name="spam")
+    upstream.Session.commit()
     # attach an upstream module
-    clusterbank.upstream = example
+    clusterbank.upstream = upstream
 
 def teardown ():
     # clean up the userbase session
-    example.Session.close()
+    upstream.Session.close()
     # destroy the upstream database
-    example.metadata.drop_all()
-    example.metadata.bind = None
+    upstream.metadata.drop_all()
+    upstream.metadata.bind = None
     # detach the upstream module
     clusterbank.upstream = None
     # clean up the local session

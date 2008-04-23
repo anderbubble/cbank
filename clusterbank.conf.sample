@@ -4,7 +4,7 @@
 database=engine://user:pass@host:port/schema
 
 [upstream]
-# module=clusterbank.upstream.default
+# module=clusterbank.upstreams.default
 database=engine://user:pass@host:port/schema
 
 [cbank]
