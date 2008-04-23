@@ -6,3 +6,8 @@ database=engine://user:pass@host:port/schema
 [upstream]
 # module=clusterbank.upstream.default
 database=engine://user:pass@host:port/schema
+
+[cbank]
+# unit_factor=1/60
+# unit_label=hours
+# resource=<resource_name>
