@@ -273,23 +273,27 @@ def display_allocations (allocations, **kwargs):
     if not allocations.count():
         print >> sys.stderr, "No allocations found."
         return
-    widths = [10, 10, 15, (15, string.rjust), (15, string.rjust), 7]
-    header = ["Expires", "Resource", "Project", "Allocated", "Available", "Comment"]
+    widths = [10, 10, 10, 15, (15, string.rjust), (15, string.rjust), 7]
+    header = ["Starts", "Expires", "Resource", "Project", "Allocated", "Available", "Comment"]
     if not kwargs.get("extra"):
-        widths = widths[:-1]
-        header = header[:-1]
+        widths = widths[1:-1]
+        header = header[1:-1]
     format = Formatter(widths)
     print >> sys.stderr, format(header)
     print >> sys.stderr, format.linesep
     for allocation in allocations:
-        data = [allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, display_units(allocation.amount), display_units(allocation.amount_available), allocation.comment]
+        data = [allocation.start.strftime("%Y-%m-%d"), allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, display_units(allocation.amount), display_units(allocation.amount_available), allocation.comment]
         if not kwargs.get("extra"):
-            data = data[:-1]
+            data = data[1:-1]
         print format(data)
-    print >> sys.stderr, format(["", "", "", "-"*15, "-"*15])
     total_allocated = int(allocations.sum(Allocation.amount) or 0)
     total_available = sum([allocation.amount_available for allocation in allocations])
-    print >> sys.stderr, format(["", "", "", display_units(total_allocated), display_units(total_available)]), "(total)"
+    if kwargs.get("extra"):
+        print >> sys.stderr, format(["", "", "", "", "-"*15, "-"*15])
+        print >> sys.stderr, format(["", "", "", "", display_units(total_allocated), display_units(total_available)]), "(total)"
+    else:
+        print >> sys.stderr, format(["", "", "", "-"*15, "-"*15])
+        print >> sys.stderr, format(["", "", "", display_units(total_allocated), display_units(total_available)]), "(total)"
     if unit_definition:
         print >> sys.stderr, unit_definition
 
