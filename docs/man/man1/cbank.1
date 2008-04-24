@@ -99,6 +99,9 @@ Generate a charge report for project "foo" on all resources, nullifying any defa
 Generate an allocation report for projects having members "bar" and "baz" (and the current user):
 .Pp
 .D1 cbank allocations -u bar,baz
+.Pp
+Generate a report of all charges made for the "grail" project by "monty" on or after 16 April 2008 for any resource.
+.D1 cbank charges -p grail --resource= --extra-data -u monty -a 2008-04-16
 .Sh AUTHORS
 .An Jonathon Anderson
 .Ad janderso@alcf.anl.gov
