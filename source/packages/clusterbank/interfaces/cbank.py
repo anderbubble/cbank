@@ -297,7 +297,7 @@ def display_charges (charges, **kwargs):
     if not charges.count():
         print >> sys.stderr, "No charges found."
         return
-    widths = [10, 10, 15, 8, (10, string.rjust), 7]
+    widths = [10, 10, 15, 8, (15, string.rjust), 7]
     header = ["Date", "Resource", "Project", "User", "Amount", "Comment"]
     if not kwargs.get("extra"):
         widths = widths[:-1]
@@ -310,7 +310,7 @@ def display_charges (charges, **kwargs):
         if not kwargs.get("extra"):
             data = data[:-1]
         print format(data)
-    print >> sys.stderr, format(["", "", "", "", "-"*10])
+    print >> sys.stderr, format(["", "", "", "", "-"*15])
     total = int(charges.sum(Charge.amount) or 0) - int(charges.join("refunds").sum(Refund.amount) or 0)
     print >> sys.stderr, format(["", "", "", "", display_units(total)]), "(total)"
     if unit_definition:
