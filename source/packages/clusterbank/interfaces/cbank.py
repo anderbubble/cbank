@@ -286,6 +286,10 @@ def display_allocations (allocations, **kwargs):
         if not kwargs.get("extra"):
             data = data[:-1]
         print format(data)
+    print >> sys.stderr, format(["", "", "", "-"*15, "-"*15])
+    total_allocated = int(allocations.sum(Allocation.amount) or 0)
+    total_available = sum([allocation.amount_available for allocation in allocations])
+    print >> sys.stderr, format(["", "", "", display_units(total_allocated), display_units(total_available)]), "(total)"
     if unit_definition:
         print >> sys.stderr, unit_definition
 
@@ -307,8 +311,8 @@ def display_charges (charges, **kwargs):
             data = data[:-1]
         print format(data)
     print >> sys.stderr, format(["", "", "", "", "-"*10])
-    total = display_units(int(charges.sum(Charge.amount) or 0) - int(charges.join("refunds").sum(Refund.amount) or 0))
-    print >> sys.stderr, format(["", "", "", "", total]), "(total)"
+    total = int(charges.sum(Charge.amount) or 0) - int(charges.join("refunds").sum(Refund.amount) or 0)
+    print >> sys.stderr, format(["", "", "", "", display_units(total)]), "(total)"
     if unit_definition:
         print >> sys.stderr, unit_definition
 
