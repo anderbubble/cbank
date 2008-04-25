@@ -10,6 +10,7 @@
  * added an additional example in the cbank manpage
  * added start date to the cbank allocation report (in --extra-data)
  * removed arbitrary restrictions on admin reports
+ * removed cbank_old
 
 -- 0.2.14 --
 
