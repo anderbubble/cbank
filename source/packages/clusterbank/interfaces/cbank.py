@@ -173,18 +173,16 @@ def get_requested_report (args):
 def get_projects (**kwargs):
     user = get_current_user()
     projects = Project.query()
-    if user.name not in admins or not kwargs.get("projects"):
+    if user.name not in admins or not (kwargs.get("users") or kwargs.get("projects")):
         project_ids = [project.id for project in user.projects]
         projects = projects.filter(Project.id.in_(project_ids))
     if kwargs.get("projects"):
-        spec_project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
-        projects = projects.filter(Project.id.in_(spec_project_ids))
+        project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
+        projects = projects.filter(Project.id.in_(project_ids))
     if kwargs.get("users"):
         user_ids = [upstream.get_user_id(user) for user in kwargs.get("users")]
-        user_project_ids = []
-        for user_id in user_ids:
-            user_project_ids += upstream.get_member_projects(user_id)
-        projects = projects.filter(Project.id.in_(set(user_project_ids)))
+        project_ids = set(sum([upstream.get_member_projects(user_id) for user_id in user_ids], []))
+        projects = projects.filter(Project.id.in_(project_ids))
     if kwargs.get("resources"):
         resource_ids = [upstream.get_resource_id(resource) for resource in kwargs.get("resources")]
         projects = projects.filter(Project.allocations.any(Allocation.resource.has(Resource.id.in_(resource_ids))))
