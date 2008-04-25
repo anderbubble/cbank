@@ -173,7 +173,7 @@ def get_requested_report (args):
 def get_projects (**kwargs):
     user = get_current_user()
     projects = Project.query()
-    if user.name not in admins or not (kwargs.get("users") or kwargs.get("projects")):
+    if user.name not in admins:
         project_ids = [project.id for project in user.projects]
         projects = projects.filter(Project.id.in_(project_ids))
     if kwargs.get("projects"):
@@ -203,7 +203,7 @@ def get_projects (**kwargs):
 def get_allocations (**kwargs):
     user = get_current_user()
     allocations = Allocation.query()
-    if user.name not in admins or not (kwargs.get("users") or kwargs.get("projects")):
+    if user.name not in admins:
         project_ids = [project.id for project in user.projects]
         allocations = allocations.filter(Allocation.project.has(Project.id.in_(project_ids)))
     if kwargs.get("projects"):
@@ -230,7 +230,7 @@ def get_allocations (**kwargs):
 def get_charges (**kwargs):
     user = get_current_user()
     charges = Charge.query()
-    if user.name not in admins or not kwargs.get("projects"):
+    if user.name not in admins:
         member_project_ids = [project.id for project in user.projects]
         owner_project_ids = [project.id for project in user.projects_owned]
         charges = charges.filter(or_(
@@ -239,8 +239,8 @@ def get_charges (**kwargs):
                 Charge.user==user),
             Charge.allocation.has(Allocation.project.has(Project.id.in_(owner_project_ids)))))
     if kwargs.get("projects"):
-        spec_project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
-        charges = charges.filter(Charge.allocation.has(Allocation.project.has(Project.id.in_(spec_project_ids))))
+        project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
+        charges = charges.filter(Charge.allocation.has(Allocation.project.has(Project.id.in_(project_ids))))
     if kwargs.get("users"):
         user_ids = [upstream.get_user_id(user) for user in kwargs.get("users")]
         charges = charges.filter(Charge.user.has(User.id.in_(user_ids)))
