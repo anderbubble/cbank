@@ -203,18 +203,16 @@ def get_projects (**kwargs):
 def get_allocations (**kwargs):
     user = get_current_user()
     allocations = Allocation.query()
-    if user.name not in admins or not kwargs.get("projects"):
+    if user.name not in admins or not (kwargs.get("users") or kwargs.get("projects")):
         project_ids = [project.id for project in user.projects]
         allocations = allocations.filter(Allocation.project.has(Project.id.in_(project_ids)))
     if kwargs.get("projects"):
-        spec_project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
-        allocations = allocations.filter(Allocation.project.has(Project.id.in_(spec_project_ids)))
+        project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
+        allocations = allocations.filter(Allocation.project.has(Project.id.in_(project_ids)))
     if kwargs.get("users"):
         user_ids = [upstream.get_user_id(user) for user in kwargs.get("users")]
-        user_project_ids = []
-        for user_id in user_ids:
-            user_project_ids += upstream.get_member_projects(user_id)
-        allocations = allocations.filter(Allocation.project.has(Project.id.in_(set(user_project_ids))))
+        project_ids = sum([upstream.get_member_projects(user_id) for user_id in user_ids], [])
+        allocations = allocations.filter(Allocation.project.has(Project.id.in_(set(project_ids))))
     if kwargs.get("resources"):
         resource_ids = [upstream.get_resource_id(resource) for resource in kwargs.get("resources")]
         allocations = allocations.filter(Allocation.resource.has(Resource.id.in_(resource_ids)))
