@@ -1,4 +1,48 @@
- * charges and holds can have a user associated
+-- 0.2.15 --
+
+ * moved SQLAlchemy version dependency to 0.4.5
+ * moved the example upstream module into clusterbank as a default
+ * added autoconfiguration to the default upstream module
+ * added cbank examples to clusterbank.conf.sample
+ * renamed upstream package to upstreams to avoid name collision
+ * added a "total" line to the cbank allocation report
+ * widened the "amount" column in the cbank charge report
+ * added an additional example in the cbank manpage
+ * added start date to the cbank allocation report (in --extra-data)
+ * removed arbitrary restrictions on admin reports
+
+-- 0.2.14 --
+
+ * corrected cbank error handling for unknown user
+ * made project report the default cbank report
+ * removed old cbank testsuite
+ * defined a base exception for clusterbank
+ * added date ranges (--after, --before) to cbank
+ * entity filters are now csv-plural (--users, --projects, --resources)
+ * added admins to cbank
+ * added user column to cbank charge report
+ * added the --extra-data flag to cbank (displays comment field)
+ * documented cbank in a manpage
+ * documented the upstream interface
+
+-- 0.2.13 --
+
+ * updated the upstream example for the new upstream interface
+ * replaced cbank2 with a more user-friendly version
+
+-- 0.2.12 --
+
+ * cbank can transform displayed and interpreted units
+ * config file can specify a default recource for cbank
+ * fixed bugs in cbank filters
+ * added headers to cbank
+ * display date charged in cbank
+ * cbank gives a usage message on error
+ * cbank filters by current user by default
+ * admin privilege management in cbank
+ * charges and holds can have an associated user
+ * added users to the upstream interface
+ * simplified the upstream interface
  * changed upstream module interface to functions only (#133)
 
 -- 0.2.11 --
