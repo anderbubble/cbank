@@ -118,10 +118,17 @@ class UnknownReport (CbankError):
     def __str__ (self):
         return "cbank: unknown report: %s" % CbankError.__str__(self)
 
+class MisusedOption (CbankError):
+    
+    def __str__ (self):
+        return "cbank: misused option: %s" % CbankError.__str__(self)
+
 def main ():
     options, args = argv.parse_args()
     report = handle_exceptions(get_requested_report, args)
-    handle_exceptions(run, report, projects=options.projects, users=options.users, resources=options.resources, after=options.after, before=options.before, extra=options.extra)
+    handle_exceptions(run, report, projects=options.projects,
+        users=options.users, resources=options.resources, after=options.after,
+        before=options.before, extra=options.extra)
 
 def handle_exceptions (func, *args, **kwargs):
     try:
@@ -133,12 +140,14 @@ def handle_exceptions (func, *args, **kwargs):
         sys.exit(1)
 
 def run (report, extra=False, **kwargs):
-    if report == "allocations":
+    if report == "projects":
+        projects = get_projects(**kwargs)
+        if extra:
+            raise MisusedOption("project report has no extra data")
+        display_projects(projects)
+    elif report == "allocations":
         allocations = get_allocations(**kwargs)
         display_allocations(allocations, extra=extra)
-    elif report == "projects":
-        projects = get_projects(**kwargs)
-        display_projects(projects, extra=extra)
     elif report == "charges":
         charges = get_charges(**kwargs)
         display_charges(charges, extra=extra)
@@ -248,14 +257,14 @@ def get_charges (**kwargs):
         charges = charges.filter(Charge.datetime<kwargs.get("before"))
     return charges
 
-def display_projects (projects, **kwargs):
+def display_projects (projects):
     if not projects.count():
         print >> sys.stderr, "No projects found."
         return
     user = get_current_user()
     format = Formatter([15, 7, 5, (15, string.rjust), (15, string.rjust)])
     print >> sys.stderr, format(["Name", "Members", "Owner", "Allocated", "Available"])
-    print >> sys.stderr, format.linesep
+    print >> sys.stderr, format.linesep()
     for project in projects:
         if user in project.owners:
             is_owner = "yes"
@@ -269,54 +278,54 @@ def display_projects (projects, **kwargs):
     if unit_definition:
         print >> sys.stderr, unit_definition
 
-def display_allocations (allocations, **kwargs):
+def display_allocations (allocations, extra=False):
     if not allocations.count():
         print >> sys.stderr, "No allocations found."
         return
-    widths = [10, 10, 10, 15, (15, string.rjust), (15, string.rjust), 7]
-    header = ["Starts", "Expires", "Resource", "Project", "Allocated", "Available", "Comment"]
-    if not kwargs.get("extra"):
-        widths = widths[1:-1]
-        header = header[1:-1]
+    if extra:
+        widths = [10, 10, 10, 15, (15, string.rjust), (15, string.rjust), 7]
+        header = ["Starts", "Expires", "Resource", "Project", "Allocated", "Available", "Comment"]
+        def get_data (allocation):
+            return [allocation.start.strftime("%Y-%m-%d"), allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, display_units(allocation.amount), display_units(allocation.amount_available), allocation.comment]
+    else:
+        widths = [10, 10, 15, (15, string.rjust), (15, string.rjust)]
+        header = ["Expires", "Resource", "Project", "Allocated", "Available"]
+        def get_data (allocation):
+            return [allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, display_units(allocation.amount), display_units(allocation.amount_available)]
     format = Formatter(widths)
     print >> sys.stderr, format(header)
-    print >> sys.stderr, format.linesep
+    print >> sys.stderr, format.linesep()
     for allocation in allocations:
-        data = [allocation.start.strftime("%Y-%m-%d"), allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, display_units(allocation.amount), display_units(allocation.amount_available), allocation.comment]
-        if not kwargs.get("extra"):
-            data = data[1:-1]
-        print format(data)
+        print format(get_data(allocation))
+    print >> sys.stderr, format.linesep(header.index("Allocated"), header.index("Available"))
     total_allocated = int(allocations.sum(Allocation.amount) or 0)
     total_available = sum([allocation.amount_available for allocation in allocations])
-    if kwargs.get("extra"):
-        print >> sys.stderr, format(["", "", "", "", "-"*15, "-"*15])
-        print >> sys.stderr, format(["", "", "", "", display_units(total_allocated), display_units(total_available)]), "(total)"
-    else:
-        print >> sys.stderr, format(["", "", "", "-"*15, "-"*15])
-        print >> sys.stderr, format(["", "", "", display_units(total_allocated), display_units(total_available)]), "(total)"
+    print >> sys.stderr, format([""]*header.index("Allocated") + [display_units(total_allocated), display_units(total_available)]), "(total)"
     if unit_definition:
         print >> sys.stderr, unit_definition
 
-def display_charges (charges, **kwargs):
+def display_charges (charges, extra=False):
     if not charges.count():
         print >> sys.stderr, "No charges found."
         return
-    widths = [10, 10, 15, 8, (15, string.rjust), 7]
-    header = ["Date", "Resource", "Project", "User", "Amount", "Comment"]
-    if not kwargs.get("extra"):
-        widths = widths[:-1]
-        header = header[:-1]
+    if extra:
+        widths = [10, 10, 15, 8, (15, string.rjust), 7]
+        header = ["Date", "Resource", "Project", "User", "Amount", "Comment"]
+        def get_data (charge):
+            return [charge.datetime.strftime("%Y-%m-%d"), charge.allocation.resource, charge.allocation.project, charge.user, display_units(charge.effective_amount), charge.comment]
+    else:
+        widths = [10, 10, 15, 8, (15, string.rjust)]
+        header = ["Date", "Resource", "Project", "User", "Amount"]
+        def get_data (charge):
+            return [charge.datetime.strftime("%Y-%m-%d"), charge.allocation.resource, charge.allocation.project, charge.user, display_units(charge.effective_amount)]
     format = Formatter(widths)
     print >> sys.stderr, format(header)
-    print >> sys.stderr, format.linesep
+    print >> sys.stderr, format.linesep()
     for charge in charges:
-        data = [charge.datetime.strftime("%Y-%m-%d"), charge.allocation.resource, charge.allocation.project, charge.user, display_units(charge.effective_amount), charge.comment]
-        if not kwargs.get("extra"):
-            data = data[:-1]
-        print format(data)
-    print >> sys.stderr, format(["", "", "", "", "-"*15])
+        print format(get_data(charge))
+    print >> sys.stderr, format.linesep(header.index("Amount"))
     total = int(charges.sum(Charge.amount) or 0) - int(charges.join("refunds").sum(Refund.amount) or 0)
-    print >> sys.stderr, format(["", "", "", "", display_units(total)]), "(total)"
+    print >> sys.stderr, format([""]*header.index("Amount") + [display_units(total)]), "(total)"
     if unit_definition:
         print >> sys.stderr, unit_definition
 
@@ -363,12 +372,14 @@ class Formatter (object):
     
     def format (self, args):
         assert len(args) <= len(self.cols), "Too many arguments to format."
-        return self.sep.join([align(str(arg), width) for (arg, (width, align)) in izip(args, self.cols)])
+        return self.sep.join([align(str(arg), width) for (arg, (width, align)) in zip(args, self.cols)])
     
-    def _get_linesep (self):
-        return self.format(["-"*width for (width, align) in self.cols])
-    
-    linesep = property(_get_linesep)
+    def linesep (self, *args):
+        if not args:
+            cols = range(len(self.cols))
+        else:
+            cols = args
+        return self.format([((x in cols) and "-" or " ")*width for ((width, align), x) in zip(self.cols, range(len(self.cols)))])
 
 def get_current_user ():
     uid = os.getuid()
