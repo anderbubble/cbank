@@ -18,7 +18,7 @@
 generates reports based on data stored in the clusterbank database.
 The
 .Ar report
-argument specifies which report to generate. Reports available are "projects" (default), "allocations", and "charges".
+argument specifies which report to generate. Reports available are "usage" (default), "projects" , "allocations", and "charges".
 .Pp
 The Options are as follows: 
 .Bl -tag
@@ -62,7 +62,7 @@ Include extra data stored with the record in the report (if available).
 .Sh ENVIRONMENT
 Reports are restricted based on the uid of the user running
 .Nm .
-Project members can generate the project and allocation reports for their projects,
+Project members can generate the usage, project, and allocation reports for their projects,
 and can generate charge reports for the charges that they made. Project owners
 can generate charge reports for all charges in the project. Admins can generate
 all reports.
@@ -85,11 +85,15 @@ A description of the units displayed to be included at the bottom of the report.
 A default resource name to report data for.
 .El
 .Sh EXAMPLES
-Generate the default project report:
+Generate the default usage report:
 .Pp
 .D1 cbank
 or
-.D1 cbank projects
+.D1 cbank usage
+.Pp
+Generate a usage report for all usage during April 2008:
+.Pp
+.D1 cbank usage -a 2008-04-01 -b 2008-05-01
 .Pp
 Generate a charge report for project "foo" on all resources, nullifying any default resource specified in
 .Pa /etc/clusterbank.conf :
