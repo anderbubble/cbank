@@ -163,7 +163,7 @@ def get_requested_report (args):
     try:
         requested_report = args[0]
     except IndexError:
-        return "projects" # default report type
+        return "usage" # default report type
     else:
         possible_reports = [
             report for report in reports_available
