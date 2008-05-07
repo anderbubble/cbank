@@ -1,3 +1,5 @@
+ * added a new report, "usage" (also available as "use")
+ * fixed date ranges in the projects report
  * require charges to exist within their allocation
 
 -- 0.2.15 --

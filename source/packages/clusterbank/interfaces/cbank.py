@@ -27,7 +27,7 @@ from sqlalchemy import or_, and_
 import clusterbank
 import clusterbank.exceptions
 from clusterbank import upstream
-from clusterbank.model import User, Project, Resource, Allocation, Charge, Refund
+from clusterbank.model import User, Project, Resource, Allocation, Hold, Charge, Refund
 
 class Option (optparse.Option):
     
@@ -79,7 +79,7 @@ except (NoSectionError, NoOptionError):
 else:
     admins = admins.split(",")
 
-reports_available = ["projects", "allocations", "charges"]
+reports_available = ["use", "usage", "projects", "allocations", "charges"]
 
 argv = OptionParser(usage=os.linesep.join([
     "cbank [options] [report]",
@@ -140,7 +140,12 @@ def handle_exceptions (func, *args, **kwargs):
         sys.exit(1)
 
 def run (report, extra=False, **kwargs):
-    if report == "projects":
+    if report in ("use", "usage"):
+        usage = get_usage(**kwargs)
+        if extra:
+            raise MisusedOption("usage report has no extra data")
+        display_usage(usage)
+    elif report == "projects":
         projects = get_projects(**kwargs)
         if extra:
             raise MisusedOption("project report has no extra data")
@@ -170,6 +175,40 @@ def get_requested_report (args):
         else:
             return possible_reports[0]
 
+def get_usage (**kwargs):
+    user = get_current_user()
+    
+    projects = Project.query()
+    if user.name not in admins:
+        project_ids = [project.id for project in user.projects]
+        projects = projects.filter(Project.id.in_(project_ids))
+    if kwargs.get("projects"):
+        project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
+        projects = projects.filter(Project.id.in_(project_ids))
+    if kwargs.get("users"):
+        user_ids = [upstream.get_user_id(user) for user in kwargs.get("users")]
+        project_ids = set(sum([upstream.get_member_projects(user_id) for user_id in user_ids], []))
+        projects = projects.filter(Project.id.in_(project_ids))
+    if kwargs.get("resources"):
+        resource_ids = [upstream.get_resource_id(resource) for resource in kwargs.get("resources")]
+        projects = projects.filter(Project.allocations.any(Allocation.resource.has(Resource.id.in_(resource_ids))))
+    
+    allocations = Allocation.query()
+    charges = Charge.query()
+    if kwargs.get("after") or kwargs.get("before"):
+        if kwargs.get("after"):
+            allocations = allocations.filter(Allocation.expiration>kwargs.get("after"))
+            charges = charges.filter(Charge.datetime>=kwargs.get("after"))
+        if kwargs.get("before"):
+            allocations = allocations.filter(Allocation.start<=kwargs.get("before"))
+            charges = charges.filter(Charge.datetime<kwargs.get("before"))
+    else:
+        now = datetime.now()
+        allocations = allocations.filter(and_(Allocation.start<=now, Allocation.expiration>now))
+        charges = charges.filter(Charge.allocation.has(and_(Allocation.start<=now, Allocation.expiration>now)))
+    
+    return ((project, allocations.filter_by(project=project), charges.filter(Charge.allocation.has(project=project))) for project in projects)
+
 def get_projects (**kwargs):
     user = get_current_user()
     projects = Project.query()
@@ -189,15 +228,15 @@ def get_projects (**kwargs):
     if kwargs.get("after"):
         projects = projects.filter(or_(
             Project.allocations.any(Allocation.datetime>=kwargs.get("after")),
-            Project.allocations.any(Allocation.holds.any(datetime>=kwargs.get("after"))),
-            Project.allocations.any(Allocation.charges.any(datetime>=kwargs.get("after"))),
-            Project.allocations.any(Allocation.charges.any(Charge.refunds.any(datetime>=kwargs.get("after"))))))
+            Project.allocations.any(Allocation.holds.any(Hold.datetime>=kwargs.get("after"))),
+            Project.allocations.any(Allocation.charges.any(Charge.datetime>=kwargs.get("after"))),
+            Project.allocations.any(Allocation.charges.any(Charge.refunds.any(Refund.datetime>=kwargs.get("after"))))))
     if kwargs.get("before"):
         projects = projects.filter(or_(
             Project.allocations.any(Allocation.datetime<kwargs.get("before")),
-            Project.allocations.any(Allocation.holds.any(datetime<kwargs.get("before"))),
-            Project.allocations.any(Allocation.charges.any(datetime<kwargs.get("before"))),
-            Project.allocations.any(Allocation.charges.any(Charge.refunds.any(datetime<kwargs.get("before"))))))
+            Project.allocations.any(Allocation.holds.any(Hold.datetime<kwargs.get("before"))),
+            Project.allocations.any(Allocation.charges.any(Charge.datetime<kwargs.get("before"))),
+            Project.allocations.any(Allocation.charges.any(Charge.refunds.any(Refund.datetime<kwargs.get("before"))))))
     return projects
 
 def get_allocations (**kwargs):
@@ -252,6 +291,25 @@ def get_charges (**kwargs):
     if kwargs.get("before"):
         charges = charges.filter(Charge.datetime<kwargs.get("before"))
     return charges
+
+def display_usage (usage):
+    header = ["Project", "Allocated", "Used"]
+    format = Formatter([15, (15, string.rjust), (15, string.rjust)])
+    print >> sys.stderr, format(header)
+    print >> sys.stderr, format.linesep()
+    total_allocated, total_used = 0, 0
+    for project, allocations, charges in usage:
+        allocation_amount = int(allocations.sum(Allocation.amount) or 0)
+        total_allocated += allocation_amount
+        charge_amount = int(charges.sum(Charge.amount) or 0)
+        refund_amount = int(charges.join(Charge.refunds).sum(Refund.amount) or 0)
+        used_amount = charge_amount - refund_amount
+        total_used += used_amount
+        print format([project.name, display_units(allocation_amount), display_units(used_amount)])
+    print >> sys.stderr, format.linesep(header.index("Allocated"), header.index("Used"))
+    print >> sys.stderr, format(["", display_units(total_allocated), display_units(total_used)]), "(total)"
+    if unit_definition:
+        print >> sys.stderr, unit_definition
 
 def display_projects (projects):
     if not projects.count():
