@@ -530,29 +530,8 @@ class Charge (Entity):
                 if charge.amount < 0:
                     raise ValueError("charge cannot be for negative amount")
         
-        def forbid_before_allocation (self, session):
-            charges = [instance for instance in (session.new | session.dirty) if isinstance(instance, Charge)]
-            for charge in charges:
-                try:
-                    if charge.datetime < charge.allocation.start:
-                        raise ValueError("charge cannot be made before allocation")
-                except TypeError:
-                    continue
-        
-        def forbid_after_allocation (self, session):
-            charges = [instance for instance in (session.new | session.dirty) if isinstance(instance, Charge)]
-            for charge in charges:
-                try:
-                    if charge.datetime >= charge.allocation.expiration:
-                        raise ValueError("charge cannot be made after allocation")
-                except TypeError:
-                    continue
-                    
-        
         def before_commit (self, session):
             self.forbid_negative_amount(session)
-            self.forbid_before_allocation(session)
-            self.forbid_after_allocation(session)
     
     def __init__ (self, **kwargs):
         """Initialize a new charge.
