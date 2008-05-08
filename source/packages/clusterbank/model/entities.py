@@ -207,25 +207,7 @@ class Resource (UpstreamEntity):
         self.credit_limits = kwargs.get("credit_limits", [])
 
 
-class AccountingEntity (Entity):
-    """Base class for accounting entities.
-    
-    Provides a standard str/repr interface.
-    """
-    
-    def __str__ (self):
-        if self.id is None:
-            id = "?"
-        else:
-            id = self.id
-        if self.amount is None:
-            amount = "?"
-        else:
-            amount = self.amount
-        return "%s (%s)" % (id, amount)
-
-
-class Request (AccountingEntity):
+class Request (Entity):
     
     """A request for amount on a resource.
     
@@ -274,7 +256,7 @@ class Request (AccountingEntity):
         self.allocations = kwargs.get("allocations", [])
 
 
-class Allocation (AccountingEntity):
+class Allocation (Entity):
     
     """An amount of a resource allocated to a project.
     
@@ -363,7 +345,7 @@ class Allocation (AccountingEntity):
     active = property(_get_active)
 
 
-class CreditLimit (AccountingEntity):
+class CreditLimit (Entity):
     
     """A credit limit for charges by a project on a resource.
     
@@ -412,7 +394,7 @@ class CreditLimit (AccountingEntity):
         self.comment = kwargs.get("comment")
 
 
-class Hold (AccountingEntity):
+class Hold (Entity):
     
     """Uncharged but unavailable amount of an allocation.
     
@@ -524,7 +506,7 @@ class Hold (AccountingEntity):
         return holds
 
 
-class Charge (AccountingEntity):
+class Charge (Entity):
     
     """A charge against an allocation.
     
@@ -658,7 +640,7 @@ class Charge (AccountingEntity):
     effective_amount = property(_get_effective_amount)
 
 
-class Refund (AccountingEntity):
+class Refund (Entity):
     
     """A refund against a charge.
     
