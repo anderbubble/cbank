@@ -327,7 +327,9 @@ def display_projects (projects):
         now = datetime.now()
         allocations = Allocation.query.filter_by(project=project).filter(Allocation.start<=now).filter(Allocation.expiration>now)
         allocated = int(allocations.sum(Allocation.amount) or 0)
-        available = allocated - int(allocations.join("charges").sum(Charge.amount) or 0) - int(allocations.join(["charges", "refunds"]).sum(Refund.amount) or 0)
+        charged = int(allocations.join("charges").sum(Charge.amount) or 0)
+        refunded = int(allocations.join(["charges", "refunds"]).sum(Refund.amount) or 0)
+        available = allocated - (charged - refunded)
         print format([project.name, len(project.members), is_owner, display_units(allocated), display_units(available)])
     if unit_definition:
         print >> sys.stderr, unit_definition
