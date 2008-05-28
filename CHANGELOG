@@ -4,6 +4,10 @@
  * fixed date ranges in the projects report
  * require charges to exist within their allocation
 
+-- 0.2.15.1 --
+
+ * fixed a refund accounting bug in the cbank project report (r459)
+
 -- 0.2.15 --
 
  * moved SQLAlchemy version dependency to 0.4.5
