@@ -195,6 +195,10 @@ def get_usage (**kwargs):
     
     allocations = Allocation.query()
     charges = Charge.query()
+    if kwargs.get("resources"):
+        resource_ids = [upstream.get_resource_id(resource) for resource in kwargs.get("resources")]
+        allocations = allocations.filter(Allocation.resource.has(Resource.id.in_(resource_ids)))
+        charges = charges.filter(Charge.allocation.has(Allocation.resource.has(Resource.id.in_(resource_ids))))
     if kwargs.get("after") or kwargs.get("before"):
         if kwargs.get("after"):
             allocations = allocations.filter(Allocation.expiration>kwargs.get("after"))

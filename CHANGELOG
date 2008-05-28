@@ -1,3 +1,4 @@
+ * made usage report correctly reflect -r option
  * made the "usage" report the default
  * added a new report, "usage" (also available as "use")
  * fixed date ranges in the projects report
