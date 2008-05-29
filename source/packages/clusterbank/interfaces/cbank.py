@@ -136,29 +136,9 @@ def main ():
 def _main ():
     options, args = parser.parse_args()
     report = get_requested_report(args)
-    run(report, projects=options.projects,
+    print_report(report, projects=options.projects,
         users=options.users, resources=options.resources, after=options.after,
         before=options.before, extra=options.extra)
-
-def run (report, extra=False, **kwargs):
-    if report in ("use", "usage"):
-        usage = get_usage(**kwargs)
-        if extra:
-            raise MisusedOption("usage report has no extra data")
-        display_usage(usage)
-    elif report == "projects":
-        projects = get_projects(**kwargs)
-        if extra:
-            raise MisusedOption("project report has no extra data")
-        display_projects(projects)
-    elif report == "allocations":
-        allocations = get_allocations(**kwargs)
-        display_allocations(allocations, extra=extra)
-    elif report == "charges":
-        charges = get_charges(**kwargs)
-        display_charges(charges, extra=extra)
-    else:
-        raise UnknownReport(report)
 
 def get_requested_report (args):
     try:
@@ -176,10 +156,26 @@ def get_requested_report (args):
         else:
             return possible_reports[0]
 
-def get_usage (**kwargs):
+def print_report (report, **kwargs):
+    if report in ("use", "usage"):
+        print_usage(**kwargs)
+    elif report == "projects":
+        projects = get_projects(**kwargs)
+        display_projects(projects)
+    elif report == "allocations":
+        allocations = get_allocations(**kwargs)
+        display_allocations(allocations, extra=extra)
+    elif report == "charges":
+        charges = get_charges(**kwargs)
+        display_charges(charges, extra=extra)
+    else:
+        raise UnknownReport(report)
+
+def print_usage (**kwargs):
     user = get_current_user()
-    
     projects = Project.query()
+    allocations = Allocation.query()
+    charges = Charge.query()
     if user.name not in admins:
         project_ids = [project.id for project in user.projects]
         projects = projects.filter(Project.id.in_(project_ids))
@@ -193,11 +189,6 @@ def get_usage (**kwargs):
     if kwargs.get("resources"):
         resource_ids = [upstream.get_resource_id(resource) for resource in kwargs.get("resources")]
         projects = projects.filter(Project.allocations.any(Allocation.resource.has(Resource.id.in_(resource_ids))))
-    
-    allocations = Allocation.query()
-    charges = Charge.query()
-    if kwargs.get("resources"):
-        resource_ids = [upstream.get_resource_id(resource) for resource in kwargs.get("resources")]
         allocations = allocations.filter(Allocation.resource.has(Resource.id.in_(resource_ids)))
         charges = charges.filter(Charge.allocation.has(Allocation.resource.has(Resource.id.in_(resource_ids))))
     if kwargs.get("after") or kwargs.get("before"):
@@ -212,7 +203,30 @@ def get_usage (**kwargs):
         allocations = allocations.filter(and_(Allocation.start<=now, Allocation.expiration>now))
         charges = charges.filter(Charge.allocation.has(and_(Allocation.start<=now, Allocation.expiration>now)))
     
-    return ((project, allocations.filter_by(project=project), charges.filter(Charge.allocation.has(project=project))) for project in projects)
+    format = Formatter(["Project", "Allocated", "Used", "Balance"])
+    format.widths = dict.fromkeys(format.fields, 15)
+    format.aligns = dict(Allocated=string.rjust, Used=string.rjust, Balance=string.rjust)
+    print format.header
+    print format.bar
+    total_allocated, total_used = 0, 0
+    for project in projects:
+        project_allocations = allocations.filter_by(project=project)
+        project_charges = charges.filter(Charge.allocation.has(project=project))
+        allocation_amount = int(project_allocations.sum(Allocation.amount) or 0)
+        total_allocated += allocation_amount
+        charge_amount = int(project_charges.sum(Charge.amount) or 0)
+        refund_amount = int(project_charges.join(Charge.refunds).sum(Refund.amount) or 0)
+        used_amount = charge_amount - refund_amount
+        total_used += used_amount
+        balance = allocation_amount - used_amount
+        print format(Project=project.name,
+            Allocated=display_units(allocation_amount),
+            Used=display_units(used_amount), Balance=display_units(balance))
+    print format.bar
+    total_balance = total_allocated - total_used
+    print format(Allocated=display_units(total_allocated), Used=display_units(total_used), Balance=display_units(total_balance)), "(total)"
+    if unit_definition:
+        print unit_definition
 
 def get_projects (**kwargs):
     user = get_current_user()
@@ -297,33 +311,12 @@ def get_charges (**kwargs):
         charges = charges.filter(Charge.datetime<kwargs.get("before"))
     return charges
 
-def display_usage (usage):
-    header = ["Project", "Allocated", "Used", "Balance"]
-    format = Formatter([15, (15, string.rjust), (15, string.rjust), (15, string.rjust)])
-    print >> sys.stderr, format(header)
-    print >> sys.stderr, format.linesep()
-    total_allocated, total_used = 0, 0
-    for project, allocations, charges in usage:
-        allocation_amount = int(allocations.sum(Allocation.amount) or 0)
-        total_allocated += allocation_amount
-        charge_amount = int(charges.sum(Charge.amount) or 0)
-        refund_amount = int(charges.join(Charge.refunds).sum(Refund.amount) or 0)
-        used_amount = charge_amount - refund_amount
-        total_used += used_amount
-        balance = allocation_amount - used_amount
-        print format([project.name, display_units(allocation_amount), display_units(used_amount), display_units(balance)])
-    print >> sys.stderr, format.linesep(header.index("Allocated"), header.index("Used"), header.index("Balance"))
-    total_balance = total_allocated - total_used
-    print >> sys.stderr, format(["", display_units(total_allocated), display_units(total_used), display_units(total_balance)]), "(total)"
-    if unit_definition:
-        print >> sys.stderr, unit_definition
-
 def display_projects (projects):
     if not projects.count():
         print >> sys.stderr, "No projects found."
         return
     user = get_current_user()
-    format = Formatter([15, 7, 5])
+    format = OldFormatter([15, 7, 5])
     print >> sys.stderr, format(["Name", "Members", "Owner"])
     print >> sys.stderr, format.linesep()
     for project in projects:
@@ -349,7 +342,7 @@ def display_allocations (allocations, extra=False):
         header = ["Expires", "Resource", "Project", "Allocated", "Available"]
         def get_data (allocation):
             return [allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, display_units(allocation.amount), display_units(allocation.amount_available)]
-    format = Formatter(widths)
+    format = OldFormatter(widths)
     print >> sys.stderr, format(header)
     print >> sys.stderr, format.linesep()
     for allocation in allocations:
@@ -375,7 +368,7 @@ def display_charges (charges, extra=False):
         header = ["Date", "Resource", "Project", "User", "Amount"]
         def get_data (charge):
             return [charge.datetime.strftime("%Y-%m-%d"), charge.allocation.resource, charge.allocation.project, charge.user, display_units(charge.effective_amount)]
-    format = Formatter(widths)
+    format = OldFormatter(widths)
     print >> sys.stderr, format(header)
     print >> sys.stderr, format.linesep()
     for charge in charges:
@@ -385,6 +378,19 @@ def display_charges (charges, extra=False):
     print >> sys.stderr, format([""]*header.index("Amount") + [display_units(total)]), "(total)"
     if unit_definition:
         print >> sys.stderr, unit_definition
+
+def get_current_user ():
+    uid = os.getuid()
+    try:
+        passwd_entry = pwd.getpwuid(uid)
+    except KeyError:
+        raise UnknownUser("Unable to determine the current user.")
+    username = passwd_entry[0]
+    try:
+        user = User.by_name(username)
+    except clusterbank.exceptions.NotFound:
+        raise UnknownUser("User '%s' was not found." % username)
+    return user
 
 def display_units (amount):
     try:
@@ -410,6 +416,62 @@ def display_units (amount):
         return locale.format("%.1f", converted_amount, True)
 
 class Formatter (object):
+    
+    def __init__ (self, fields, **kwargs):
+        self.fields = fields
+        self.sep = kwargs.get("sep", " ")
+        self.barchar = kwargs.get("barchar", "-")
+        self.headers = dict(**kwargs.get("headers", {}))
+        self.widths = dict(**kwargs.get("widths", {}))
+        self.aligns = dict(**kwargs.get("aligns", {}))
+        self.mods = dict(**kwargs.get("mods", {}))
+    
+    def _get_bar (self):
+        return self.format(**dict((field, self.barchar*self._width(field)) for field in self.fields))
+    
+    bar = property(_get_bar)
+
+    def _get_header (self):
+        mods = self.mods
+        try:
+            self.mods = {}
+            return self.format(**dict((field, self._field_header(field)) for field in self.fields))
+        finally:
+            self.mods = mods
+    
+    header = property(_get_header)
+    
+    def _field_header (self, field): 
+        return self.headers.get(field, field)
+    
+    def _width (self, field):
+        try:
+            return self.widths[field]
+        except KeyError:
+            return max(len(line) for line in self._field_header(field).split(os.linesep))
+    
+    def _align (self, field, value):
+        return self.aligns.get(field, string.ljust)(value, self._width(field))
+    
+    def _mod (self, field, value):
+        try:
+            return self.mods.get(field, "%s") % value
+        except TypeError:
+            return str(value)
+    
+    def format (self, **data):
+        formatted_data = []
+        for field in self.fields:
+            data_item = data.get(field, "")
+            data_item = self._mod(field, data_item)
+            data_item = self._align(field, data_item)
+            formatted_data.append(data_item)
+        return self.sep.join(formatted_data)
+    
+    def __call__ (self, *args, **kwargs):
+        return self.format(*args, **kwargs)
+
+class OldFormatter (object):
     
     def __init__ (self, cols, sep=" "):
         self.cols = [self._with_alignment(col) for col in cols]
@@ -438,15 +500,3 @@ class Formatter (object):
             cols = args
         return self.format([((x in cols) and "-" or " ")*width for ((width, align), x) in zip(self.cols, range(len(self.cols)))])
 
-def get_current_user ():
-    uid = os.getuid()
-    try:
-        passwd_entry = pwd.getpwuid(uid)
-    except KeyError:
-        raise UnknownUser("Unable to determine the current user.")
-    username = passwd_entry[0]
-    try:
-        user = User.by_name(username)
-    except clusterbank.exceptions.NotFound:
-        raise UnknownUser("User '%s' was not found." % username)
-    return user
