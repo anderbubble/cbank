@@ -160,8 +160,7 @@ def print_report (report, **kwargs):
     if report in ("use", "usage"):
         print_usage(**kwargs)
     elif report == "projects":
-        projects = get_projects(**kwargs)
-        display_projects(projects)
+        print_projects(**kwargs)
     elif report == "allocations":
         allocations = get_allocations(**kwargs)
         display_allocations(allocations, extra=extra)
@@ -202,7 +201,6 @@ def print_usage (**kwargs):
         now = datetime.now()
         allocations = allocations.filter(and_(Allocation.start<=now, Allocation.expiration>now))
         charges = charges.filter(Charge.allocation.has(and_(Allocation.start<=now, Allocation.expiration>now)))
-    
     format = Formatter(["Project", "Allocated", "Used", "Balance"])
     format.widths = dict.fromkeys(format.fields, 15)
     format.aligns = dict(Allocated=string.rjust, Used=string.rjust, Balance=string.rjust)
@@ -228,7 +226,7 @@ def print_usage (**kwargs):
     if unit_definition:
         print unit_definition
 
-def get_projects (**kwargs):
+def print_projects (**kwargs):
     user = get_current_user()
     projects = Project.query()
     if user.name not in admins:
@@ -256,7 +254,22 @@ def get_projects (**kwargs):
             Project.allocations.any(Allocation.holds.any(Hold.datetime<kwargs.get("before"))),
             Project.allocations.any(Allocation.charges.any(Charge.datetime<kwargs.get("before"))),
             Project.allocations.any(Allocation.charges.any(Charge.refunds.any(Refund.datetime<kwargs.get("before"))))))
-    return projects
+    if not projects.count():
+        print >> sys.stderr, "No projects found."
+        return
+    user = get_current_user()
+    format = Formatter(["Name", "Members", "Owner"])
+    format.widths = dict(Name=15, Members=7, Owner=5)
+    print format.header
+    print format.bar
+    for project in projects:
+        if user in project.owners:
+            is_owner = "yes"
+        else:
+            is_owner = "no"
+        print format(Name=project.name, Members=len(project.members), Owner=is_owner)
+    if unit_definition:
+        print unit_definition
 
 def get_allocations (**kwargs):
     user = get_current_user()
@@ -311,22 +324,6 @@ def get_charges (**kwargs):
         charges = charges.filter(Charge.datetime<kwargs.get("before"))
     return charges
 
-def display_projects (projects):
-    if not projects.count():
-        print >> sys.stderr, "No projects found."
-        return
-    user = get_current_user()
-    format = OldFormatter([15, 7, 5])
-    print >> sys.stderr, format(["Name", "Members", "Owner"])
-    print >> sys.stderr, format.linesep()
-    for project in projects:
-        if user in project.owners:
-            is_owner = "yes"
-        else:
-            is_owner = "no"
-        print format([project.name, len(project.members), is_owner])
-    if unit_definition:
-        print >> sys.stderr, unit_definition
 
 def display_allocations (allocations, extra=False):
     if not allocations.count():
