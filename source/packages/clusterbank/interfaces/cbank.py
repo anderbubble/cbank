@@ -4,17 +4,16 @@ import sys
 import os
 import pwd
 import string
-from ConfigParser import SafeConfigParser as ConfigParser, NoSectionError, NoOptionError
+import ConfigParser
 import optparse
-from optparse import OptionParser
-from warnings import warn
+import warnings
 import locale
 from datetime import datetime
 try:
-    strptime = datetime.strprime
+    dt_strptime = datetime.strprime
 except AttributeError:
     import time
-    def strptime (value, format):
+    def dt_strptime (value, format):
         return datetime(*time.strptime(value, format)[0:6])
 try:
     set
@@ -42,7 +41,7 @@ class Option (optparse.Option):
         """Return a datetime from YYYY-MM-DD."""
         for format in self.DATE_FORMATS:
             try:
-                return strptime(value, format)
+                return dt_strptime(value, format)
             except ValueError:
                 continue
         raise optparse.OptionValueError(
@@ -62,45 +61,45 @@ class Option (optparse.Option):
 
 locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 
-config = ConfigParser()
+config = ConfigParser.SafeConfigParser()
 config.read(["/etc/clusterbank.conf"])
 
 try:
     unit_label = config.get("cbank", "unit_label")
-except (NoSectionError, NoOptionError):
+except ConfigParser.Error:
     unit_definition = None
 else:
     unit_definition = "Units are in %s." % unit_label
 try:
     admins = config.get("cbank", "admins")
-except (NoSectionError, NoOptionError):
+except ConfigParser.Error:
     admins = []
 else:
     admins = admins.split(",")
 
 reports_available = ["use", "usage", "projects", "allocations", "charges"]
 
-argv = OptionParser(usage=os.linesep.join([
+parser = optparse.OptionParser(usage=os.linesep.join([
     "cbank [options] [report]",
     "",
     "reports:",
     "  %s" % ", ".join(reports_available)]), version="cbank %s" % clusterbank.__version__)
-argv.add_option(Option("-p", "--projects", dest="projects", type="csv",
+parser.add_option(Option("-p", "--projects", dest="projects", type="csv",
     help="filter by project NAMES", metavar="NAMES"))
-argv.add_option(Option("-u", "--users", dest="users", type="csv",
+parser.add_option(Option("-u", "--users", dest="users", type="csv",
     help="filter by user NAMES", metavar="NAMES"))
-argv.add_option(Option("-r", "--resources", dest="resources", type="csv",
+parser.add_option(Option("-r", "--resources", dest="resources", type="csv",
     help="filter by resource NAMES", metavar="NAMES"))
-argv.add_option(Option("-a", "--after", dest="after", type="date",
+parser.add_option(Option("-a", "--after", dest="after", type="date",
     help="filter by start DATE", metavar="DATE"))
-argv.add_option(Option("-b", "--before", dest="before", type="date",
+parser.add_option(Option("-b", "--before", dest="before", type="date",
     help="filter by end DATE", metavar="DATE"))
-argv.add_option(Option("-e", "--extra-data", dest="extra", action="store_true",
+parser.add_option(Option("-e", "--extra-data", dest="extra", action="store_true",
     help="display extra data"))
-argv.set_defaults(extra=False)
+parser.set_defaults(extra=False)
 try:
-    argv.set_defaults(resources=config.get("cbank", "resource"))
-except (NoSectionError, NoOptionError):
+    parser.set_defaults(resources=config.get("cbank", "resource"))
+except ConfigParser.Error:
     pass
 
 class CbankException (Exception): pass
@@ -122,13 +121,6 @@ class MisusedOption (CbankError):
     def __str__ (self):
         return "cbank: misused option: %s" % CbankError.__str__(self)
 
-def main ():
-    options, args = argv.parse_args()
-    report = handle_exceptions(get_requested_report, args)
-    handle_exceptions(run, report, projects=options.projects,
-        users=options.users, resources=options.resources, after=options.after,
-        before=options.before, extra=options.extra)
-
 def handle_exceptions (func, *args, **kwargs):
     try:
         return func(*args, **kwargs)
@@ -137,6 +129,16 @@ def handle_exceptions (func, *args, **kwargs):
     except CbankError, e:
         print >> sys.stderr, e
         sys.exit(1)
+
+def main ():
+    return handle_exceptions(_main)
+
+def _main ():
+    options, args = parser.parse_args()
+    report = get_requested_report(args)
+    run(report, projects=options.projects,
+        users=options.users, resources=options.resources, after=options.after,
+        before=options.before, extra=options.extra)
 
 def run (report, extra=False, **kwargs):
     if report in ("use", "usage"):
@@ -387,7 +389,7 @@ def display_charges (charges, extra=False):
 def display_units (amount):
     try:
         factor = config.get("cbank", "unit_factor")
-    except (NoSectionError, NoOptionError):
+    except ConfigParser.Error:
         factor = 1
     try:
         mul, div = factor.split("/")
@@ -398,7 +400,7 @@ def display_units (amount):
         mul = float(mul)
         div = float(div)
     except ValueError:
-        warn("invalid unit factor: %s" % factor)
+        warnings.warn("invalid unit factor: %s" % factor)
         mul = 1
         val = 1
     converted_amount = amount * mul / div
