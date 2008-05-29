@@ -204,8 +204,8 @@ def print_usage (**kwargs):
     format = Formatter(["Project", "Allocated", "Used", "Balance"])
     format.widths = dict.fromkeys(format.fields, 15)
     format.aligns = dict(Allocated=string.rjust, Used=string.rjust, Balance=string.rjust)
-    print format.header
-    print format.bar
+    print >> sys.stderr, format.header
+    print >> sys.stderr, format.bar
     total_allocated, total_used = 0, 0
     for project in projects:
         project_allocations = allocations.filter_by(project=project)
@@ -220,9 +220,9 @@ def print_usage (**kwargs):
         print format(Project=project.name,
             Allocated=display_units(allocation_amount),
             Used=display_units(used_amount), Balance=display_units(balance))
-    print format.bar
+    print >> sys.stderr, format.bar
     total_balance = total_allocated - total_used
-    print format(Allocated=display_units(total_allocated), Used=display_units(total_used), Balance=display_units(total_balance)), "(total)"
+    print >> sys.stderr, format(Allocated=display_units(total_allocated), Used=display_units(total_used), Balance=display_units(total_balance)), "(total)"
     if unit_definition:
         print unit_definition
 
@@ -260,8 +260,8 @@ def print_projects (**kwargs):
     user = get_current_user()
     format = Formatter(["Name", "Members", "Owner"])
     format.widths = dict(Name=15, Members=7, Owner=5)
-    print format.header
-    print format.bar
+    print >> sys.stderr, format.header
+    print >> sys.stderr, format.bar
     for project in projects:
         if user in project.owners:
             is_owner = "yes"
