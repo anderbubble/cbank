@@ -3,7 +3,6 @@
 import sys
 import os
 import pwd
-from itertools import izip
 import string
 from ConfigParser import SafeConfigParser as ConfigParser, NoSectionError, NoOptionError
 import optparse
@@ -297,8 +296,8 @@ def get_charges (**kwargs):
     return charges
 
 def display_usage (usage):
-    header = ["Project", "Allocated", "Used"]
-    format = Formatter([15, (15, string.rjust), (15, string.rjust)])
+    header = ["Project", "Allocated", "Used", "Balance"]
+    format = Formatter([15, (15, string.rjust), (15, string.rjust), (15, string.rjust)])
     print >> sys.stderr, format(header)
     print >> sys.stderr, format.linesep()
     total_allocated, total_used = 0, 0
@@ -309,9 +308,11 @@ def display_usage (usage):
         refund_amount = int(charges.join(Charge.refunds).sum(Refund.amount) or 0)
         used_amount = charge_amount - refund_amount
         total_used += used_amount
-        print format([project.name, display_units(allocation_amount), display_units(used_amount)])
-    print >> sys.stderr, format.linesep(header.index("Allocated"), header.index("Used"))
-    print >> sys.stderr, format(["", display_units(total_allocated), display_units(total_used)]), "(total)"
+        balance = allocation_amount - used_amount
+        print format([project.name, display_units(allocation_amount), display_units(used_amount), display_units(balance)])
+    print >> sys.stderr, format.linesep(header.index("Allocated"), header.index("Used"), header.index("Balance"))
+    total_balance = total_allocated - total_used
+    print >> sys.stderr, format(["", display_units(total_allocated), display_units(total_used), display_units(total_balance)]), "(total)"
     if unit_definition:
         print >> sys.stderr, unit_definition
 
@@ -320,21 +321,15 @@ def display_projects (projects):
         print >> sys.stderr, "No projects found."
         return
     user = get_current_user()
-    format = Formatter([15, 7, 5, (15, string.rjust), (15, string.rjust)])
-    print >> sys.stderr, format(["Name", "Members", "Owner", "Allocated", "Available"])
+    format = Formatter([15, 7, 5])
+    print >> sys.stderr, format(["Name", "Members", "Owner"])
     print >> sys.stderr, format.linesep()
     for project in projects:
         if user in project.owners:
             is_owner = "yes"
         else:
             is_owner = "no"
-        now = datetime.now()
-        allocations = Allocation.query.filter_by(project=project).filter(Allocation.start<=now).filter(Allocation.expiration>now)
-        allocated = int(allocations.sum(Allocation.amount) or 0)
-        charged = int(allocations.join("charges").sum(Charge.amount) or 0)
-        refunded = int(allocations.join(["charges", "refunds"]).sum(Refund.amount) or 0)
-        available = allocated - (charged - refunded)
-        print format([project.name, len(project.members), is_owner, display_units(allocated), display_units(available)])
+        print format([project.name, len(project.members), is_owner])
     if unit_definition:
         print >> sys.stderr, unit_definition
 
