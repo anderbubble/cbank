@@ -135,16 +135,16 @@ def main ():
 
 def _main ():
     options, args = parser.parse_args()
-    report = get_requested_report(args)
-    print_report(report, projects=options.projects,
-        users=options.users, resources=options.resources, after=options.after,
+    report = get_report(args)
+    report(projects=options.projects, users=options.users,
+        resources=options.resources, after=options.after,
         before=options.before, extra=options.extra)
 
-def get_requested_report (args):
+def get_report (args):
     try:
         requested_report = args[0]
     except IndexError:
-        return "usage" # default report type
+        report = "usage"
     else:
         possible_reports = [
             report for report in reports_available
@@ -153,20 +153,15 @@ def get_requested_report (args):
             raise UnknownReport(requested_report)
         elif len(possible_reports) > 1:
             raise UnknownReport("could be %s" % ", ".join(possible_reports))
-        else:
-            return possible_reports[0]
-
-def print_report (report, **kwargs):
+        report = possible_reports[0]
     if report in ("use", "usage"):
-        print_usage(**kwargs)
+        return print_usage
     elif report == "projects":
-        print_projects(**kwargs)
+        return print_projects
     elif report == "allocations":
-        allocations = get_allocations(**kwargs)
-        display_allocations(allocations, extra=extra)
+        return print_allocations
     elif report == "charges":
-        charges = get_charges(**kwargs)
-        display_charges(charges, extra=extra)
+        return print_charges
     else:
         raise UnknownReport(report)
 
@@ -217,12 +212,12 @@ def print_usage (**kwargs):
         used_amount = charge_amount - refund_amount
         total_used += used_amount
         balance = allocation_amount - used_amount
-        print format(Project=project.name,
+        print format(dict(Project=project.name,
             Allocated=display_units(allocation_amount),
-            Used=display_units(used_amount), Balance=display_units(balance))
+            Used=display_units(used_amount), Balance=display_units(balance)))
     print >> sys.stderr, format.bar
     total_balance = total_allocated - total_used
-    print >> sys.stderr, format(Allocated=display_units(total_allocated), Used=display_units(total_used), Balance=display_units(total_balance)), "(total)"
+    print >> sys.stderr, format(dict(Allocated=display_units(total_allocated), Used=display_units(total_used), Balance=display_units(total_balance))), "(total)"
     if unit_definition:
         print unit_definition
 
@@ -267,11 +262,11 @@ def print_projects (**kwargs):
             is_owner = "yes"
         else:
             is_owner = "no"
-        print format(Name=project.name, Members=len(project.members), Owner=is_owner)
+        print format(dict(Name=project.name, Members=len(project.members), Owner=is_owner))
     if unit_definition:
         print unit_definition
 
-def get_allocations (**kwargs):
+def print_allocations (**kwargs):
     user = get_current_user()
     allocations = Allocation.query()
     if user.name not in admins:
@@ -296,9 +291,32 @@ def get_allocations (**kwargs):
         now = datetime.now()
         allocations = allocations.filter(Allocation.start<=now)
         allocations = allocations.filter(Allocation.expiration>now)
-    return allocations
+    if not allocations.count():
+        print >> sys.stderr, "No allocations found."
+        return
+    if kwargs.get("extra"):
+        format = Formatter(["Starts", "Expires", "Resource", "Project", "Allocated", "Available", "Comment"])
+    else:
+        format = Formatter(["Expires", "Resource", "Project", "Allocated", "Available"])
+    format.widths = dict(Starts=10, Expires=10, Resource=10, Project=15, Allocated=15, Available=15, Comment=7)
+    format.aligns = dict(Allocated=string.rjust, Available=string.rjust)
+    print >> sys.stderr, format.header
+    print >> sys.stderr, format.bar
+    for allocation in allocations:
+        print format(dict(Starts=allocation.start.strftime("%Y-%m-%d"),
+            Expires=allocation.expiration.strftime("%Y-%m-%d"),
+            Resource=allocation.resource, Project=allocation.project,
+            Allocated=display_units(allocation.amount),
+            Available=display_units(allocation.amount_available),
+            Comment=allocation.comment))
+    print >> sys.stderr, format.bar
+    total_allocated = int(allocations.sum(Allocation.amount) or 0)
+    total_available = sum([allocation.amount_available for allocation in allocations])
+    print >> sys.stderr, format(dict(Allocated=display_units(total_allocated), Available=display_units(total_available))), "(total)"
+    if unit_definition:
+        print >> sys.stderr, unit_definition
 
-def get_charges (**kwargs):
+def print_charges (**kwargs):
     user = get_current_user()
     charges = Charge.query()
     if user.name not in admins:
@@ -322,57 +340,26 @@ def get_charges (**kwargs):
         charges = charges.filter(Charge.datetime>=kwargs.get("after"))
     if kwargs.get("before"):
         charges = charges.filter(Charge.datetime<kwargs.get("before"))
-    return charges
-
-
-def display_allocations (allocations, extra=False):
-    if not allocations.count():
-        print >> sys.stderr, "No allocations found."
-        return
-    if extra:
-        widths = [10, 10, 10, 15, (15, string.rjust), (15, string.rjust), 7]
-        header = ["Starts", "Expires", "Resource", "Project", "Allocated", "Available", "Comment"]
-        def get_data (allocation):
-            return [allocation.start.strftime("%Y-%m-%d"), allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, display_units(allocation.amount), display_units(allocation.amount_available), allocation.comment]
-    else:
-        widths = [10, 10, 15, (15, string.rjust), (15, string.rjust)]
-        header = ["Expires", "Resource", "Project", "Allocated", "Available"]
-        def get_data (allocation):
-            return [allocation.expiration.strftime("%Y-%m-%d"), allocation.resource, allocation.project, display_units(allocation.amount), display_units(allocation.amount_available)]
-    format = OldFormatter(widths)
-    print >> sys.stderr, format(header)
-    print >> sys.stderr, format.linesep()
-    for allocation in allocations:
-        print format(get_data(allocation))
-    print >> sys.stderr, format.linesep(header.index("Allocated"), header.index("Available"))
-    total_allocated = int(allocations.sum(Allocation.amount) or 0)
-    total_available = sum([allocation.amount_available for allocation in allocations])
-    print >> sys.stderr, format([""]*header.index("Allocated") + [display_units(total_allocated), display_units(total_available)]), "(total)"
-    if unit_definition:
-        print >> sys.stderr, unit_definition
-
-def display_charges (charges, extra=False):
     if not charges.count():
         print >> sys.stderr, "No charges found."
         return
-    if extra:
-        widths = [10, 10, 15, 8, (15, string.rjust), 7]
-        header = ["Date", "Resource", "Project", "User", "Amount", "Comment"]
-        def get_data (charge):
-            return [charge.datetime.strftime("%Y-%m-%d"), charge.allocation.resource, charge.allocation.project, charge.user, display_units(charge.effective_amount), charge.comment]
+    if kwargs.get("extra"):
+        format = Formatter(["Date", "Resource", "Project", "User", "Amount", "Comment"])
     else:
-        widths = [10, 10, 15, 8, (15, string.rjust)]
-        header = ["Date", "Resource", "Project", "User", "Amount"]
-        def get_data (charge):
-            return [charge.datetime.strftime("%Y-%m-%d"), charge.allocation.resource, charge.allocation.project, charge.user, display_units(charge.effective_amount)]
-    format = OldFormatter(widths)
-    print >> sys.stderr, format(header)
-    print >> sys.stderr, format.linesep()
+        format = Formatter(["Date", "Resource", "Project", "User", "Amount"])
+    format.widths = dict(Date=10, Resource=10, Project=15, User=8, Amount=15, Comment=7)
+    format.aligns = dict(Amount=string.rjust)
+    print >> sys.stderr, format.header
+    print >> sys.stderr, format.bar
     for charge in charges:
-        print format(get_data(charge))
-    print >> sys.stderr, format.linesep(header.index("Amount"))
+        print format(dict(Date=charge.datetime.strftime("%Y-%m-%d"),
+            Resource=charge.allocation.resource,
+            Project=charge.allocation.project, User=charge.user,
+            Amount=display_units(charge.effective_amount),
+            Comment=charge.comment))
+    print >> sys.stderr, format.bar
     total = int(charges.sum(Charge.amount) or 0) - int(charges.join("refunds").sum(Refund.amount) or 0)
-    print >> sys.stderr, format([""]*header.index("Amount") + [display_units(total)]), "(total)"
+    print >> sys.stderr, format(dict(Amount=display_units(total))), "(total)"
     if unit_definition:
         print >> sys.stderr, unit_definition
 
@@ -418,13 +405,13 @@ class Formatter (object):
         self.fields = fields
         self.sep = kwargs.get("sep", " ")
         self.barchar = kwargs.get("barchar", "-")
-        self.headers = dict(**kwargs.get("headers", {}))
-        self.widths = dict(**kwargs.get("widths", {}))
-        self.aligns = dict(**kwargs.get("aligns", {}))
-        self.mods = dict(**kwargs.get("mods", {}))
+        self.headers = kwargs.get("headers", {}).copy()
+        self.widths = kwargs.get("widths", {}).copy()
+        self.aligns = kwargs.get("aligns", {}).copy()
+        self.mods = kwargs.get("mods", {}).copy()
     
     def _get_bar (self):
-        return self.format(**dict((field, self.barchar*self._width(field)) for field in self.fields))
+        return self.format(dict((field, self.barchar*self._width(field)) for field in self.fields))
     
     bar = property(_get_bar)
 
@@ -432,7 +419,7 @@ class Formatter (object):
         mods = self.mods
         try:
             self.mods = {}
-            return self.format(**dict((field, self._field_header(field)) for field in self.fields))
+            return self.format(dict((field, self._field_header(field)) for field in self.fields))
         finally:
             self.mods = mods
     
@@ -456,7 +443,7 @@ class Formatter (object):
         except TypeError:
             return str(value)
     
-    def format (self, **data):
+    def format (self, data):
         formatted_data = []
         for field in self.fields:
             data_item = data.get(field, "")
