@@ -12,6 +12,7 @@ Refund -- refund of a charge
 """
 
 from datetime import datetime
+import operator
 try:
     set
 except NameError:
@@ -163,10 +164,9 @@ class Project (UpstreamEntity):
             datetime = datetime()
         except TypeError:
             pass
-        credit_limits = CreditLimit.query.filter(CreditLimit.project==self)
-        credit_limits = credit_limits.filter(CreditLimit.resource==resource)
-        credit_limits = credit_limits = credit_limits.filter(CreditLimit.start<=datetime)
-        credit_limits = credit_limits.order_by(desc("start"))
+        credit_limits = [limit for limit in self.credit_limits
+            if limit.resource==resource and limit.start<=datetime]
+        credit_limits = sorted(credit_limits, key=operator.attrgetter("start"))
         try:
             return credit_limits[0]
         except IndexError:
@@ -324,17 +324,17 @@ class Allocation (Entity):
         self.charges = kwargs.get("charges", [])
     
     def _get_amount_charged (self):
-        # sums are typecast to integers because mysql returns strings when summing integers
-        amount_charged = int(Charge.query.filter_by(allocation=self).sum(Charge.amount) or 0)
-        amount_refunded = int(Refund.query.join("charge").filter_by(allocation=self).sum(Refund.amount) or 0)
-        return amount_charged - amount_refunded
+        return sum(charge.effective_amount for charge in self.charges)
     
     amount_charged = property(_get_amount_charged)
     
+    def _get_amount_held (self):
+        return sum(hold.amount for hold in self.holds if hold.active)
+    
+    amount_held = property(_get_amount_held)
+    
     def _get_amount_available (self):
-        # sums are typecast to integers because mysql returns strings when summing integers
-        amount_held = int(Hold.query.filter(Hold.allocation==self).filter(Hold.active==True).sum(Hold.amount) or 0)
-        return self.amount - self.amount_charged - amount_held
+        return self.amount - (self.amount_charged + self.amount_held)
     
     amount_available = property(_get_amount_available)
     
@@ -611,9 +611,7 @@ class Charge (Entity):
         return charges
     
     def _get_effective_amount (self):
-        """Intelligent property accessor."""
-        # sums are typecast to integers because mysql returns strings when summing integers
-        amount_refunded = int(Refund.query.filter_by(charge=self).sum(Refund.amount) or 0)
+        amount_refunded = sum(refund.amount for refund in self.refunds)
         return self.amount - amount_refunded
     
     effective_amount = property(_get_effective_amount)
