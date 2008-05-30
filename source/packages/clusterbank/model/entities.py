@@ -18,9 +18,7 @@ try:
 except NameError:
     from sets import Set as set
 
-from sqlalchemy import desc
 import sqlalchemy.exceptions
-import sqlalchemy.orm.session
 
 import clusterbank
 import clusterbank.exceptions as exceptions
@@ -222,17 +220,6 @@ class Request (Entity):
     allocations -- allocations that was made in response to the request
     """
     
-    class SessionExtension (sqlalchemy.orm.session.SessionExtension):
-        
-        def forbid_negative_amounts (self, session):
-            requests = [instance for instance in (session.new | session.dirty) if isinstance(instance, Request)]
-            for request in requests:
-                if request.amount < 0:
-                    raise ValueError("cannot request negative amount")
-        
-        def before_commit (self, session):
-            self.forbid_negative_amounts(session)
-    
     def __init__ (self, **kwargs):
         """Initialize a new request.
         
@@ -273,17 +260,6 @@ class Allocation (Entity):
     holds -- holds on this allocation
     charges -- charges against this allocation
     """
-    
-    class SessionExtension (sqlalchemy.orm.session.SessionExtension):
-        
-        def forbid_negative_amounts (self, session):
-            allocations = [instance for instance in (session.new | session.dirty) if isinstance(instance, Allocation)]
-            for allocation in allocations:
-                if allocation.amount < 0:
-                    raise ValueError("cannot allocate negative amount")
-        
-        def before_commit (self, session):
-            self.forbid_negative_amounts(session)
     
     def __init__ (self, **kwargs):
         """Initialize a new allocation.
@@ -362,17 +338,6 @@ class CreditLimit (Entity):
     unique by project, resource, and start
     """
     
-    class SessionExtension (sqlalchemy.orm.session.SessionExtension):
-        
-        def forbid_negative_amounts (self, session):
-            credit_limits = [instance for instance in (session.new | session.dirty) if isinstance(instance, CreditLimit)]
-            for credit_limit in credit_limits:
-                if credit_limit.amount < 0:
-                    raise ValueError("credit limit cannot be negative")
-        
-        def before_commit (self, session):
-            self.forbid_negative_amounts(session)
-    
     def __init__ (self, **kwargs):
         """Initialize a new credit limit.
         
@@ -413,29 +378,6 @@ class Hold (Entity):
     Classmethods:
     distributed -- construct multiple holds across multiple allocations
     """
-    
-    class SessionExtension (sqlalchemy.orm.session.SessionExtension):
-        
-        def forbid_negative_amounts (self, session):
-            holds = [instance for instance in (session.new | session.dirty) if isinstance(instance, Hold)]
-            for hold in holds:
-                if hold.amount < 0:
-                    raise ValueError("hold cannot be for negative amount")
-        
-        def forbid_hold_greater_than_allocation (self, session):
-            holds = [instance for instance in (session.new | session.dirty) if isinstance(instance, Hold)]
-            for allocation in set([hold.allocation for hold in holds]):
-                credit_limit = allocation.project.credit_limit(allocation.resource)
-                if credit_limit:
-                    credit_limit = credit_limit.amount
-                else:
-                    credit_limit = 0
-                if allocation.amount_available < -credit_limit:
-                    raise exceptions.InsufficientFunds("not enough funds available")
-        
-        def before_commit (self, session):
-            self.forbid_negative_amounts(session)
-            self.forbid_hold_greater_than_allocation(session)
     
     def __init__ (self, **kwargs):
         """Initialize a new hold.
@@ -521,17 +463,6 @@ class Charge (Entity):
     Classmethods:
     distributed -- construct multiple charges across multiple allocations
     """
-    
-    class SessionExtension (sqlalchemy.orm.session.SessionExtension):
-        
-        def forbid_negative_amount (self, session):
-            charges = [instance for instance in (session.new | session.dirty) if isinstance(instance, Charge)]
-            for charge in charges:
-                if charge.amount < 0:
-                    raise ValueError("charge cannot be for negative amount")
-        
-        def before_commit (self, session):
-            self.forbid_negative_amount(session)
     
     def __init__ (self, **kwargs):
         """Initialize a new charge.
@@ -628,25 +559,6 @@ class Refund (Entity):
     amount -- amount refunded
     comment -- misc. comments
     """
-    
-    class SessionExtension (sqlalchemy.orm.session.SessionExtension):
-        
-        def forbid_negative_amount (self, session):
-            refunds = [instance for instance in (session.new | session.dirty) if isinstance(instance, Refund)]
-            for refund in refunds:
-                if refund.amount < 0:
-                    raise ValueError("cannot refund negative amount")
-        
-        def forbid_refund_greater_than_charge (self, session):
-            refunds = [instance for instance in (session.new | session.dirty) if isinstance(instance, Refund)]
-            charges = set([refund.charge for refund in refunds])
-            for charge in charges:
-                if charge.effective_amount < 0:
-                    raise ValueError("refunds cannot exceed charge")
-        
-        def before_commit (self, session):
-            self.forbid_negative_amount(session)
-            self.forbid_refund_greater_than_charge(session)
     
     def __init__ (self, **kwargs):
         """Initialize a new refund.
