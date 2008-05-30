@@ -26,12 +26,6 @@ __all__ = [
     "holds_table", "charges_table", "refunds_table",
 ]
 
-# types.TEXT was renamed types.Text in SA 0.4.3
-try:
-    types.Text
-except AttributeError:
-    types.Text = types.TEXT
-
 metadata = MetaData()
 
 users_table = Table("users", metadata,

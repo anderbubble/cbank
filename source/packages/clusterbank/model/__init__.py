@@ -27,9 +27,11 @@ import warnings
 from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 
 from sqlalchemy import create_engine
+import sqlalchemy.exceptions
 from sqlalchemy.orm import scoped_session, sessionmaker, relation, synonym
 from sqlalchemy.orm.session import SessionExtension
 
+import clusterbank
 from clusterbank.model.entities import User, Project, Resource, Request, Allocation, CreditLimit, Hold, Charge, Refund
 from clusterbank.model.metadata import metadata, \
     users_table, projects_table, resources_table, \
@@ -97,7 +99,7 @@ class SessionConstraints (SessionExtension):
         charges = set([refund.charge for refund in refunds])
         for charge in charges:
             if charge.effective_amount < 0:
-                raise ValueError("illegal amount for refund")
+                raise exceptions.InsufficientFunds("not enough funds available")
     
     def before_commit (self, session):
         self.forbid_negative_amounts(session)
@@ -177,3 +179,25 @@ Session.mapper(Refund, refunds_table, properties=dict(
     amount = refunds_table.c.amount,
     comment = refunds_table.c.comment,
 ))
+
+def _get_upstream_entity (cls, entity_name):
+    func = getattr(clusterbank.upstream, "get_%s_id" % cls.__name__.lower())
+    upstream_id = func(entity_name)
+    if upstream_id is None:
+        raise exceptions.NotFound("%s '%s' not found" % (
+            cls.__name__.lower(), entity_name))
+    try:
+        return Session.query(cls).filter_by(id=upstream_id).one()
+    except sqlalchemy.exceptions.InvalidRequestError:
+        entity = cls(id=upstream_id)
+        Session.save(entity)
+        return entity
+
+def get_user (user_name):
+    return _get_upstream_entity(User, user_name)
+
+def get_project (project_name):
+    return _get_upstream_entity(Project, project_name)
+
+def get_resource (resource_name):
+    return _get_upstream_entity(Resource, resource_name)

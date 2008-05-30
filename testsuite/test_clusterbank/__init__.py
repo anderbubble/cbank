@@ -11,7 +11,7 @@ def setup ():
     # bind the local database to memory
     clusterbank.model.metadata.bind = create_engine("sqlite:///:memory:")
     # create the upstream database
-    upstream.metadata.bind = create_engine("sqlite:///:memory:")
+    upstream.metadata.bind = create_engine("sqlite:///:memory:", echo=True)
     upstream.metadata.create_all()
     upstream.User(id=1, name="monty")
     upstream.Project(id=1, name="grail")

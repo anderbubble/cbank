@@ -18,8 +18,6 @@ try:
 except NameError:
     from sets import Set as set
 
-import sqlalchemy.exceptions
-
 import clusterbank
 import clusterbank.exceptions as exceptions
 
@@ -42,31 +40,6 @@ class UpstreamEntity (Entity):
             return str(self.name)
         else:
             return "?"
-    
-    @classmethod
-    def by_name (cls, name):
-        """Get (or create) an entity based on its name upstream.
-        
-        Arguments:
-        name -- upstream name of the entity
-        """
-        upstream_id = cls._get_upstream_id(name)
-        if upstream_id is None:
-            raise exceptions.NotFound("%s '%s' not found" % (cls.__name__.lower(), name))
-        return cls.by_id(upstream_id)
-    
-    @classmethod
-    def by_id (cls, id):
-        """Get (or create) an entity based on its id upstream.
-        
-        Arguments:
-        id -- upstream id of the entity
-        """
-        assert cls._get_upstream_name(id) is not None, "Project '%s' does not exist." % id
-        try:
-            return cls.query.filter_by(id=id).one()
-        except sqlalchemy.exceptions.InvalidRequestError:
-            return cls(id=id)
     
     def _get_name (self):
         return self._get_upstream_name(self.id)
