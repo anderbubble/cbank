@@ -25,7 +25,7 @@ from sqlalchemy import or_, and_
 import clusterbank
 import clusterbank.exceptions
 from clusterbank import upstream
-from clusterbank.model import User, Project, Resource, Allocation, Hold, Charge, Refund
+from clusterbank.model import Session, User, Project, Resource, Allocation, Hold, Charge, Refund
 
 class Option (optparse.Option):
     
@@ -167,9 +167,9 @@ def get_report (args):
 
 def print_usage (**kwargs):
     user = get_current_user()
-    projects = Project.query()
-    allocations = Allocation.query()
-    charges = Charge.query()
+    projects = Session.query(Project)
+    allocations = Session.query(Allocation)
+    charges = Session.query(Charge)
     if user.name not in admins:
         project_ids = [project.id for project in user.projects]
         projects = projects.filter(Project.id.in_(project_ids))
@@ -223,7 +223,7 @@ def print_usage (**kwargs):
 
 def print_projects (**kwargs):
     user = get_current_user()
-    projects = Project.query()
+    projects = Session.query(Project)
     if user.name not in admins:
         project_ids = [project.id for project in user.projects]
         projects = projects.filter(Project.id.in_(project_ids))
@@ -268,7 +268,7 @@ def print_projects (**kwargs):
 
 def print_allocations (**kwargs):
     user = get_current_user()
-    allocations = Allocation.query()
+    allocations = Session.query(Allocation)
     if user.name not in admins:
         project_ids = [project.id for project in user.projects]
         allocations = allocations.filter(Allocation.project.has(Project.id.in_(project_ids)))
@@ -318,7 +318,7 @@ def print_allocations (**kwargs):
 
 def print_charges (**kwargs):
     user = get_current_user()
-    charges = Charge.query()
+    charges = Session.query(Charge)
     if user.name not in admins:
         member_project_ids = [project.id for project in user.projects]
         owner_project_ids = [project.id for project in user.projects_owned]

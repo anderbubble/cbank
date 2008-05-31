@@ -17,14 +17,29 @@ try:
     set
 except NameError:
     from sets import Set as set
+import warnings
 
 import clusterbank
 import clusterbank.exceptions as exceptions
+import clusterbank.model
 
 __all__ = [
     "User", "Project", "Resource",
     "Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund"
 ]
+
+def deprecated (func):
+    """This is a decorator which can be used to mark functions
+    as deprecated. It will result in a warning being emitted
+    when the function is used."""
+    def newFunc(*args, **kwargs):
+        warnings.warn("Call to deprecated function %s." % func.__name__,
+                      category=DeprecationWarning)
+        return func(*args, **kwargs)
+    newFunc.__name__ = func.__name__
+    newFunc.__doc__ = func.__doc__
+    newFunc.__dict__.update(func.__dict__)
+    return newFunc
 
 
 class Entity (object):
@@ -41,11 +56,6 @@ class UpstreamEntity (Entity):
         else:
             return "?"
     
-    def _get_name (self):
-        return self._get_upstream_name(self.id)
-    
-    name = property(_get_name)
-
 
 class User (UpstreamEntity):
     
@@ -56,13 +66,10 @@ class User (UpstreamEntity):
     name -- canonical name of the user (from upstream)
     """
     
-    @staticmethod
-    def _get_upstream_id (name):
-        return clusterbank.upstream.get_user_id(name)
-    
-    @staticmethod
-    def _get_upstream_name (id):
-        return clusterbank.upstream.get_user_name(id)
+    @classmethod
+    @deprecated
+    def by_name (cls, user_name):
+        return clusterbank.model.get_user(user_name)
     
     def __init__ (self, **kwargs):
         """Initialize a project.
@@ -73,6 +80,11 @@ class User (UpstreamEntity):
         self.id = kwargs.get("id")
         self.holds = kwargs.get("holds", [])
         self.charges = kwargs.get("charges", [])
+    
+    def _get_name (self):
+        return clusterbank.upstream.get_user_name(self.id)
+    
+    name = property(_get_name)
     
     def _get_projects (self):
         return [Project.by_id(id) for id in clusterbank.upstream.get_member_projects(self.id)]
@@ -98,13 +110,10 @@ class Project (UpstreamEntity):
     credit_limit -- credit limit for a resource at a given datetime
     """
     
-    @staticmethod
-    def _get_upstream_id (name):
-        return clusterbank.upstream.get_project_id(name)
-    
-    @staticmethod
-    def _get_upstream_name (id):
-        return clusterbank.upstream.get_project_name(id)
+    @classmethod
+    @deprecated
+    def by_name (cls, user_name):
+        return clusterbank.model.get_user(user_name)
     
     def __init__ (self, **kwargs):
         """Initialize a project.
@@ -120,6 +129,11 @@ class Project (UpstreamEntity):
         self.allocations = kwargs.get("allocations", [])
         self.credit_limits = kwargs.get("credit_limits", [])
     
+    def _get_name (self):
+        return clusterbank.upstream.get_project_name(self.id)
+    
+    name = property(_get_name)
+
     def _get_members (self):
         return [User.by_id(id) for id in clusterbank.upstream.get_project_members(self.id)]
     
@@ -156,13 +170,10 @@ class Resource (UpstreamEntity):
     credit_limits -- credit limits on the resource
     """
     
-    @staticmethod
-    def _get_upstream_id (name):
-        return clusterbank.upstream.get_resource_id(name)
-    
-    @staticmethod
-    def _get_upstream_name (id):
-        return clusterbank.upstream.get_resource_name(id)
+    @classmethod
+    @deprecated
+    def by_name (cls, user_name):
+        return clusterbank.model.get_user(user_name)
     
     def __init__ (self, **kwargs):
         """Initialize a resource.
@@ -176,7 +187,11 @@ class Resource (UpstreamEntity):
         self.requests = kwargs.get("requests", [])
         self.allocations = kwargs.get("allocations", [])
         self.credit_limits = kwargs.get("credit_limits", [])
-
+    
+    def _get_name (self):
+        return clusterbank.upstream.get_resource_name(self.id)
+    
+    name = property(_get_name)
 
 class Request (Entity):
     

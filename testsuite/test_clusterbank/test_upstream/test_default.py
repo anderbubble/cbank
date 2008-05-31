@@ -2,8 +2,12 @@ from nose.tools import raises
 
 from sqlalchemy import create_engine
 
-from clusterbank.upstreams.default import *
-from clusterbank.upstreams.default import Session, metadata, User, Project, Resource
+from clusterbank.upstreams.default import \
+    get_owner_projects, get_member_projects, get_user_name, \
+    get_user_id, get_resource_name, get_resource_id, \
+    get_project_owners, get_project_name, \
+    get_project_members, get_project_id, \
+    Session, metadata, User, Project, Resource
 
 
 class UpstreamEntityTester (object):
@@ -25,7 +29,8 @@ class TestProject (UpstreamEntityTester):
         self.project = Project(id=1, name="Shrubbery",
             members=[User(id=1, name="Monty")],
             owners=[User(id=2, name="Python")])
-        Session.flush()
+        Session.save(self.project)
+        Session.commit()
     
     def test_missing_name (self):
         assert get_project_name(2) is None
@@ -57,7 +62,8 @@ class TestResource (UpstreamEntityTester):
     def setup (self):
         UpstreamEntityTester.setup(self)
         self.resource = Resource(id=1, name="Spam")
-        Session.flush()
+        Session.save(self.resource)
+        Session.commit()
     
     def test_missing_by_id (self):
         assert get_resource_name(2) is None
@@ -79,7 +85,8 @@ class TestUser (UpstreamEntityTester):
         self.user = User(id=1, name="Monty",
             projects=[Project(id=1, name="Shrubbery")],
             projects_owned=[Project(id=2, name="Spam")])
-        Session.flush()
+        Session.save(self.user)
+        Session.commit()
     
     def test_missing_name (self):
         assert get_user_name(2) is None

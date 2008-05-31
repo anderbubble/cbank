@@ -11,7 +11,7 @@ from ConfigParser import SafeConfigParser as ConfigParser
 from sqlalchemy import MetaData, Table, Column, ForeignKey
 import sqlalchemy.types as types
 import sqlalchemy.exceptions as exceptions
-from sqlalchemy.orm import sessionmaker, scoped_session, relation
+from sqlalchemy.orm import sessionmaker, scoped_session, mapper, relation
 
 __all__ = [
     "get_project_id", "get_project_name",
@@ -23,13 +23,13 @@ __all__ = [
 
 def _get_entity_id (cls, name):
     try:
-        return cls.query.filter_by(name=name).one().id
+        return Session.query(cls).filter_by(name=name).one().id
     except exceptions.InvalidRequestError:
         return None
 
 def _get_entity_name (cls, id):
     try:
-        return cls.query.filter_by(id=id).one().name
+        return Session.query(cls).filter_by(id=id).one().name
     except exceptions.InvalidRequestError:
         return None
 
@@ -41,7 +41,7 @@ def get_user_name (id):
 
 def get_member_projects (id):
     try:
-        user = User.query.filter_by(id=id).one()
+        user = Session.query(User).filter_by(id=id).one()
     except exceptions.InvalidRequestError:
         return []
     else:
@@ -49,7 +49,7 @@ def get_member_projects (id):
 
 def get_owner_projects (id):
     try:
-        user = User.query.filter_by(id=id).one()
+        user = Session.query(User).filter_by(id=id).one()
     except exceptions.InvalidRequestError:
         return []
     else:
@@ -63,7 +63,7 @@ def get_project_name (id):
 
 def get_project_members (id):
     try:
-        project = Project.query.filter_by(id=id).one()
+        project = Session.query(Project).filter_by(id=id).one()
     except exceptions.InvalidRequestError:
         return []
     else:
@@ -71,7 +71,7 @@ def get_project_members (id):
 
 def get_project_owners (id):
     try:
-        project = Project.query.filter_by(id=id).one()
+        project = Session.query(Project).filter_by(id=id).one()
     except exceptions.InvalidRequestError:
         return []
     else:
@@ -176,19 +176,19 @@ resources_table = Table("resources", metadata,
 
 Session = scoped_session(sessionmaker(autoflush=True, transactional=True))
 
-Session.mapper(User, users_table, properties=dict(
+mapper(User, users_table, properties=dict(
     id = users_table.c.id,
     name = users_table.c.name,
 ))
 
-Session.mapper(Project, projects_table, properties=dict(
+mapper(Project, projects_table, properties=dict(
     id = projects_table.c.id,
     name = projects_table.c.name,
     members = relation(User, secondary=projects_members_table, backref="projects"),
     owners = relation(User, secondary=projects_owners_table, backref="projects_owned"),
 ))
 
-Session.mapper(Resource, resources_table, properties=dict(
+mapper(Resource, resources_table, properties=dict(
     id = resources_table.c.id,
     name = resources_table.c.name,
 ))

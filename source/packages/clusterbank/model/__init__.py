@@ -28,17 +28,16 @@ from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 
 from sqlalchemy import create_engine
 import sqlalchemy.exceptions
-from sqlalchemy.orm import scoped_session, sessionmaker, relation, synonym
+from sqlalchemy.orm import scoped_session, sessionmaker, mapper, relation, synonym
 from sqlalchemy.orm.session import SessionExtension
 
 import clusterbank
 from clusterbank.model.entities import User, Project, Resource, Request, Allocation, CreditLimit, Hold, Charge, Refund
-from clusterbank.model.metadata import metadata, \
-    users_table, projects_table, resources_table, \
-    requests_table, requests_allocations_table, allocations_table, credit_limits_table, \
+from clusterbank.model.database import metadata, \
+    users_table, projects_table, resources_table, requests_table, \
+    requests_allocations_table, allocations_table, credit_limits_table, \
     holds_table, charges_table, refunds_table
 import clusterbank.exceptions as exceptions
-    
 
 __all__ = [
     "Session",
@@ -109,19 +108,19 @@ class SessionConstraints (SessionExtension):
 Session = scoped_session(sessionmaker(transactional=True, autoflush=True,
     extension=SessionConstraints()))
 
-Session.mapper(User, users_table, properties=dict(
+mapper(User, users_table, properties=dict(
     id = users_table.c.id,
 ))
 
-Session.mapper(Project, projects_table, properties=dict(
+mapper(Project, projects_table, properties=dict(
     id = projects_table.c.id,
 ))
 
-Session.mapper(Resource, resources_table, properties=dict(
+mapper(Resource, resources_table, properties=dict(
     id = resources_table.c.id,
 ))
 
-Session.mapper(Request, requests_table, properties=dict(
+mapper(Request, requests_table, properties=dict(
     id = requests_table.c.id,
     project = relation(Project, backref="requests"),
     resource = relation(Resource, backref="requests"),
@@ -131,7 +130,7 @@ Session.mapper(Request, requests_table, properties=dict(
     start = requests_table.c.start,
 ))
 
-Session.mapper(Allocation, allocations_table, properties=dict(
+mapper(Allocation, allocations_table, properties=dict(
     id = allocations_table.c.id,
     project = relation(Project, backref="allocations"),
     resource = relation(Resource, backref="allocations"),
@@ -143,7 +142,7 @@ Session.mapper(Allocation, allocations_table, properties=dict(
     requests = relation(Request, secondary=requests_allocations_table, backref="allocations"),
 ))
 
-Session.mapper(CreditLimit, credit_limits_table, properties=dict(
+mapper(CreditLimit, credit_limits_table, properties=dict(
     id = credit_limits_table.c.id,
     project = relation(Project, backref="credit_limits"),
     resource = relation(Resource, backref="credit_limits"),
@@ -153,7 +152,7 @@ Session.mapper(CreditLimit, credit_limits_table, properties=dict(
     comment = credit_limits_table.c.comment,
 ))
 
-Session.mapper(Hold, holds_table, properties=dict(
+mapper(Hold, holds_table, properties=dict(
     id = holds_table.c.id,
     allocation = relation(Allocation, backref="holds"),
     datetime = holds_table.c.datetime,
@@ -163,7 +162,7 @@ Session.mapper(Hold, holds_table, properties=dict(
     active = holds_table.c.active,
 ))
 
-Session.mapper(Charge, charges_table, properties=dict(
+mapper(Charge, charges_table, properties=dict(
     id = charges_table.c.id,
     allocation = relation(Allocation, backref="charges"),
     datetime = charges_table.c.datetime,
@@ -172,7 +171,7 @@ Session.mapper(Charge, charges_table, properties=dict(
     comment = charges_table.c.comment,
 ))
 
-Session.mapper(Refund, refunds_table, properties=dict(
+mapper(Refund, refunds_table, properties=dict(
     id = refunds_table.c.id,
     charge = relation(Charge, backref="refunds"),
     datetime = refunds_table.c.datetime,
