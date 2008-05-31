@@ -1,1 +1,1 @@
-__all__ = ["test_clusterbank", "test_upstream"]
+__all__ = ["test_clusterbank"]
