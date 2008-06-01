@@ -66,11 +66,6 @@ class User (UpstreamEntity):
     name -- canonical name of the user (from upstream)
     """
     
-    @classmethod
-    @deprecated
-    def by_name (cls, user_name):
-        return clusterbank.model.get_user(user_name)
-    
     def __init__ (self, **kwargs):
         """Initialize a project.
         
@@ -109,11 +104,6 @@ class Project (UpstreamEntity):
     credit_limits -- credit limits for the project
     credit_limit -- credit limit for a resource at a given datetime
     """
-    
-    @classmethod
-    @deprecated
-    def by_name (cls, user_name):
-        return clusterbank.model.get_user(user_name)
     
     def __init__ (self, **kwargs):
         """Initialize a project.
@@ -169,11 +159,6 @@ class Resource (UpstreamEntity):
     allocations -- allocations of the resource
     credit_limits -- credit limits on the resource
     """
-    
-    @classmethod
-    @deprecated
-    def by_name (cls, user_name):
-        return clusterbank.model.get_user(user_name)
     
     def __init__ (self, **kwargs):
         """Initialize a resource.

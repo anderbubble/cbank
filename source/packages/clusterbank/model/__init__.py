@@ -31,7 +31,7 @@ import sqlalchemy.exceptions
 from sqlalchemy.orm import scoped_session, sessionmaker, mapper, relation, synonym
 from sqlalchemy.orm.session import SessionExtension
 
-import clusterbank
+from clusterbank import upstream
 from clusterbank.model.entities import User, Project, Resource, Request, Allocation, CreditLimit, Hold, Charge, Refund
 from clusterbank.model.database import metadata, \
     users_table, projects_table, resources_table, requests_table, \
@@ -179,9 +179,8 @@ mapper(Refund, refunds_table, properties=dict(
     comment = refunds_table.c.comment,
 ))
 
-def _get_upstream_entity (cls, entity_name):
-    func = getattr(clusterbank.upstream, "get_%s_id" % cls.__name__.lower())
-    upstream_id = func(entity_name)
+def _get_upstream_entity (cls, upstream_function, entity_name):
+    upstream_id = upstream_function(entity_name)
     if upstream_id is None:
         raise exceptions.NotFound("%s '%s' not found" % (
             cls.__name__.lower(), entity_name))
@@ -192,11 +191,11 @@ def _get_upstream_entity (cls, entity_name):
         Session.save(entity)
         return entity
 
-def get_user (user_name):
-    return _get_upstream_entity(User, user_name)
+def user_by_name (user_name):
+    return _get_upstream_entity(User, upstream.get_user_id, user_name)
 
-def get_project (project_name):
-    return _get_upstream_entity(Project, project_name)
+def project_by_name (project_name):
+    return _get_upstream_entity(Project, upstream.get_project_id, project_name)
 
-def get_resource (resource_name):
-    return _get_upstream_entity(Resource, resource_name)
+def resource_by_name (resource_name):
+    return _get_upstream_entity(Resource, upstream.get_resource_id, resource_name)

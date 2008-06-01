@@ -15,25 +15,25 @@ class TestDBFunctions (object):
         clusterbank.model.metadata.drop_all()
 
     def test_get_valid_user (self):
-        user = clusterbank.model.get_user("monty")
+        user = clusterbank.model.user_by_name("monty")
         assert user.id == 1
     
     @raises(clusterbank.exceptions.NotFound)
     def test_get_invalid_user (self):
-        user = clusterbank.model.get_user("doesnotexist")
+        user = clusterbank.model.user_by_name("doesnotexist")
     
     def test_get_valid_project (self):
-        project = clusterbank.model.get_project("grail")
+        project = clusterbank.model.project_by_name("grail")
         assert project.id == 1
     
     @raises(clusterbank.exceptions.NotFound)
     def test_get_invalid_project (self):
-        user = clusterbank.model.get_project("doesnotexist")
+        user = clusterbank.model.project_by_name("doesnotexist")
     
     def test_get_valid_resource (self):
-        resource = clusterbank.model.get_resource("spam")
+        resource = clusterbank.model.resource_by_name("spam")
         assert resource.id == 1
     
     @raises(clusterbank.exceptions.NotFound)
     def test_get_invalid_resource (self):
-        resource = clusterbank.model.get_resource("doesnotexist")
+        resource = clusterbank.model.resource_by_name("doesnotexist")

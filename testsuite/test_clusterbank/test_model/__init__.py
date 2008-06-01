@@ -11,7 +11,7 @@ def setup ():
     upstream.metadata.bind = create_engine("sqlite:///:memory:", echo=True)
     upstream.metadata.create_all()
     populate_upstream()
-    clusterbank.upstream = upstream
+    clusterbank.upstream.use = upstream
 
 def populate_upstream ():
     upstream.Session.save(upstream.User(id=1, name="monty"))
@@ -22,5 +22,5 @@ def populate_upstream ():
 def teardown ():
     upstream.metadata.drop_all()
     upstream.metadata.bind = None
-    clusterbank.upstream = None
+    clusterbank.upstream.use = None
     clusterbank.model.metadata.bind = None

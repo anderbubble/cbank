@@ -14,6 +14,16 @@ __all__ = ["model", "interfaces", "upstream"]
 
 __version__ = "trunk"
 
+class UpstreamProxy (object):
+    
+    def __init__ (self, use=None):
+        self.use = use
+    
+    def __getattr__ (self, name):
+        return getattr(self.use, name)
+
+upstream = UpstreamProxy()
+
 config = SafeConfigParser()
 config.read(["/etc/clusterbank.conf"])
 
@@ -22,7 +32,6 @@ try:
 except (NoSectionError, NoOptionError):
     upstream_module_name = "clusterbank.upstreams.default"
 try:
-    upstream = __import__(upstream_module_name, locals(), globals(), ["get_project_name", "get_project_id", "get_resource_name", "get_resource_id"])
+    upstream.use = __import__(upstream_module_name, locals(), globals(), ["get_project_name", "get_project_id", "get_resource_name", "get_resource_id"])
 except ImportError:
     warnings.warn("invalid upstream module: %s" % (upstream_module_name), UserWarning)
-    import clusterbank.upstreams.default as upstream
