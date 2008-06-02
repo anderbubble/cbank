@@ -42,6 +42,9 @@ __all__ = [
     "upstream", "Session",
     "User", "Project", "Resource",
     "Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund",
+    "user_by_id", "user_by_name", "project_by_id", "project_by_name",
+    "resource_by_id", "resource_by_name",
+    "user_projects", "user_projects_owned", "project_members", "project_owners",
 ]
 
 config = SafeConfigParser()
@@ -230,6 +233,14 @@ def project_members (project):
 
 def project_owners (project):
     return [user_by_id(user_id) for user_id in project._get_owner_ids()]
+
+def resource_by_id (resource_id):
+    try:
+        return Session.query(Resource).filter_by(id=resource_id).one()
+    except sqlalchemy.exceptions.InvalidRequestError:
+        resource = Resource(id=resource_id)
+        Session.save(resource)
+        return resource
 
 def resource_by_name (resource_name):
     return _get_upstream_entity(Resource, upstream.get_resource_id, resource_name)
