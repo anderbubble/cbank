@@ -197,11 +197,39 @@ def _get_upstream_entity (cls, upstream_function, entity_name):
         Session.save(entity)
         return entity
 
+def user_by_id (user_id):
+    try:
+        return Session.query(User).filter_by(id=user_id).one()
+    except sqlalchemy.exceptions.InvalidRequestError:
+        user = User(id=user_id)
+        Session.save(user)
+        return user
+
 def user_by_name (user_name):
     return _get_upstream_entity(User, upstream.get_user_id, user_name)
 
+def user_projects (user):
+    return [project_by_id(project_id) for project_id in user._get_project_ids()]
+
+def user_projects_owned (user):
+    return [project_by_id(project_id) for project_id in user._get_owned_project_ids()]
+
+def project_by_id (project_id):
+    try:
+        return Session.query(Project).filter_by(id=project_id).one()
+    except sqlalchemy.exceptions.InvalidRequestError:
+        project = Project(id=project_id)
+        Session.save(project)
+        return project
+
 def project_by_name (project_name):
     return _get_upstream_entity(Project, upstream.get_project_id, project_name)
+
+def project_members (project):
+    return [user_by_id(user_id) for user_id in project._get_member_ids()]
+
+def project_owners (project):
+    return [user_by_id(user_id) for user_id in project._get_owner_ids()]
 
 def resource_by_name (resource_name):
     return _get_upstream_entity(Resource, upstream.get_resource_id, resource_name)

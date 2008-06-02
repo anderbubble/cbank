@@ -24,8 +24,9 @@ from sqlalchemy import or_, and_
 
 import clusterbank
 import clusterbank.exceptions
-from clusterbank import upstream
-from clusterbank.model import Session, User, Project, Resource, Allocation, Hold, Charge, Refund
+from clusterbank.model import \
+    upstream, Session, User, Project, Resource, Allocation, Hold, \
+    Charge, Refund, user_by_name, user_projects, user_projects_owned, project_owners, project_members
 
 class Option (optparse.Option):
     
@@ -171,7 +172,7 @@ def print_usage (**kwargs):
     allocations = Session.query(Allocation)
     charges = Session.query(Charge)
     if user.name not in admins:
-        project_ids = [project.id for project in user.projects]
+        project_ids = [project.id for project in user_projects(user)]
         projects = projects.filter(Project.id.in_(project_ids))
     if kwargs.get("projects"):
         project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
@@ -225,7 +226,7 @@ def print_projects (**kwargs):
     user = get_current_user()
     projects = Session.query(Project)
     if user.name not in admins:
-        project_ids = [project.id for project in user.projects]
+        project_ids = [project.id for project in user_projects(user)]
         projects = projects.filter(Project.id.in_(project_ids))
     if kwargs.get("projects"):
         project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
@@ -258,11 +259,11 @@ def print_projects (**kwargs):
     print >> sys.stderr, format.header
     print >> sys.stderr, format.bar
     for project in projects:
-        if user in project.owners:
+        if user in project_owners(project):
             is_owner = "yes"
         else:
             is_owner = "no"
-        print format(dict(Name=project.name, Members=len(project.members), Owner=is_owner))
+        print format(dict(Name=project.name, Members=len(project_members(project)), Owner=is_owner))
     if unit_definition:
         print unit_definition
 
@@ -270,7 +271,7 @@ def print_allocations (**kwargs):
     user = get_current_user()
     allocations = Session.query(Allocation)
     if user.name not in admins:
-        project_ids = [project.id for project in user.projects]
+        project_ids = [project.id for project in user_projects(user)]
         allocations = allocations.filter(Allocation.project.has(Project.id.in_(project_ids)))
     if kwargs.get("projects"):
         project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
@@ -320,8 +321,8 @@ def print_charges (**kwargs):
     user = get_current_user()
     charges = Session.query(Charge)
     if user.name not in admins:
-        member_project_ids = [project.id for project in user.projects]
-        owner_project_ids = [project.id for project in user.projects_owned]
+        member_project_ids = [project.id for project in user_projects(user)]
+        owner_project_ids = [project.id for project in user_projects_owned(user)]
         charges = charges.filter(or_(
             and_(
                 Charge.allocation.has(Allocation.project.has(Project.id.in_(member_project_ids))),
@@ -371,7 +372,7 @@ def get_current_user ():
         raise UnknownUser("Unable to determine the current user.")
     username = passwd_entry[0]
     try:
-        user = User.by_name(username)
+        user = user_by_name(username)
     except clusterbank.exceptions.NotFound:
         raise UnknownUser("User '%s' was not found." % username)
     return user

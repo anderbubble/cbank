@@ -64,7 +64,7 @@ class User (UpstreamEntity):
     """
     
     def __init__ (self, **kwargs):
-        """Initialize a project.
+        """Initialize a user.
         
         Keyword arguments:
         id -- unique integer identifier
@@ -78,15 +78,11 @@ class User (UpstreamEntity):
     
     name = property(_get_name)
     
-    def _get_projects (self):
-        return [Project.by_id(id) for id in upstream.get_member_projects(self.id)]
+    def _get_project_ids (self):
+        return upstream.get_member_projects(self.id)
     
-    projects = property(_get_projects)
-    
-    def _get_projects_owned (self):
-        return [Project.by_id(id) for id in upstream.get_owner_projects(self.id)]
-    
-    projects_owned = property(_get_projects_owned)
+    def _get_owned_project_ids (self):
+        return upstream.get_owner_projects(self.id)
 
 
 class Project (UpstreamEntity):
@@ -121,15 +117,11 @@ class Project (UpstreamEntity):
     
     name = property(_get_name)
 
-    def _get_members (self):
-        return [User.by_id(id) for id in upstream.get_project_members(self.id)]
+    def _get_member_ids (self):
+        return upstream.get_project_members(self.id)
     
-    members = property(_get_members)
-    
-    def _get_owners (self):
-        return [User.by_id(id) for id in upstream.get_project_owners(self.id)]
-    
-    owners = property(_get_owners)
+    def _get_owner_ids (self):
+        return upstream.get_project_owners(self.id)
     
     def credit_limit (self, resource, datetime=datetime.now):
         try:
