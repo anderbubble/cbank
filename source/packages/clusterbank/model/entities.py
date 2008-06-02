@@ -19,7 +19,6 @@ except NameError:
     from sets import Set as set
 import warnings
 
-import clusterbank
 import clusterbank.exceptions as exceptions
 import clusterbank.model
 
@@ -28,18 +27,16 @@ __all__ = [
     "Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund"
 ]
 
-def deprecated (func):
-    """This is a decorator which can be used to mark functions
-    as deprecated. It will result in a warning being emitted
-    when the function is used."""
-    def newFunc(*args, **kwargs):
-        warnings.warn("Call to deprecated function %s." % func.__name__,
-                      category=DeprecationWarning)
-        return func(*args, **kwargs)
-    newFunc.__name__ = func.__name__
-    newFunc.__doc__ = func.__doc__
-    newFunc.__dict__.update(func.__dict__)
-    return newFunc
+
+class UpstreamProxy (object):
+
+    def __init__ (self, use=None):
+        self.use = use
+
+    def __getattr__ (self, name):
+        return getattr(self.use, name)
+
+upstream = UpstreamProxy()
 
 
 class Entity (object):
@@ -77,17 +74,17 @@ class User (UpstreamEntity):
         self.charges = kwargs.get("charges", [])
     
     def _get_name (self):
-        return clusterbank.upstream.get_user_name(self.id)
+        return upstream.get_user_name(self.id)
     
     name = property(_get_name)
     
     def _get_projects (self):
-        return [Project.by_id(id) for id in clusterbank.upstream.get_member_projects(self.id)]
+        return [Project.by_id(id) for id in upstream.get_member_projects(self.id)]
     
     projects = property(_get_projects)
     
     def _get_projects_owned (self):
-        return [Project.by_id(id) for id in clusterbank.upstream.get_owner_projects(self.id)]
+        return [Project.by_id(id) for id in upstream.get_owner_projects(self.id)]
     
     projects_owned = property(_get_projects_owned)
 
@@ -120,17 +117,17 @@ class Project (UpstreamEntity):
         self.credit_limits = kwargs.get("credit_limits", [])
     
     def _get_name (self):
-        return clusterbank.upstream.get_project_name(self.id)
+        return upstream.get_project_name(self.id)
     
     name = property(_get_name)
 
     def _get_members (self):
-        return [User.by_id(id) for id in clusterbank.upstream.get_project_members(self.id)]
+        return [User.by_id(id) for id in upstream.get_project_members(self.id)]
     
     members = property(_get_members)
     
     def _get_owners (self):
-        return [User.by_id(id) for id in clusterbank.upstream.get_project_owners(self.id)]
+        return [User.by_id(id) for id in upstream.get_project_owners(self.id)]
     
     owners = property(_get_owners)
     
@@ -174,7 +171,7 @@ class Resource (UpstreamEntity):
         self.credit_limits = kwargs.get("credit_limits", [])
     
     def _get_name (self):
-        return clusterbank.upstream.get_resource_name(self.id)
+        return upstream.get_resource_name(self.id)
     
     name = property(_get_name)
 

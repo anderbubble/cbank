@@ -31,8 +31,7 @@ import sqlalchemy.exceptions
 from sqlalchemy.orm import scoped_session, sessionmaker, mapper, relation, synonym
 from sqlalchemy.orm.session import SessionExtension
 
-from clusterbank import upstream
-from clusterbank.model.entities import User, Project, Resource, Request, Allocation, CreditLimit, Hold, Charge, Refund
+from clusterbank.model.entities import upstream, User, Project, Resource, Request, Allocation, CreditLimit, Hold, Charge, Refund
 from clusterbank.model.database import metadata, \
     users_table, projects_table, resources_table, requests_table, \
     requests_allocations_table, allocations_table, credit_limits_table, \
@@ -40,7 +39,7 @@ from clusterbank.model.database import metadata, \
 import clusterbank.exceptions as exceptions
 
 __all__ = [
-    "Session",
+    "upstream", "Session",
     "User", "Project", "Resource",
     "Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund",
 ]
@@ -57,7 +56,14 @@ else:
         metadata.bind = create_engine(uri)
     except Exception, e:
         warnings.warn("invalid database: %s (%s)" % (uri, e), UserWarning)
-
+try:
+    upstream_module_name = config.get("upstream", "module")
+except (NoSectionError, NoOptionError):
+    upstream_module_name = "clusterbank.upstreams.default"
+try:
+    upstream.use = __import__(upstream_module_name, locals(), globals(), ["get_project_name", "get_project_id", "get_resource_name", "get_resource_id"])
+except ImportError:
+    warnings.warn("invalid upstream module: %s" % (upstream_module_name), UserWarning)
 
 class SessionConstraints (SessionExtension):
     

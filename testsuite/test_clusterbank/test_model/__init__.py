@@ -1,6 +1,5 @@
 from sqlalchemy import create_engine
 
-import clusterbank
 import clusterbank.model
 from clusterbank.upstreams import default as upstream
 
@@ -11,7 +10,7 @@ def setup ():
     upstream.metadata.bind = create_engine("sqlite:///:memory:", echo=True)
     upstream.metadata.create_all()
     populate_upstream()
-    clusterbank.upstream.use = upstream
+    clusterbank.model.upstream.use = upstream
 
 def populate_upstream ():
     upstream.Session.save(upstream.User(id=1, name="monty"))
@@ -22,5 +21,5 @@ def populate_upstream ():
 def teardown ():
     upstream.metadata.drop_all()
     upstream.metadata.bind = None
-    clusterbank.upstream.use = None
+    clusterbank.model.upstream.use = None
     clusterbank.model.metadata.bind = None
