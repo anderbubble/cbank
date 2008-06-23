@@ -22,6 +22,6 @@ setup(
     test_suite="nose.collector",
     zip_safe = True,
     entry_points = {'console_scripts': [
-            "cbank = clusterbank.interfaces.cbank:main",
+            "cbank = clusterbank.cbank.controllers:main",
     ]},
 )

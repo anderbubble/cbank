@@ -1,20 +1,11 @@
-"""cbank part deux"""
-
-import sys
 import os
+import sys
 import pwd
-import string
-import ConfigParser
-import optparse
-import warnings
 import locale
+import ConfigParser
+import string
+import warnings
 from datetime import datetime
-try:
-    dt_strptime = datetime.strprime
-except AttributeError:
-    import time
-    def dt_strptime (value, format):
-        return datetime(*time.strptime(value, format)[0:6])
 try:
     set
 except NameError:
@@ -24,44 +15,11 @@ from sqlalchemy import or_, and_
 
 import clusterbank
 import clusterbank.exceptions
+import clusterbank.cbank.exceptions as exceptions
 from clusterbank.model import \
     upstream, Session, User, Project, Resource, Allocation, Hold, \
     Charge, Refund, user_by_name, user_projects, user_projects_owned, project_owners, project_members
-
-class Option (optparse.Option):
     
-    DATE_FORMATS = [
-        "%Y-%m-%d",
-        "%y-%m-%d",
-        "%m/%d/%Y",
-        "%m/%d/%y",
-        "%Y%m%d",
-    ]
-    
-    def check_date (self, opt, value):
-        """Return a datetime from YYYY-MM-DD."""
-        for format in self.DATE_FORMATS:
-            try:
-                return dt_strptime(value, format)
-            except ValueError:
-                continue
-        raise optparse.OptionValueError(
-            "option %s: invalid date: %r" % (opt, value))
-    
-    def check_csv (self, opt, value):
-        if value:
-            return value.split(",")
-        else:
-            return []
-    
-    TYPES = optparse.Option.TYPES + ("date", "csv")
-    
-    TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
-    TYPE_CHECKER['date'] = check_date
-    TYPE_CHECKER['csv'] = check_csv
-
-locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
-
 config = ConfigParser.SafeConfigParser()
 config.read(["/etc/clusterbank.conf"])
 
@@ -78,93 +36,7 @@ except ConfigParser.Error:
 else:
     admins = admins.split(",")
 
-reports_available = ["use", "usage", "projects", "allocations", "charges"]
-
-parser = optparse.OptionParser(usage=os.linesep.join([
-    "cbank [options] [report]",
-    "",
-    "reports:",
-    "  %s" % ", ".join(reports_available)]), version="cbank %s" % clusterbank.__version__)
-parser.add_option(Option("-p", "--projects", dest="projects", type="csv",
-    help="filter by project NAMES", metavar="NAMES"))
-parser.add_option(Option("-u", "--users", dest="users", type="csv",
-    help="filter by user NAMES", metavar="NAMES"))
-parser.add_option(Option("-r", "--resources", dest="resources", type="csv",
-    help="filter by resource NAMES", metavar="NAMES"))
-parser.add_option(Option("-a", "--after", dest="after", type="date",
-    help="filter by start DATE", metavar="DATE"))
-parser.add_option(Option("-b", "--before", dest="before", type="date",
-    help="filter by end DATE", metavar="DATE"))
-parser.add_option(Option("-e", "--extra-data", dest="extra", action="store_true",
-    help="display extra data"))
-parser.set_defaults(extra=False)
-try:
-    parser.set_defaults(resources=config.get("cbank", "resource"))
-except ConfigParser.Error:
-    pass
-
-class CbankException (Exception): pass
-
-class CbankError (CbankException): pass
-
-class UnknownUser (CbankError):
-    
-    def __str__ (self):
-        return "cbank: unknown user: %s" % CbankError.__str__(self)
-
-class UnknownReport (CbankError):
-    
-    def __str__ (self):
-        return "cbank: unknown report: %s" % CbankError.__str__(self)
-
-class MisusedOption (CbankError):
-    
-    def __str__ (self):
-        return "cbank: misused option: %s" % CbankError.__str__(self)
-
-def handle_exceptions (func, *args, **kwargs):
-    try:
-        return func(*args, **kwargs)
-    except KeyboardInterrupt:
-        sys.exit(1)
-    except CbankError, e:
-        print >> sys.stderr, e
-        sys.exit(1)
-
-def main ():
-    return handle_exceptions(_main)
-
-def _main ():
-    options, args = parser.parse_args()
-    report = get_report(args)
-    report(projects=options.projects, users=options.users,
-        resources=options.resources, after=options.after,
-        before=options.before, extra=options.extra)
-
-def get_report (args):
-    try:
-        requested_report = args[0]
-    except IndexError:
-        report = "usage"
-    else:
-        possible_reports = [
-            report for report in reports_available
-            if report.startswith(requested_report)]
-        if not possible_reports:
-            raise UnknownReport(requested_report)
-        elif len(possible_reports) > 1:
-            raise UnknownReport("could be %s" % ", ".join(possible_reports))
-        report = possible_reports[0]
-    if report in ("use", "usage"):
-        return print_usage
-    elif report == "projects":
-        return print_projects
-    elif report == "allocations":
-        return print_allocations
-    elif report == "charges":
-        return print_charges
-    else:
-        raise UnknownReport(report)
+locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 
 def print_usage (**kwargs):
     user = get_current_user()
@@ -369,12 +241,12 @@ def get_current_user ():
     try:
         passwd_entry = pwd.getpwuid(uid)
     except KeyError:
-        raise UnknownUser("Unable to determine the current user.")
+        raise exceptions.UnknownUser("Unable to determine the current user.")
     username = passwd_entry[0]
     try:
         user = user_by_name(username)
     except clusterbank.exceptions.NotFound:
-        raise UnknownUser("User '%s' was not found." % username)
+        raise exceptions.UnknownUser("User '%s' was not found." % username)
     return user
 
 def display_units (amount):
@@ -399,6 +271,7 @@ def display_units (amount):
         return "< 0.1"
     else:
         return locale.format("%.1f", converted_amount, True)
+
 
 class Formatter (object):
     
@@ -455,33 +328,3 @@ class Formatter (object):
     
     def __call__ (self, *args, **kwargs):
         return self.format(*args, **kwargs)
-
-class OldFormatter (object):
-    
-    def __init__ (self, cols, sep=" "):
-        self.cols = [self._with_alignment(col) for col in cols]
-        self.sep = sep
-    
-    @staticmethod
-    def _with_alignment (col):
-        try:
-            width, alignment = col
-        except TypeError:
-            width = col
-            alignment = string.ljust
-        return (width, alignment)
-    
-    def __call__ (self, *args, **kwargs):
-        return self.format(*args, **kwargs)
-    
-    def format (self, args):
-        assert len(args) <= len(self.cols), "Too many arguments to format."
-        return self.sep.join([align(str(arg), width) for (arg, (width, align)) in zip(args, self.cols)])
-    
-    def linesep (self, *args):
-        if not args:
-            cols = range(len(self.cols))
-        else:
-            cols = args
-        return self.format([((x in cols) and "-" or " ")*width for ((width, align), x) in zip(self.cols, range(len(self.cols)))])
-
