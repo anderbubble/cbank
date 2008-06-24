@@ -10,10 +10,10 @@ from clusterbank.model import user_by_name
 import clusterbank.cbank.exceptions as exceptions
 import clusterbank.cbank.views as views
 
+__all__ = ["main", "report_main"]
+
 config = ConfigParser.SafeConfigParser()
 config.read(["/etc/clusterbank.conf"])
-
-reports_available = ["use", "usage", "projects", "allocations", "charges"]
 
 try:
     dt_strptime = datetime.strprime
@@ -36,6 +36,39 @@ def handle_exceptions (func):
     decorated_func.__dict__.update(func.__dict__)
     return decorated_func
 
+@handle_exceptions
+def main ():
+    return report_main()
+
+@handle_exceptions
+def report_main ():
+    parser = build_report_parser()
+    options, args = parser.parse_args()
+    report = get_report(args)
+    report(user=get_current_user(), projects=options.projects, users=options.users,
+        resources=options.resources, after=options.after,
+        before=options.before, extra=options.extra)
+
+def get_report (args):
+    try:
+        requested_report = args[0]
+    except IndexError:
+        return views.print_usage
+    else:
+        possible_reports = []
+        if "usage".startswith(requested_report):
+            possible_reports.append(views.print_usage)
+        if "projects".startswith(requested_report):
+            possible_reports.append(views.print_projects)
+        if "allocations".startswith(requested_report):
+            possible_reports.append(views.print_allocations)
+        if "charges".startswith(requested_report):
+            possible_reports.append(views.print_charges)
+        if len(possible_reports) != 1:
+            raise exceptions.UnknownReport(requested_report)
+        else:
+            return possible_reports[0]
+
 def get_current_user ():
     uid = os.getuid()
     try:
@@ -48,6 +81,7 @@ def get_current_user ():
     except clusterbank.exceptions.NotFound:
         raise exceptions.UnknownUser("User '%s' was not found." % username)
     return user
+
 
 class Option (optparse.Option):
     
@@ -81,62 +115,32 @@ class Option (optparse.Option):
     TYPE_CHECKER['date'] = check_date
     TYPE_CHECKER['csv'] = check_csv
 
-parser = optparse.OptionParser(usage=os.linesep.join([
-    "cbank [options] [report]",
-    "",
-    "reports:",
-    "  %s" % ", ".join(reports_available)]), version="cbank %s" % clusterbank.__version__)
-parser.add_option(Option("-p", "--projects", dest="projects", type="csv",
-    help="filter by project NAMES", metavar="NAMES"))
-parser.add_option(Option("-u", "--users", dest="users", type="csv",
-    help="filter by user NAMES", metavar="NAMES"))
-parser.add_option(Option("-r", "--resources", dest="resources", type="csv",
-    help="filter by resource NAMES", metavar="NAMES"))
-parser.add_option(Option("-a", "--after", dest="after", type="date",
-    help="filter by start DATE", metavar="DATE"))
-parser.add_option(Option("-b", "--before", dest="before", type="date",
-    help="filter by end DATE", metavar="DATE"))
-parser.add_option(Option("-e", "--extra-data", dest="extra", action="store_true",
-    help="display extra data"))
-parser.set_defaults(extra=False)
-try:
-    parser.set_defaults(resources=config.get("cbank", "resource"))
-except ConfigParser.Error:
-    pass
+def build_report_parser ():
+    
+    usage_str = os.linesep.join([
+        "cbank [options] [report]",
+        "",
+        "reports:",
+        "  usage, projects, allocations, charges"])
 
-@handle_exceptions
-def main ():
-    return report_main()
-
-@handle_exceptions
-def report_main ():
-    options, args = parser.parse_args()
-    report = get_report(args)
-    report(user=get_current_user(), projects=options.projects, users=options.users,
-        resources=options.resources, after=options.after,
-        before=options.before, extra=options.extra)
-
-def get_report (args):
+    version_str = "cbank %s" % clusterbank.__version__
+    
+    parser = optparse.OptionParser(usage=usage_str, version=version_str)
+    parser.add_option(Option("-p", "--projects", dest="projects", type="csv",
+        help="filter by project NAMES", metavar="NAMES"))
+    parser.add_option(Option("-u", "--users", dest="users", type="csv",
+        help="filter by user NAMES", metavar="NAMES"))
+    parser.add_option(Option("-r", "--resources", dest="resources", type="csv",
+        help="filter by resource NAMES", metavar="NAMES"))
+    parser.add_option(Option("-a", "--after", dest="after", type="date",
+        help="filter by start DATE", metavar="DATE"))
+    parser.add_option(Option("-b", "--before", dest="before", type="date",
+        help="filter by end DATE", metavar="DATE"))
+    parser.add_option(Option("-e", "--extra-data", dest="extra", action="store_true",
+        help="display extra data"))
+    parser.set_defaults(extra=False)
     try:
-        requested_report = args[0]
-    except IndexError:
-        report = "usage"
-    else:
-        possible_reports = [
-            report for report in reports_available
-            if report.startswith(requested_report)]
-        if not possible_reports:
-            raise UnknownReport(requested_report)
-        elif len(possible_reports) > 1:
-            raise UnknownReport("could be %s" % ", ".join(possible_reports))
-        report = possible_reports[0]
-    if report in ("use", "usage"):
-        return views.print_usage
-    elif report == "projects":
-        return views.print_projects
-    elif report == "allocations":
-        return views.print_allocations
-    elif report == "charges":
-        return views.print_charges
-    else:
-        raise UnknownReport(report)
+        parser.set_defaults(resources=config.get("cbank", "resource"))
+    except ConfigParser.Error:
+        pass
+    return parser
