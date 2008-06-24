@@ -20,6 +20,19 @@ except AttributeError:
     def dt_strptime (value, format):
         return datetime(*time.strptime(value, format)[0:6])
 
+def handle_exceptions (func):
+    def decorated_func (*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except KeyboardInterrupt:
+            sys.exit(1)
+        except exceptions.CbankError, e:
+            print >> sys.stderr, e
+            sys.exit(1)
+    decorated_func.__name__ = func.__name__
+    decorated_func.__doc__ = func.__doc__
+    decorated_func.__dict__.update(func.__dict__)
+    return decorated_func
 
 class Option (optparse.Option):
     
@@ -76,9 +89,11 @@ try:
 except ConfigParser.Error:
     pass
 
+@handle_exceptions
 def main ():
-    return handle_exceptions(report_main)
+    return report_main()
 
+@handle_exceptions
 def report_main ():
     options, args = parser.parse_args()
     report = get_report(args)
@@ -110,12 +125,3 @@ def get_report (args):
         return views.print_charges
     else:
         raise UnknownReport(report)
-
-def handle_exceptions (func, *args, **kwargs):
-    try:
-        return func(*args, **kwargs)
-    except KeyboardInterrupt:
-        sys.exit(1)
-    except exceptions.CbankError, e:
-        print >> sys.stderr, e
-        sys.exit(1)

@@ -23,5 +23,6 @@ setup(
     zip_safe = True,
     entry_points = {'console_scripts': [
             "cbank = clusterbank.cbank.controllers:main",
+            "cbank-report = clusterbank.cbank.controllers:report_main",
     ]},
 )
