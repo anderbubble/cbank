@@ -12,6 +12,7 @@ Refund -- refund of a charge
 """
 
 from datetime import datetime
+import ConfigParser
 import operator
 try:
     set
@@ -26,6 +27,10 @@ __all__ = [
     "User", "Project", "Resource",
     "Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund"
 ]
+
+
+config = ConfigParser.SafeConfigParser()
+config.read(["/etc/clusterbank.conf"])
 
 
 class UpstreamProxy (object):
@@ -64,6 +69,7 @@ class User (UpstreamEntity):
     Properties:
     id -- unique integer identifier
     name -- canonical name of the user (from upstream)
+    is_admin -- whether the user has admin privileges
     """
     
     def __init__ (self, **kwargs):
@@ -86,6 +92,17 @@ class User (UpstreamEntity):
     
     def _get_owned_project_ids (self):
         return upstream.get_owner_projects(self.id)
+    
+    def _get_is_admin (self):
+        try:
+            admins = config.get("cbank", "admins")
+        except ConfigParser.Error:
+            admins = []
+        else:
+            admins = admins.split(",")
+        return self.name in admins
+    
+    is_admin = property(_get_is_admin)
 
 
 class Project (UpstreamEntity):

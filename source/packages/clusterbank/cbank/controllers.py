@@ -1,10 +1,12 @@
 import optparse
 import os
 import sys
+import pwd
 import ConfigParser
 from datetime import datetime
 
 import clusterbank
+from clusterbank.model import user_by_name
 import clusterbank.cbank.exceptions as exceptions
 import clusterbank.cbank.views as views
 
@@ -33,6 +35,19 @@ def handle_exceptions (func):
     decorated_func.__doc__ = func.__doc__
     decorated_func.__dict__.update(func.__dict__)
     return decorated_func
+
+def get_current_user ():
+    uid = os.getuid()
+    try:
+        passwd_entry = pwd.getpwuid(uid)
+    except KeyError:
+        raise exceptions.UnknownUser("Unable to determine the current user.")
+    username = passwd_entry[0]
+    try:
+        user = user_by_name(username)
+    except clusterbank.exceptions.NotFound:
+        raise exceptions.UnknownUser("User '%s' was not found." % username)
+    return user
 
 class Option (optparse.Option):
     
@@ -97,7 +112,7 @@ def main ():
 def report_main ():
     options, args = parser.parse_args()
     report = get_report(args)
-    report(projects=options.projects, users=options.users,
+    report(user=get_current_user(), projects=options.projects, users=options.users,
         resources=options.resources, after=options.after,
         before=options.before, extra=options.extra)
 

@@ -1,6 +1,5 @@
 import os
 import sys
-import pwd
 import locale
 import ConfigParser
 import string
@@ -13,12 +12,10 @@ except NameError:
 
 from sqlalchemy import or_, and_
 
-import clusterbank
-import clusterbank.exceptions
 import clusterbank.cbank.exceptions as exceptions
 from clusterbank.model import \
     upstream, Session, User, Project, Resource, Allocation, Hold, \
-    Charge, Refund, user_by_name, user_projects, user_projects_owned, project_owners, project_members
+    Charge, Refund, user_projects, user_projects_owned, project_owners, project_members
     
 config = ConfigParser.SafeConfigParser()
 config.read(["/etc/clusterbank.conf"])
@@ -29,21 +26,14 @@ except ConfigParser.Error:
     unit_definition = None
 else:
     unit_definition = "Units are in %s." % unit_label
-try:
-    admins = config.get("cbank", "admins")
-except ConfigParser.Error:
-    admins = []
-else:
-    admins = admins.split(",")
 
 locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 
-def print_usage (**kwargs):
-    user = get_current_user()
+def print_usage (user, **kwargs):
     projects = Session.query(Project)
     allocations = Session.query(Allocation)
     charges = Session.query(Charge)
-    if user.name not in admins:
+    if not user.is_admin:
         project_ids = [project.id for project in user_projects(user)]
         projects = projects.filter(Project.id.in_(project_ids))
     if kwargs.get("projects"):
@@ -94,10 +84,9 @@ def print_usage (**kwargs):
     if unit_definition:
         print unit_definition
 
-def print_projects (**kwargs):
-    user = get_current_user()
+def print_projects (user, **kwargs):
     projects = Session.query(Project)
-    if user.name not in admins:
+    if not user.is_admin:
         project_ids = [project.id for project in user_projects(user)]
         projects = projects.filter(Project.id.in_(project_ids))
     if kwargs.get("projects"):
@@ -139,10 +128,9 @@ def print_projects (**kwargs):
     if unit_definition:
         print unit_definition
 
-def print_allocations (**kwargs):
-    user = get_current_user()
+def print_allocations (user, **kwargs):
     allocations = Session.query(Allocation)
-    if user.name not in admins:
+    if not user.is_admin:
         project_ids = [project.id for project in user_projects(user)]
         allocations = allocations.filter(Allocation.project.has(Project.id.in_(project_ids)))
     if kwargs.get("projects"):
@@ -189,10 +177,9 @@ def print_allocations (**kwargs):
     if unit_definition:
         print >> sys.stderr, unit_definition
 
-def print_charges (**kwargs):
-    user = get_current_user()
+def print_charges (user, **kwargs):
     charges = Session.query(Charge)
-    if user.name not in admins:
+    if not user.is_admin:
         member_project_ids = [project.id for project in user_projects(user)]
         owner_project_ids = [project.id for project in user_projects_owned(user)]
         charges = charges.filter(or_(
@@ -235,19 +222,6 @@ def print_charges (**kwargs):
     print >> sys.stderr, format(dict(Amount=display_units(total))), "(total)"
     if unit_definition:
         print >> sys.stderr, unit_definition
-
-def get_current_user ():
-    uid = os.getuid()
-    try:
-        passwd_entry = pwd.getpwuid(uid)
-    except KeyError:
-        raise exceptions.UnknownUser("Unable to determine the current user.")
-    username = passwd_entry[0]
-    try:
-        user = user_by_name(username)
-    except clusterbank.exceptions.NotFound:
-        raise exceptions.UnknownUser("User '%s' was not found." % username)
-    return user
 
 def display_units (amount):
     try:
