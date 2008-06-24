@@ -114,7 +114,6 @@ def print_projects (user, **kwargs):
     if not projects.count():
         print >> sys.stderr, "No projects found."
         return
-    user = get_current_user()
     format = Formatter(["Name", "Members", "Owner"])
     format.widths = dict(Name=15, Members=7, Owner=5)
     print >> sys.stderr, format.header
