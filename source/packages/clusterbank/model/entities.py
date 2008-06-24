@@ -42,7 +42,7 @@ upstream = UpstreamProxy()
 class Entity (object):
     
     def __repr__ (self):
-        return "<%s %r>" % (self.__class__.__name__, self.id)
+        return "<%s id=%r>" % (self.__class__.__name__, self.id)
 
 
 class UpstreamEntity (Entity):
@@ -52,6 +52,9 @@ class UpstreamEntity (Entity):
             return str(self.name)
         else:
             return "?"
+    
+    def __repr__ (self):
+        return "<%s name=%r id=%r>" % (self.__class__.__name__, self.name, self.id)
     
 
 class User (UpstreamEntity):
