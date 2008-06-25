@@ -4,6 +4,7 @@ import sys
 import pwd
 import ConfigParser
 from datetime import datetime
+import warnings
 
 import clusterbank
 from clusterbank.model import user_by_name
@@ -45,8 +46,18 @@ def report_main ():
     parser = build_report_parser()
     options, args = parser.parse_args()
     report = get_report(args)
-    report(user=get_current_user(), projects=options.projects, users=options.users,
-        resources=options.resources, after=options.after,
+    projects = set(sum(options.projects, []))
+    users = set(sum(options.users, []))
+    resources = set(sum(options.resources, []))
+    if not resources:
+        try:
+            default_resource = config.get("cbank", "resource")
+        except ConfigParser.Error:
+            pass
+        else:
+            resources = [default_resource]
+    report(user=get_current_user(), projects=projects, users=users,
+        resources=resources, after=options.after,
         before=options.before, extra=options.extra)
 
 def get_report (args):
@@ -105,6 +116,8 @@ class Option (optparse.Option):
     
     def check_csv (self, opt, value):
         if value:
+            if "," in value:
+                warnings.warn("CSV options are deprecated.", DeprecationWarning)
             return value.split(",")
         else:
             return []
@@ -126,11 +139,11 @@ def build_report_parser ():
     version_str = "cbank %s" % clusterbank.__version__
     
     parser = optparse.OptionParser(usage=usage_str, version=version_str)
-    parser.add_option(Option("-p", "--projects", dest="projects", type="csv",
+    parser.add_option(Option("-p", "--projects", dest="projects", type="csv", action="append",
         help="filter by project NAMES", metavar="NAMES"))
-    parser.add_option(Option("-u", "--users", dest="users", type="csv",
+    parser.add_option(Option("-u", "--users", dest="users", type="csv", action="append",
         help="filter by user NAMES", metavar="NAMES"))
-    parser.add_option(Option("-r", "--resources", dest="resources", type="csv",
+    parser.add_option(Option("-r", "--resources", dest="resources", type="csv", action="append",
         help="filter by resource NAMES", metavar="NAMES"))
     parser.add_option(Option("-a", "--after", dest="after", type="date",
         help="filter by start DATE", metavar="DATE"))
@@ -138,9 +151,5 @@ def build_report_parser ():
         help="filter by end DATE", metavar="DATE"))
     parser.add_option(Option("-e", "--extra-data", dest="extra", action="store_true",
         help="display extra data"))
-    parser.set_defaults(extra=False)
-    try:
-        parser.set_defaults(resources=config.get("cbank", "resource"))
-    except ConfigParser.Error:
-        pass
+    parser.set_defaults(extra=False, projects=[], users=[], resources=[])
     return parser
