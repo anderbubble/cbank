@@ -6,12 +6,14 @@ import ConfigParser
 from datetime import datetime
 import warnings
 
+import sqlalchemy.exceptions
+
 import clusterbank
-from clusterbank.model import user_by_name
+from clusterbank.model import Session, user_by_name, project_by_name, resource_by_name, Allocation
 import clusterbank.cbank.exceptions as exceptions
 import clusterbank.cbank.views as views
 
-__all__ = ["main", "report_main"]
+__all__ = ["main", "report_main", "allocation_main"]
 
 config = ConfigParser.SafeConfigParser()
 config.read(["/etc/clusterbank.conf"])
@@ -40,6 +42,29 @@ def handle_exceptions (func):
 @handle_exceptions
 def main ():
     return report_main()
+
+@handle_exceptions
+def allocation_main ():
+    user = get_current_user()
+    if not user.is_admin:
+        raise exceptions.NotPermitted("must be an admin")
+    parser = build_allocation_parser()
+    options, args = parser.parse_args()
+    if options.project:
+        project = project_by_name(options.project)
+    else:
+        project = None
+    if options.resource:
+        resource = resource_by_name(options.resource)
+    else:
+        resource = None
+    allocation = Allocation(project=project, resource=resource, start=options.start, expiration=options.expiration, amount=options.amount, comment=options.comment)
+    Session.save(allocation)
+    try:
+        Session.commit()
+    except (sqlalchemy.exceptions.IntegrityError, sqlalchemy.exceptions.OperationalError, ValueError):
+        raise exceptions.MissingOption("amount, resource, project, start, and expiration are required")
+    views.print_allocation(allocation)
 
 @handle_exceptions
 def report_main ():
@@ -152,4 +177,14 @@ def build_report_parser ():
     parser.add_option(Option("-e", "--extra-data", dest="extra", action="store_true",
         help="display extra data"))
     parser.set_defaults(extra=False, projects=[], users=[], resources=[])
+    return parser
+
+def build_allocation_parser ():
+    parser = optparse.OptionParser()
+    parser.add_option("-p", "--project", dest="project")
+    parser.add_option("-r", "--resource", dest="resource")
+    parser.add_option(Option("-s", "--start", dest="start", type="date"))
+    parser.add_option(Option("-e", "--expiration", dest="expiration", type="date"))
+    parser.add_option("-a", "--amount", dest="amount", type="int")
+    parser.add_option("-c", "--comment", dest="comment")
     return parser

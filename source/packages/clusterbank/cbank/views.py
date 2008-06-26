@@ -245,6 +245,15 @@ def display_units (amount):
     else:
         return locale.format("%.1f", converted_amount, True)
 
+def print_allocation (allocation):
+    print "new Allocation"
+    print "project:", allocation.project
+    print "resource:", allocation.resource
+    print "amount:", allocation.amount, "(minutes)"
+    print "start:", allocation.start
+    print "expiration:", allocation.expiration
+    print "comment:", allocation.comment
+
 
 class Formatter (object):
     

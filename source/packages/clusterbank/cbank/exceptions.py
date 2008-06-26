@@ -16,3 +16,14 @@ class MisusedOption (CbankError):
     
     def __str__ (self):
         return "cbank: misused option: %s" % CbankError.__str__(self)
+
+class NotPermitted (CbankError):
+    
+    def __str__ (self):
+        return "cbank: not permitted: %s" % CbankError.__str__(self)
+
+class MissingOption (CbankError):
+    
+    def __str__ (self):
+        return "cbank: missing option: %s" % CbankError.__str__(self)
+
