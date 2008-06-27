@@ -99,7 +99,19 @@ class TestAllocationMain (object):
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.close()
         assert not query.count(), "created allocation without project: %s" % new_allocations
+        assert code != 0
 
+    def test_without_project_or_resource (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        assert query.count() == 0, "started with existing allocations"
+        args = "-s 2008-01-01 -e 2009-01-01 -a 1000 -c test"
+        code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
+        Session.close()
+        assert not query.count(), "created allocation without project or resource: %s" % new_allocations
+        assert code != 0
+    
     def test_without_resource (self):
         project = project_by_name("project1")
         resource = resource_by_name("resource1")
@@ -109,6 +121,7 @@ class TestAllocationMain (object):
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.close()
         assert not query.count(), "created allocation without resource: %s" % new_allocations
+        assert code != 0
 
     def test_non_admin (self):
         clusterbank.model.entities.config.set("cbank", "admins", "")
@@ -118,6 +131,6 @@ class TestAllocationMain (object):
         assert query.count() == 0, "started with existing allocations"
         args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -c test"
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
-        assert code != 0
         Session.close()
         assert not query.count(), "created allocation when not admin: %s" % new_allocations
+        assert code != 0
