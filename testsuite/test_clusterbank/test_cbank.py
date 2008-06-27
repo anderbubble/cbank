@@ -59,6 +59,7 @@ def run (func, args):
         sys.stdout = real_stdout
         sys.stderr = real_stderr
 
+
 class TestAllocationMain (object):
     
     def setup (self):
@@ -86,9 +87,71 @@ class TestAllocationMain (object):
         Session.close()
         assert query.count() == 1, "didn't create an allocation"
         allocation = query.one()
-        assert allocation.expiration == datetime(2009, 1, 1)
-        assert allocation.amount == 1000
-        assert allocation.comment == "test"
+        assert allocation.start == datetime(2008, 1, 1), allocation.start
+        assert allocation.expiration == datetime(2009, 1, 1), allocation.expiration
+        assert allocation.amount == 1000, allocation.amount
+        assert allocation.comment == "test", allocation.comment
+        assert code == 0, code
+    
+    def test_with_bad_start (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        assert query.count() == 0, "started with existing allocations"
+        args = "-p project1 -r resource1 -s bad_start -e 2009-01-01 -a 1000 -c test"
+        code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
+        Session.close()
+        assert query.count() == 0, "created an allocation with bad start"
+        assert code != 0, code
+    
+    def test_with_bad_end (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        assert query.count() == 0, "started with existing allocations"
+        args = "-p project1 -r resource1 -s 2008-01-01 -e bad_end -a 1000 -c test"
+        code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
+        Session.close()
+        assert query.count() == 0, "created an allocation with bad end"
+        assert code != 0, code
+    
+    def test_with_bad_amount (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        assert query.count() == 0, "started with existing allocations"
+        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a bad_amount -c test"
+        code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
+        Session.close()
+        assert query.count() == 0, "created an allocation with bad amount"
+        assert code != 0, code
+
+    def test_with_negative_amount (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        assert query.count() == 0, "started with existing allocations"
+        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a -1000 -c test"
+        code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
+        Session.close()
+        assert query.count() == 0, "created an allocation with negative amount"
+        assert code != 0, code
+    
+    def test_without_comment (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        assert query.count() == 0, "started with existing allocations"
+        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000"
+        code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
+        Session.close()
+        assert query.count() == 1, "didn't create an allocation"
+        allocation = query.one()
+        assert allocation.start == datetime(2008, 1, 1), allocation.start
+        assert allocation.expiration == datetime(2009, 1, 1), allocation.expiration
+        assert allocation.amount == 1000, allocation.amount
+        assert allocation.comment is None, allocation.comment
+        assert code == 0, code
     
     def test_without_project (self):
         project = project_by_name("project1")
@@ -99,7 +162,42 @@ class TestAllocationMain (object):
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.close()
         assert not query.count(), "created allocation without project: %s" % new_allocations
-        assert code != 0
+        assert code != 0, code
+    
+    def test_without_amount (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        assert query.count() == 0, "started with existing allocations"
+        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
+        code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
+        Session.close()
+        assert query.count() == 0, "created allocation without amount"
+        assert code != 0, code
+    
+    def test_without_start (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        assert query.count() == 0, "started with existing allocations"
+        args = "-p project1 -r resource1 -e 2009-01-01 -a 1000 -c test"
+        code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
+        Session.close()
+        assert query.count() == 0, "created allocation without start"
+        sys.stdout.write(stderr.read())
+        assert code != 0, code
+    
+    def test_without_expiration (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        assert query.count() == 0, "started with existing allocations"
+        args = "-p project1 -r resource1 -s 2008-01-01 -a 1000 -c test"
+        code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
+        Session.close()
+        assert query.count() == 0, "created allocation without expiration"
+        sys.stdout.write(stderr.read())
+        assert code != 0, code
 
     def test_without_project_or_resource (self):
         project = project_by_name("project1")
@@ -110,7 +208,7 @@ class TestAllocationMain (object):
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.close()
         assert not query.count(), "created allocation without project or resource: %s" % new_allocations
-        assert code != 0
+        assert code != 0, code
     
     def test_without_resource (self):
         project = project_by_name("project1")
@@ -121,7 +219,7 @@ class TestAllocationMain (object):
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.close()
         assert not query.count(), "created allocation without resource: %s" % new_allocations
-        assert code != 0
+        assert code != 0, code
 
     def test_non_admin (self):
         clusterbank.model.entities.config.set("cbank", "admins", "")
@@ -134,3 +232,4 @@ class TestAllocationMain (object):
         Session.close()
         assert not query.count(), "created allocation when not admin: %s" % new_allocations
         assert code != 0
+
