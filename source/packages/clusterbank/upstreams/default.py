@@ -6,7 +6,7 @@ Resource -- upstream resource
 User -- upstream user
 """
 
-from ConfigParser import SafeConfigParser as ConfigParser
+import ConfigParser
 
 from sqlalchemy import MetaData, Table, Column, ForeignKey
 import sqlalchemy.types as types
@@ -194,7 +194,7 @@ mapper(Resource, resources_table, properties=dict(
 ))
 
 def configure ():
-    config = ConfigParser()
+    config = ConfigParser.SafeConfigParser()
     config.read(["/etc/clusterbank.conf"])
     uri = config.get("upstream", "database")
     metadata.bind = create_engine(uri)

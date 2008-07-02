@@ -65,13 +65,13 @@ class TestAllocationMain (object):
     def setup (self):
         clusterbank.model.metadata.create_all()
         current_user = get_current_username()
-        clusterbank.model.entities.config.add_section("cbank")
-        clusterbank.model.entities.config.set("cbank", "admins", current_user)
+        clusterbank.config.add_section("cbank")
+        clusterbank.config.set("cbank", "admins", current_user)
     
     def teardown (self):
         clusterbank.model.metadata.drop_all()
         Session.close()
-        clusterbank.model.entities.config.remove_section("cbank")
+        clusterbank.config.remove_section("cbank")
     
     def test_exists_and_callable (self):
         assert hasattr(clusterbank.cbank.controllers, "allocation_main"), "allocation_main does not exist"
@@ -222,7 +222,7 @@ class TestAllocationMain (object):
         assert code != 0, code
 
     def test_non_admin (self):
-        clusterbank.model.entities.config.set("cbank", "admins", "")
+        clusterbank.config.set("cbank", "admins", "")
         project = project_by_name("project1")
         resource = resource_by_name("resource1")
         query = Session.query(Allocation).filter_by(project=project, resource=resource)

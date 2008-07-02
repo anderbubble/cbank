@@ -6,7 +6,12 @@ Packages:
 model -- data model
 """
 
-__all__ = ["model", "interfaces"]
+import ConfigParser
+
+__all__ = ["config", "model", "interfaces", "__version__"]
 
 __version__ = "trunk"
+
+config = ConfigParser.SafeConfigParser()
+config.read(["/etc/clusterbank.conf"])
 

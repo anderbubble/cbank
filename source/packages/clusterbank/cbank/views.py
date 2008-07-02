@@ -12,12 +12,12 @@ except NameError:
 
 from sqlalchemy import or_, and_
 
+from clusterbank import config
 import clusterbank.cbank.exceptions as exceptions
 from clusterbank.model import \
     upstream, Session, User, Project, Resource, Allocation, Hold, \
     Charge, Refund, user_projects, user_projects_owned, project_owners, project_members
     
-config = ConfigParser.SafeConfigParser()
 config.read(["/etc/clusterbank.conf"])
 
 try:

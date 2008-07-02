@@ -20,6 +20,7 @@ except NameError:
     from sets import Set as set
 import warnings
 
+from clusterbank import config
 import clusterbank.exceptions as exceptions
 import clusterbank.model
 
@@ -29,7 +30,6 @@ __all__ = [
 ]
 
 
-config = ConfigParser.SafeConfigParser()
 config.read(["/etc/clusterbank.conf"])
 
 

@@ -24,13 +24,14 @@ Configuration:
 """
 
 import warnings
-from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
+import ConfigParser
 
 from sqlalchemy import create_engine
 import sqlalchemy.exceptions
 from sqlalchemy.orm import scoped_session, sessionmaker, mapper, relation, synonym
 from sqlalchemy.orm.session import SessionExtension
 
+from clusterbank import config
 from clusterbank.model.entities import upstream, User, Project, Resource, Request, Allocation, CreditLimit, Hold, Charge, Refund
 from clusterbank.model.database import metadata, \
     users_table, projects_table, resources_table, requests_table, \
@@ -47,12 +48,9 @@ __all__ = [
     "user_projects", "user_projects_owned", "project_members", "project_owners",
 ]
 
-config = SafeConfigParser()
-config.read(["/etc/clusterbank.conf"])
-
 try:
     uri = config.get("main", "database")
-except (NoSectionError, NoOptionError):
+except ConfigParser.Error:
     warnings.warn("no database specified", UserWarning)
 else:
     try:
@@ -61,7 +59,7 @@ else:
         warnings.warn("invalid database: %s (%s)" % (uri, e), UserWarning)
 try:
     upstream_module_name = config.get("upstream", "module")
-except (NoSectionError, NoOptionError):
+except ConfigParser.Error:
     upstream_module_name = "clusterbank.upstreams.default"
 try:
     upstream.use = __import__(upstream_module_name, locals(), globals(), ["get_project_name", "get_project_id", "get_resource_name", "get_resource_id"])

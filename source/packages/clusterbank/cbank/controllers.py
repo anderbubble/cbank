@@ -9,14 +9,12 @@ import warnings
 import sqlalchemy.exceptions
 
 import clusterbank
+from clusterbank import config
 from clusterbank.model import Session, user_by_name, project_by_name, resource_by_name, Allocation
 import clusterbank.cbank.exceptions as exceptions
 import clusterbank.cbank.views as views
 
 __all__ = ["main", "report_main", "allocation_main"]
-
-config = ConfigParser.SafeConfigParser()
-config.read(["/etc/clusterbank.conf"])
 
 try:
     dt_strptime = datetime.strprime
