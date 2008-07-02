@@ -25,5 +25,6 @@ setup(
             "cbank = clusterbank.cbank.controllers:main",
             "cbank-report = clusterbank.cbank.controllers:report_main",
             "cbank-allocation = clusterbank.cbank.controllers:allocation_main",
+            "cbank-charge = clusterbank.cbank.controllers:charge_main",
     ]},
 )

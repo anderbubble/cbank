@@ -176,7 +176,7 @@ def print_allocations (user, **kwargs):
     if unit_definition:
         print >> sys.stderr, unit_definition
 
-def print_charges (user, **kwargs):
+def print_charge_report (user, **kwargs):
     charges = Session.query(Charge)
     if not user.is_admin:
         member_project_ids = [project.id for project in user_projects(user)]
@@ -246,14 +246,24 @@ def display_units (amount):
         return locale.format("%.1f", converted_amount, True)
 
 def print_allocation (allocation):
-    print "new Allocation"
-    print "project:", allocation.project
-    print "resource:", allocation.resource
-    print "amount:", allocation.amount, "(minutes)"
-    print "start:", allocation.start
-    print "expiration:", allocation.expiration
-    print "comment:", allocation.comment
+    print "New allocation..."
+    print "Project:", allocation.project
+    print "Resource:", allocation.resource
+    print "Amount:", allocation.amount, "(minutes)"
+    print "Start:", allocation.start
+    print "Expiration:", allocation.expiration
+    print "Comment:", allocation.comment
 
+def print_charges (charges):
+    for charge in charges:
+        print_charge(charge)
+
+def print_charge (charge):
+    print "New charge..."
+    print "Allocation:", charge.allocation
+    print "Amount:", charge.amount
+    print "Date:", charge.datetime
+    print "Comment:", charge.comment
 
 class Formatter (object):
     

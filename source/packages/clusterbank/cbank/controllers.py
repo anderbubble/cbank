@@ -10,7 +10,7 @@ import sqlalchemy.exceptions
 
 import clusterbank
 from clusterbank import config
-from clusterbank.model import Session, user_by_name, project_by_name, resource_by_name, Allocation
+from clusterbank.model import Session, user_by_name, project_by_name, resource_by_name, Allocation, Charge
 import clusterbank.cbank.exceptions as exceptions
 import clusterbank.cbank.views as views
 
@@ -37,15 +37,26 @@ def handle_exceptions (func):
     decorated_func.__dict__.update(func.__dict__)
     return decorated_func
 
+def require_admin (func):
+    def decorated_func (*args, **kwargs):
+        user = get_current_user()
+        if not user.is_admin:
+            raise exceptions.NotPermitted("must be an admin")
+        else:
+            return func(*args, **kwargs)
+    decorated_func.__name__ = func.__name__
+    decorated_func.__doc__ = func.__doc__
+    decorated_func.__dict__.update(func.__dict__)
+    return decorated_func
+
+
 @handle_exceptions
 def main ():
     return report_main()
 
 @handle_exceptions
+@require_admin
 def allocation_main ():
-    user = get_current_user()
-    if not user.is_admin:
-        raise exceptions.NotPermitted("must be an admin")
     parser = build_allocation_parser()
     options, args = parser.parse_args()
     if options.project:
@@ -63,6 +74,21 @@ def allocation_main ():
     except (sqlalchemy.exceptions.IntegrityError, sqlalchemy.exceptions.OperationalError, ValueError):
         raise exceptions.MissingOption("amount, resource, project, start, and expiration are required")
     views.print_allocation(allocation)
+
+@handle_exceptions
+@require_admin
+def charge_main ():
+    parser = build_charge_parser()
+    options, args = parser.parse_args()
+    project = project_by_name(options.project)
+    resource = resource_by_name(options.resource)
+    allocations = Session.query(Allocation).filter_by(
+        project=project, resource=resource)
+    charges = Charge.distributed(allocations, amount=options.amount, comment=options.comment)
+    for charge in charges:
+        Session.save(charge)
+    Session.commit()
+    views.print_charges(charges)
 
 @handle_exceptions
 def report_main ():
@@ -97,7 +123,7 @@ def get_report (args):
         if "allocations".startswith(requested_report):
             possible_reports.append(views.print_allocations)
         if "charges".startswith(requested_report):
-            possible_reports.append(views.print_charges)
+            possible_reports.append(views.print_charge_report)
         if len(possible_reports) != 1:
             raise exceptions.UnknownReport(requested_report)
         else:
@@ -185,4 +211,12 @@ def build_allocation_parser ():
     parser.add_option(Option("-e", "--expiration", dest="expiration", type="date"))
     parser.add_option("-a", "--amount", dest="amount", type="int")
     parser.add_option("-c", "--comment", dest="comment")
+    return parser
+
+def build_charge_parser ():
+    parser = optparse.OptionParser()
+    parser.add_option("-p", "--project", dest="project")
+    parser.add_option("-r", "--resource", dest="resource")
+    parser.add_option("-a", "--amount", dest="amount", type="int")
+    parser.add_option("-c", "--comment", dest="comment", type="string")
     return parser
