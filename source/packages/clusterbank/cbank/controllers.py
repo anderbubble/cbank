@@ -49,7 +49,6 @@ def require_admin (func):
     decorated_func.__dict__.update(func.__dict__)
     return decorated_func
 
-
 @handle_exceptions
 def main ():
     return report_main()
@@ -105,7 +104,7 @@ def report_main ():
             pass
         else:
             resources = [default_resource]
-    report(user=get_current_user(), projects=projects, users=users,
+    report(projects=projects, users=users,
         resources=resources, after=options.after,
         before=options.before, extra=options.extra)
 
@@ -113,21 +112,39 @@ def get_report (args):
     try:
         requested_report = args[0]
     except IndexError:
-        return views.print_usage_report
-    else:
-        possible_reports = []
+        requested_report = "usage"
+    possible_reports = []
+    user = get_current_user()
+    if user.is_admin:
         if "usage".startswith(requested_report):
-            possible_reports.append(views.print_usage_report)
+            possible_reports.append(views.print_admin_usage_report)
         if "projects".startswith(requested_report):
-            possible_reports.append(views.print_projects_report)
+            possible_reports.append(views.print_admin_projects_report)
         if "allocations".startswith(requested_report):
-            possible_reports.append(views.print_allocations_report)
+            possible_reports.append(views.print_admin_allocations_report)
         if "charges".startswith(requested_report):
-            possible_reports.append(views.print_charges_report)
-        if len(possible_reports) != 1:
-            raise exceptions.UnknownReport(requested_report)
-        else:
-            return possible_reports[0]
+            possible_reports.append(views.print_admin_charges_report)
+    else:
+        if "usage".startswith(requested_report):
+            possible_reports.append(views.print_member_usage_report)
+        if "projects".startswith(requested_report):
+            possible_reports.append(views.print_member_projects_report)
+        if "allocations".startswith(requested_report):
+            possible_reports.append(views.print_member_allocations_report)
+        if "charges".startswith(requested_report):
+            possible_reports.append(views.print_member_charges_report)
+        possible_reports = [
+            wrap_member_report(report,user) for report in possible_reports]
+    
+    if len(possible_reports) != 1:
+        raise exceptions.UnknownReport(requested_report)
+    else:
+        return possible_reports[0]
+
+def wrap_member_report (member_report, user):
+    def report_wrapper (**kwargs):
+        return member_report(user, **kwargs)
+    return report_wrapper
 
 def get_current_user ():
     uid = os.getuid()
@@ -141,41 +158,6 @@ def get_current_user ():
     except clusterbank.exceptions.NotFound:
         raise exceptions.UnknownUser("User '%s' was not found." % username)
     return user
-
-
-class Option (optparse.Option):
-    
-    DATE_FORMATS = [
-        "%Y-%m-%d",
-        "%y-%m-%d",
-        "%m/%d/%Y",
-        "%m/%d/%y",
-        "%Y%m%d",
-    ]
-    
-    def check_date (self, opt, value):
-        """Return a datetime from YYYY-MM-DD."""
-        for format in self.DATE_FORMATS:
-            try:
-                return dt_strptime(value, format)
-            except ValueError:
-                continue
-        raise optparse.OptionValueError(
-            "option %s: invalid date: %r" % (opt, value))
-    
-    def check_csv (self, opt, value):
-        if value:
-            if "," in value:
-                warnings.warn("CSV options are deprecated.", DeprecationWarning)
-            return value.split(",")
-        else:
-            return []
-    
-    TYPES = optparse.Option.TYPES + ("date", "csv")
-    
-    TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
-    TYPE_CHECKER['date'] = check_date
-    TYPE_CHECKER['csv'] = check_csv
 
 def build_report_parser ():
     
@@ -220,3 +202,38 @@ def build_charge_parser ():
     parser.add_option("-a", "--amount", dest="amount", type="int")
     parser.add_option("-c", "--comment", dest="comment", type="string")
     return parser
+
+
+class Option (optparse.Option):
+    
+    DATE_FORMATS = [
+        "%Y-%m-%d",
+        "%y-%m-%d",
+        "%m/%d/%Y",
+        "%m/%d/%y",
+        "%Y%m%d",
+    ]
+    
+    def check_date (self, opt, value):
+        """Return a datetime from YYYY-MM-DD."""
+        for format in self.DATE_FORMATS:
+            try:
+                return dt_strptime(value, format)
+            except ValueError:
+                continue
+        raise optparse.OptionValueError(
+            "option %s: invalid date: %r" % (opt, value))
+    
+    def check_csv (self, opt, value):
+        if value:
+            if "," in value:
+                warnings.warn("CSV options are deprecated.", DeprecationWarning)
+            return value.split(",")
+        else:
+            return []
+    
+    TYPES = optparse.Option.TYPES + ("date", "csv")
+    
+    TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
+    TYPE_CHECKER['date'] = check_date
+    TYPE_CHECKER['csv'] = check_csv

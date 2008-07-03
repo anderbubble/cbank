@@ -29,13 +29,20 @@ else:
 
 locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 
-def print_usage_report (user, **kwargs):
+def print_member_usage_report (user, **kwargs):
     projects = Session.query(Project)
+    project_ids = [project.id for project in user_projects(user)]
+    projects = projects.filter(Project.id.in_(project_ids))
+    print_raw_usage_report(projects, **kwargs)
+
+def print_admin_usage_report (**kwargs):
+    projects = Session.query(Project)
+    print_raw_usage_report(projects, **kwargs)
+
+def print_raw_usage_report (projects_query, **kwargs):
+    projects = projects_query
     allocations = Session.query(Allocation)
     charges = Session.query(Charge)
-    if not user.is_admin:
-        project_ids = [project.id for project in user_projects(user)]
-        projects = projects.filter(Project.id.in_(project_ids))
     if kwargs.get("projects"):
         project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
         projects = projects.filter(Project.id.in_(project_ids))
@@ -84,11 +91,18 @@ def print_usage_report (user, **kwargs):
     if unit_definition:
         print unit_definition
 
-def print_projects_report (user, **kwargs):
+def print_member_projects_report (user, **kwargs):
     projects = Session.query(Project)
-    if not user.is_admin:
-        project_ids = [project.id for project in user_projects(user)]
-        projects = projects.filter(Project.id.in_(project_ids))
+    project_ids = [project.id for project in user_projects(user)]
+    projects = projects.filter(Project.id.in_(project_ids))
+    print_raw_projects_report(projects, **kwargs)
+
+def print_admin_projects_report (**kwargs):
+    projects = Session.query(Project)
+    print_raw_projects_report(projects, **kwargs)
+
+def print_raw_projects_report (projects_query, **kwargs):
+    projects = projects_query
     if kwargs.get("projects"):
         project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
         projects = projects.filter(Project.id.in_(project_ids))
@@ -127,11 +141,18 @@ def print_projects_report (user, **kwargs):
     if unit_definition:
         print unit_definition
 
-def print_allocations_report (user, **kwargs):
+def print_member_allocations_report (user, **kwargs):
     allocations = Session.query(Allocation)
-    if not user.is_admin:
-        project_ids = [project.id for project in user_projects(user)]
-        allocations = allocations.filter(Allocation.project.has(Project.id.in_(project_ids)))
+    project_ids = [project.id for project in user_projects(user)]
+    allocations = allocations.filter(Allocation.project.has(Project.id.in_(project_ids)))
+    print_raw_allocations_report(allocations, **kwargs)
+
+def print_admin_allocations_report (**kwargs):
+    allocations = Session.query(Allocation)
+    print_raw_allocations_report(allocations, **kwargs)
+
+def print_raw_allocations_report (allocations_query, **kwargs):
+    allocations = allocations_query
     if kwargs.get("projects"):
         project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
         allocations = allocations.filter(Allocation.project.has(Project.id.in_(project_ids)))
@@ -176,16 +197,23 @@ def print_allocations_report (user, **kwargs):
     if unit_definition:
         print >> sys.stderr, unit_definition
 
-def print_charges_report (user, **kwargs):
+def print_member_charges_report (user, **kwargs):
     charges = Session.query(Charge)
-    if not user.is_admin:
-        member_project_ids = [project.id for project in user_projects(user)]
-        owner_project_ids = [project.id for project in user_projects_owned(user)]
-        charges = charges.filter(or_(
-            and_(
-                Charge.allocation.has(Allocation.project.has(Project.id.in_(member_project_ids))),
-                Charge.user==user),
-            Charge.allocation.has(Allocation.project.has(Project.id.in_(owner_project_ids)))))
+    member_project_ids = [project.id for project in user_projects(user)]
+    owner_project_ids = [project.id for project in user_projects_owned(user)]
+    charges = charges.filter(or_(
+        and_(
+            Charge.allocation.has(Allocation.project.has(Project.id.in_(member_project_ids))),
+            Charge.user==user),
+        Charge.allocation.has(Allocation.project.has(Project.id.in_(owner_project_ids)))))
+    print_raw_charges_report(charges, **kwargs)
+
+def print_admin_charges_report (**kwargs):
+    charges = Session.query(Charge)
+    print_raw_charges_report(charges, **kwargs)
+
+def print_raw_charges_report (charges_query, **kwargs):
+    charges = charges_query
     if kwargs.get("projects"):
         project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
         charges = charges.filter(Charge.allocation.has(Allocation.project.has(Project.id.in_(project_ids))))
@@ -226,7 +254,7 @@ def display_units (amount):
     try:
         factor = config.get("cbank", "unit_factor")
     except ConfigParser.Error:
-        factor = 1
+        factor = "1"
     try:
         mul, div = factor.split("/")
     except ValueError:

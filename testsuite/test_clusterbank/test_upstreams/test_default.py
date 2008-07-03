@@ -17,7 +17,7 @@ class UpstreamEntityTester (object):
         metadata.create_all()
     
     def teardown (self):
-        Session.close()
+        Session.remove()
         metadata.drop_all()
         metadata.bind = None
 

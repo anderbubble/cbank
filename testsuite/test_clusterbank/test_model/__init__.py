@@ -17,9 +17,11 @@ def populate_upstream ():
     upstream.Session.save(upstream.Project(id=1, name="grail"))
     upstream.Session.save(upstream.Resource(id=1, name="spam"))
     upstream.Session.commit()
+    upstream.Session.remove()
 
 def teardown ():
     upstream.metadata.drop_all()
     upstream.metadata.bind = None
+    upstream.Session.remove()
     clusterbank.model.upstream.use = None
     clusterbank.model.metadata.bind = None

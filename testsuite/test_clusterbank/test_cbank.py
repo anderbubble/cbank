@@ -29,6 +29,7 @@ def populate_upstream ():
     current_user = get_current_username()
     upstream.Session.save(upstream.User(id=1, name=current_user))
     upstream.Session.commit()
+    upstream.Session.remove()
 
 def teardown ():
     upstream.metadata.drop_all()
@@ -59,9 +60,8 @@ def run (func, args):
         sys.stdout = real_stdout
         sys.stderr = real_stderr
 
+class CbankTester (object):
 
-class TestAllocationMain (object):
-    
     def setup (self):
         clusterbank.model.metadata.create_all()
         current_user = get_current_username()
@@ -71,7 +71,11 @@ class TestAllocationMain (object):
     def teardown (self):
         clusterbank.model.metadata.drop_all()
         Session.remove()
+        upstream.Session.remove()
         clusterbank.config.remove_section("cbank")
+
+
+class TestAllocationMain (CbankTester):
     
     def test_exists_and_callable (self):
         assert hasattr(clusterbank.cbank.controllers, "allocation_main"), "allocation_main does not exist"
@@ -234,18 +238,26 @@ class TestAllocationMain (object):
         assert code != 0
 
 
-class TestChargeMain (object):
+class TestReportMain (CbankTester):
     
-    def setup (self):
-        clusterbank.model.metadata.create_all()
-        current_user = get_current_username()
-        clusterbank.config.add_section("cbank")
-        clusterbank.config.set("cbank", "admins", current_user)
+    def test_exists_and_callable (self):
+        assert hasattr(clusterbank.cbank.controllers, "report_main"), "report_main does not exist"
+        assert callable(clusterbank.cbank.controllers.report_main), "report_main is not callable"
     
-    def teardown (self):
-        clusterbank.model.metadata.drop_all()
-        Session.remove()
-        clusterbank.config.remove_section("cbank")
+    def test_admin_reports_complete (self):
+        self._run_all_reports()
+    
+    def test_member_reports_complete (self):
+        clusterbank.config.set("cbank", "admins", "")
+        for report in ("usage", "projects", "charges", "allocations"):
+            run(clusterbank.cbank.controllers.report_main, [report])
+    
+    def _run_all_reports (self):
+        for report in ("usage", "projects", "charges", "allocations"):
+            run(clusterbank.cbank.controllers.report_main, [report])
+
+
+class TestChargeMain (CbankTester):
     
     def test_exists_and_callable (self):
         assert hasattr(clusterbank.cbank.controllers, "charge_main"), "charge_main does not exist"
