@@ -18,14 +18,13 @@ from clusterbank.model import \
     upstream, Session, User, Project, Resource, Allocation, Hold, \
     Charge, Refund, user_projects, user_projects_owned, project_owners, project_members
     
-config.read(["/etc/clusterbank.conf"])
-
-try:
-    unit_label = config.get("cbank", "unit_label")
-except ConfigParser.Error:
-    unit_definition = None
-else:
+def print_unit_definition ():
+    try:
+        unit_label = config.get("cbank", "unit_label")
+    except ConfigParser.Error:
+        return
     unit_definition = "Units are in %s." % unit_label
+    print unit_definition
 
 locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 
@@ -88,8 +87,7 @@ def print_raw_usage_report (projects_query, **kwargs):
     print >> sys.stderr, format.bar
     total_balance = total_allocated - total_used
     print >> sys.stderr, format(dict(Allocated=display_units(total_allocated), Used=display_units(total_used), Balance=display_units(total_balance))), "(total)"
-    if unit_definition:
-        print unit_definition
+    print_unit_definition()
 
 def print_member_projects_report (user, **kwargs):
     projects = Session.query(Project)
@@ -138,8 +136,7 @@ def print_raw_projects_report (projects_query, **kwargs):
         else:
             is_owner = "no"
         print format(dict(Name=project.name, Members=len(project_members(project)), Owner=is_owner))
-    if unit_definition:
-        print unit_definition
+    print_unit_definition()
 
 def print_member_allocations_report (user, **kwargs):
     allocations = Session.query(Allocation)
@@ -194,8 +191,7 @@ def print_raw_allocations_report (allocations_query, **kwargs):
     total_allocated = int(allocations.sum(Allocation.amount) or 0)
     total_available = sum([allocation.amount_available for allocation in allocations])
     print >> sys.stderr, format(dict(Allocated=display_units(total_allocated), Available=display_units(total_available))), "(total)"
-    if unit_definition:
-        print >> sys.stderr, unit_definition
+    print_unit_definition()
 
 def print_member_charges_report (user, **kwargs):
     charges = Session.query(Charge)
@@ -247,8 +243,7 @@ def print_raw_charges_report (charges_query, **kwargs):
     print >> sys.stderr, format.bar
     total = int(charges.sum(Charge.amount) or 0) - int(charges.join("refunds").sum(Refund.amount) or 0)
     print >> sys.stderr, format(dict(Amount=display_units(total))), "(total)"
-    if unit_definition:
-        print >> sys.stderr, unit_definition
+    print_unit_definition()
 
 def display_units (amount):
     try:
