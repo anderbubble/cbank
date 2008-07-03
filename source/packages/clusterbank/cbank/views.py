@@ -29,7 +29,7 @@ else:
 
 locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 
-def print_usage (user, **kwargs):
+def print_usage_report (user, **kwargs):
     projects = Session.query(Project)
     allocations = Session.query(Allocation)
     charges = Session.query(Charge)
@@ -84,7 +84,7 @@ def print_usage (user, **kwargs):
     if unit_definition:
         print unit_definition
 
-def print_projects (user, **kwargs):
+def print_projects_report (user, **kwargs):
     projects = Session.query(Project)
     if not user.is_admin:
         project_ids = [project.id for project in user_projects(user)]
@@ -127,7 +127,7 @@ def print_projects (user, **kwargs):
     if unit_definition:
         print unit_definition
 
-def print_allocations (user, **kwargs):
+def print_allocations_report (user, **kwargs):
     allocations = Session.query(Allocation)
     if not user.is_admin:
         project_ids = [project.id for project in user_projects(user)]
@@ -176,7 +176,7 @@ def print_allocations (user, **kwargs):
     if unit_definition:
         print >> sys.stderr, unit_definition
 
-def print_charge_report (user, **kwargs):
+def print_charges_report (user, **kwargs):
     charges = Session.query(Charge)
     if not user.is_admin:
         member_project_ids = [project.id for project in user_projects(user)]

@@ -113,17 +113,17 @@ def get_report (args):
     try:
         requested_report = args[0]
     except IndexError:
-        return views.print_usage
+        return views.print_usage_report
     else:
         possible_reports = []
         if "usage".startswith(requested_report):
-            possible_reports.append(views.print_usage)
+            possible_reports.append(views.print_usage_report)
         if "projects".startswith(requested_report):
-            possible_reports.append(views.print_projects)
+            possible_reports.append(views.print_projects_report)
         if "allocations".startswith(requested_report):
-            possible_reports.append(views.print_allocations)
+            possible_reports.append(views.print_allocations_report)
         if "charges".startswith(requested_report):
-            possible_reports.append(views.print_charge_report)
+            possible_reports.append(views.print_charges_report)
         if len(possible_reports) != 1:
             raise exceptions.UnknownReport(requested_report)
         else:
