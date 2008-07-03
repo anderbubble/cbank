@@ -11,7 +11,7 @@ class TestDBFunctions (object):
     
     def teardown (self):
         """drop the database after each test."""
-        clusterbank.model.Session.close()
+        clusterbank.model.Session.remove()
         clusterbank.model.metadata.drop_all()
 
     def test_get_valid_user (self):
