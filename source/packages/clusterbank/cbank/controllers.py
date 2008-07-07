@@ -80,6 +80,8 @@ def charge_main ():
     parser = build_charge_parser()
     options, args = parser.parse_args()
     project = project_by_name(options.project)
+    if not options.resource:
+        raise exceptions.MissingOption("resource")
     resource = resource_by_name(options.resource)
     if options.user:
         user = user_by_name(options.user)
