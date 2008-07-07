@@ -404,8 +404,10 @@ class TestChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "-p project1 -r resource1 -a 100 -m test"
-        run(clusterbank.cbank.controllers.charge_main, args.split())
+        code, stdout, stderr = run(clusterbank.cbank.controllers.charge_main, args.split())
+        Session.remove()
         assert not charges.count(), "created a charge without admin privileges"
+        assert code != 0, code
 
 
 class TestRefundMain (CbankTester):
@@ -432,4 +434,22 @@ class TestRefundMain (CbankTester):
         assert refund.charge is charge, refund.charge
         assert refund.amount == 50, refund.amount
         assert refund.comment == "test", refund.comment
+    
+    def test_non_admin (self):
+        clusterbank.config.set("cbank", "admins", "")
+        now = datetime.now()
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        refunds = Session.query(Refund)
+        assert not refunds.count(), "started with existing refunds"
+        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        charge = Charge(allocation=allocation, amount=100)
+        Session.save(allocation)
+        Session.save(charge)
+        Session.commit()
+        args = "-c %s -a 50 -m test" % charge.id
+        code, stdout, stderr = run(clusterbank.cbank.controllers.refund_main, args.split())
+        Session.remove()
+        assert not refunds.count(), "created a refund when not an admin"
+        assert code != 0, code
 

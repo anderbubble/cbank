@@ -102,6 +102,8 @@ def charge_main ():
         raise exceptions.InvalidOptionValue(e)
     views.print_charges(charges)
 
+@handle_exceptions
+@require_admin
 def refund_main ():
     parser = build_refund_parser()
     options, args = parser.parse_args()
