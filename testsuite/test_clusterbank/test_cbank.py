@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from StringIO import StringIO
 from sqlalchemy import create_engine
 
-from clusterbank.model import Session, Allocation, Charge, \
+from clusterbank.model import Session, Allocation, Charge, Refund, \
     user_by_name, project_by_name, resource_by_name
 import clusterbank.upstreams.default as upstream
 import clusterbank.cbank.controllers
@@ -406,4 +406,30 @@ class TestChargeMain (CbankTester):
         args = "-p project1 -r resource1 -a 100 -c test"
         run(clusterbank.cbank.controllers.charge_main, args.split())
         assert not charges.count(), "created a charge without admin privileges"
-        
+
+
+class TestRefundMain (CbankTester):
+    
+    def test_exists_and_callable (self):
+        assert hasattr(clusterbank.cbank.controllers, "refund_main"), "refund_main does not exist"
+        assert callable(clusterbank.cbank.controllers.refund_main), "refund_main is not callable"
+    
+    def test_complete (self):
+        now = datetime.now()
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        refunds = Session.query(Refund)
+        assert not refunds.count(), "started with existing refunds"
+        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        charge = Charge(allocation=allocation, amount=100)
+        Session.save(allocation)
+        Session.save(charge)
+        Session.commit()
+        args = "-c %s -a 50 -m test" % charge.id
+        run(clusterbank.cbank.controllers.refund_main, args.split())
+        assert refunds.count() == 1, "didn't create a refund"
+        refund = refunds.one()
+        assert refund.charge is charge, refund.charge
+        assert refund.amount == 50, refund.amount
+        assert refund.comment == "test", refund.comment
+

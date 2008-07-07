@@ -10,7 +10,7 @@ import sqlalchemy.exceptions
 
 import clusterbank
 from clusterbank import config
-from clusterbank.model import Session, user_by_name, project_by_name, resource_by_name, Allocation, Charge
+from clusterbank.model import Session, user_by_name, project_by_name, resource_by_name, Allocation, Charge, Refund
 import clusterbank.cbank.exceptions as exceptions
 import clusterbank.cbank.views as views
 
@@ -101,6 +101,14 @@ def charge_main ():
     except ValueError, e:
         raise exceptions.InvalidOptionValue(e)
     views.print_charges(charges)
+
+def refund_main ():
+    parser = build_refund_parser()
+    options, args = parser.parse_args()
+    refund = Refund(
+        charge=options.charge, amount=options.amount, comment=options.comment)
+    Session.save(refund)
+    Session.commit()
 
 @handle_exceptions
 def report_main ():
@@ -214,6 +222,12 @@ def build_charge_parser ():
     parser.add_option("-c", "--comment", dest="comment", type="string")
     return parser
 
+def build_refund_parser ():
+    parser = optparse.OptionParser()
+    parser.add_option(Option("-c", "--charge", type="charge", dest="charge"))
+    parser.add_option("-a", "--amount", dest="amount", type="int")
+    parser.add_option("-m", "--comment", dest="comment")
+    return parser
 
 class Option (optparse.Option):
     
@@ -256,10 +270,23 @@ class Option (optparse.Option):
             raise optparse.OptionValueError(
                 "option %s: unknown user: %s" % (opt, value))
     
-    TYPES = optparse.Option.TYPES + ("date", "project", "resource", "user")
+    def check_charge (self, opt, value):
+        try:
+            charge_id = int(value)
+        except ValueError:
+            raise optparse.OptionValueError(
+                "option %s: invalid charge id: %s" % (opt, value))
+        try:
+            return Session.query(Charge).filter_by(id=value).one()
+        except sqlalchemy.exceptions.InvalidRequestError:
+            raise optparse.OptionValueError(
+                "option %s: unknown charge: %i" % (opt, value))
+    
+    TYPES = optparse.Option.TYPES + ("date", "project", "resource", "user", "charge")
     
     TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
     TYPE_CHECKER['date'] = check_date
     TYPE_CHECKER['project'] = check_project
     TYPE_CHECKER['resource'] = check_resource
     TYPE_CHECKER['user'] = check_user
+    TYPE_CHECKER['charge'] = check_charge
