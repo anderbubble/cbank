@@ -58,15 +58,22 @@ def main ():
 def allocation_main ():
     parser = build_allocation_parser()
     options, args = parser.parse_args()
+    if not options.project:
+        raise exceptions.MissingOption("supply a project")
+    if not options.resource:
+        raise exceptions.MissionOption("supply a resource")
+    if not options.amount:
+        raise exceptions.MissingOption("supply an amount")
+    if not options.start:
+        raise exceptions.MissingOption("supply a start date")
+    if not options.expiration:
+        raise exceptions.MissingOption("supply an expiration date")
     allocation = Allocation(
         project=options.project, resource=options.resource,
         start=options.start, expiration=options.expiration,
         amount=options.amount, comment=options.comment)
     Session.save(allocation)
-    try:
-        Session.commit()
-    except (sqlalchemy.exceptions.IntegrityError, sqlalchemy.exceptions.OperationalError, ValueError):
-        raise exceptions.MissingOption("amount, resource, project, start, and expiration are required")
+    Session.commit()
     views.print_allocation(allocation)
 
 @handle_exceptions
@@ -74,8 +81,10 @@ def allocation_main ():
 def charge_main ():
     parser = build_charge_parser()
     options, args = parser.parse_args()
+    if not options.project:
+        raise exceptions.MissingOption("supply a project")
     if not options.resource:
-        raise exceptions.MissingOption("resource")
+        raise exceptions.MissingOption("supply a resource")
     allocations = Session.query(Allocation).filter_by(
         project=options.project, resource=options.resource)
     charges = Charge.distributed(allocations,
