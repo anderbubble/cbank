@@ -61,7 +61,7 @@ def allocation_main ():
     if not options.project:
         raise exceptions.MissingOption("supply a project")
     if not options.resource:
-        raise exceptions.MissionOption("supply a resource")
+        raise exceptions.MissingOption("supply a resource")
     if not options.amount:
         raise exceptions.MissingOption("supply an amount")
     if not options.start:
@@ -73,7 +73,10 @@ def allocation_main ():
         start=options.start, expiration=options.expiration,
         amount=options.amount, comment=options.comment)
     Session.save(allocation)
-    Session.commit()
+    try:
+        Session.commit()
+    except ValueError, e:
+        raise exceptions.InvalidOptionValue(e)
     views.print_allocation(allocation)
 
 @handle_exceptions
@@ -85,6 +88,8 @@ def charge_main ():
         raise exceptions.MissingOption("supply a project")
     if not options.resource:
         raise exceptions.MissingOption("supply a resource")
+    if not options.amount:
+        raise exceptions.MissingOption("supply an amount")
     allocations = Session.query(Allocation).filter_by(
         project=options.project, resource=options.resource)
     charges = Charge.distributed(allocations,

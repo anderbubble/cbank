@@ -27,3 +27,8 @@ class MissingOption (CbankError):
     def __str__ (self):
         return "cbank: missing option: %s" % CbankError.__str__(self)
 
+class InvalidOptionValue (CbankError):
+    
+    def __str__ (self):
+        return "cbank: invalid option value: %s" % CbankError.__str__(self)
+
