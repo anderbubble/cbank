@@ -8,7 +8,8 @@ from datetime import datetime, timedelta
 from StringIO import StringIO
 from sqlalchemy import create_engine
 
-from clusterbank.model import Session, Allocation, Charge, project_by_name, resource_by_name
+from clusterbank.model import Session, Allocation, Charge, \
+    user_by_name, project_by_name, resource_by_name
 import clusterbank.upstreams.default as upstream
 import clusterbank.cbank.controllers
 import clusterbank.cbank.exceptions
@@ -26,8 +27,9 @@ def setup ():
 def populate_upstream ():
     upstream.Session.save(upstream.Project(id=1, name="project1"))
     upstream.Session.save(upstream.Resource(id=1, name="resource1"))
+    upstream.Session.save(upstream.User(id=1, name="user1"))
     current_user = get_current_username()
-    upstream.Session.save(upstream.User(id=1, name=current_user))
+    upstream.Session.save(upstream.User(id=2, name=current_user))
     upstream.Session.commit()
     upstream.Session.remove()
 
@@ -266,10 +268,33 @@ class TestChargeMain (CbankTester):
     def test_charge_project (self):
         project = project_by_name("project1")
         resource = resource_by_name("resource1")
+        user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
         now = datetime.now()
-        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        Session.save(allocation)
+        Session.commit()
+        args = "-p project1 -r resource1 -a 100 -c test -u user1"
+        run(clusterbank.cbank.controllers.charge_main, args.split())
+        assert charges.count() == 1, "didn't create a charge"
+        charge = charges.one()
+        assert charge.allocation is allocation, "incorrect allocation: %r" % charge.allocation
+        assert charge.amount == 100, "incorrect charge amount: %i" % charge.amount
+        assert charge.comment, "incorrect comment: %s" % charge.comment
+        assert charge.user is user, "incorrect user on charge: %s" % charge.user
+    
+    def test_charge_project_without_user (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        charges = Session.query(Charge)
+        assert not charges.count(), "started with existing charges"
+        now = datetime.now()
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.save(allocation)
         Session.commit()
         args = "-p project1 -r resource1 -a 100 -c test"
@@ -279,6 +304,7 @@ class TestChargeMain (CbankTester):
         assert charge.allocation is allocation, "incorrect allocation: %r" % charge.allocation
         assert charge.amount == 100, "incorrect charge amount: %i" % charge.amount
         assert charge.comment, "incorrect comment: %s" % charge.comment
+        assert charge.user is None, "incorrect user on charge: %s" % charge.user
     
     def test_non_admin (self):
         clusterbank.config.set("cbank", "admins", "")

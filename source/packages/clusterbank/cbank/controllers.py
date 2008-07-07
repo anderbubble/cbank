@@ -81,9 +81,14 @@ def charge_main ():
     options, args = parser.parse_args()
     project = project_by_name(options.project)
     resource = resource_by_name(options.resource)
+    if options.user:
+        user = user_by_name(options.user)
+    else:
+        user = None
     allocations = Session.query(Allocation).filter_by(
         project=project, resource=resource)
-    charges = Charge.distributed(allocations, amount=options.amount, comment=options.comment)
+    charges = Charge.distributed(allocations,
+        user=user, amount=options.amount, comment=options.comment)
     for charge in charges:
         Session.save(charge)
     Session.commit()
@@ -199,6 +204,7 @@ def build_charge_parser ():
     parser = optparse.OptionParser()
     parser.add_option("-p", "--project", dest="project")
     parser.add_option("-r", "--resource", dest="resource")
+    parser.add_option("-u", "--user", dest="user")
     parser.add_option("-a", "--amount", dest="amount", type="int")
     parser.add_option("-c", "--comment", dest="comment", type="string")
     return parser
