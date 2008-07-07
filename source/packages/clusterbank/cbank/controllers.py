@@ -96,7 +96,10 @@ def charge_main ():
         user=options.user, amount=options.amount, comment=options.comment)
     for charge in charges:
         Session.save(charge)
-    Session.commit()
+    try:
+        Session.commit()
+    except ValueError, e:
+        raise exceptions.InvalidOptionValue(e)
     views.print_charges(charges)
 
 @handle_exceptions
