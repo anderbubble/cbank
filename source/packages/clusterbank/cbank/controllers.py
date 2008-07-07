@@ -58,15 +58,10 @@ def main ():
 def allocation_main ():
     parser = build_allocation_parser()
     options, args = parser.parse_args()
-    if options.project:
-        project = project_by_name(options.project)
-    else:
-        project = None
-    if options.resource:
-        resource = resource_by_name(options.resource)
-    else:
-        resource = None
-    allocation = Allocation(project=project, resource=resource, start=options.start, expiration=options.expiration, amount=options.amount, comment=options.comment)
+    allocation = Allocation(
+        project=options.project, resource=options.resource,
+        start=options.start, expiration=options.expiration,
+        amount=options.amount, comment=options.comment)
     Session.save(allocation)
     try:
         Session.commit()
@@ -79,18 +74,12 @@ def allocation_main ():
 def charge_main ():
     parser = build_charge_parser()
     options, args = parser.parse_args()
-    project = project_by_name(options.project)
     if not options.resource:
         raise exceptions.MissingOption("resource")
-    resource = resource_by_name(options.resource)
-    if options.user:
-        user = user_by_name(options.user)
-    else:
-        user = None
     allocations = Session.query(Allocation).filter_by(
-        project=project, resource=resource)
+        project=options.project, resource=options.resource)
     charges = Charge.distributed(allocations,
-        user=user, amount=options.amount, comment=options.comment)
+        user=options.user, amount=options.amount, comment=options.comment)
     for charge in charges:
         Session.save(charge)
     Session.commit()
@@ -101,18 +90,15 @@ def report_main ():
     parser = build_report_parser()
     options, args = parser.parse_args()
     report = get_report(args)
-    projects = set(sum(options.projects, []))
-    users = set(sum(options.users, []))
-    resources = set(sum(options.resources, []))
-    if not resources:
+    if not options.resources:
         try:
             default_resource = config.get("cbank", "resource")
         except ConfigParser.Error:
             pass
         else:
             resources = [default_resource]
-    report(projects=projects, users=users,
-        resources=resources, after=options.after,
+    report(projects=options.projects, users=options.users,
+        resources=options.resources, after=options.after,
         before=options.before, extra=options.extra)
 
 def get_report (args):
@@ -177,12 +163,12 @@ def build_report_parser ():
     version_str = "cbank %s" % clusterbank.__version__
     
     parser = optparse.OptionParser(usage=usage_str, version=version_str)
-    parser.add_option(Option("-p", "--projects", dest="projects", type="csv", action="append",
-        help="filter by project NAMES", metavar="NAMES"))
-    parser.add_option(Option("-u", "--users", dest="users", type="csv", action="append",
-        help="filter by user NAMES", metavar="NAMES"))
-    parser.add_option(Option("-r", "--resources", dest="resources", type="csv", action="append",
-        help="filter by resource NAMES", metavar="NAMES"))
+    parser.add_option(Option("-p", "--project", dest="projects", type="project", action="append",
+        help="filter by project NAME", metavar="NAME"))
+    parser.add_option(Option("-u", "--user", dest="users", type="user", action="append",
+        help="filter by user NAME", metavar="NAME"))
+    parser.add_option(Option("-r", "--resource", dest="resources", type="resource", action="append",
+        help="filter by resource NAME", metavar="NAME"))
     parser.add_option(Option("-a", "--after", dest="after", type="date",
         help="filter by start DATE", metavar="DATE"))
     parser.add_option(Option("-b", "--before", dest="before", type="date",
@@ -194,8 +180,8 @@ def build_report_parser ():
 
 def build_allocation_parser ():
     parser = optparse.OptionParser()
-    parser.add_option("-p", "--project", dest="project")
-    parser.add_option("-r", "--resource", dest="resource")
+    parser.add_option(Option("-p", "--project", type="project", dest="project"))
+    parser.add_option(Option("-r", "--resource", type="resource", dest="resource"))
     parser.add_option(Option("-s", "--start", dest="start", type="date"))
     parser.add_option(Option("-e", "--expiration", dest="expiration", type="date"))
     parser.add_option("-a", "--amount", dest="amount", type="int")
@@ -204,9 +190,9 @@ def build_allocation_parser ():
 
 def build_charge_parser ():
     parser = optparse.OptionParser()
-    parser.add_option("-p", "--project", dest="project")
-    parser.add_option("-r", "--resource", dest="resource")
-    parser.add_option("-u", "--user", dest="user")
+    parser.add_option(Option("-p", "--project", type="project", dest="project"))
+    parser.add_option(Option("-r", "--resource", type="resource", dest="resource"))
+    parser.add_option(Option("-u", "--user", type="user", dest="user"))
     parser.add_option("-a", "--amount", dest="amount", type="int")
     parser.add_option("-c", "--comment", dest="comment", type="string")
     return parser
@@ -230,18 +216,33 @@ class Option (optparse.Option):
             except ValueError:
                 continue
         raise optparse.OptionValueError(
-            "option %s: invalid date: %r" % (opt, value))
+            "option %s: invalid date: %s" % (opt, value))
     
-    def check_csv (self, opt, value):
-        if value:
-            if "," in value:
-                warnings.warn("CSV options are deprecated.", DeprecationWarning)
-            return value.split(",")
-        else:
-            return []
+    def check_project (self, opt, value):
+        try:
+            return project_by_name(value)
+        except clusterbank.exceptions.NotFound:
+            raise optparse.OptionValueError(
+                "option %s: unknown project: %s" % (opt, value))
     
-    TYPES = optparse.Option.TYPES + ("date", "csv")
+    def check_resource (self, opt, value):
+        try:
+            return resource_by_name(value)
+        except clusterbank.exceptions.NotFound:
+            raise optparse.OptionValueError(
+                "option %s: unknown resource: %s" % (opt, value))
+    
+    def check_user (self, opt, value):
+        try:
+            return user_by_name(value)
+        except clusterbank.exceptions.NotFound:
+            raise optparse.OptionValueError(
+                "option %s: unknown user: %s" % (opt, value))
+    
+    TYPES = optparse.Option.TYPES + ("date", "project", "resource", "user")
     
     TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
     TYPE_CHECKER['date'] = check_date
-    TYPE_CHECKER['csv'] = check_csv
+    TYPE_CHECKER['project'] = check_project
+    TYPE_CHECKER['resource'] = check_resource
+    TYPE_CHECKER['user'] = check_user

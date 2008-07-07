@@ -15,7 +15,7 @@ from sqlalchemy import or_, and_
 from clusterbank import config
 import clusterbank.cbank.exceptions as exceptions
 from clusterbank.model import \
-    upstream, Session, User, Project, Resource, Allocation, Hold, \
+    Session, User, Project, Resource, Allocation, Hold, \
     Charge, Refund, user_projects, user_projects_owned, project_owners, project_members
     
 def print_unit_definition ():
@@ -43,14 +43,13 @@ def print_raw_usage_report (projects_query, **kwargs):
     allocations = Session.query(Allocation)
     charges = Session.query(Charge)
     if kwargs.get("projects"):
-        project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
+        project_ids = [project.id for project in kwargs.get("projects")]
         projects = projects.filter(Project.id.in_(project_ids))
     if kwargs.get("users"):
-        user_ids = [upstream.get_user_id(user) for user in kwargs.get("users")]
-        project_ids = set(sum([upstream.get_member_projects(user_id) for user_id in user_ids], []))
+        project_ids = [project.id for project in sum([user_projects(user) for user in kwargs.get("users")], [])]
         projects = projects.filter(Project.id.in_(project_ids))
     if kwargs.get("resources"):
-        resource_ids = [upstream.get_resource_id(resource) for resource in kwargs.get("resources")]
+        resource_ids = [resource.id for resource in kwargs.get("resources")]
         projects = projects.filter(Project.allocations.any(Allocation.resource.has(Resource.id.in_(resource_ids))))
         allocations = allocations.filter(Allocation.resource.has(Resource.id.in_(resource_ids)))
         charges = charges.filter(Charge.allocation.has(Allocation.resource.has(Resource.id.in_(resource_ids))))
@@ -102,14 +101,13 @@ def print_admin_projects_report (**kwargs):
 def print_raw_projects_report (projects_query, **kwargs):
     projects = projects_query
     if kwargs.get("projects"):
-        project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
+        project_ids = [project.id for project in kwargs.get("projects")]
         projects = projects.filter(Project.id.in_(project_ids))
     if kwargs.get("users"):
-        user_ids = [upstream.get_user_id(user) for user in kwargs.get("users")]
-        project_ids = set(sum([upstream.get_member_projects(user_id) for user_id in user_ids], []))
+        project_ids = [project.id for project in sum([user_projects(user) for user in kwargs.get("users")], [])]
         projects = projects.filter(Project.id.in_(project_ids))
     if kwargs.get("resources"):
-        resource_ids = [upstream.get_resource_id(resource) for resource in kwargs.get("resources")]
+        resource_ids = [resource.id for resource in kwargs.get("resources")]
         projects = projects.filter(Project.allocations.any(Allocation.resource.has(Resource.id.in_(resource_ids))))
     if kwargs.get("after"):
         projects = projects.filter(or_(
@@ -151,14 +149,13 @@ def print_admin_allocations_report (**kwargs):
 def print_raw_allocations_report (allocations_query, **kwargs):
     allocations = allocations_query
     if kwargs.get("projects"):
-        project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
+        project_ids = [project.id for project in kwargs.get("projects")]
         allocations = allocations.filter(Allocation.project.has(Project.id.in_(project_ids)))
     if kwargs.get("users"):
-        user_ids = [upstream.get_user_id(user) for user in kwargs.get("users")]
-        project_ids = sum([upstream.get_member_projects(user_id) for user_id in user_ids], [])
+        project_ids = [project.id for project in sum([user_projects(user) for user in kwargs.get("users")], [])]
         allocations = allocations.filter(Allocation.project.has(Project.id.in_(set(project_ids))))
     if kwargs.get("resources"):
-        resource_ids = [upstream.get_resource_id(resource) for resource in kwargs.get("resources")]
+        resource_ids = [resource.id for resource in kwargs.get("resources")]
         allocations = allocations.filter(Allocation.resource.has(Resource.id.in_(resource_ids)))
     if kwargs.get("after") or kwargs.get("before"):
         if kwargs.get("after"):
@@ -211,13 +208,13 @@ def print_admin_charges_report (**kwargs):
 def print_raw_charges_report (charges_query, **kwargs):
     charges = charges_query
     if kwargs.get("projects"):
-        project_ids = [upstream.get_project_id(project) for project in kwargs.get("projects")]
+        project_ids = [project.id for project in kwargs.get("projects")]
         charges = charges.filter(Charge.allocation.has(Allocation.project.has(Project.id.in_(project_ids))))
     if kwargs.get("users"):
-        user_ids = [upstream.get_user_id(user) for user in kwargs.get("users")]
+        user_ids = [user.id for user in kwargs.get("users")]
         charges = charges.filter(Charge.user.has(User.id.in_(user_ids)))
     if kwargs.get("resources"):
-        resource_ids = [upstream.get_resource_id(resource) for resource in kwargs.get("resources")]
+        resource_ids = [resource.id for resource in kwargs.get("resources")]
         charges = charges.filter(Charge.allocation.has(Allocation.resource.has(Resource.id.in_(resource_ids))))
     if kwargs.get("after"):
         charges = charges.filter(Charge.datetime>=kwargs.get("after"))
