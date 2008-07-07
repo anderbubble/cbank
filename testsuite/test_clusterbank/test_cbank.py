@@ -88,7 +88,7 @@ class TestAllocationMain (CbankTester):
         resource = resource_by_name("resource1")
         query = Session.query(Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -c test"
+        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.remove()
         assert query.count() == 1, "didn't create an allocation"
@@ -104,7 +104,7 @@ class TestAllocationMain (CbankTester):
         resource = resource_by_name("resource1")
         query = Session.query(Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s bad_start -e 2009-01-01 -a 1000 -c test"
+        args = "-p project1 -r resource1 -s bad_start -e 2009-01-01 -a 1000 -m test"
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.remove()
         assert not query.count(), "created an allocation with bad start"
@@ -115,7 +115,7 @@ class TestAllocationMain (CbankTester):
         resource = resource_by_name("resource1")
         query = Session.query(Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -e bad_end -a 1000 -c test"
+        args = "-p project1 -r resource1 -s 2008-01-01 -e bad_end -a 1000 -m test"
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.remove()
         assert not query.count(), "created an allocation with bad end"
@@ -126,7 +126,7 @@ class TestAllocationMain (CbankTester):
         resource = resource_by_name("resource1")
         query = Session.query(Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a bad_amount -c test"
+        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a bad_amount -m test"
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.remove()
         assert not query.count(), "created an allocation with bad amount"
@@ -137,7 +137,7 @@ class TestAllocationMain (CbankTester):
         resource = resource_by_name("resource1")
         allocations = Session.query(Allocation).filter_by(project=project, resource=resource)
         assert not allocations.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a -1000 -c test"
+        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a -1000 -m test"
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.remove()
         assert not allocations.count(), "created an allocation with negative amount"
@@ -164,7 +164,7 @@ class TestAllocationMain (CbankTester):
         resource = resource_by_name("resource1")
         query = Session.query(Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -c test"
+        args = "-r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.remove()
         assert not query.count(), "created allocation without project: %s" % new_allocations
@@ -175,7 +175,7 @@ class TestAllocationMain (CbankTester):
         resource = resource_by_name("resource1")
         query = Session.query(Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
+        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.remove()
         assert not query.count(), "created allocation without amount"
@@ -186,7 +186,7 @@ class TestAllocationMain (CbankTester):
         resource = resource_by_name("resource1")
         query = Session.query(Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -e 2009-01-01 -a 1000 -c test"
+        args = "-p project1 -r resource1 -e 2009-01-01 -a 1000 -m test"
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.remove()
         assert not query.count(), "created allocation without start"
@@ -198,7 +198,7 @@ class TestAllocationMain (CbankTester):
         resource = resource_by_name("resource1")
         query = Session.query(Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -a 1000 -c test"
+        args = "-p project1 -r resource1 -s 2008-01-01 -a 1000 -m test"
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.remove()
         assert not query.count(), "created allocation without expiration"
@@ -210,7 +210,7 @@ class TestAllocationMain (CbankTester):
         resource = resource_by_name("resource1")
         query = Session.query(Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-s 2008-01-01 -e 2009-01-01 -a 1000 -c test"
+        args = "-s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.remove()
         assert not query.count(), "created allocation without project or resource: %s" % new_allocations
@@ -221,7 +221,7 @@ class TestAllocationMain (CbankTester):
         resource = resource_by_name("resource1")
         query = Session.query(Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -s 2008-01-01 -e 2009-01-01 -a 1000 -c test"
+        args = "-p project1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.remove()
         assert not query.count(), "created allocation without resource: %s" % new_allocations
@@ -233,7 +233,7 @@ class TestAllocationMain (CbankTester):
         resource = resource_by_name("resource1")
         query = Session.query(Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -c test"
+        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
         code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
         Session.remove()
         assert not query.count(), "created allocation when not admin: %s" % new_allocations
@@ -277,7 +277,7 @@ class TestChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.save(allocation)
         Session.commit()
-        args = "-p project1 -r resource1 -a 100 -c test -u user1"
+        args = "-p project1 -r resource1 -a 100 -m test -u user1"
         run(clusterbank.cbank.controllers.charge_main, args.split())
         assert charges.count() == 1, "didn't create a charge"
         charge = charges.one()
@@ -298,7 +298,7 @@ class TestChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.save(allocation)
         Session.commit()
-        args = "-p project1 -a 100 -c test -u user1"
+        args = "-p project1 -a 100 -m test -u user1"
         run(clusterbank.cbank.controllers.charge_main, args.split())
         assert not charges.count(), "created a charge"
 
@@ -314,7 +314,7 @@ class TestChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.save(allocation)
         Session.commit()
-        args = "-r resource1 -a 100 -c test -u user1"
+        args = "-r resource1 -a 100 -m test -u user1"
         run(clusterbank.cbank.controllers.charge_main, args.split())
         assert not charges.count(), "created a charge"
     
@@ -330,7 +330,7 @@ class TestChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.save(allocation)
         Session.commit()
-        args = "-p project1 -r resource1 -c test -u user1"
+        args = "-p project1 -r resource1 -m test -u user1"
         run(clusterbank.cbank.controllers.charge_main, args.split())
         assert not charges.count(), "created a charge"
     
@@ -346,7 +346,7 @@ class TestChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.save(allocation)
         Session.commit()
-        args = "-p project1 -r resource1 -a -100 -c test -u user1"
+        args = "-p project1 -r resource1 -a -100 -m test -u user1"
         code, stdout, stderr = run(clusterbank.cbank.controllers.charge_main, args.split())
         Session.remove()
         assert not charges.count(), "created a charge with negative amount: %s" % [(charge, charge.amount) for charge in charges]
@@ -384,7 +384,7 @@ class TestChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.save(allocation)
         Session.commit()
-        args = "-p project1 -r resource1 -a 100 -c test"
+        args = "-p project1 -r resource1 -a 100 -m test"
         run(clusterbank.cbank.controllers.charge_main, args.split())
         assert charges.count() == 1, "didn't create a charge"
         charge = charges.one()
@@ -403,7 +403,7 @@ class TestChargeMain (CbankTester):
         allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.save(allocation)
         Session.commit()
-        args = "-p project1 -r resource1 -a 100 -c test"
+        args = "-p project1 -r resource1 -a 100 -m test"
         run(clusterbank.cbank.controllers.charge_main, args.split())
         assert not charges.count(), "created a charge without admin privileges"
 

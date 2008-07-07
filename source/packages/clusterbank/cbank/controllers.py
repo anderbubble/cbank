@@ -210,7 +210,7 @@ def build_allocation_parser ():
     parser.add_option(Option("-s", "--start", dest="start", type="date"))
     parser.add_option(Option("-e", "--expiration", dest="expiration", type="date"))
     parser.add_option("-a", "--amount", dest="amount", type="int")
-    parser.add_option("-c", "--comment", dest="comment")
+    parser.add_option("-m", "--comment", dest="comment")
     return parser
 
 def build_charge_parser ():
@@ -219,7 +219,7 @@ def build_charge_parser ():
     parser.add_option(Option("-r", "--resource", type="resource", dest="resource"))
     parser.add_option(Option("-u", "--user", type="user", dest="user"))
     parser.add_option("-a", "--amount", dest="amount", type="int")
-    parser.add_option("-c", "--comment", dest="comment", type="string")
+    parser.add_option("-m", "--comment", dest="comment")
     return parser
 
 def build_refund_parser ():
@@ -228,6 +228,7 @@ def build_refund_parser ():
     parser.add_option("-a", "--amount", dest="amount", type="int")
     parser.add_option("-m", "--comment", dest="comment")
     return parser
+
 
 class Option (optparse.Option):
     
