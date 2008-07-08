@@ -287,7 +287,7 @@ class Allocation (Entity):
     amount_charged = property(_get_amount_charged)
     
     def _get_amount_held (self):
-        return sum(hold.amount for hold in self.holds if hold.active)
+        return sum(hold.amount or 0 for hold in self.holds if hold.active)
     
     amount_held = property(_get_amount_held)
     
@@ -524,7 +524,7 @@ class Charge (Entity):
         return charges
     
     def _get_effective_amount (self):
-        amount_refunded = sum(refund.amount for refund in self.refunds)
+        amount_refunded = sum(refund.amount or 0 for refund in self.refunds)
         return self.amount - amount_refunded
     
     effective_amount = property(_get_effective_amount)
@@ -558,4 +558,4 @@ class Refund (Entity):
         self.comment = kwargs.get("comment")
         self.amount = kwargs.get("amount")
         if self.amount is None and self.charge is not None:
-            self.amount = self.charge.amount
+            self.amount = self.charge.effective_amount
