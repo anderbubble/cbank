@@ -266,31 +266,34 @@ def display_units (amount):
         return locale.format("%.1f", converted_amount, True)
 
 def print_allocation (allocation):
-    print "New allocation..."
-    print "Project:", allocation.project
-    print "Resource:", allocation.resource
-    print "Amount:", allocation.amount, "(minutes)"
-    print "Start:", allocation.start
-    print "Expiration:", allocation.expiration
-    print "Comment:", allocation.comment
+    allocation_str = "Allocation #%i -- %s" % (allocation.id, allocation.amount)
+    if allocation.comment:
+        allocation_str = " ".join([allocation_str, "(%s)" % allocation.comment])
+    print " * Project: '%s'" % allocation.project
+    print " * Resource: '%s'" % allocation.resource
+    print " * Start: %s" % allocation.start
+    print " * Expiration: %s" % allocation.expiration
 
 def print_charges (charges):
     for charge in charges:
         print_charge(charge)
 
 def print_charge (charge):
-    print "New charge..."
-    print "Allocation:", charge.allocation
-    print "Amount:", charge.amount
-    print "Date:", charge.datetime
-    print "Comment:", charge.comment
+    charge_str = "Charge #%i -- %s" % (charge.id, charge.amount)
+    if charge.comment:
+        charge_str = " ".join([charge_str, "(%s)" % charge.comment])
+    print " * Allocation #%i -- %s (%s available)" % (
+        charge.allocation.id, charge.allocation.amount,
+        charge.allocation.amount_available)
 
 def print_refund (refund):
-    print "New refund..."
-    print "Charge:", refund.charge
-    print "Amount:", refund.amount
-    print "Date:", refund.datetime
-    print "Comment:", refund.comment
+    refund_str = "Refund #%i -- %s" % (refund.id, refund.amount)
+    if refund.comment:
+        refund_str = " ".join([refund_str, "(%s)" % refund.comment])
+    print refund_str
+    print " * Charge #%i -- %s (originally %s)" % (
+        refund.charge.id, refund.charge.effective_amount,
+        refund.charge.amount)
 
 
 class Formatter (object):
