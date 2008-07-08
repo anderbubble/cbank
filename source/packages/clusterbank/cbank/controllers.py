@@ -113,6 +113,7 @@ def refund_main ():
         charge=options.charge, amount=options.amount, comment=options.comment)
     Session.save(refund)
     Session.commit()
+    views.print_refund(refund)
 
 @handle_exceptions
 def report_main ():

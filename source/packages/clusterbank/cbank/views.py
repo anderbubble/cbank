@@ -285,6 +285,14 @@ def print_charge (charge):
     print "Date:", charge.datetime
     print "Comment:", charge.comment
 
+def print_refund (refund):
+    print "New refund..."
+    print "Charge:", refund.charge
+    print "Amount:", refund.amount
+    print "Date:", refund.datetime
+    print "Comment:", refund.comment
+
+
 class Formatter (object):
     
     def __init__ (self, fields, **kwargs):
