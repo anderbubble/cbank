@@ -435,6 +435,61 @@ class TestRefundMain (CbankTester):
         assert refund.amount == 50, refund.amount
         assert refund.comment == "test", refund.comment
     
+    def test_without_comment (self):
+        now = datetime.now()
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        refunds = Session.query(Refund)
+        assert not refunds.count(), "started with existing refunds"
+        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        charge = Charge(allocation=allocation, amount=100)
+        Session.save(allocation)
+        Session.save(charge)
+        Session.commit()
+        args = "-c %s -a 50" % charge.id
+        run(clusterbank.cbank.controllers.refund_main, args.split())
+        assert refunds.count() == 1, "didn't create a refund"
+        refund = refunds.one()
+        assert refund.charge is charge, refund.charge
+        assert refund.amount == 50, refund.amount
+        assert refund.comment is None, refund.comment
+    
+    def test_without_charge (self):
+        now = datetime.now()
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        refunds = Session.query(Refund)
+        assert not refunds.count(), "started with existing refunds"
+        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        charge = Charge(allocation=allocation, amount=100)
+        Session.save(allocation)
+        Session.save(charge)
+        Session.commit()
+        args = "-a 50 -m test"
+        code, stdout, stderr = run(clusterbank.cbank.controllers.refund_main, args.split())
+        Session.remove()
+        assert not refunds.count(), "created refund without charge"
+        assert code != 0, code
+    
+    def test_without_amount (self):
+        now = datetime.now()
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        refunds = Session.query(Refund)
+        assert not refunds.count(), "started with existing refunds"
+        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        charge = Charge(allocation=allocation, amount=100)
+        Session.save(allocation)
+        Session.save(charge)
+        Session.commit()
+        args = "-c %s -m test" % charge.id
+        code, stdout, stderr = run(clusterbank.cbank.controllers.refund_main, args.split())
+        Session.remove()
+        assert refunds.count() == 1, "incorrect refund count: %r" % [(refund, refund.amount) for refund in refunds]
+        refund = refunds.one()
+        assert refund.amount == 100
+        assert code == 0, code
+    
     def test_non_admin (self):
         clusterbank.config.set("cbank", "admins", "")
         now = datetime.now()

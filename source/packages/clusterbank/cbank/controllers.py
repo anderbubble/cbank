@@ -107,6 +107,8 @@ def charge_main ():
 def refund_main ():
     parser = build_refund_parser()
     options, args = parser.parse_args()
+    if not options.charge:
+        raise exceptions.MissingOption("supply a charge")
     refund = Refund(
         charge=options.charge, amount=options.amount, comment=options.comment)
     Session.save(refund)
