@@ -269,6 +269,7 @@ def print_allocation (allocation):
     allocation_str = "Allocation #%i -- %s" % (allocation.id, allocation.amount)
     if allocation.comment:
         allocation_str = " ".join([allocation_str, "(%s)" % allocation.comment])
+    print allocation_str
     print " * Project: '%s'" % allocation.project
     print " * Resource: '%s'" % allocation.resource
     print " * Start: %s" % allocation.start
@@ -282,6 +283,7 @@ def print_charge (charge):
     charge_str = "Charge #%i -- %s" % (charge.id, charge.amount)
     if charge.comment:
         charge_str = " ".join([charge_str, "(%s)" % charge.comment])
+    print charge_str
     print " * Allocation #%i -- %s (%s available)" % (
         charge.allocation.id, charge.allocation.amount,
         charge.allocation.amount_available)
