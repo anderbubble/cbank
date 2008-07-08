@@ -14,7 +14,7 @@ from clusterbank.model import Session, user_by_name, project_by_name, resource_b
 import clusterbank.cbank.exceptions as exceptions
 import clusterbank.cbank.views as views
 
-__all__ = ["main", "report_main", "allocation_main"]
+__all__ = ["main", "report_main", "allocation_main", "charge_main", "refund_main"]
 
 try:
     dt_strptime = datetime.strprime
