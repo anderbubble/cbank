@@ -14,6 +14,7 @@ from sqlalchemy import or_, and_
 
 from clusterbank import config
 import clusterbank.cbank.exceptions as exceptions
+from clusterbank.cbank.common import get_unit_factor
 from clusterbank.model import \
     Session, User, Project, Resource, Allocation, Hold, \
     Charge, Refund, user_projects, user_projects_owned, project_owners, project_members
@@ -243,22 +244,7 @@ def print_raw_charges_report (charges_query, **kwargs):
     print_unit_definition()
 
 def display_units (amount):
-    try:
-        factor = config.get("cbank", "unit_factor")
-    except ConfigParser.Error:
-        factor = "1"
-    try:
-        mul, div = factor.split("/")
-    except ValueError:
-        mul = factor
-        div = 1
-    try:
-        mul = float(mul)
-        div = float(div)
-    except ValueError:
-        warnings.warn("invalid unit factor: %s" % factor)
-        mul = 1
-        val = 1
+    mul, div = get_unit_factor()
     converted_amount = amount * mul / div
     if 0 < converted_amount < 0.1:
         return "< 0.1"
@@ -266,7 +252,10 @@ def display_units (amount):
         return locale.format("%.1f", converted_amount, True)
 
 def print_allocation (allocation):
-    allocation_str = "Allocation #%i -- %s" % (allocation.id, allocation.amount)
+    amount = display_units(allocation.amount)
+    amount_available = display_units(allocation.amount_available)
+    allocation_str = "Allocation #%i -- %s (%s available)" % (
+        allocation.id, amount, amount_available)
     if allocation.comment:
         allocation_str = " ".join([allocation_str, "(%s)" % allocation.comment])
     print allocation_str
@@ -280,7 +269,11 @@ def print_charges (charges):
         print_charge(charge)
 
 def print_charge (charge):
-    charge_str = "Charge #%i -- %s" % (charge.id, charge.amount)
+    effective_amount = display_units(charge.effective_amount)
+    amount = display_units(charge.amount)
+    charge_str = "Charge #%i -- %s" % (charge.id, effective_amount)
+    if amount != effective_amount:
+        charge_str = " ".join([charge_str, "(originally %s)" % amount])
     if charge.comment:
         charge_str = " ".join([charge_str, "(%s)" % charge.comment])
     print charge_str
@@ -289,13 +282,16 @@ def print_charge (charge):
         charge.allocation.amount_available)
 
 def print_refund (refund):
-    refund_str = "Refund #%i -- %s" % (refund.id, refund.amount)
+    amount = display_units(refund.amount)
+    refund_str = "Refund #%i -- %s" % (refund.id, amount)
     if refund.comment:
         refund_str = " ".join([refund_str, "(%s)" % refund.comment])
     print refund_str
+    charge_effective_amount = display_units(refund.charge.effective_amount)
+    charge_amount = display_units(refund.charge.amount)
     print " * Charge #%i -- %s (originally %s)" % (
-        refund.charge.id, refund.charge.effective_amount,
-        refund.charge.amount)
+        refund.charge.id, charge_effective_amount,
+        charge_amount)
 
 
 class Formatter (object):

@@ -10,11 +10,15 @@ import sqlalchemy.exceptions
 
 import clusterbank
 from clusterbank import config
-from clusterbank.model import Session, user_by_name, project_by_name, resource_by_name, Allocation, Charge, Refund
+from clusterbank.model import \
+    Session, user_by_name, project_by_name, resource_by_name, \
+    Allocation, Charge, Refund
 import clusterbank.cbank.exceptions as exceptions
 import clusterbank.cbank.views as views
+from clusterbank.cbank.common import get_unit_factor
 
-__all__ = ["main", "report_main", "allocation_main", "charge_main", "refund_main"]
+__all__ = ["main", "report_main", "allocation_main", "charge_main",
+    "refund_main"]
 
 try:
     dt_strptime = datetime.strprime
@@ -68,10 +72,11 @@ def allocation_main ():
         raise exceptions.MissingOption("supply a start date")
     if not options.expiration:
         raise exceptions.MissingOption("supply an expiration date")
+    amount = parse_units(options.amount)
     allocation = Allocation(
         project=options.project, resource=options.resource,
         start=options.start, expiration=options.expiration,
-        amount=options.amount, comment=options.comment)
+        amount=amount, comment=options.comment)
     Session.save(allocation)
     try:
         Session.commit()
@@ -92,8 +97,9 @@ def charge_main ():
         raise exceptions.MissingOption("supply an amount")
     allocations = Session.query(Allocation).filter_by(
         project=options.project, resource=options.resource)
+    amount = parse_units(options.amount)
     charges = Charge.distributed(allocations,
-        user=options.user, amount=options.amount, comment=options.comment)
+        user=options.user, amount=amount, comment=options.comment)
     for charge in charges:
         Session.save(charge)
     try:
@@ -109,8 +115,12 @@ def refund_main ():
     options, args = parser.parse_args()
     if not options.charge:
         raise exceptions.MissingOption("supply a charge")
+    try:
+        amount = parse_units(options.amount)
+    except TypeError:
+        amount = options.amount
     refund = Refund(
-        charge=options.charge, amount=options.amount, comment=options.comment)
+        charge=options.charge, amount=amount, comment=options.comment)
     Session.save(refund)
     Session.commit()
     views.print_refund(refund)
@@ -182,6 +192,13 @@ def get_current_user ():
         raise exceptions.UnknownUser("User '%s' was not found." % username)
     return user
 
+def parse_units (units):
+    units = float(units)
+    mul, div = get_unit_factor()
+    raw_units = units / mul * div
+    raw_units = int(raw_units)
+    return raw_units
+
 def build_report_parser ():
     
     usage_str = os.linesep.join([
@@ -214,7 +231,7 @@ def build_allocation_parser ():
     parser.add_option(Option("-r", "--resource", type="resource", dest="resource"))
     parser.add_option(Option("-s", "--start", dest="start", type="date"))
     parser.add_option(Option("-e", "--expiration", dest="expiration", type="date"))
-    parser.add_option("-a", "--amount", dest="amount", type="int")
+    parser.add_option("-a", "--amount", dest="amount", type="float")
     parser.add_option("-m", "--comment", dest="comment")
     return parser
 
@@ -223,14 +240,14 @@ def build_charge_parser ():
     parser.add_option(Option("-p", "--project", type="project", dest="project"))
     parser.add_option(Option("-r", "--resource", type="resource", dest="resource"))
     parser.add_option(Option("-u", "--user", type="user", dest="user"))
-    parser.add_option("-a", "--amount", dest="amount", type="int")
+    parser.add_option("-a", "--amount", dest="amount", type="float")
     parser.add_option("-m", "--comment", dest="comment")
     return parser
 
 def build_refund_parser ():
     parser = optparse.OptionParser()
     parser.add_option(Option("-c", "--charge", type="charge", dest="charge"))
-    parser.add_option("-a", "--amount", dest="amount", type="int")
+    parser.add_option("-a", "--amount", dest="amount", type="float")
     parser.add_option("-m", "--comment", dest="comment")
     return parser
 

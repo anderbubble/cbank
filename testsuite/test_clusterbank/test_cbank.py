@@ -99,6 +99,23 @@ class TestAllocationMain (CbankTester):
         assert allocation.comment == "test", allocation.comment
         assert code == 0, code
     
+    def test_with_defined_units (self):
+        clusterbank.config.set("cbank", "unit_factor", "1/2")
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
+        code, stdout, stderr = run(clusterbank.cbank.controllers.allocation_main, args.split())
+        Session.remove()
+        assert query.count() == 1, "didn't create an allocation"
+        allocation = query.one()
+        assert allocation.start == datetime(2008, 1, 1), allocation.start
+        assert allocation.expiration == datetime(2009, 1, 1), allocation.expiration
+        assert allocation.amount == 2000, allocation.amount
+        assert allocation.comment == "test", allocation.comment
+        assert code == 0, code
+    
     def test_with_bad_start (self):
         project = project_by_name("project1")
         resource = resource_by_name("resource1")
@@ -286,6 +303,28 @@ class TestChargeMain (CbankTester):
         assert charge.comment == "test", "incorrect comment: %s" % charge.comment
         assert charge.user is user, "incorrect user on charge: %s" % charge.user
     
+    def test_with_defined_units (self):
+        clusterbank.config.set("cbank", "unit_factor", "1/2")
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        charges = Session.query(Charge)
+        assert not charges.count(), "started with existing charges"
+        now = datetime.now()
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        Session.save(allocation)
+        Session.commit()
+        args = "-p project1 -r resource1 -a 100 -m test -u user1"
+        run(clusterbank.cbank.controllers.charge_main, args.split())
+        assert charges.count() == 1, "didn't create a charge"
+        charge = charges.one()
+        assert charge.allocation is allocation, "incorrect allocation: %r" % charge.allocation
+        assert charge.amount == 200, "incorrect charge amount: %i" % charge.amount
+        assert charge.comment == "test", "incorrect comment: %s" % charge.comment
+        assert charge.user is user, "incorrect user on charge: %s" % charge.user
+    
     def test_without_resource (self):
         project = project_by_name("project1")
         resource = resource_by_name("resource1")
@@ -435,6 +474,26 @@ class TestRefundMain (CbankTester):
         assert refund.amount == 50, refund.amount
         assert refund.comment == "test", refund.comment
     
+    def test_with_defined_units (self):
+        clusterbank.config.set("cbank", "unit_factor", "1/2")
+        now = datetime.now()
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        refunds = Session.query(Refund)
+        assert not refunds.count(), "started with existing refunds"
+        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        charge = Charge(allocation=allocation, amount=100)
+        Session.save(allocation)
+        Session.save(charge)
+        Session.commit()
+        args = "-c %s -a 50 -m test" % charge.id
+        run(clusterbank.cbank.controllers.refund_main, args.split())
+        assert refunds.count() == 1, "didn't create a refund"
+        refund = refunds.one()
+        assert refund.charge is charge, refund.charge
+        assert refund.amount == 100, refund.amount
+        assert refund.comment == "test", refund.comment
+    
     def test_without_comment (self):
         now = datetime.now()
         project = project_by_name("project1")
@@ -527,4 +586,3 @@ class TestRefundMain (CbankTester):
         Session.remove()
         assert not refunds.count(), "created a refund when not an admin"
         assert code != 0, code
-
