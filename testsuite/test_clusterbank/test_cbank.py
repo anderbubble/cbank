@@ -409,7 +409,8 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "-p project1 -r resource1 -a 100 -m test -u user1"
-        run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        assert code == 0
         assert charges.count() == 1, "didn't create a charge"
         charge = charges.one()
         assert charge.allocation is allocation, "incorrect allocation: %r" % charge.allocation
@@ -448,7 +449,8 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "-p project1 -r resource1 -a 100 -m test -u user1"
-        run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        assert code == 0
         assert charges.count() == 1, "didn't create a charge"
         charge = charges.one()
         assert charge.allocation is allocation, "incorrect allocation: %r" % charge.allocation
@@ -469,7 +471,8 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "-p project1 -a 100 -m test -u user1"
-        run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        assert code != 0
         assert not charges.count(), "created a charge"
 
     def test_without_project (self):
@@ -485,7 +488,8 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "-r resource1 -a 100 -m test -u user1"
-        run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        assert code != 0
         assert not charges.count(), "created a charge"
     
     def test_without_amount (self):
@@ -501,7 +505,8 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "-p project1 -r resource1 -m test -u user1"
-        run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        assert code != 0
         assert not charges.count(), "created a charge"
     
     def test_with_negative_amount (self):
@@ -535,7 +540,8 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "-p project1 -r resource1 -a 100 -u user1"
-        run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        assert code == 0
         assert charges.count() == 1, "didn't create a charge"
         charge = charges.one()
         assert charge.allocation is allocation, "incorrect allocation: %r" % charge.allocation
@@ -555,7 +561,8 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "-p project1 -r resource1 -a 100 -m test"
-        run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        assert code == 0
         assert charges.count() == 1, "didn't create a charge"
         charge = charges.one()
         assert charge.allocation is allocation, "incorrect allocation: %r" % charge.allocation
@@ -598,7 +605,8 @@ class TestNewRefundMain (CbankTester):
         Session.save(charge)
         Session.commit()
         args = "-c %s -a 50 -m test" % charge.id
-        run(clusterbank.cbank.controllers.new_refund_main, args.split())
+        code, stdout, stderr = run(clusterbank.cbank.controllers.new_refund_main, args.split())
+        assert code == 0
         assert refunds.count() == 1, "didn't create a refund"
         refund = refunds.one()
         assert refund.charge is charge, refund.charge
@@ -634,7 +642,8 @@ class TestNewRefundMain (CbankTester):
         Session.save(charge)
         Session.commit()
         args = "-c %s -a 50 -m test" % charge.id
-        run(clusterbank.cbank.controllers.new_refund_main, args.split())
+        code, stdout, stderr = run(clusterbank.cbank.controllers.new_refund_main, args.split())
+        assert code == 0
         assert refunds.count() == 1, "didn't create a refund"
         refund = refunds.one()
         assert refund.charge is charge, refund.charge
@@ -653,7 +662,8 @@ class TestNewRefundMain (CbankTester):
         Session.save(charge)
         Session.commit()
         args = "-c %s -a 50" % charge.id
-        run(clusterbank.cbank.controllers.new_refund_main, args.split())
+        code, stdout, stderr = run(clusterbank.cbank.controllers.new_refund_main, args.split())
+        assert code == 0
         assert refunds.count() == 1, "didn't create a refund"
         refund = refunds.one()
         assert refund.charge is charge, refund.charge
