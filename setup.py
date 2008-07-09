@@ -24,6 +24,10 @@ setup(
     entry_points = {'console_scripts': [
             "cbank = clusterbank.cbank.controllers:main",
             "cbank-report = clusterbank.cbank.controllers:report_main",
+            "cbank-report-usage = clusterbank.cbank.controllers:report_usage_main",
+            "cbank-report-projects = clusterbank.cbank.controllers:report_projects_main",
+            "cbank-report-allocations = clusterbank.cbank.controllers:report_allocations_main",
+            "cbank-report-charges = clusterbank.cbank.controllers:report_charges_main",
             "cbank-new = clusterbank.cbank.controllers:new_main",
             "cbank-new-allocation = clusterbank.cbank.controllers:new_allocation_main",
             "cbank-new-charge = clusterbank.cbank.controllers:new_charge_main",

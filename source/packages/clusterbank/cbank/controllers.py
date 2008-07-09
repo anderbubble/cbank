@@ -161,9 +161,26 @@ def new_refund_main ():
 
 @handle_exceptions
 def report_main ():
+    try:
+        command = normalize(sys.argv[1], ["usage", "charges", "projects", "allocations"])
+    except (IndexError, exceptions.UnknownCommand):
+        command = "usage"
+    else:
+        arg0 = " ".join([sys.argv[0], sys.argv[1]])
+        sys.argv = [arg0] + sys.argv[2:]
+    if command == "usage":
+        return report_usage_main()
+    elif command == "charges":
+        return report_charges_main()
+    elif command == "refunds":
+        return report_refunds_main()
+    elif command == "allocations":
+        return report_allocations_main()
+
+@handle_exceptions
+def report_usage_main ():
     parser = build_report_parser()
     options, args = parser.parse_args()
-    report = get_report(args)
     if not options.resources:
         try:
             default_resource = config.get("cbank", "resource")
@@ -171,47 +188,86 @@ def report_main ():
             pass
         else:
             resources = [default_resource]
-    report(projects=options.projects, users=options.users,
-        resources=options.resources, after=options.after,
-        before=options.before, extra=options.extra)
-
-def get_report (args):
-    try:
-        requested_report = args[0]
-    except IndexError:
-        requested_report = "usage"
-    possible_reports = []
     user = get_current_user()
     if user.is_admin:
-        if "usage".startswith(requested_report):
-            possible_reports.append(views.print_admin_usage_report)
-        if "projects".startswith(requested_report):
-            possible_reports.append(views.print_admin_projects_report)
-        if "allocations".startswith(requested_report):
-            possible_reports.append(views.print_admin_allocations_report)
-        if "charges".startswith(requested_report):
-            possible_reports.append(views.print_admin_charges_report)
+        views.print_admin_usage_report(
+            projects=options.projects, users=options.users,
+            resources=options.resources, after=options.after,
+            before=options.before, extra=options.extra)
     else:
-        if "usage".startswith(requested_report):
-            possible_reports.append(views.print_member_usage_report)
-        if "projects".startswith(requested_report):
-            possible_reports.append(views.print_member_projects_report)
-        if "allocations".startswith(requested_report):
-            possible_reports.append(views.print_member_allocations_report)
-        if "charges".startswith(requested_report):
-            possible_reports.append(views.print_member_charges_report)
-        possible_reports = [
-            wrap_member_report(report,user) for report in possible_reports]
-    
-    if len(possible_reports) != 1:
-        raise exceptions.UnknownReport(requested_report)
-    else:
-        return possible_reports[0]
+        views.print_member_usage_report(user,
+            projects=options.projects, users=options.users,
+            resources=options.resources, after=options.after,
+            before=options.before, extra=options.extra)
 
-def wrap_member_report (member_report, user):
-    def report_wrapper (**kwargs):
-        return member_report(user, **kwargs)
-    return report_wrapper
+@handle_exceptions
+def report_projects_main ():
+    parser = build_report_parser()
+    options, args = parser.parse_args()
+    if not options.resources:
+        try:
+            default_resource = config.get("cbank", "resource")
+        except ConfigParser.Error:
+            pass
+        else:
+            resources = [default_resource]
+    user = get_current_user()
+    if user.is_admin:
+        views.print_admin_projects_report(
+            projects=options.projects, users=options.users,
+            resources=options.resources, after=options.after,
+            before=options.before, extra=options.extra)
+    else:
+        views.print_member_projects_report(user,
+            projects=options.projects, users=options.users,
+            resources=options.resources, after=options.after,
+            before=options.before, extra=options.extra)
+
+@handle_exceptions
+def report_allocations_main ():
+    parser = build_report_parser()
+    options, args = parser.parse_args()
+    if not options.resources:
+        try:
+            default_resource = config.get("cbank", "resource")
+        except ConfigParser.Error:
+            pass
+        else:
+            resources = [default_resource]
+    user = get_current_user()
+    if user.is_admin:
+        views.print_admin_allocations_report(
+            projects=options.projects, users=options.users,
+            resources=options.resources, after=options.after,
+            before=options.before, extra=options.extra)
+    else:
+        views.print_member_allocations_report(user,
+            projects=options.projects, users=options.users,
+            resources=options.resources, after=options.after,
+            before=options.before, extra=options.extra)
+
+@handle_exceptions
+def report_charges_main ():
+    parser = build_report_parser()
+    options, args = parser.parse_args()
+    if not options.resources:
+        try:
+            default_resource = config.get("cbank", "resource")
+        except ConfigParser.Error:
+            pass
+        else:
+            resources = [default_resource]
+    user = get_current_user()
+    if user.is_admin:
+        views.print_admin_charges_report(
+            projects=options.projects, users=options.users,
+            resources=options.resources, after=options.after,
+            before=options.before, extra=options.extra)
+    else:
+        views.print_member_charges_report(user,
+            projects=options.projects, users=options.users,
+            resources=options.resources, after=options.after,
+            before=options.before, extra=options.extra)
 
 def get_current_user ():
     uid = os.getuid()
