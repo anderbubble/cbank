@@ -172,8 +172,8 @@ def report_main ():
         return report_usage_main()
     elif command == "charges":
         return report_charges_main()
-    elif command == "refunds":
-        return report_refunds_main()
+    elif command == "projects":
+        return report_projects_main()
     elif command == "allocations":
         return report_allocations_main()
 
