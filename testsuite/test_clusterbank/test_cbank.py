@@ -379,107 +379,6 @@ class TestNewAllocationMain (CbankTester):
         assert code != 0
 
 
-class TestReportMain (CbankTester):
-    
-    def setup (self):
-        CbankTester.setup(self)
-        self._report_usage_main = \
-            clusterbank.cbank.controllers.report_usage_main
-        self._report_projects_main = \
-            clusterbank.cbank.controllers.report_projects_main
-        self._report_allocations_main = \
-            clusterbank.cbank.controllers.report_allocations_main
-        self._report_charges_main = \
-            clusterbank.cbank.controllers.report_charges_main
-    
-    def teardown (self):
-        CbankTester.teardown(self)
-        clusterbank.cbank.controllers.report_usage_main = \
-            self._report_usage_main
-        clusterbank.cbank.controllers.report_projects_main = \
-            self._report_projects_main
-        clusterbank.cbank.controllers.report_allocations_main = \
-            self._report_allocations_main
-        clusterbank.cbank.controllers.report_charges_main = \
-            self._report_charges_main
-    
-    def test_usage (self):
-        args = "usage 1 2 3"
-        def fake ():
-            self.fake_called = True
-            assert sys.argv[0] == "report_main usage", sys.argv
-            assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.report_usage_main = fake
-        run(clusterbank.cbank.controllers.report_main, args.split())
-        assert self.fake_called
-    
-    def test_projects (self):
-        args = "projects 1 2 3"
-        def fake ():
-            self.fake_called = True
-            assert sys.argv[0] == "report_main projects", sys.argv
-            assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.report_projects_main = fake
-        run(clusterbank.cbank.controllers.report_main, args.split())
-        assert self.fake_called
-    
-    def test_allocations (self):
-        args = "allocations 1 2 3"
-        def fake ():
-            self.fake_called = True
-            assert sys.argv[0] == "report_main allocations", sys.argv
-            assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.report_allocations_main = fake
-        run(clusterbank.cbank.controllers.report_main, args.split())
-        assert self.fake_called
-    
-    def test_charges (self):
-        args = "charges 1 2 3"
-        def fake ():
-            self.fake_called = True
-            assert sys.argv[0] == "report_main charges", sys.argv
-            assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.report_charges_main = fake
-        run(clusterbank.cbank.controllers.report_main, args.split())
-        assert self.fake_called
-    
-    def test_default (self):
-        args = "1 2 3"
-        def fake ():
-            self.fake_called = True
-            assert sys.argv[0] == "report_main", sys.argv
-            assert sys.argv[1:] == args.split(), sys.argv
-        clusterbank.cbank.controllers.report_usage_main = fake
-        run(clusterbank.cbank.controllers.report_main, args.split())
-        assert self.fake_called
-    
-    def test_invalid (self):
-        args = "invalid 1 2 3"
-        def fake ():
-            self.fake_called = True
-            assert sys.argv[0] == "report_main", sys.argv
-            assert sys.argv[1:] == args.split(), sys.argv
-        clusterbank.cbank.controllers.report_usage_main = fake
-        run(clusterbank.cbank.controllers.report_main, args.split())
-        assert self.fake_called
-    
-    def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "report_main"), "report_main does not exist"
-        assert callable(clusterbank.cbank.controllers.report_main), "report_main is not callable"
-    
-    def test_admin_reports_complete (self):
-        self._run_all_reports()
-    
-    def test_member_reports_complete (self):
-        clusterbank.config.set("cbank", "admins", "")
-        for report in ("usage", "projects", "charges", "allocations"):
-            run(clusterbank.cbank.controllers.report_main, [report])
-    
-    def _run_all_reports (self):
-        for report in ("usage", "projects", "charges", "allocations"):
-            run(clusterbank.cbank.controllers.report_main, [report])
-
-
 class TestNewChargeMain (CbankTester):
     
     def test_exists_and_callable (self):
@@ -790,3 +689,104 @@ class TestNewRefundMain (CbankTester):
         Session.remove()
         assert not refunds.count(), "created a refund when not an admin"
         assert code != 0, code
+
+
+class TestReportMain (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        self._report_usage_main = \
+            clusterbank.cbank.controllers.report_usage_main
+        self._report_projects_main = \
+            clusterbank.cbank.controllers.report_projects_main
+        self._report_allocations_main = \
+            clusterbank.cbank.controllers.report_allocations_main
+        self._report_charges_main = \
+            clusterbank.cbank.controllers.report_charges_main
+    
+    def teardown (self):
+        CbankTester.teardown(self)
+        clusterbank.cbank.controllers.report_usage_main = \
+            self._report_usage_main
+        clusterbank.cbank.controllers.report_projects_main = \
+            self._report_projects_main
+        clusterbank.cbank.controllers.report_allocations_main = \
+            self._report_allocations_main
+        clusterbank.cbank.controllers.report_charges_main = \
+            self._report_charges_main
+    
+    def test_usage (self):
+        args = "usage 1 2 3"
+        def fake ():
+            self.fake_called = True
+            assert sys.argv[0] == "report_main usage", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        clusterbank.cbank.controllers.report_usage_main = fake
+        run(clusterbank.cbank.controllers.report_main, args.split())
+        assert self.fake_called
+    
+    def test_projects (self):
+        args = "projects 1 2 3"
+        def fake ():
+            self.fake_called = True
+            assert sys.argv[0] == "report_main projects", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        clusterbank.cbank.controllers.report_projects_main = fake
+        run(clusterbank.cbank.controllers.report_main, args.split())
+        assert self.fake_called
+    
+    def test_allocations (self):
+        args = "allocations 1 2 3"
+        def fake ():
+            self.fake_called = True
+            assert sys.argv[0] == "report_main allocations", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        clusterbank.cbank.controllers.report_allocations_main = fake
+        run(clusterbank.cbank.controllers.report_main, args.split())
+        assert self.fake_called
+    
+    def test_charges (self):
+        args = "charges 1 2 3"
+        def fake ():
+            self.fake_called = True
+            assert sys.argv[0] == "report_main charges", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        clusterbank.cbank.controllers.report_charges_main = fake
+        run(clusterbank.cbank.controllers.report_main, args.split())
+        assert self.fake_called
+    
+    def test_default (self):
+        args = "1 2 3"
+        def fake ():
+            self.fake_called = True
+            assert sys.argv[0] == "report_main", sys.argv
+            assert sys.argv[1:] == args.split(), sys.argv
+        clusterbank.cbank.controllers.report_usage_main = fake
+        run(clusterbank.cbank.controllers.report_main, args.split())
+        assert self.fake_called
+    
+    def test_invalid (self):
+        args = "invalid 1 2 3"
+        def fake ():
+            self.fake_called = True
+            assert sys.argv[0] == "report_main", sys.argv
+            assert sys.argv[1:] == args.split(), sys.argv
+        clusterbank.cbank.controllers.report_usage_main = fake
+        run(clusterbank.cbank.controllers.report_main, args.split())
+        assert self.fake_called
+    
+    def test_exists_and_callable (self):
+        assert hasattr(clusterbank.cbank.controllers, "report_main"), "report_main does not exist"
+        assert callable(clusterbank.cbank.controllers.report_main), "report_main is not callable"
+    
+    def test_admin_reports_complete (self):
+        self._run_all_reports()
+    
+    def test_member_reports_complete (self):
+        clusterbank.config.set("cbank", "admins", "")
+        for report in ("usage", "projects", "charges", "allocations"):
+            run(clusterbank.cbank.controllers.report_main, [report])
+    
+    def _run_all_reports (self):
+        for report in ("usage", "projects", "charges", "allocations"):
+            run(clusterbank.cbank.controllers.report_main, [report])
