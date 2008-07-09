@@ -224,7 +224,7 @@ def report_projects_main ():
             resources = [default_resource]
     user = get_current_user()
     if user.is_admin:
-        views.print_admin_projects_report(
+        views.print_admin_projects_report(user,
             projects=options.projects, users=options.users,
             resources=options.resources, after=options.after,
             before=options.before, extra=options.extra)

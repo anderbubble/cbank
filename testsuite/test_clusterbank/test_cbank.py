@@ -838,9 +838,9 @@ class TestReportMain (CbankTester):
     
     def test_member_reports_complete (self):
         clusterbank.config.set("cbank", "admins", "")
-        for report in ("usage", "projects", "charges", "allocations"):
-            run(clusterbank.cbank.controllers.report_main, [report])
+        self._run_all_reports()
     
     def _run_all_reports (self):
         for report in ("usage", "projects", "charges", "allocations"):
-            run(clusterbank.cbank.controllers.report_main, [report])
+            code, stdout, stderr = run(clusterbank.cbank.controllers.report_main, [report])
+            assert code == 0, report

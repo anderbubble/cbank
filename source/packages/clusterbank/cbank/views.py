@@ -93,13 +93,13 @@ def print_member_projects_report (user, **kwargs):
     projects = Session.query(Project)
     project_ids = [project.id for project in user_projects(user)]
     projects = projects.filter(Project.id.in_(project_ids))
-    print_raw_projects_report(projects, **kwargs)
+    print_raw_projects_report(projects, user, **kwargs)
 
-def print_admin_projects_report (**kwargs):
+def print_admin_projects_report (user, **kwargs):
     projects = Session.query(Project)
-    print_raw_projects_report(projects, **kwargs)
+    print_raw_projects_report(projects, user, **kwargs)
 
-def print_raw_projects_report (projects_query, **kwargs):
+def print_raw_projects_report (projects_query, user, **kwargs):
     projects = projects_query
     if kwargs.get("projects"):
         project_ids = [project.id for project in kwargs.get("projects")]
