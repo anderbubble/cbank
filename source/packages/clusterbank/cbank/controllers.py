@@ -74,7 +74,7 @@ def new_main ():
     try:
         command = normalize(sys.argv[1], ["allocation", "charge", "refund"])
     except IndexError:
-        raise exceptions.MissingCommand("specify a command: allocation, charge, refund")
+        raise exceptions.UnknownCommand("specify a command: allocation, charge, refund")
     arg0 = " ".join([sys.argv[0], sys.argv[1]])
     sys.argv = [arg0] + sys.argv[2:]
     if command == "allocation":
