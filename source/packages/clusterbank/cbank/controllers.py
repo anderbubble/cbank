@@ -5,6 +5,7 @@ import pwd
 import ConfigParser
 from datetime import datetime
 import warnings
+from StringIO import StringIO
 
 import sqlalchemy.exceptions
 
@@ -94,7 +95,7 @@ def normalize (arg, commands):
 @handle_exceptions
 @require_admin
 def new_allocation_main ():
-    parser = build_allocation_parser()
+    parser = build_new_allocation_parser()
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnknownArguments()
@@ -123,7 +124,7 @@ def new_allocation_main ():
 @handle_exceptions
 @require_admin
 def new_charge_main ():
-    parser = build_charge_parser()
+    parser = build_new_charge_parser()
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnknownArguments()
@@ -149,7 +150,7 @@ def new_charge_main ():
 @handle_exceptions
 @require_admin
 def new_refund_main ():
-    parser = build_refund_parser()
+    parser = build_new_refund_parser()
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnknownArguments()
@@ -304,16 +305,7 @@ def parse_units (units):
     return raw_units
 
 def build_report_parser ():
-    
-    usage_str = os.linesep.join([
-        "cbank [options] [report]",
-        "",
-        "reports:",
-        "  usage, projects, allocations, charges"])
-
-    version_str = "cbank %s" % clusterbank.__version__
-    
-    parser = optparse.OptionParser(usage=usage_str, version=version_str)
+    parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-p", "--project", dest="projects", type="project", action="append",
         help="filter by project NAME", metavar="NAME"))
     parser.add_option(Option("-u", "--user", dest="users", type="user", action="append",
@@ -329,30 +321,44 @@ def build_report_parser ():
     parser.set_defaults(extra=False, projects=[], users=[], resources=[])
     return parser
 
-def build_allocation_parser ():
-    parser = optparse.OptionParser()
-    parser.add_option(Option("-p", "--project", type="project", dest="project"))
-    parser.add_option(Option("-r", "--resource", type="resource", dest="resource"))
-    parser.add_option(Option("-s", "--start", dest="start", type="date"))
-    parser.add_option(Option("-e", "--expiration", dest="expiration", type="date"))
-    parser.add_option("-a", "--amount", dest="amount", type="float")
-    parser.add_option("-m", "--comment", dest="comment")
+def build_new_allocation_parser ():
+    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser.add_option(Option("-p", "--project", type="project", dest="project",
+        help="specify project NAME", metavar="NAME"))
+    parser.add_option(Option("-r", "--resource", type="resource", dest="resource",
+        help="specify resource NAME", metavar="NAME"))
+    parser.add_option(Option("-s", "--start", dest="start", type="date",
+        help="specify start DATE", metavar="DATE"))
+    parser.add_option(Option("-e", "--expiration", dest="expiration", type="date",
+        help="specify expiration DATE", metavar="DATE"))
+    parser.add_option("-a", "--amount", dest="amount", type="float",
+        help="specify allocation AMOUNT", metavar="AMOUNT")
+    parser.add_option("-m", "--comment", dest="comment",
+        help="add an string COMMENT", metavar="COMMENT")
     return parser
 
-def build_charge_parser ():
-    parser = optparse.OptionParser()
-    parser.add_option(Option("-p", "--project", type="project", dest="project"))
-    parser.add_option(Option("-r", "--resource", type="resource", dest="resource"))
-    parser.add_option(Option("-u", "--user", type="user", dest="user"))
-    parser.add_option("-a", "--amount", dest="amount", type="float")
-    parser.add_option("-m", "--comment", dest="comment")
+def build_new_charge_parser ():
+    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser.add_option(Option("-p", "--project", type="project", dest="project",
+        help="specify project NAME", metavar="NAME"))
+    parser.add_option(Option("-r", "--resource", type="resource", dest="resource",
+        help="specify resource NAME", metavar="NAME"))
+    parser.add_option(Option("-u", "--user", type="user", dest="user",
+        help="specify user NAME", metavar="NAME"))
+    parser.add_option("-a", "--amount", dest="amount", type="float",
+        help="specify allocation AMOUNT", metavar="AMOUNT")
+    parser.add_option("-m", "--comment", dest="comment",
+        help="add an string COMMENT", metavar="COMMENT")
     return parser
 
-def build_refund_parser ():
-    parser = optparse.OptionParser()
-    parser.add_option(Option("-c", "--charge", type="charge", dest="charge"))
-    parser.add_option("-a", "--amount", dest="amount", type="float")
-    parser.add_option("-m", "--comment", dest="comment")
+def build_new_refund_parser ():
+    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser.add_option(Option("-c", "--charge", type="charge", dest="charge",
+        help="specify charge ID", metavar="ID"))
+    parser.add_option("-a", "--amount", dest="amount", type="float",
+        help="specify allocation AMOUNT", metavar="AMOUNT")
+    parser.add_option("-m", "--comment", dest="comment",
+        help="add an string COMMENT", metavar="COMMENT")
     return parser
 
 
