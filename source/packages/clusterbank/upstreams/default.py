@@ -174,7 +174,7 @@ resources_table = Table("resources", metadata,
     Column("name", types.Text, nullable=False, unique=True),
 )
 
-Session = scoped_session(sessionmaker(autoflush=True, autocommit=False))
+Session = scoped_session(sessionmaker(autoflush=True, transactional=True))
 
 mapper(User, users_table, properties=dict(
     id = users_table.c.id,

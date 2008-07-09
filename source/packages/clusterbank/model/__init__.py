@@ -112,7 +112,7 @@ class SessionConstraints (SessionExtension):
         self.forbid_holds_greater_than_allocation(session)
         self.forbid_refunds_greater_than_charge(session)
 
-Session = scoped_session(sessionmaker(autocommit=False, autoflush=True,
+Session = scoped_session(sessionmaker(transactional=True, autoflush=True,
     extension=SessionConstraints()))
 
 mapper(User, users_table, properties=dict(
