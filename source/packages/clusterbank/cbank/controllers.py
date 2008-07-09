@@ -55,11 +55,45 @@ def require_admin (func):
 
 @handle_exceptions
 def main ():
-    return report_main()
+    try:
+        command = normalize(sys.argv[1], ["new", "report"])
+    except (IndexError, exceptions.UnknownCommand):
+        command = "report"
+    else:
+        arg0 = " ".join([sys.argv[0], sys.argv[1]])
+        sys.argv = [arg0] + sys.argv[2:]
+    if command == "new":
+        return new_main()
+    elif command == "report":
+        return report_main()
 
 @handle_exceptions
 @require_admin
-def allocation_main ():
+def new_main ():
+    try:
+        command = normalize(sys.argv[1], ["allocation", "charge", "refund"])
+    except IndexError:
+        raise exceptions.MissingCommand("specify a command: allocation, charge, refund")
+    arg0 = " ".join([sys.argv[0], sys.argv[1]])
+    sys.argv = [arg0] + sys.argv[2:]
+    if command == "allocation":
+        return new_allocation_main()
+    elif command == "charge":
+        return new_charge_main()
+    elif command == "refund":
+        return new_refund_main()
+
+def normalize (arg, commands):
+    possible_commands = [
+        command for command in commands if command.startswith(arg)]
+    if not possible_commands or len(possible_commands) > 1:
+        raise exceptions.UnknownCommand(arg)
+    else:
+        return possible_commands[0]
+
+@handle_exceptions
+@require_admin
+def new_allocation_main ():
     parser = build_allocation_parser()
     options, args = parser.parse_args()
     if not options.project:
@@ -86,7 +120,7 @@ def allocation_main ():
 
 @handle_exceptions
 @require_admin
-def charge_main ():
+def new_charge_main ():
     parser = build_charge_parser()
     options, args = parser.parse_args()
     if not options.project:
@@ -110,7 +144,7 @@ def charge_main ():
 
 @handle_exceptions
 @require_admin
-def refund_main ():
+def new_refund_main ():
     parser = build_refund_parser()
     options, args = parser.parse_args()
     if not options.charge:

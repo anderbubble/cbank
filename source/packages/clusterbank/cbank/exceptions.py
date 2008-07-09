@@ -12,6 +12,11 @@ class UnknownReport (CbankError):
     def __str__ (self):
         return "cbank: unknown report: %s" % CbankError.__str__(self)
 
+class UnknownCommand (CbankError):
+    
+    def __str__ (self):
+        return "cbank: unknown command: %s" % CbankError.__str__(self)
+
 class MisusedOption (CbankError):
     
     def __str__ (self):
