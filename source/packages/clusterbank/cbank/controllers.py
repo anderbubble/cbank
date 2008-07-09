@@ -96,6 +96,8 @@ def normalize (arg, commands):
 def new_allocation_main ():
     parser = build_allocation_parser()
     options, args = parser.parse_args()
+    if args:
+        raise exceptions.UnknownArguments()
     if not options.project:
         raise exceptions.MissingOption("supply a project")
     if not options.resource:
@@ -123,6 +125,8 @@ def new_allocation_main ():
 def new_charge_main ():
     parser = build_charge_parser()
     options, args = parser.parse_args()
+    if args:
+        raise exceptions.UnknownArguments()
     if not options.project:
         raise exceptions.MissingOption("supply a project")
     if not options.resource:
@@ -147,6 +151,8 @@ def new_charge_main ():
 def new_refund_main ():
     parser = build_refund_parser()
     options, args = parser.parse_args()
+    if args:
+        raise exceptions.UnknownArguments()
     if not options.charge:
         raise exceptions.MissingOption("supply a charge")
     try:
@@ -181,6 +187,8 @@ def report_main ():
 def report_usage_main ():
     parser = build_report_parser()
     options, args = parser.parse_args()
+    if args:
+        raise exceptions.UnknownArguments()
     if not options.resources:
         try:
             default_resource = config.get("cbank", "resource")
@@ -204,6 +212,8 @@ def report_usage_main ():
 def report_projects_main ():
     parser = build_report_parser()
     options, args = parser.parse_args()
+    if args:
+        raise exceptions.UnknownArguments()
     if not options.resources:
         try:
             default_resource = config.get("cbank", "resource")
@@ -227,6 +237,8 @@ def report_projects_main ():
 def report_allocations_main ():
     parser = build_report_parser()
     options, args = parser.parse_args()
+    if args:
+        raise exceptions.UnknownArguments()
     if not options.resources:
         try:
             default_resource = config.get("cbank", "resource")
@@ -250,6 +262,8 @@ def report_allocations_main ():
 def report_charges_main ():
     parser = build_report_parser()
     options, args = parser.parse_args()
+    if args:
+        raise exceptions.UnknownArguments()
     if not options.resources:
         try:
             default_resource = config.get("cbank", "resource")

@@ -7,6 +7,8 @@ class UnknownUser (CbankError):
     def __str__ (self):
         return "cbank: unknown user: %s" % CbankError.__str__(self)
 
+class UnknownArguments (CbankError): pass
+
 class UnknownCommand (CbankError):
     
     def __str__ (self):

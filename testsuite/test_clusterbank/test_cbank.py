@@ -221,6 +221,17 @@ class TestNewAllocationMain (CbankTester):
         assert allocation.comment == "test", allocation.comment
         assert code == 0, code
     
+    def test_unknown_arguments (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test asdf"
+        code, stdout, stderr = run(clusterbank.cbank.controllers.new_allocation_main, args.split())
+        Session.remove()
+        assert not query.count()
+        assert code != 0, code
+    
     def test_with_defined_units (self):
         clusterbank.config.set("cbank", "unit_factor", "1/2")
         project = project_by_name("project1")
@@ -406,6 +417,23 @@ class TestNewChargeMain (CbankTester):
         assert charge.comment == "test", "incorrect comment: %s" % charge.comment
         assert charge.user is user, "incorrect user on charge: %s" % charge.user
     
+    def test_unknown_arguments (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        charges = Session.query(Charge)
+        assert not charges.count(), "started with existing charges"
+        now = datetime.now()
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        Session.save(allocation)
+        Session.commit()
+        args = "-p project1 -r resource1 -a 100 -m test -u user1 asdf"
+        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        assert not charges.count()
+        assert code != 0, code
+    
     def test_with_defined_units (self):
         clusterbank.config.set("cbank", "unit_factor", "1/2")
         project = project_by_name("project1")
@@ -576,6 +604,22 @@ class TestNewRefundMain (CbankTester):
         assert refund.charge is charge, refund.charge
         assert refund.amount == 50, refund.amount
         assert refund.comment == "test", refund.comment
+    
+    def test_unknown_arguments (self):
+        now = datetime.now()
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        refunds = Session.query(Refund)
+        assert not refunds.count(), "started with existing refunds"
+        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        charge = Charge(allocation=allocation, amount=100)
+        Session.save(allocation)
+        Session.save(charge)
+        Session.commit()
+        args = "-c %s -a 50 -m test asdf" % charge.id
+        code, stdout, stderr = run(clusterbank.cbank.controllers.new_refund_main, args.split())
+        assert not refunds.count()
+        assert code != 0, code
     
     def test_with_defined_units (self):
         clusterbank.config.set("cbank", "unit_factor", "1/2")
