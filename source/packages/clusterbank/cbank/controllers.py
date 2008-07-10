@@ -1,11 +1,23 @@
+"""Controllers for the cbank interface.
+
+main -- metacontroller that dispatches to report_main and new_main
+new_main -- metacontroller that dispatches to creation controllers
+report_main -- metacontroller that dispatches to report controllers
+new_allocation_main -- creates new allocations
+new_charge_main -- creates new charges
+new_refund_main -- creates new refunds
+report_usage_main -- usage report
+report_projects_main -- projects report
+report_allocations_main -- allocations report
+report_charges_main -- charges report
+"""
+
 import optparse
 import os
 import sys
 import pwd
 import ConfigParser
 from datetime import datetime
-import warnings
-from StringIO import StringIO
 
 import sqlalchemy.exceptions
 
@@ -18,8 +30,10 @@ import clusterbank.cbank.exceptions as exceptions
 import clusterbank.cbank.views as views
 from clusterbank.cbank.common import get_unit_factor
 
-__all__ = ["main", "report_main", "allocation_main", "charge_main",
-    "refund_main"]
+__all__ = ["main", "new_main", "report_main",
+    "new_allocation_main", "new_charge_main", "new_refund_main"
+    "report_usage_main", "report_projects_main", "report_allocations_main",
+    "report_charges_main"]
 
 try:
     dt_strptime = datetime.strprime
@@ -173,8 +187,9 @@ def new_refund_main ():
 
 @handle_exceptions
 def report_main ():
+    commands = ["usage", "charges", "projects", "allocations"]
     try:
-        command = normalize(sys.argv[1], ["usage", "charges", "projects", "allocations"])
+        command = normalize(sys.argv[1], commands)
     except (IndexError, exceptions.UnknownCommand):
         command = "usage"
     else:
@@ -195,23 +210,25 @@ def report_usage_main ():
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnexpectedArguments(args)
-    if not options.resources:
+    if options.resources:
+        resources = options.resources
+    else:
         try:
             default_resource = config.get("cbank", "resource")
         except ConfigParser.Error:
-            pass
+            resources = []
         else:
             resources = [default_resource]
     user = get_current_user()
     if user.is_admin:
         views.print_admin_usage_report(
             projects=options.projects, users=options.users,
-            resources=options.resources, after=options.after,
+            resources=resources, after=options.after,
             before=options.before, extra=options.extra)
     else:
         views.print_member_usage_report(user,
             projects=options.projects, users=options.users,
-            resources=options.resources, after=options.after,
+            resources=resources, after=options.after,
             before=options.before, extra=options.extra)
 
 @handle_exceptions
@@ -220,23 +237,25 @@ def report_projects_main ():
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnexpectedArguments(args)
-    if not options.resources:
+    if options.resources:
+        resources = options.resources
+    else:
         try:
             default_resource = config.get("cbank", "resource")
         except ConfigParser.Error:
-            pass
+            resources = []
         else:
             resources = [default_resource]
     user = get_current_user()
     if user.is_admin:
         views.print_admin_projects_report(user,
             projects=options.projects, users=options.users,
-            resources=options.resources, after=options.after,
+            resources=resources, after=options.after,
             before=options.before, extra=options.extra)
     else:
         views.print_member_projects_report(user,
             projects=options.projects, users=options.users,
-            resources=options.resources, after=options.after,
+            resources=resources, after=options.after,
             before=options.before, extra=options.extra)
 
 @handle_exceptions
@@ -245,23 +264,25 @@ def report_allocations_main ():
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnexpectedArguments(args)
-    if not options.resources:
+    if options.resources:
+        resources = options.resources
+    else:
         try:
             default_resource = config.get("cbank", "resource")
         except ConfigParser.Error:
-            pass
+            resources = []
         else:
             resources = [default_resource]
     user = get_current_user()
     if user.is_admin:
         views.print_admin_allocations_report(
             projects=options.projects, users=options.users,
-            resources=options.resources, after=options.after,
+            resources=resources, after=options.after,
             before=options.before, extra=options.extra)
     else:
         views.print_member_allocations_report(user,
             projects=options.projects, users=options.users,
-            resources=options.resources, after=options.after,
+            resources=resources, after=options.after,
             before=options.before, extra=options.extra)
 
 @handle_exceptions
@@ -270,23 +291,25 @@ def report_charges_main ():
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnexpectedArguments(args)
-    if not options.resources:
+    if options.resources:
+        resources = options.resources
+    else:
         try:
             default_resource = config.get("cbank", "resource")
         except ConfigParser.Error:
-            pass
+            resources = []
         else:
             resources = [default_resource]
     user = get_current_user()
     if user.is_admin:
         views.print_admin_charges_report(
             projects=options.projects, users=options.users,
-            resources=options.resources, after=options.after,
+            resources=resources, after=options.after,
             before=options.before, extra=options.extra)
     else:
         views.print_member_charges_report(user,
             projects=options.projects, users=options.users,
-            resources=options.resources, after=options.after,
+            resources=resources, after=options.after,
             before=options.before, extra=options.extra)
 
 def get_current_user ():
@@ -311,30 +334,40 @@ def parse_units (units):
 
 def build_report_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
-    parser.add_option(Option("-p", "--project", dest="projects", type="project", action="append",
+    parser.add_option(Option("-p", "--project",
+        dest="projects", type="project", action="append",
         help="filter by project NAME", metavar="NAME"))
-    parser.add_option(Option("-u", "--user", dest="users", type="user", action="append",
+    parser.add_option(Option("-u", "--user",
+        dest="users", type="user", action="append",
         help="filter by user NAME", metavar="NAME"))
-    parser.add_option(Option("-r", "--resource", dest="resources", type="resource", action="append",
+    parser.add_option(Option("-r", "--resource",
+        dest="resources", type="resource", action="append",
         help="filter by resource NAME", metavar="NAME"))
-    parser.add_option(Option("-a", "--after", dest="after", type="date",
+    parser.add_option(Option("-a", "--after",
+        dest="after", type="date",
         help="filter by start DATE", metavar="DATE"))
-    parser.add_option(Option("-b", "--before", dest="before", type="date",
+    parser.add_option(Option("-b", "--before",
+        dest="before", type="date",
         help="filter by end DATE", metavar="DATE"))
-    parser.add_option(Option("-e", "--extra-data", dest="extra", action="store_true",
+    parser.add_option(Option("-e", "--extra-data",
+        dest="extra", action="store_true",
         help="display extra data"))
     parser.set_defaults(extra=False, projects=[], users=[], resources=[])
     return parser
 
 def build_new_allocation_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
-    parser.add_option(Option("-p", "--project", type="project", dest="project",
+    parser.add_option(Option("-p", "--project",
+        type="project", dest="project",
         help="specify project NAME", metavar="NAME"))
-    parser.add_option(Option("-r", "--resource", type="resource", dest="resource",
+    parser.add_option(Option("-r", "--resource",
+        type="resource", dest="resource",
         help="specify resource NAME", metavar="NAME"))
-    parser.add_option(Option("-s", "--start", dest="start", type="date",
+    parser.add_option(Option("-s", "--start",
+        dest="start", type="date",
         help="specify start DATE", metavar="DATE"))
-    parser.add_option(Option("-e", "--expiration", dest="expiration", type="date",
+    parser.add_option(Option("-e", "--expiration",
+        dest="expiration", type="date",
         help="specify expiration DATE", metavar="DATE"))
     parser.add_option("-a", "--amount", dest="amount", type="float",
         help="specify allocation AMOUNT", metavar="AMOUNT")
@@ -344,26 +377,31 @@ def build_new_allocation_parser ():
 
 def build_new_charge_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
-    parser.add_option(Option("-p", "--project", type="project", dest="project",
-        help="specify project NAME", metavar="NAME"))
-    parser.add_option(Option("-r", "--resource", type="resource", dest="resource",
+    parser.add_option(Option("-p", "--project", type="project",
+        dest="project", help="specify project NAME", metavar="NAME"))
+    parser.add_option(Option("-r", "--resource",
+        type="resource", dest="resource",
         help="specify resource NAME", metavar="NAME"))
-    parser.add_option(Option("-u", "--user", type="user", dest="user",
+    parser.add_option(Option("-u", "--user",
+        type="user", dest="user",
         help="specify user NAME", metavar="NAME"))
-    parser.add_option("-a", "--amount", dest="amount", type="float",
+    parser.add_option("-a", "--amount",
+        dest="amount", type="float",
         help="specify allocation AMOUNT", metavar="AMOUNT")
-    parser.add_option("-m", "--comment", dest="comment",
-        help="add an string COMMENT", metavar="COMMENT")
+    parser.add_option("-m", "--comment",
+        dest="comment", help="add an string COMMENT", metavar="COMMENT")
     return parser
 
 def build_new_refund_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
-    parser.add_option(Option("-c", "--charge", type="charge", dest="charge",
+    parser.add_option(Option("-c", "--charge",
+        type="charge", dest="charge",
         help="specify charge ID", metavar="ID"))
-    parser.add_option("-a", "--amount", dest="amount", type="float",
+    parser.add_option("-a", "--amount",
+        dest="amount", type="float",
         help="specify allocation AMOUNT", metavar="AMOUNT")
-    parser.add_option("-m", "--comment", dest="comment",
-        help="add an string COMMENT", metavar="COMMENT")
+    parser.add_option("-m", "--comment",
+        dest="comment", help="add an string COMMENT", metavar="COMMENT")
     return parser
 
 
@@ -415,12 +453,13 @@ class Option (optparse.Option):
             raise optparse.OptionValueError(
                 "option %s: invalid charge id: %s" % (opt, value))
         try:
-            return Session.query(Charge).filter_by(id=value).one()
+            return Session.query(Charge).filter_by(id=charge_id).one()
         except sqlalchemy.exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown charge: %i" % (opt, value))
     
-    TYPES = optparse.Option.TYPES + ("date", "project", "resource", "user", "charge")
+    TYPES = optparse.Option.TYPES + (
+        "date", "project", "resource", "user", "charge")
     
     TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
     TYPE_CHECKER['date'] = check_date
