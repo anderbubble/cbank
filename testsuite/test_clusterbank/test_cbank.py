@@ -1,5 +1,3 @@
-from nose.tools import raises
-
 import sys
 import pwd
 import os
@@ -8,21 +6,21 @@ from StringIO import StringIO
 
 from sqlalchemy import create_engine
 
-from clusterbank.model import Session, Allocation, Charge, Refund, \
-    user_by_name, project_by_name, resource_by_name
+import clusterbank
+import clusterbank.model as model
 import clusterbank.upstreams.default as upstream
-import clusterbank.cbank.controllers
-import clusterbank.cbank.exceptions
+import clusterbank.cbank.controllers as controllers
+import clusterbank.cbank.exceptions as exceptions
 
 def get_current_username ():
     return pwd.getpwuid(os.getuid())[0]
 
 def setup ():
-    clusterbank.model.metadata.bind = create_engine("sqlite:///:memory:")
+    model.metadata.bind = create_engine("sqlite:///:memory:")
     upstream.metadata.bind = create_engine("sqlite:///:memory:", echo=True)
     upstream.metadata.create_all()
     populate_upstream()
-    clusterbank.model.upstream.use = upstream
+    model.upstream.use = upstream
 
 def populate_upstream ():
     upstream.Session.save(upstream.Project(id=1, name="project1"))
@@ -36,8 +34,8 @@ def populate_upstream ():
 def teardown ():
     upstream.metadata.drop_all()
     upstream.metadata.bind = None
-    clusterbank.model.upstream.use = None
-    clusterbank.model.metadata.bind = None
+    model.upstream.use = None
+    model.metadata.bind = None
 
 def run (func, args=None):
     if args is None:
@@ -68,15 +66,15 @@ def run (func, args=None):
 class CbankTester (object):
 
     def setup (self):
-        clusterbank.model.metadata.create_all()
+        model.metadata.create_all()
         current_user = get_current_username()
         clusterbank.config.add_section("cbank")
         clusterbank.config.set("cbank", "admins", current_user)
         self.fake_called = False
     
     def teardown (self):
-        clusterbank.model.metadata.drop_all()
-        Session.remove()
+        model.metadata.drop_all()
+        model.Session.remove()
         upstream.Session.remove()
         clusterbank.config.remove_section("cbank")
 
@@ -85,17 +83,17 @@ class TestMain (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._report_main = clusterbank.cbank.controllers.report_main
-        self._new_main = clusterbank.cbank.controllers.new_main
+        self._report_main = controllers.report_main
+        self._new_main = controllers.new_main
     
     def teardown (self):
         CbankTester.teardown(self)
-        clusterbank.cbank.controllers.report_main = self._report_main
-        clusterbank.cbank.controllers.new_main = self._new_main
+        controllers.report_main = self._report_main
+        controllers.new_main = self._new_main
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "main"), "main does not exist"
-        assert callable(clusterbank.cbank.controllers.main), "main is not callable"
+        assert hasattr(controllers, "main"), "main does not exist"
+        assert callable(controllers.main), "main is not callable"
     
     def test_report (self):
         args = "report 1 2 3"
@@ -103,8 +101,8 @@ class TestMain (CbankTester):
             self.fake_called = True
             assert sys.argv[0] == "main report"
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.report_main = fake
-        run(clusterbank.cbank.controllers.main, args.split())
+        controllers.report_main = fake
+        run(controllers.main, args.split())
         assert self.fake_called
     
     def test_new (self):
@@ -113,8 +111,8 @@ class TestMain (CbankTester):
             self.fake_called = True
             assert sys.argv[0] == "main new", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.new_main = fake
-        run(clusterbank.cbank.controllers.main, args.split())
+        controllers.new_main = fake
+        run(controllers.main, args.split())
         assert self.fake_called
     
     def test_default (self):
@@ -123,8 +121,8 @@ class TestMain (CbankTester):
             self.fake_called = True
             assert sys.argv[0] == "main"
             assert sys.argv[1:] == args.split(), sys.argv
-        clusterbank.cbank.controllers.report_main = fake
-        run(clusterbank.cbank.controllers.main, args.split())
+        controllers.report_main = fake
+        run(controllers.main, args.split())
         assert self.fake_called
     
     def test_invalid (self):
@@ -133,8 +131,8 @@ class TestMain (CbankTester):
             self.fake_called = True
             assert sys.argv[0] == "main"
             assert sys.argv[1:] == args.split(), sys.argv
-        clusterbank.cbank.controllers.report_main = fake
-        run(clusterbank.cbank.controllers.main, args.split())
+        controllers.report_main = fake
+        run(controllers.main, args.split())
         assert self.fake_called
 
 
@@ -143,24 +141,24 @@ class TestNewMain (CbankTester):
     def setup (self):
         CbankTester.setup(self)
         self._new_allocation_main = \
-            clusterbank.cbank.controllers.new_allocation_main
+            controllers.new_allocation_main
         self._new_charge_main = \
-            clusterbank.cbank.controllers.new_charge_main
+            controllers.new_charge_main
         self._new_refund_main = \
-            clusterbank.cbank.controllers.new_refund_main
+            controllers.new_refund_main
     
     def teardown (self):
         CbankTester.teardown(self)
-        clusterbank.cbank.controllers.new_allocation_main = \
+        controllers.new_allocation_main = \
             self._new_allocation_main
-        clusterbank.cbank.controllers.new_charge_main = \
+        controllers.new_charge_main = \
             self._new_charge_main
-        clusterbank.cbank.controllers.new_refund_main = \
+        controllers.new_refund_main = \
             self._new_refund_main
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "new_main"), "new_main does not exist"
-        assert callable(clusterbank.cbank.controllers.new_main), "new_main is not callable"
+        assert hasattr(controllers, "new_main"), "new_main does not exist"
+        assert callable(controllers.new_main), "new_main is not callable"
     
     def test_allocation (self):
         args = "allocation 1 2 3"
@@ -168,8 +166,8 @@ class TestNewMain (CbankTester):
             self.fake_called = True
             assert sys.argv[0] == "new_main allocation", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.new_allocation_main = fake
-        run(clusterbank.cbank.controllers.new_main, args.split())
+        controllers.new_allocation_main = fake
+        run(controllers.new_main, args.split())
         assert self.fake_called
     
     def test_charge (self):
@@ -178,8 +176,8 @@ class TestNewMain (CbankTester):
             self.fake_called = True
             assert sys.argv[0] == "new_main charge", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.new_charge_main = fake
-        run(clusterbank.cbank.controllers.new_main, args.split())
+        controllers.new_charge_main = fake
+        run(controllers.new_main, args.split())
         assert self.fake_called
     
     def test_refund (self):
@@ -188,31 +186,31 @@ class TestNewMain (CbankTester):
             self.fake_called = True
             assert sys.argv[0] == "new_main refund", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.new_refund_main = fake
-        run(clusterbank.cbank.controllers.new_main, args.split())
+        controllers.new_refund_main = fake
+        run(controllers.new_main, args.split())
         assert self.fake_called
         
     
     def test_invalid (self):
         args = "invalid 1 2 3"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_main, args.split())
-        assert code != 0, code
+        code, stdout, stderr = run(controllers.new_main, args.split())
+        assert code == exceptions.UnknownCommand.exit_code, code
 
 
 class TestNewAllocationMain (CbankTester):
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "new_allocation_main"), "new_allocation_main does not exist"
-        assert callable(clusterbank.cbank.controllers.new_allocation_main), "new_allocation_main is not callable"
+        assert hasattr(controllers, "new_allocation_main"), "new_allocation_main does not exist"
+        assert callable(controllers.new_allocation_main), "new_allocation_main is not callable"
     
     def test_complete (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
         args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_allocation_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        model.Session.remove()
         assert query.count() == 1, "didn't create an allocation"
         allocation = query.one()
         assert allocation.start == datetime(2008, 1, 1), allocation.start
@@ -222,25 +220,25 @@ class TestNewAllocationMain (CbankTester):
         assert code == 0, code
     
     def test_unknown_arguments (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
         args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test asdf"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_allocation_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        model.Session.remove()
         assert not query.count()
-        assert code != 0, code
+        assert code == exceptions.UnexpectedArguments.exit_code, code
     
     def test_with_defined_units (self):
         clusterbank.config.set("cbank", "unit_factor", "1/2")
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
         args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_allocation_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        model.Session.remove()
         assert query.count() == 1, "didn't create an allocation"
         allocation = query.one()
         assert allocation.start == datetime(2008, 1, 1), allocation.start
@@ -250,57 +248,57 @@ class TestNewAllocationMain (CbankTester):
         assert code == 0, code
     
     def test_with_bad_start (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
         args = "-p project1 -r resource1 -s bad_start -e 2009-01-01 -a 1000 -m test"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_allocation_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        model.Session.remove()
         assert not query.count(), "created an allocation with bad start"
         assert code != 0, code
     
     def test_with_bad_end (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
         args = "-p project1 -r resource1 -s 2008-01-01 -e bad_end -a 1000 -m test"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_allocation_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        model.Session.remove()
         assert not query.count(), "created an allocation with bad end"
         assert code != 0, code
     
     def test_with_bad_amount (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
         args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a bad_amount -m test"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_allocation_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        model.Session.remove()
         assert not query.count(), "created an allocation with bad amount"
         assert code != 0, code
 
     def test_with_negative_amount (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        allocations = Session.query(Allocation).filter_by(project=project, resource=resource)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        allocations = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not allocations.count(), "started with existing allocations"
         args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a -1000 -m test"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_allocation_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        model.Session.remove()
         assert not allocations.count(), "created an allocation with negative amount"
-        assert code != 0, code
+        assert code == exceptions.ValueError.exit_code, code
     
     def test_without_comment (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
         args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_allocation_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        model.Session.remove()
         assert query.count() == 1, "didn't create an allocation"
         allocation = query.one()
         assert allocation.start == datetime(2008, 1, 1), allocation.start
@@ -310,106 +308,106 @@ class TestNewAllocationMain (CbankTester):
         assert code == 0, code
     
     def test_without_project (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
         args = "-r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_allocation_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        model.Session.remove()
         assert not query.count(), "created allocation without project: %s" % new_allocations
-        assert code != 0, code
+        assert code == exceptions.MissingOption.exit_code, code
     
     def test_without_amount (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
         args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_allocation_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        model.Session.remove()
         assert not query.count(), "created allocation without amount"
-        assert code != 0, code
+        assert code == exceptions.MissingOption.exit_code, code
     
     def test_without_start (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
         args = "-p project1 -r resource1 -e 2009-01-01 -a 1000 -m test"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_allocation_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        model.Session.remove()
         assert not query.count(), "created allocation without start"
         sys.stdout.write(stderr.read())
-        assert code != 0, code
+        assert code == exceptions.MissingOption.exit_code, code
     
     def test_without_expiration (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
         args = "-p project1 -r resource1 -s 2008-01-01 -a 1000 -m test"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_allocation_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        model.Session.remove()
         assert not query.count(), "created allocation without expiration"
         sys.stdout.write(stderr.read())
-        assert code != 0, code
+        assert code == exceptions.MissingOption.exit_code, code
 
     def test_without_project_or_resource (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
         args = "-s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_allocation_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        model.Session.remove()
         assert not query.count(), "created allocation without project or resource: %s" % new_allocations
-        assert code != 0, code
+        assert code == exceptions.MissingOption.exit_code, code
     
     def test_without_resource (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
         args = "-p project1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_allocation_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        model.Session.remove()
         assert not query.count(), "created allocation without resource: %s" % new_allocations
-        assert code != 0, code
+        assert code == exceptions.MissingOption.exit_code, code
 
     def test_non_admin (self):
         clusterbank.config.set("cbank", "admins", "")
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        query = Session.query(Allocation).filter_by(project=project, resource=resource)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
         args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_allocation_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        model.Session.remove()
         assert not query.count(), "created allocation when not admin: %s" % new_allocations
-        assert code != 0
+        assert code == exceptions.NotPermitted.exit_code, code
 
 
 class TestNewChargeMain (CbankTester):
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "new_charge_main"), "new_charge_main does not exist"
-        assert callable(clusterbank.cbank.controllers.new_charge_main), "new_charge_main is not callable"
+        assert hasattr(controllers, "new_charge_main"), "new_charge_main does not exist"
+        assert callable(controllers.new_charge_main), "new_charge_main is not callable"
     
     def test_complete (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        user = user_by_name("user1")
-        charges = Session.query(Charge)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        user = model.user_by_name("user1")
+        charges = model.Session.query(model.Charge)
         assert not charges.count(), "started with existing charges"
         now = datetime.now()
-        allocation = Allocation(
+        allocation = model.Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
-        Session.commit()
+        model.Session.save(allocation)
+        model.Session.commit()
         args = "-p project1 -r resource1 -a 100 -m test -u user1"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
         assert code == 0
         assert charges.count() == 1, "didn't create a charge"
         charge = charges.one()
@@ -419,37 +417,37 @@ class TestNewChargeMain (CbankTester):
         assert charge.user is user, "incorrect user on charge: %s" % charge.user
     
     def test_unknown_arguments (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        user = user_by_name("user1")
-        charges = Session.query(Charge)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        user = model.user_by_name("user1")
+        charges = model.Session.query(model.Charge)
         assert not charges.count(), "started with existing charges"
         now = datetime.now()
-        allocation = Allocation(
+        allocation = model.Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
-        Session.commit()
+        model.Session.save(allocation)
+        model.Session.commit()
         args = "-p project1 -r resource1 -a 100 -m test -u user1 asdf"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
         assert not charges.count()
-        assert code != 0, code
+        assert code == exceptions.UnexpectedArguments.exit_code, code
     
     def test_with_defined_units (self):
         clusterbank.config.set("cbank", "unit_factor", "1/2")
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        user = user_by_name("user1")
-        charges = Session.query(Charge)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        user = model.user_by_name("user1")
+        charges = model.Session.query(model.Charge)
         assert not charges.count(), "started with existing charges"
         now = datetime.now()
-        allocation = Allocation(
+        allocation = model.Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
-        Session.commit()
+        model.Session.save(allocation)
+        model.Session.commit()
         args = "-p project1 -r resource1 -a 100 -m test -u user1"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
         assert code == 0
         assert charges.count() == 1, "didn't create a charge"
         charge = charges.one()
@@ -459,88 +457,88 @@ class TestNewChargeMain (CbankTester):
         assert charge.user is user, "incorrect user on charge: %s" % charge.user
     
     def test_without_resource (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        user = user_by_name("user1")
-        charges = Session.query(Charge)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        user = model.user_by_name("user1")
+        charges = model.Session.query(model.Charge)
         assert not charges.count(), "started with existing charges"
         now = datetime.now()
-        allocation = Allocation(
+        allocation = model.Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
-        Session.commit()
+        model.Session.save(allocation)
+        model.Session.commit()
         args = "-p project1 -a 100 -m test -u user1"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
-        assert code != 0
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        assert code == exceptions.MissingOption.exit_code, code
         assert not charges.count(), "created a charge"
 
     def test_without_project (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        user = user_by_name("user1")
-        charges = Session.query(Charge)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        user = model.user_by_name("user1")
+        charges = model.Session.query(model.Charge)
         assert not charges.count(), "started with existing charges"
         now = datetime.now()
-        allocation = Allocation(
+        allocation = model.Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
-        Session.commit()
+        model.Session.save(allocation)
+        model.Session.commit()
         args = "-r resource1 -a 100 -m test -u user1"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
-        assert code != 0
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        assert code == exceptions.MissingOption.exit_code, code
         assert not charges.count(), "created a charge"
     
     def test_without_amount (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        user = user_by_name("user1")
-        charges = Session.query(Charge)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        user = model.user_by_name("user1")
+        charges = model.Session.query(model.Charge)
         assert not charges.count(), "started with existing charges"
         now = datetime.now()
-        allocation = Allocation(
+        allocation = model.Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
-        Session.commit()
+        model.Session.save(allocation)
+        model.Session.commit()
         args = "-p project1 -r resource1 -m test -u user1"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
-        assert code != 0
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        assert code == exceptions.MissingOption.exit_code, code
         assert not charges.count(), "created a charge"
     
     def test_with_negative_amount (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        user = user_by_name("user1")
-        charges = Session.query(Charge)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        user = model.user_by_name("user1")
+        charges = model.Session.query(model.Charge)
         assert not charges.count(), "started with existing charges"
         now = datetime.now()
-        allocation = Allocation(
+        allocation = model.Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
-        Session.commit()
+        model.Session.save(allocation)
+        model.Session.commit()
         args = "-p project1 -r resource1 -a -100 -m test -u user1"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        model.Session.remove()
         assert not charges.count(), "created a charge with negative amount: %s" % [(charge, charge.amount) for charge in charges]
-        assert code != 0, code
+        assert code == exceptions.ValueError.exit_code, code
     
     def test_without_comment (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        user = user_by_name("user1")
-        charges = Session.query(Charge)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        user = model.user_by_name("user1")
+        charges = model.Session.query(model.Charge)
         assert not charges.count(), "started with existing charges"
         now = datetime.now()
-        allocation = Allocation(
+        allocation = model.Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
-        Session.commit()
+        model.Session.save(allocation)
+        model.Session.commit()
         args = "-p project1 -r resource1 -a 100 -u user1"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
         assert code == 0
         assert charges.count() == 1, "didn't create a charge"
         charge = charges.one()
@@ -550,18 +548,18 @@ class TestNewChargeMain (CbankTester):
         assert charge.user is user, "incorrect user on charge: %s" % charge.user
     
     def test_without_user (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        charges = Session.query(Charge)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        charges = model.Session.query(model.Charge)
         assert not charges.count(), "started with existing charges"
         now = datetime.now()
-        allocation = Allocation(
+        allocation = model.Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
-        Session.commit()
+        model.Session.save(allocation)
+        model.Session.commit()
         args = "-p project1 -r resource1 -a 100 -m test"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
         assert code == 0
         assert charges.count() == 1, "didn't create a charge"
         charge = charges.one()
@@ -572,40 +570,40 @@ class TestNewChargeMain (CbankTester):
     
     def test_non_admin (self):
         clusterbank.config.set("cbank", "admins", "")
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        charges = Session.query(Charge)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        charges = model.Session.query(model.Charge)
         assert not charges.count(), "started with existing charges"
         now = datetime.now()
-        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
-        Session.commit()
+        allocation = model.Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        model.Session.save(allocation)
+        model.Session.commit()
         args = "-p project1 -r resource1 -a 100 -m test"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_charge_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        model.Session.remove()
         assert not charges.count(), "created a charge without admin privileges"
-        assert code != 0, code
+        assert code == exceptions.NotPermitted.exit_code, code
 
 
 class TestNewRefundMain (CbankTester):
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "new_refund_main"), "new_refund_main does not exist"
-        assert callable(clusterbank.cbank.controllers.new_refund_main), "new_refund_main is not callable"
+        assert hasattr(controllers, "new_refund_main"), "new_refund_main does not exist"
+        assert callable(controllers.new_refund_main), "new_refund_main is not callable"
     
     def test_complete (self):
         now = datetime.now()
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        refunds = Session.query(Refund)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        refunds = model.Session.query(model.Refund)
         assert not refunds.count(), "started with existing refunds"
-        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        charge = Charge(allocation=allocation, amount=100)
-        Session.save(allocation)
-        Session.save(charge)
-        Session.commit()
+        allocation = model.Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        charge = model.Charge(allocation=allocation, amount=100)
+        model.Session.save(allocation)
+        model.Session.save(charge)
+        model.Session.commit()
         args = "-c %s -a 50 -m test" % charge.id
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_refund_main, args.split())
+        code, stdout, stderr = run(controllers.new_refund_main, args.split())
         assert code == 0
         assert refunds.count() == 1, "didn't create a refund"
         refund = refunds.one()
@@ -615,34 +613,34 @@ class TestNewRefundMain (CbankTester):
     
     def test_unknown_arguments (self):
         now = datetime.now()
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        refunds = Session.query(Refund)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        refunds = model.Session.query(model.Refund)
         assert not refunds.count(), "started with existing refunds"
-        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        charge = Charge(allocation=allocation, amount=100)
-        Session.save(allocation)
-        Session.save(charge)
-        Session.commit()
+        allocation = model.Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        charge = model.Charge(allocation=allocation, amount=100)
+        model.Session.save(allocation)
+        model.Session.save(charge)
+        model.Session.commit()
         args = "-c %s -a 50 -m test asdf" % charge.id
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_refund_main, args.split())
+        code, stdout, stderr = run(controllers.new_refund_main, args.split())
         assert not refunds.count()
-        assert code != 0, code
+        assert code == exceptions.UnexpectedArguments.exit_code, code
     
     def test_with_defined_units (self):
         clusterbank.config.set("cbank", "unit_factor", "1/2")
         now = datetime.now()
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        refunds = Session.query(Refund)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        refunds = model.Session.query(model.Refund)
         assert not refunds.count(), "started with existing refunds"
-        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        charge = Charge(allocation=allocation, amount=100)
-        Session.save(allocation)
-        Session.save(charge)
-        Session.commit()
+        allocation = model.Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        charge = model.Charge(allocation=allocation, amount=100)
+        model.Session.save(allocation)
+        model.Session.save(charge)
+        model.Session.commit()
         args = "-c %s -a 50 -m test" % charge.id
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_refund_main, args.split())
+        code, stdout, stderr = run(controllers.new_refund_main, args.split())
         assert code == 0
         assert refunds.count() == 1, "didn't create a refund"
         refund = refunds.one()
@@ -652,17 +650,17 @@ class TestNewRefundMain (CbankTester):
     
     def test_without_comment (self):
         now = datetime.now()
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        refunds = Session.query(Refund)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        refunds = model.Session.query(model.Refund)
         assert not refunds.count(), "started with existing refunds"
-        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        charge = Charge(allocation=allocation, amount=100)
-        Session.save(allocation)
-        Session.save(charge)
-        Session.commit()
+        allocation = model.Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        charge = model.Charge(allocation=allocation, amount=100)
+        model.Session.save(allocation)
+        model.Session.save(charge)
+        model.Session.commit()
         args = "-c %s -a 50" % charge.id
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_refund_main, args.split())
+        code, stdout, stderr = run(controllers.new_refund_main, args.split())
         assert code == 0
         assert refunds.count() == 1, "didn't create a refund"
         refund = refunds.one()
@@ -672,35 +670,35 @@ class TestNewRefundMain (CbankTester):
     
     def test_without_charge (self):
         now = datetime.now()
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        refunds = Session.query(Refund)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        refunds = model.Session.query(model.Refund)
         assert not refunds.count(), "started with existing refunds"
-        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        charge = Charge(allocation=allocation, amount=100)
-        Session.save(allocation)
-        Session.save(charge)
-        Session.commit()
+        allocation = model.Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        charge = model.Charge(allocation=allocation, amount=100)
+        model.Session.save(allocation)
+        model.Session.save(charge)
+        model.Session.commit()
         args = "-a 50 -m test"
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_refund_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        model.Session.remove()
         assert not refunds.count(), "created refund without charge"
-        assert code != 0, code
+        assert code == exceptions.MissingOption.exit_code, code
     
     def test_without_amount (self):
         now = datetime.now()
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        refunds = Session.query(Refund)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        refunds = model.Session.query(model.Refund)
         assert not refunds.count(), "started with existing refunds"
-        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        charge = Charge(allocation=allocation, amount=100)
-        Session.save(allocation)
-        Session.save(charge)
-        Session.commit()
+        allocation = model.Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        charge = model.Charge(allocation=allocation, amount=100)
+        model.Session.save(allocation)
+        model.Session.save(charge)
+        model.Session.commit()
         args = "-c %s -m test" % charge.id
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_refund_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        model.Session.remove()
         assert refunds.count() == 1, "incorrect refund count: %r" % [(refund, refund.amount) for refund in refunds]
         refund = refunds.one()
         assert refund.amount == 100
@@ -708,20 +706,20 @@ class TestNewRefundMain (CbankTester):
     
     def test_without_amount_with_existing_refund (self):
         now = datetime.now()
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        refunds = Session.query(Refund)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        refunds = model.Session.query(model.Refund)
         assert not refunds.count(), "started with existing refunds"
-        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        charge = Charge(allocation=allocation, amount=100)
-        refund = Refund(charge=charge, amount=25)
-        Session.save(allocation)
-        Session.save(charge)
-        Session.save(refund)
-        Session.commit()
+        allocation = model.Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        charge = model.Charge(allocation=allocation, amount=100)
+        refund = model.Refund(charge=charge, amount=25)
+        model.Session.save(allocation)
+        model.Session.save(charge)
+        model.Session.save(refund)
+        model.Session.commit()
         args = "-c %s -m test" % charge.id
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_refund_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        model.Session.remove()
         assert refunds.count() == 2, "incorrect refund count: %r" % [(refund, refund.amount) for refund in refunds]
         assert sum(refund.amount for refund in refunds) == 100
         assert code == 0, code
@@ -729,20 +727,20 @@ class TestNewRefundMain (CbankTester):
     def test_non_admin (self):
         clusterbank.config.set("cbank", "admins", "")
         now = datetime.now()
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        refunds = Session.query(Refund)
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        refunds = model.Session.query(model.Refund)
         assert not refunds.count(), "started with existing refunds"
-        allocation = Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        charge = Charge(allocation=allocation, amount=100)
-        Session.save(allocation)
-        Session.save(charge)
-        Session.commit()
+        allocation = model.Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        charge = model.Charge(allocation=allocation, amount=100)
+        model.Session.save(allocation)
+        model.Session.save(charge)
+        model.Session.commit()
         args = "-c %s -a 50 -m test" % charge.id
-        code, stdout, stderr = run(clusterbank.cbank.controllers.new_refund_main, args.split())
-        Session.remove()
+        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        model.Session.remove()
         assert not refunds.count(), "created a refund when not an admin"
-        assert code != 0, code
+        assert code == exceptions.NotPermitted.exit_code, code
 
 
 class TestReportMain (CbankTester):
@@ -750,23 +748,23 @@ class TestReportMain (CbankTester):
     def setup (self):
         CbankTester.setup(self)
         self._report_usage_main = \
-            clusterbank.cbank.controllers.report_usage_main
+            controllers.report_usage_main
         self._report_projects_main = \
-            clusterbank.cbank.controllers.report_projects_main
+            controllers.report_projects_main
         self._report_allocations_main = \
-            clusterbank.cbank.controllers.report_allocations_main
+            controllers.report_allocations_main
         self._report_charges_main = \
-            clusterbank.cbank.controllers.report_charges_main
+            controllers.report_charges_main
     
     def teardown (self):
         CbankTester.teardown(self)
-        clusterbank.cbank.controllers.report_usage_main = \
+        controllers.report_usage_main = \
             self._report_usage_main
-        clusterbank.cbank.controllers.report_projects_main = \
+        controllers.report_projects_main = \
             self._report_projects_main
-        clusterbank.cbank.controllers.report_allocations_main = \
+        controllers.report_allocations_main = \
             self._report_allocations_main
-        clusterbank.cbank.controllers.report_charges_main = \
+        controllers.report_charges_main = \
             self._report_charges_main
     
     def test_usage (self):
@@ -775,8 +773,8 @@ class TestReportMain (CbankTester):
             self.fake_called = True
             assert sys.argv[0] == "report_main usage", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.report_usage_main = fake
-        run(clusterbank.cbank.controllers.report_main, args.split())
+        controllers.report_usage_main = fake
+        run(controllers.report_main, args.split())
         assert self.fake_called
     
     def test_projects (self):
@@ -785,8 +783,8 @@ class TestReportMain (CbankTester):
             self.fake_called = True
             assert sys.argv[0] == "report_main projects", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.report_projects_main = fake
-        run(clusterbank.cbank.controllers.report_main, args.split())
+        controllers.report_projects_main = fake
+        run(controllers.report_main, args.split())
         assert self.fake_called
     
     def test_allocations (self):
@@ -795,8 +793,8 @@ class TestReportMain (CbankTester):
             self.fake_called = True
             assert sys.argv[0] == "report_main allocations", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.report_allocations_main = fake
-        run(clusterbank.cbank.controllers.report_main, args.split())
+        controllers.report_allocations_main = fake
+        run(controllers.report_main, args.split())
         assert self.fake_called
     
     def test_charges (self):
@@ -805,8 +803,8 @@ class TestReportMain (CbankTester):
             self.fake_called = True
             assert sys.argv[0] == "report_main charges", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.report_charges_main = fake
-        run(clusterbank.cbank.controllers.report_main, args.split())
+        controllers.report_charges_main = fake
+        run(controllers.report_main, args.split())
         assert self.fake_called
     
     def test_default (self):
@@ -815,8 +813,8 @@ class TestReportMain (CbankTester):
             self.fake_called = True
             assert sys.argv[0] == "report_main", sys.argv
             assert sys.argv[1:] == args.split(), sys.argv
-        clusterbank.cbank.controllers.report_usage_main = fake
-        run(clusterbank.cbank.controllers.report_main, args.split())
+        controllers.report_usage_main = fake
+        run(controllers.report_main, args.split())
         assert self.fake_called
     
     def test_invalid (self):
@@ -825,13 +823,13 @@ class TestReportMain (CbankTester):
             self.fake_called = True
             assert sys.argv[0] == "report_main", sys.argv
             assert sys.argv[1:] == args.split(), sys.argv
-        clusterbank.cbank.controllers.report_usage_main = fake
-        run(clusterbank.cbank.controllers.report_main, args.split())
+        controllers.report_usage_main = fake
+        run(controllers.report_main, args.split())
         assert self.fake_called
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "report_main"), "report_main does not exist"
-        assert callable(clusterbank.cbank.controllers.report_main), "report_main is not callable"
+        assert hasattr(controllers, "report_main"), "report_main does not exist"
+        assert callable(controllers.report_main), "report_main is not callable"
     
     def test_admin_reports_complete (self):
         self._run_all_reports()
@@ -842,5 +840,5 @@ class TestReportMain (CbankTester):
     
     def _run_all_reports (self):
         for report in ("usage", "projects", "charges", "allocations"):
-            code, stdout, stderr = run(clusterbank.cbank.controllers.report_main, [report])
+            code, stdout, stderr = run(controllers.report_main, [report])
             assert code == 0, report

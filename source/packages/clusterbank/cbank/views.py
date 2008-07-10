@@ -13,7 +13,6 @@ except NameError:
 from sqlalchemy import or_, and_
 
 from clusterbank import config
-import clusterbank.cbank.exceptions as exceptions
 from clusterbank.cbank.common import get_unit_factor
 from clusterbank.model import \
     Session, User, Project, Resource, Allocation, Hold, \

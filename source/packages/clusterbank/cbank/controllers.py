@@ -34,9 +34,9 @@ def handle_exceptions (func):
             return func(*args, **kwargs)
         except KeyboardInterrupt:
             sys.exit(1)
-        except exceptions.CbankError, e:
+        except exceptions.CbankException, e:
             print >> sys.stderr, e
-            sys.exit(1)
+            sys.exit(e.exit_code)
     decorated_func.__name__ = func.__name__
     decorated_func.__doc__ = func.__doc__
     decorated_func.__dict__.update(func.__dict__)
@@ -46,7 +46,7 @@ def require_admin (func):
     def decorated_func (*args, **kwargs):
         user = get_current_user()
         if not user.is_admin:
-            raise exceptions.NotPermitted("must be an admin")
+            raise exceptions.NotPermitted(user)
         else:
             return func(*args, **kwargs)
     decorated_func.__name__ = func.__name__
@@ -74,7 +74,7 @@ def new_main ():
     try:
         command = normalize(sys.argv[1], ["allocation", "charge", "refund"])
     except IndexError:
-        raise exceptions.UnknownCommand("specify a command: allocation, charge, refund")
+        raise exceptions.MissingCommand("specify allocation, charge, or refund")
     arg0 = " ".join([sys.argv[0], sys.argv[1]])
     sys.argv = [arg0] + sys.argv[2:]
     if command == "allocation":
@@ -84,11 +84,10 @@ def new_main ():
     elif command == "refund":
         return new_refund_main()
 
-def normalize (arg, commands):
-    possible_commands = [
-        command for command in commands if command.startswith(arg)]
+def normalize (command, commands):
+    possible_commands = [cmd for cmd in commands if cmd.startswith(command)]
     if not possible_commands or len(possible_commands) > 1:
-        raise exceptions.UnknownCommand(arg)
+        raise exceptions.UnknownCommand(command)
     else:
         return possible_commands[0]
 
@@ -98,17 +97,17 @@ def new_allocation_main ():
     parser = build_new_allocation_parser()
     options, args = parser.parse_args()
     if args:
-        raise exceptions.UnknownArguments()
+        raise exceptions.UnexpectedArguments(args)
     if not options.project:
-        raise exceptions.MissingOption("supply a project")
+        raise exceptions.MissingOption("project")
     if not options.resource:
-        raise exceptions.MissingOption("supply a resource")
+        raise exceptions.MissingOption("resource")
     if not options.amount:
-        raise exceptions.MissingOption("supply an amount")
+        raise exceptions.MissingOption("amount")
     if not options.start:
-        raise exceptions.MissingOption("supply a start date")
+        raise exceptions.MissingOption("start")
     if not options.expiration:
-        raise exceptions.MissingOption("supply an expiration date")
+        raise exceptions.MissingOption("expiration")
     amount = parse_units(options.amount)
     allocation = Allocation(
         project=options.project, resource=options.resource,
@@ -118,8 +117,9 @@ def new_allocation_main ():
     try:
         Session.commit()
     except ValueError, e:
-        raise exceptions.InvalidOptionValue(e)
-    views.print_allocation(allocation)
+        raise exceptions.ValueError(e)
+    else:
+        views.print_allocation(allocation)
 
 @handle_exceptions
 @require_admin
@@ -127,13 +127,13 @@ def new_charge_main ():
     parser = build_new_charge_parser()
     options, args = parser.parse_args()
     if args:
-        raise exceptions.UnknownArguments()
+        raise exceptions.UnexpectedArguments(args)
     if not options.project:
-        raise exceptions.MissingOption("supply a project")
+        raise exceptions.MissingOption("project")
     if not options.resource:
-        raise exceptions.MissingOption("supply a resource")
+        raise exceptions.MissingOption("resource")
     if not options.amount:
-        raise exceptions.MissingOption("supply an amount")
+        raise exceptions.MissingOption("amount")
     allocations = Session.query(Allocation).filter_by(
         project=options.project, resource=options.resource)
     amount = parse_units(options.amount)
@@ -144,8 +144,9 @@ def new_charge_main ():
     try:
         Session.commit()
     except ValueError, e:
-        raise exceptions.InvalidOptionValue(e)
-    views.print_charges(charges)
+        raise exceptions.ValueError(e)
+    else:
+        views.print_charges(charges)
 
 @handle_exceptions
 @require_admin
@@ -153,9 +154,9 @@ def new_refund_main ():
     parser = build_new_refund_parser()
     options, args = parser.parse_args()
     if args:
-        raise exceptions.UnknownArguments()
+        raise exceptions.UnexpectedArguments(args)
     if not options.charge:
-        raise exceptions.MissingOption("supply a charge")
+        raise exceptions.MissingOption("charge")
     try:
         amount = parse_units(options.amount)
     except TypeError:
@@ -163,8 +164,12 @@ def new_refund_main ():
     refund = Refund(
         charge=options.charge, amount=amount, comment=options.comment)
     Session.save(refund)
-    Session.commit()
-    views.print_refund(refund)
+    try:
+        Session.commit()
+    except ValueError, e:
+        raise exceptions.ValueError(e)
+    else:
+        views.print_refund(refund)
 
 @handle_exceptions
 def report_main ():
@@ -189,7 +194,7 @@ def report_usage_main ():
     parser = build_report_parser()
     options, args = parser.parse_args()
     if args:
-        raise exceptions.UnknownArguments()
+        raise exceptions.UnexpectedArguments(args)
     if not options.resources:
         try:
             default_resource = config.get("cbank", "resource")
@@ -214,7 +219,7 @@ def report_projects_main ():
     parser = build_report_parser()
     options, args = parser.parse_args()
     if args:
-        raise exceptions.UnknownArguments()
+        raise exceptions.UnexpectedArguments(args)
     if not options.resources:
         try:
             default_resource = config.get("cbank", "resource")
@@ -239,7 +244,7 @@ def report_allocations_main ():
     parser = build_report_parser()
     options, args = parser.parse_args()
     if args:
-        raise exceptions.UnknownArguments()
+        raise exceptions.UnexpectedArguments(args)
     if not options.resources:
         try:
             default_resource = config.get("cbank", "resource")
@@ -264,7 +269,7 @@ def report_charges_main ():
     parser = build_report_parser()
     options, args = parser.parse_args()
     if args:
-        raise exceptions.UnknownArguments()
+        raise exceptions.UnexpectedArguments(args)
     if not options.resources:
         try:
             default_resource = config.get("cbank", "resource")
@@ -289,12 +294,12 @@ def get_current_user ():
     try:
         passwd_entry = pwd.getpwuid(uid)
     except KeyError:
-        raise exceptions.UnknownUser("Unable to determine the current user.")
+        raise exceptions.UnknownUser("not in passwd")
     username = passwd_entry[0]
     try:
         user = user_by_name(username)
     except clusterbank.exceptions.NotFound:
-        raise exceptions.UnknownUser("User '%s' was not found." % username)
+        raise exceptions.UnknownUser(username)
     return user
 
 def parse_units (units):
