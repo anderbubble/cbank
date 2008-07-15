@@ -62,7 +62,7 @@ def print_raw_usage_report (query, **kwargs):
         now = datetime.now()
         allocations = allocations.filter(and_(model.Allocation.start<=now, model.Allocation.expiration>now))
         charges = charges.filter(model.Charge.allocation.has(and_(model.Allocation.start<=now, model.Allocation.expiration>now)))
-    format = Formatter(["model.Project", "Allocated", "Used", "Balance"])
+    format = Formatter(["Project", "Allocated", "Used", "Balance"])
     format.widths = dict.fromkeys(format.fields, 15)
     format.aligns = dict(Allocated=string.rjust, Used=string.rjust, Balance=string.rjust)
     print >> sys.stderr, format.header
@@ -168,9 +168,9 @@ def print_raw_allocations_report (allocations_query, **kwargs):
         print >> sys.stderr, "No allocations found."
         return
     if kwargs.get("extra"):
-        format = Formatter(["Starts", "Expires", "model.Resource", "model.Project", "Allocated", "Available", "Comment"])
+        format = Formatter(["Starts", "Expires", "Resource", "Project", "Allocated", "Available", "Comment"])
     else:
-        format = Formatter(["Expires", "model.Resource", "model.Project", "Allocated", "Available"])
+        format = Formatter(["Expires", "Resource", "Project", "Allocated", "Available"])
     format.widths = dict(Starts=10, Expires=10, Resource=10, Project=15, Allocated=15, Available=15, Comment=7)
     format.aligns = dict(Allocated=string.rjust, Available=string.rjust)
     print >> sys.stderr, format.header
@@ -222,9 +222,9 @@ def print_raw_charges_report (charges_query, **kwargs):
         print >> sys.stderr, "No charges found."
         return
     if kwargs.get("extra"):
-        format = Formatter(["Date", "model.Resource", "model.Project", "model.User", "Amount", "Comment"])
+        format = Formatter(["Date", "Resource", "Project", "User", "Amount", "Comment"])
     else:
-        format = Formatter(["Date", "model.Resource", "model.Project", "model.User", "Amount"])
+        format = Formatter(["Date", "Resource", "Project", "User", "Amount"])
     format.widths = dict(Date=10, Resource=10, Project=15, User=8, Amount=15, Comment=7)
     format.aligns = dict(Amount=string.rjust)
     print >> sys.stderr, format.header
@@ -251,7 +251,7 @@ def display_units (amount):
 def print_allocation (allocation):
     amount = display_units(allocation.amount)
     amount_available = display_units(allocation.amount_available)
-    allocation_str = "model.Allocation #%i -- %s (%s available)" % (
+    allocation_str = "Allocation #%i -- %s (%s available)" % (
         allocation.id, amount, amount_available)
     if allocation.comment:
         allocation_str = " ".join([allocation_str, "(%s)" % allocation.comment])
@@ -268,7 +268,7 @@ def print_charges (charges):
 def print_charge (charge):
     effective_amount = display_units(charge.effective_amount)
     amount = display_units(charge.amount)
-    charge_str = "model.Charge #%i -- %s" % (charge.id, effective_amount)
+    charge_str = "Charge #%i -- %s" % (charge.id, effective_amount)
     if amount != effective_amount:
         charge_str = " ".join([charge_str, "(originally %s)" % amount])
     if charge.comment:
@@ -280,7 +280,7 @@ def print_charge (charge):
 
 def print_refund (refund):
     amount = display_units(refund.amount)
-    refund_str = "model.Refund #%i -- %s" % (refund.id, amount)
+    refund_str = "Refund #%i -- %s" % (refund.id, amount)
     if refund.comment:
         refund_str = " ".join([refund_str, "(%s)" % refund.comment])
     print refund_str
