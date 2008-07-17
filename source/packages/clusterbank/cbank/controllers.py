@@ -204,6 +204,8 @@ def report_users_main ():
     user = get_current_user()
     parser = build_report_users_parser()
     options, args = parser.parse_args()
+    if args:
+        raise exceptions.UnexpectedArguments(args)
     if user.is_admin:
         if options.projects or options.users:
             users = options.users
@@ -213,10 +215,22 @@ def report_users_main ():
         if options.users and set(options.users) != set([user]):
             raise exceptions.NotPermitted(user)
         users = [user]
-    if args:
-        raise exceptions.UnexpectedArguments(args)
+    resources = check_resources(options.resources)
     views.print_users_report(projects=options.projects, users=users,
-        resources=options.resources, after=options.after, before=options.before)
+        resources=resources, after=options.after, before=options.before)
+
+def check_resources (resources):
+    """If no resources are specified, check the config file."""
+    if resources:
+        return resources
+    else:
+        try:
+            resource = config.get("cbank", "resource")
+        except ConfigParser.Error:
+            return []
+        else:
+            resource = model.resource_by_name(resource)
+            return [resource]
 
 @handle_exceptions
 def report_usage_main ():
