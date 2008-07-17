@@ -205,7 +205,10 @@ def report_users_main ():
     parser = build_report_users_parser()
     options, args = parser.parse_args()
     if user.is_admin:
-        users = options.users
+        if options.projects or options.users:
+            users = options.users
+        else:
+            users = [user]
     else:
         if options.users and set(options.users) != set([user]):
             raise exceptions.NotPermitted(user)
