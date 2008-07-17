@@ -23,6 +23,7 @@ import sqlalchemy.exceptions
 
 import clusterbank
 from clusterbank import config
+import clusterbank.model as model
 from clusterbank.model import \
     Session, user_by_name, project_by_name, resource_by_name, \
     Allocation, Charge, Refund
@@ -187,22 +188,32 @@ def new_refund_main ():
 
 @handle_exceptions
 def report_main ():
-    commands = ["usage", "charges", "projects", "allocations"]
+    commands = ["users"]
     try:
         command = normalize(sys.argv[1], commands)
     except (IndexError, exceptions.UnknownCommand):
-        command = "usage"
+        command = "users"
     else:
         arg0 = " ".join([sys.argv[0], sys.argv[1]])
         sys.argv = [arg0] + sys.argv[2:]
-    if command == "usage":
-        return report_usage_main()
-    elif command == "charges":
-        return report_charges_main()
-    elif command == "projects":
-        return report_projects_main()
-    elif command == "allocations":
-        return report_allocations_main()
+    if command == "users":
+        return report_users_main()
+
+@handle_exceptions
+def report_users_main ():
+    user = get_current_user()
+    parser = build_report_users_parser()
+    options, args = parser.parse_args()
+    if user.is_admin:
+        users = options.users
+    else:
+        if options.users and set(options.users) != set([user]):
+            raise exceptions.NotPermitted(user)
+        users = [user]
+    if args:
+        raise exceptions.UnexpectedArguments(args)
+    views.print_users_report(projects=options.projects, users=users,
+        resources=options.resources, after=options.after, before=options.before)
 
 @handle_exceptions
 def report_usage_main ():
@@ -331,6 +342,25 @@ def parse_units (units):
     raw_units = units / mul * div
     raw_units = int(raw_units)
     return raw_units
+
+def build_report_users_parser ():
+    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser.add_option(Option("-p", "--project",
+        dest="projects", type="project", action="append",
+        help="display members of and charges to PROJECT", metavar="PROJECT"))
+    parser.add_option(Option("-u", "--user",
+        dest="users", type="user", action="append",
+        help="display charges by USER", metavar="USER"))
+    parser.add_option(Option("-r", "--resource",
+        dest="resources", type="resource", action="append",
+        help="display charges to RESOURCE", metavar="RESOURCE"))
+    parser.add_option(Option("-a", "--after",
+        dest="after", type="date",
+        help="display charges after (and including) DATE", metavar="DATE"))
+    parser.add_option(Option("-b", "--before",
+        dest="before", type="date",
+        help="display charges before (and excluding) DATE", metavar="DATE"))
+    return parser
 
 def build_report_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)

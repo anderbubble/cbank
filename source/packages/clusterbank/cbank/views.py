@@ -15,7 +15,7 @@ from sqlalchemy import or_, and_
 from clusterbank import config
 from clusterbank.cbank.common import get_unit_factor
 import clusterbank.model as model
-    
+
 def print_unit_definition ():
     try:
         unit_label = config.get("cbank", "unit_label")
@@ -25,6 +25,73 @@ def print_unit_definition ():
     print unit_definition
 
 locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
+
+def print_users_report (**kwargs):
+    
+    """Users report.
+    
+    The users report lists the number of charges and total amount charged
+    for each user in the system.
+    
+    Keyword arguments:
+    projects -- require project membership and charge relationship
+    """
+    
+    # Set up the table.
+    format = Formatter(["User", "Charges", "Charged"])
+    format.widths = {'User':10, 'Charges':8, 'Charged':15}
+    format.aligns = {'Charges':"right", 'Charged':"right"}
+    print format.header()
+    print format.bar()
+    
+    s = model.Session()
+    
+    # Pick the users to display.
+    if kwargs.get("projects"):
+        members = set(sum([model.project_members(project)
+            for project in kwargs.get("projects")], []))
+    else:
+        members = None
+    if kwargs.get("users"):
+        users = set(kwargs.get("users"))
+        if kwargs.get("projects"):
+            users = users & members
+    else:
+        users = members or []
+    
+    # per-user statistics
+    total_num_charges = 0
+    total_amount_charged = 0
+    for user in users:
+        charges = s.query(model.Charge).filter_by(user=user)
+        if kwargs.get("projects"):
+            project_ids = [project.id for project in kwargs.get("projects")]
+            charges = charges.join(["allocation", "project"]).filter(
+                model.Project.id.in_(project_ids))
+        if kwargs.get("resources"):
+            resource_ids = [resource.id
+                for resource in kwargs.get("resources")]
+            charges = charges.join(["allocation", "resource"]).filter(
+                model.Resource.id.in_(resource_ids))
+        if kwargs.get("after"):
+            charges = charges.filter(
+                model.Charge.datetime>=kwargs.get("after"))
+        if kwargs.get("before"):
+            charges = charges.filter(
+                model.Charge.datetime<kwargs.get("before"))
+        num_charges = charges.count()
+        amount_charged = int(charges.sum(model.Charge.amount) or 0)
+        amount_refunded = int(charges.outerjoin("refunds").sum(model.Refund.amount) or 0)
+        amount_charged -= amount_refunded
+        total_num_charges += num_charges
+        total_amount_charged += amount_charged
+        print format({'User':user, 'Charges':num_charges,
+            'Charged':display_units(amount_charged)})
+    
+    # totals
+    print format.bar(["Charges", "Charged"])
+    print format({'Charges':total_num_charges,
+        'Charged':display_units(total_amount_charged)})
 
 def print_member_usage_report (user, **kwargs):
     projects = model.Session.query(model.Project)
@@ -295,54 +362,49 @@ class Formatter (object):
     
     def __init__ (self, fields, **kwargs):
         self.fields = fields
-        self.sep = kwargs.get("sep", " ")
-        self.barchar = kwargs.get("barchar", "-")
         self.headers = kwargs.get("headers", {}).copy()
         self.widths = kwargs.get("widths", {}).copy()
         self.aligns = kwargs.get("aligns", {}).copy()
-        self.mods = kwargs.get("mods", {}).copy()
     
-    def _get_bar (self):
-        return self.format(dict((field, self.barchar*self._width(field)) for field in self.fields))
-    
-    bar = property(_get_bar)
-
-    def _get_header (self):
-        mods = self.mods
-        try:
-            self.mods = {}
-            return self.format(dict((field, self._field_header(field)) for field in self.fields))
-        finally:
-            self.mods = mods
-    
-    header = property(_get_header)
-    
-    def _field_header (self, field): 
-        return self.headers.get(field, field)
-    
-    def _width (self, field):
-        try:
-            return self.widths[field]
-        except KeyError:
-            return max(len(line) for line in self._field_header(field).split(os.linesep))
-    
-    def _align (self, field, value):
-        return self.aligns.get(field, string.ljust)(value, self._width(field))
-    
-    def _mod (self, field, value):
-        try:
-            return self.mods.get(field, "%s") % value
-        except TypeError:
-            return str(value)
+    def __call__ (self, *args, **kwargs):
+        return self.format(*args, **kwargs)
     
     def format (self, data):
         formatted_data = []
         for field in self.fields:
-            data_item = data.get(field, "")
-            data_item = self._mod(field, data_item)
-            data_item = self._align(field, data_item)
-            formatted_data.append(data_item)
-        return self.sep.join(formatted_data)
+            datum = data.get(field, "")
+            datum = str(datum)
+            align = self.aligns.get(field)
+            width = self.widths.get(field)
+            if align or width:
+                if align is None:
+                    align = "left"
+                if width is None:
+                    width = 0
+                if align == "left":
+                    datum = datum.ljust(width)
+                elif align == "right":
+                    datum = datum.rjust(width)
+                elif align == "center":
+                    datum = datum.center(width)
+                else:
+                    raise Exception("Unknown alignment: %s" % align)
+            formatted_data.append(datum)
+        return " ".join(formatted_data)
     
-    def __call__ (self, *args, **kwargs):
-        return self.format(*args, **kwargs)
+    def bar (self, fields=None):
+        if fields is None:
+            fields = self.fields
+        bars = {}
+        for field in fields:
+            bars[field] = "-" * (self.widths.get(field) or 0)
+        return self.format(bars)
+    
+    def header (self, fields=None):
+        if fields is None:
+            fields = self.fields
+        headers = {}
+        for field in fields:
+            headers[field] = self.headers.get(field, field)
+        return self.format(headers)
+
