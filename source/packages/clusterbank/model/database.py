@@ -21,7 +21,7 @@ from sqlalchemy import MetaData, Table, Column, ForeignKey, UniqueConstraint, ty
 
 __all__ = [
     "metadata",
-    "projects_table", "resources_table",
+    "users_table", "projects_table", "resources_table",
     "requests_table", "allocations_table", "credit_limits_table",
     "holds_table", "charges_table", "refunds_table",
 ]
