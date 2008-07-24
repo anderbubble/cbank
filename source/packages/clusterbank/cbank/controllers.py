@@ -210,15 +210,18 @@ def report_users_main ():
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnexpectedArguments(args)
-    if user.is_admin:
-        if options.projects or options.users:
-            users = options.users
-        else:
-            users = [user]
+    if options.users:
+        users = options.users
+    elif options.projects:
+        users = set(sum([model.project_members(project)
+            for project in options.projects], []))
     else:
-        if options.users and set(options.users) != set([user]):
-            raise exceptions.NotPermitted(user)
         users = [user]
+    if not user.is_admin:
+        if not set(users).issubset(set([user])):
+            raise exceptions.NotPermitted(user)
+        if not set(options.projects).issubset(set(model.user_projects(user))):
+            raise exceptions.NotPermitted(user)
     resources = check_resources(options.resources)
     views.print_users_report(projects=options.projects, users=users,
         resources=resources, after=options.after, before=options.before)
@@ -230,17 +233,18 @@ def report_projects_main ():
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnexpectedArguments(args)
-    if user.is_admin:
-        if options.projects:
-            projects = options.projects
-        else:
-            projects = model.user_projects(user)
+    if options.projects:
+        projects = options.projects
+    elif options.users:
+        projects = set(sum([model.user_projects(user)
+            for user in options.users], []))
     else:
-        if options.projects and not set(options.projects).issubset(set(model.user_projects(user))):
-            raise exceptions.NotPermitted(user)
-        if options.users and set(options.users) != set([user]):
-            raise exceptions.NotPermitted(user)
         projects = model.user_projects(user)
+    if not user.is_admin:
+        if not set(projects).issubset(set(model.user_projects(user))):
+            raise exceptions.NotPermitted(user)
+        if not set(options.users).issubset(set([user])):
+            raise exceptions.NotPermitted(user)
     resources = check_resources(options.resources)
     views.print_projects_report(projects=projects, resources=resources,
         users=options.users, after=options.after, before=options.before)

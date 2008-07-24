@@ -66,55 +66,61 @@ def print_users_report (**kwargs):
     
     s = model.Session()
     
-    relation = model.users_table
-    relation = relation.outerjoin(model.charges_table)
-    relation = relation.outerjoin(model.refunds_table)
-    relation = relation.join(model.allocations_table)
-    relation = relation.join(model.projects_table)
-    query = sql.select([model.users_table.c.id,
-        sql.func.count(model.users_table.c.id).label("charges_count"),
-        sql.func.sum(model.charges_table.c.amount, type_=IntSum).label("charges_sum"),
-        sql.func.sum(model.refunds_table.c.amount, type_=IntSum).label("refunds_sum")])
-    query = query.select_from(relation)
-    query = query.group_by(model.users_table.c.id)
+    correlation = model.charges_table.c.user_id==model.users_table.c.id
+    charges_count_query = sql.select([
+        sql.func.count(model.charges_table.c.id)], correlation,
+        from_obj=model.charges_table.join(model.allocations_table))
+    charges_sum_query = sql.select([
+        sql.func.sum(model.charges_table.c.amount, type_=IntSum)], correlation,
+        from_obj=model.charges_table.join(model.allocations_table))
+    refunds_sum_query = sql.select([
+        sql.func.sum(model.refunds_table.c.amount, type_=IntSum)],
+        correlation, from_obj=model.refunds_table.join(
+        model.charges_table).join(model.allocations_table))
     
+    condition = True
     if kwargs.get("projects"):
-        query = query.where(model.projects_table.c.id.in_(
-            project.id for project in kwargs.get("projects")))
-        members = set(sum([model.project_members(project)
-            for project in kwargs.get("projects")], []))
-    else:
-        members = None
-    if kwargs.get("users"):
-        users = set(kwargs.get("users"))
-        if kwargs.get("projects"):
-            users = users & members
-    else:
-        users = members or []
-    query = query.where(model.users_table.c.id.in_(user.id for user in users))
+        condition = sql.and_(condition,
+            model.allocations_table.c.project_id.in_(
+                project.id for project in kwargs.get("projects")))
     if kwargs.get("resources"):
-        query = query.where(model.resources_table.c.id.in_(
-            resource.id for resource in kwargs.get("resources")))
+        condition = sql.and_(condition,
+            model.allocations_table.c.resource_id.in_(
+                resource.id for resource in kwargs.get("resources")))
     if kwargs.get("after"):
-        query = query.where(
+        condition = sql.and_(condition,
             model.charges_table.c.datetime>=kwargs.get("after"))
     if kwargs.get("before"):
-        query = query.where(moel.charges_table.c.datetime<kwargs.get("before"))
+        condition = sql.and_(condition,
+            model.charges_table.c.datetime<kwargs.get("before"))
+    charges_count_query = charges_count_query.where(condition)
+    charges_sum_query = charges_sum_query.where(condition)
+    refunds_sum_query = refunds_sum_query.where(condition)
     
-    total_charges_count = 0
-    total_charges_sum = 0
+    query = sql.select([
+        model.users_table.c.id,
+        charges_count_query.label("charges_count"),
+        charges_sum_query.label("charges_sum"),
+        refunds_sum_query.label("refunds_sum"),
+        ]).select_from(model.users_table)
+    
+    if kwargs.get("users"):
+        query = query.where(model.users_table.c.id.in_(
+            user.id for user in kwargs.get("users")))
+    
+    total_charges = 0
+    total_charged = 0
     for row in s.execute(query):
         user = model.upstream.get_user_name(row[model.users_table.c.id])
-        charges_count = row['charges_count']
-        charges_sum = \
-            row['charges_sum'] - row['refunds_sum']
-        total_charges_count += charges_count
-        total_charges_sum += charges_sum
-        print format({'User':user, 'Charges':charges_count,
-            'Charged':display_units(charges_sum)})
+        charges = row['charges_count']
+        charged = row['charges_sum'] - row['refunds_sum']
+        total_charges += charges
+        total_charged += charged
+        print format({'User':user, 'Charges':charges,
+            'Charged':display_units(charged)})
     print format.bar(["Charges", "Charged"])
-    print format({'Charges':total_charges_count,
-        'Charged':display_units(total_charges_sum)})
+    print format({'Charges':total_charges,
+        'Charged':display_units(total_charged)})
 
 def print_projects_report (**kwargs):
     
@@ -123,12 +129,10 @@ def print_projects_report (**kwargs):
     The projects report lists allocations and charges for each project
     in the system.
     """
-    
     format = Formatter([
-        "Project", "Allocated", "Charges", "Charged", "Available"])
-    format.widths = {'Project':15, 'Allocated':17,
-        'Charges':7, 'Charged':15, 'Available':15}
-    format.aligns = {'Allocated':"right", 'Charges':"right",
+        "Project", "Available", "Charges", "Charged"])
+    format.widths = {'Project':15, 'Charges':7, 'Charged':15, 'Available':15}
+    format.aligns = {'Charges':"right",
         'Charged':"right", "Available":"right"}
     print format.header()
     print format.bar()
@@ -136,58 +140,97 @@ def print_projects_report (**kwargs):
     s = model.Session()
     now = datetime.now()
     
-    relation = model.projects_table
-    relation = relation.outerjoin(model.allocations_table)
-    relation = relation.join(model.resources_table)
-    relation = relation.outerjoin(model.charges_table)
-    relation = relation.outerjoin(model.refunds_table)
+    allocations_sum_query = sql.select([
+        sql.func.sum(model.allocations_table.c.amount, type_=IntSum)],
+        model.allocations_table.c.project_id==model.projects_table.c.id)
+    holds_sum_query = sql.select([
+        sql.func.sum(model.holds_table.c.amount, type_=IntSum)],
+        model.allocations_table.c.project_id==model.projects_table.c.id,
+        from_obj=model.holds_table.join(model.allocations_table)).where(
+        model.holds_table.c.active==True)
+    charges_sum_query = sql.select([
+        sql.func.sum(model.charges_table.c.amount, type_=IntSum)],
+        model.allocations_table.c.project_id==model.projects_table.c.id,
+        from_obj=model.charges_table.join(model.allocations_table))
+    refunds_sum_query = sql.select([
+        sql.func.sum(model.refunds_table.c.amount, type_=IntSum)],
+        model.allocations_table.c.project_id==model.projects_table.c.id,
+        from_obj=model.refunds_table.join(model.charges_table).join(
+            model.allocations_table))
     
+    m_charges_count_query = sql.select([
+        sql.func.count(model.charges_table.c.amount)],
+        model.allocations_table.c.project_id==model.projects_table.c.id,
+        from_obj=model.charges_table.join(model.allocations_table))
+    m_charges_sum_query = charges_sum_query
+    m_refunds_sum_query = refunds_sum_query
+    
+    if kwargs.get("resources"):
+        condition = model.allocations_table.c.resource_id.in_(
+            resource.id for resource in kwargs.get("resources"))
+        m_charges_count_query = m_charges_count_query.where(condition)
+        m_charges_sum_query = m_charges_sum_query.where(condition)
+        m_refunds_sum_query = m_refunds_sum_query.where(condition)
+    if kwargs.get("users"):
+        condition = model.charges_table.c.user_id.in_(
+            user.id for user in kwargs.get("users"))
+        m_charges_count_query = m_charges_count_query.where(condition)
+        m_charges_sum_query = m_charges_sum_query.where(condition)
+        m_refunds_sum_query = m_refunds_sum_query.where(condition)
+    # don't show availability for allocations that are not active
+    condition = sql.and_(model.allocations_table.c.start<=now,
+        model.allocations_table.c.expiration>now)
+    allocations_sum_query = allocations_sum_query.where(condition)
+    holds_sum_query = holds_sum_query.where(condition)
+    charges_sum_query = charges_sum_query.where(condition)
+    refunds_sum_query = refunds_sum_query.where(condition)
+    if kwargs.get("after"):
+        condition = model.charges_table.c.datetime>=kwargs.get("after")
+        m_charges_count_query = m_charges_count_query.where(condition)
+        m_charges_sum_query = m_charges_sum_query.where(condition)
+        m_refunds_sum_query = m_refunds_sum_query.where(condition)
+    if kwargs.get("before"):
+        condition = model.charges_table.c.datetime<kwargs.get("before")
+        m_charges_count_query = m_charges_count_query.where(condition)
+        m_charges_sum_query = m_charges_sum_query.where(condition)
+        m_refunds_sum_query = m_refunds_sum_query.where(condition)
+
     query = sql.select([
         model.projects_table.c.id,
-        sql.func.sum(model.allocations_table.c.amount, type_=IntSum).label("allocations_sum"),
-        sql.func.count(model.charges_table.c.id).label("charges_count"),
-        sql.func.sum(model.charges_table.c.amount, type_=IntSum).label("charges_sum"),
-        sql.func.sum(model.refunds_table.c.amount, type_=IntSum).label("refunds_sum")])
-    query = query.select_from(relation)
-    query = query.group_by(model.projects_table.c.id)
-    query = query.where(model.allocations_table.c.start<=now)
-    query = query.where(model.allocations_table.c.expiration>now)
+        allocations_sum_query.label("allocations_sum"),
+        holds_sum_query.label("holds_sum"),
+        charges_sum_query.label("charges_sum"),
+        refunds_sum_query.label("refunds_sum"),
+        m_charges_count_query.label("m_charges_count"),
+        m_charges_sum_query.label("m_charges_sum"),
+        m_refunds_sum_query.label("m_refunds_sum")])
+    
+    query = query.select_from(model.projects_table)
+    
     if kwargs.get("projects"):
         query = query.where(model.projects_table.c.id.in_(
             project.id for project in kwargs.get("projects")))
-    if kwargs.get("resources"):
-        query = query.where(model.resources_table.c.id.in_(
-            resource.id for resource in kwargs.get("resources")))
-    if kwargs.get("users"):
-        query = query.where(model.charges_table.c.user_id.in_(
-            user.id for user in kwargs.get("users")))
-    if kwargs.get("after"):
-        query = query.where(model.charges_table.c.datetime>=kwargs.get("after"))
-    if kwargs.get("before"):
-        query = query.where(model.charges_table.c.datetime<kwargs.get("before"))
     
-    total_allocations_sum = 0
-    total_charges_count = 0
-    total_charges_sum = 0
+    total_available = 0
+    total_charges = 0
+    total_charged = 0
     for row in s.execute(query):
         project = \
             model.upstream.get_project_name(row[model.projects_table.c.id])
-        allocations_sum = row['allocations_sum']
-        charges_count = row['charges_count']
-        charges_sum = \
-            row['charges_sum'] - row['refunds_sum']
-        total_allocations_sum += allocations_sum
-        total_charges_count += charges_count
-        total_charges_sum += charges_sum
+        available = row['allocations_sum'] \
+            - (row['holds_sum'] + (row['charges_sum'] - row['refunds_sum']))
+        total_available += available
+        charges = row['m_charges_count']
+        total_charges += charges
+        charged = row['m_charges_sum'] - row['m_refunds_sum']
+        total_charged += charged
         print format({'Project':project,
-            'Allocated':display_units(allocations_sum),
-            'Charges':charges_count, 'Charged':display_units(charges_sum),
-            'Available':display_units(allocations_sum-charges_sum)})
-    print format.bar(["Allocated", "Charges", "Charged", "Available"])
-    print format({'Allocated':display_units(total_allocations_sum),
-        'Charges':total_charges_count,
-        'Charged':display_units(total_charges_sum),
-        'Available':display_units(total_allocations_sum-total_charges_count)})
+            'Available':display_units(available),
+            'Charges':charges, 'Charged':display_units(charged)})
+    print format.bar(["Charges", "Charged", "Available"])
+    print format({'Charges':total_charges,
+        'Charged':display_units(total_charged),
+        'Available':display_units(total_available)})
 
 def print_allocations_report (**kwargs):
     
