@@ -188,7 +188,7 @@ def new_refund_main ():
 
 @handle_exceptions
 def report_main ():
-    commands = ["users", "projects"]
+    commands = ["users", "projects", "allocations"]
     try:
         command = normalize(sys.argv[1], commands)
     except (IndexError, exceptions.UnknownCommand):
@@ -200,6 +200,8 @@ def report_main ():
         return report_users_main()
     elif command == "projects":
         return report_projects_main()
+    elif command == "allocations":
+        return report_allocations_main()
 
 @handle_exceptions
 def report_users_main ():
@@ -240,7 +242,31 @@ def report_projects_main ():
             raise exceptions.NotPermitted(user)
         projects = model.user_projects(user)
     resources = check_resources(options.resources)
-    views.print_projects_report(projects=projects, resources=resources, users=options.users, after=options.after, before=options.before)
+    views.print_projects_report(projects=projects, resources=resources,
+        users=options.users, after=options.after, before=options.before)
+
+@handle_exceptions
+def report_allocations_main ():
+    user = get_current_user()
+    parser = build_report_allocations_parser()
+    options, args = parser.parse_args()
+    if args:
+        raise exceptions.UnexpectedArguments(args)
+    if options.projects:
+        projects = options.projects
+    elif options.users:
+        projects = set(sum([model.user_projects(user)
+            for user in options.users], []))
+    else:
+        projects = model.user_projects(user)
+    if not user.is_admin:
+        if not set(projects).issubset(set(model.user_projects(user))):
+            raise exceptions.NotPermitted(user)
+        if not set(options.users).issubset(set([user])):
+            raise exceptions.NotPermitted(user)
+    resources = check_resources(options.resources)
+    views.print_allocations_report(users=options.users, projects=projects,
+        resources=resources, after=options.after, before=options.before)
 
 def check_resources (resources):
     """If no resources are specified, check the config file."""
@@ -254,33 +280,6 @@ def check_resources (resources):
         else:
             resource = model.resource_by_name(resource)
             return [resource]
-
-@handle_exceptions
-def report_allocations_main ():
-    parser = build_report_parser()
-    options, args = parser.parse_args()
-    if args:
-        raise exceptions.UnexpectedArguments(args)
-    if options.resources:
-        resources = options.resources
-    else:
-        try:
-            default_resource = config.get("cbank", "resource")
-        except ConfigParser.Error:
-            resources = []
-        else:
-            resources = [default_resource]
-    user = get_current_user()
-    if user.is_admin:
-        views.print_admin_allocations_report(
-            projects=options.projects, users=options.users,
-            resources=resources, after=options.after,
-            before=options.before, extra=options.extra)
-    else:
-        views.print_member_allocations_report(user,
-            projects=options.projects, users=options.users,
-            resources=resources, after=options.after,
-            before=options.before, extra=options.extra)
 
 @handle_exceptions
 def report_charges_main ():
@@ -346,6 +345,7 @@ def build_report_users_parser ():
     parser.add_option(Option("-b", "--before",
         dest="before", type="date",
         help="display charges before (and excluding) DATE", metavar="DATE"))
+    parser.set_defaults(projects=[], users=[], resources=[])
     return parser
 
 def build_report_projects_parser ():
@@ -365,6 +365,27 @@ def build_report_projects_parser ():
     parser.add_option(Option("-b", "--before",
         dest="before", type="date",
         help="display charges before (and excluding) DATE", metavar="DATE"))
+    parser.set_defaults(projects=[], users=[], resources=[])
+    return parser
+
+def build_report_allocations_parser ():
+    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser.add_option(Option("-u", "--user",
+        dest="users", type="user", action="append",
+        help="display allocations to and charges by USER", metavar="USER"))
+    parser.add_option(Option("-p", "--project",
+        dest="projects", type="project", action="append",
+        help="display allocations to PROJECT", metavar="PROJECT"))
+    parser.add_option(Option("-r", "--resource",
+        dest="resources", type="resource", action="append",
+        help="display allocations for RESOURCE", metavar="RESOURCE"))
+    parser.add_option(Option("-a", "--after",
+        dest="after", type="date",
+        help="display charges after (and including) DATE", metavar="DATE"))
+    parser.add_option(Option("-b", "--before",
+        dest="before", type="date",
+        help="display charges before (and excluding) DATE", metavar="DATE"))
+    parser.set_defaults(projects=[], users=[], resources=[])
     return parser
 
 def build_report_parser ():

@@ -11,12 +11,31 @@ except NameError:
     from sets import Set as set
 
 import sqlalchemy.sql as sql
+import sqlalchemy.types as types
 
 from clusterbank import config
 from clusterbank.cbank.common import get_unit_factor
 import clusterbank.model as model
 
-__all__ = ["print_unit_definition", "print_users_report", "print_projects_report"]
+__all__ = ["print_unit_definition", "display_units",
+    "print_users_report", "print_projects_report", "print_allocations_report"]
+
+
+class IntSum (types.TypeDecorator):
+    impl = types.String
+    
+    def process_bind_param (self, value, dialect):
+        return value
+    
+    def process_result_value (self, value, dialect):
+        try:
+            return int(value)
+        except TypeError:
+            if value is None:
+                return 0
+            else:
+                return value
+
 
 def print_unit_definition ():
     try:
@@ -39,7 +58,6 @@ def print_users_report (**kwargs):
     projects -- require project membership and charge relationship
     """
     
-    # Set up the table.
     format = Formatter(["User", "Charges", "Charged"])
     format.widths = {'User':10, 'Charges':8, 'Charged':15}
     format.aligns = {'Charges':"right", 'Charged':"right"}
@@ -55,8 +73,8 @@ def print_users_report (**kwargs):
     relation = relation.join(model.projects_table)
     query = sql.select([model.users_table.c.id,
         sql.func.count(model.users_table.c.id).label("charges_count"),
-        sql.func.sum(model.charges_table.c.amount).label("charges_sum"),
-        sql.func.sum(model.refunds_table.c.amount).label("refunds_sum")])
+        sql.func.sum(model.charges_table.c.amount, type_=IntSum).label("charges_sum"),
+        sql.func.sum(model.refunds_table.c.amount, type_=IntSum).label("refunds_sum")])
     query = query.select_from(relation)
     query = query.group_by(model.users_table.c.id)
     
@@ -87,9 +105,9 @@ def print_users_report (**kwargs):
     total_charges_sum = 0
     for row in s.execute(query):
         user = model.upstream.get_user_name(row[model.users_table.c.id])
-        charges_count = int(row['charges_count'] or 0)
+        charges_count = row['charges_count']
         charges_sum = \
-            int(row['charges_sum'] or 0) - int(row['refunds_sum'] or 0)
+            row['charges_sum'] - row['refunds_sum']
         total_charges_count += charges_count
         total_charges_sum += charges_sum
         print format({'User':user, 'Charges':charges_count,
@@ -106,7 +124,6 @@ def print_projects_report (**kwargs):
     in the system.
     """
     
-    # Set up the table.
     format = Formatter([
         "Project", "Allocated", "Charges", "Charged", "Available"])
     format.widths = {'Project':15, 'Allocated':17,
@@ -127,10 +144,10 @@ def print_projects_report (**kwargs):
     
     query = sql.select([
         model.projects_table.c.id,
-        sql.func.sum(model.allocations_table.c.amount).label("allocations_sum"),
+        sql.func.sum(model.allocations_table.c.amount, type_=IntSum).label("allocations_sum"),
         sql.func.count(model.charges_table.c.id).label("charges_count"),
-        sql.func.sum(model.charges_table.c.amount).label("charges_sum"),
-        sql.func.sum(model.refunds_table.c.amount).label("refunds_sum")])
+        sql.func.sum(model.charges_table.c.amount, type_=IntSum).label("charges_sum"),
+        sql.func.sum(model.refunds_table.c.amount, type_=IntSum).label("refunds_sum")])
     query = query.select_from(relation)
     query = query.group_by(model.projects_table.c.id)
     query = query.where(model.allocations_table.c.start<=now)
@@ -155,10 +172,10 @@ def print_projects_report (**kwargs):
     for row in s.execute(query):
         project = \
             model.upstream.get_project_name(row[model.projects_table.c.id])
-        allocations_sum = int(row['allocations_sum'] or 0)
-        charges_count = int(row['charges_count'] or 0)
+        allocations_sum = row['allocations_sum']
+        charges_count = row['charges_count']
         charges_sum = \
-            int(row['charges_sum'] or 0) - int(row['refunds_sum'] or 0)
+            row['charges_sum'] - row['refunds_sum']
         total_allocations_sum += allocations_sum
         total_charges_count += charges_count
         total_charges_sum += charges_sum
@@ -172,59 +189,121 @@ def print_projects_report (**kwargs):
         'Charged':display_units(total_charges_sum),
         'Available':display_units(total_allocations_sum-total_charges_count)})
 
-def print_member_allocations_report (user, **kwargs):
-    allocations = model.Session.query(model.Allocation)
-    project_ids = [project.id for project in model.user_projects(user)]
-    allocations = allocations.filter(model.Allocation.project.has(model.Project.id.in_(project_ids)))
-    print_raw_allocations_report(allocations, **kwargs)
-
-def print_admin_allocations_report (**kwargs):
-    allocations = model.Session.query(model.Allocation)
-    print_raw_allocations_report(allocations, **kwargs)
-
-def print_raw_allocations_report (allocations_query, **kwargs):
-    allocations = allocations_query
-    if kwargs.get("projects"):
-        project_ids = [project.id for project in kwargs.get("projects")]
-        allocations = allocations.filter(model.Allocation.project.has(model.Project.id.in_(project_ids)))
+def print_allocations_report (**kwargs):
+    
+    """Allocations report.
+    
+    The projects report lists attributes of and charges against allocations
+    in the system.
+    """
+    
+    format = Formatter(["Allocation", "Project", "Resource", "Expiration",
+        "Available", "Charges", "Charged"])
+    format.headers = {'Allocation':"#"}
+    format.widths = {'Allocation':4, 'Project':15, 'Available':13,
+        'Charges':7, 'Charged':13, 'Expiration':10}
+    format.aligns = {'Available':"right", 'Charges':"right", 'Charged':"right"}
+    print format.header()
+    print format.bar()
+    
+    s = model.Session()
+    now = datetime.now()
+    
+    charges_sum_query = sql.select([
+        sql.func.sum(model.charges_table.c.amount, type_=IntSum)],
+        model.charges_table.c.allocation_id==model.allocations_table.c.id)
+    
+    refunds_sum_query = sql.select([
+        sql.func.sum(model.refunds_table.c.amount, type_=IntSum)]).select_from(
+        model.refunds_table.join(model.charges_table)).where(
+        model.charges_table.c.allocation_id==model.allocations_table.c.id)
+    
+    holds_sum_query = sql.select([
+        sql.func.sum(model.holds_table.c.amount, type_=IntSum)],
+        model.holds_table.c.allocation_id==model.allocations_table.c.id).where(
+        model.holds_table.c.active==True)
+    
+    m_charges_count_query = sql.select([
+        sql.func.count(model.charges_table.c.id)],
+        model.charges_table.c.allocation_id==model.allocations_table.c.id)
+    m_charges_sum_query = charges_sum_query
+    m_refunds_sum_query = refunds_sum_query
+    
     if kwargs.get("users"):
-        project_ids = [project.id for project in sum([model.user_projects(user) for user in kwargs.get("users")], [])]
-        allocations = allocations.filter(model.Allocation.project.has(model.Project.id.in_(set(project_ids))))
+        user_condition = model.charges_table.c.user_id.in_(
+            user.id for user in kwargs.get("users"))
+        m_charges_count_query = m_charges_count_query.where(user_condition)
+        m_charges_sum_query = m_charges_sum_query.where(user_condition)
+        m_refunds_sum_query = m_refunds_sum_query.where(user_condition)
+    
+    if kwargs.get("after"):
+        after_condition = model.charges_table.c.datetime>=kwargs.get("after")
+        m_charges_count_query = m_charges_count_query.where(after_condition)
+        m_charges_sum_query = m_charges_sum_query.where(after_condition)
+        m_refunds_sum_query = m_refunds_sum_query.where(after_condition)
+    
+    if kwargs.get("before"):
+        before_condition = model.charges_table.c.datetime<kwargs.get("before")
+        m_charges_count_query = m_charges_count_query.where(before_condition)
+        m_charges_sum_query = m_charges_sum_query.where(before_condition)
+        m_refunds_sum_query = m_refunds_sum_query.where(before_condition)
+    
+    query = sql.select([
+        model.allocations_table.c.id,
+        model.projects_table.c.id,
+        model.resources_table.c.id,
+        model.allocations_table.c.expiration,
+        model.allocations_table.c.amount,
+        holds_sum_query.label("holds_sum"),
+        charges_sum_query.label("charges_sum"),
+        refunds_sum_query.label("refunds_sum"),
+        m_charges_count_query.label("m_charges_count"),
+        m_charges_sum_query.label("m_charges_sum"),
+        m_refunds_sum_query.label("m_refunds_sum"),
+        ], use_labels=True)
+    
+    query = query.select_from(model.allocations_table.join(
+        model.projects_table).join(model.resources_table))
+    
+    if kwargs.get("projects"):
+        query = query.where(model.projects_table.c.id.in_(
+            project.id for project in kwargs.get("projects")))
+    
     if kwargs.get("resources"):
-        resource_ids = [resource.id for resource in kwargs.get("resources")]
-        allocations = allocations.filter(model.Allocation.resource.has(model.Resource.id.in_(resource_ids)))
-    if kwargs.get("after") or kwargs.get("before"):
-        if kwargs.get("after"):
-            allocations = allocations.filter(model.Allocation.expiration>=kwargs.get("after"))
-        if kwargs.get("before"):
-            allocations = allocations.filter(model.Allocation.start<kwargs.get("before"))
-    else:
-        now = datetime.now()
-        allocations = allocations.filter(model.Allocation.start<=now)
-        allocations = allocations.filter(model.Allocation.expiration>now)
-    if not allocations.count():
-        print >> sys.stderr, "No allocations found."
-        return
-    if kwargs.get("extra"):
-        format = Formatter(["Starts", "Expires", "Resource", "Project", "Allocated", "Available", "Comment"])
-    else:
-        format = Formatter(["Expires", "Resource", "Project", "Allocated", "Available"])
-    format.widths = dict(Starts=10, Expires=10, Resource=10, Project=15, Allocated=15, Available=15, Comment=7)
-    format.aligns = dict(Allocated=string.rjust, Available=string.rjust)
-    print >> sys.stderr, format.header
-    print >> sys.stderr, format.bar
-    for allocation in allocations:
-        print format(dict(Starts=allocation.start.strftime("%Y-%m-%d"),
-            Expires=allocation.expiration.strftime("%Y-%m-%d"),
-            Resource=allocation.resource, Project=allocation.project,
-            Allocated=display_units(allocation.amount),
-            Available=display_units(allocation.amount_available),
-            Comment=allocation.comment))
-    print >> sys.stderr, format.bar
-    total_allocated = int(allocations.sum(model.Allocation.amount) or 0)
-    total_available = sum([allocation.amount_available for allocation in allocations])
-    print >> sys.stderr, format(dict(Allocated=display_units(total_allocated), Available=display_units(total_available))), "(total)"
-    print_unit_definition()
+        query = query.where(model.resources_table.c.id.in_(
+            resource.id for resource in kwargs.get("resources")))
+    
+    total_available = 0
+    total_charges = 0
+    total_charged = 0
+    for row in s.execute(query):
+        allocation = row[model.allocations_table.c.id]
+        project = model.upstream.get_project_name(
+            row[model.projects_table.c.id])
+        resource = model.upstream.get_resource_name(
+            row[model.resources_table.c.id])
+        expiration = format_datetime(
+            row[model.allocations_table.c.expiration])
+        charges = row['m_charges_count']
+        total_charges += charges
+        available = row[model.allocations_table.c.amount] \
+            - (row['holds_sum'] + (row['charges_sum'] - row['refunds_sum']))
+        total_available += available
+        charged = row['m_charges_sum'] - row['m_refunds_sum']
+        total_charged += charged
+        print format({
+            'Allocation':allocation,
+            'Project':project,
+            'Resource':resource,
+            'Expiration':expiration,
+            'Available':display_units(available),
+            'Charges':charges,
+            'Charged':display_units(charged)})
+    print format.bar(["Available", "Charges", "Charged"])
+    print format({
+        'Available':display_units(total_available),
+        'Charges':total_charges,
+        'Charged':display_units(total_charged)})
 
 def print_member_charges_report (user, **kwargs):
     charges = model.Session.query(model.Charge)
@@ -286,6 +365,9 @@ def display_units (amount):
     else:
         return locale.format("%.1f", converted_amount, True)
 
+def format_datetime (dt):
+    return dt.strftime("%Y-%m-%d")
+
 def print_allocation (allocation):
     amount = display_units(allocation.amount)
     amount_available = display_units(allocation.amount_available)
@@ -333,9 +415,9 @@ class Formatter (object):
     
     def __init__ (self, fields, **kwargs):
         self.fields = fields
-        self.headers = kwargs.get("headers", {}).copy()
-        self.widths = kwargs.get("widths", {}).copy()
-        self.aligns = kwargs.get("aligns", {}).copy()
+        self.headers = kwargs.get("headers", {})
+        self.widths = kwargs.get("widths", {})
+        self.aligns = kwargs.get("aligns", {})
     
     def __call__ (self, *args, **kwargs):
         return self.format(*args, **kwargs)
@@ -345,30 +427,34 @@ class Formatter (object):
         for field in self.fields:
             datum = data.get(field, "")
             datum = str(datum)
-            align = self.aligns.get(field)
-            width = self.widths.get(field)
-            if align or width:
-                if align is None:
-                    align = "left"
-                if width is None:
-                    width = 0
-                if align == "left":
-                    datum = datum.ljust(width)
-                elif align == "right":
-                    datum = datum.rjust(width)
-                elif align == "center":
-                    datum = datum.center(width)
-                else:
-                    raise Exception("Unknown alignment: %s" % align)
+            align = self._get_align(field)
+            width = self._get_width(field)
+            if align == "left":
+                datum = datum.ljust(width)
+            elif align == "right":
+                datum = datum.rjust(width)
+            elif align == "center":
+                datum = datum.center(width)
+            else:
+                raise Exception("Unknown alignment: %s" % align)
             formatted_data.append(datum)
         return " ".join(formatted_data)
+    
+    def _get_align (self, field):
+        return self.aligns.get(field, "left")
+    
+    def _get_width (self, field):
+        return self.widths.get(field, len(self._get_header(field)))
+    
+    def _get_header (self, field):
+        return self.headers.get(field, field)
     
     def bar (self, fields=None):
         if fields is None:
             fields = self.fields
         bars = {}
         for field in fields:
-            bars[field] = "-" * (self.widths.get(field) or 0)
+            bars[field] = "-" * (self._get_width(field))
         return self.format(bars)
     
     def header (self, fields=None):
@@ -376,6 +462,6 @@ class Formatter (object):
             fields = self.fields
         headers = {}
         for field in fields:
-            headers[field] = self.headers.get(field, field)
+            headers[field] = self._get_header(field)
         return self.format(headers)
 
