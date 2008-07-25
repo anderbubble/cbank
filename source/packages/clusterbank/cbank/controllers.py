@@ -188,7 +188,7 @@ def new_refund_main ():
 
 @handle_exceptions
 def report_main ():
-    commands = ["users", "projects", "allocations", "charges"]
+    commands = ["users", "projects", "allocations", "holds", "charges"]
     try:
         command = normalize(sys.argv[1], commands)
     except (IndexError, exceptions.UnknownCommand):
@@ -202,6 +202,8 @@ def report_main ():
         return report_projects_main()
     elif command == "allocations":
         return report_allocations_main()
+    elif command == "holds":
+        return report_holds_main()
     elif command == "charges":
         return report_charges_main()
 
@@ -272,6 +274,34 @@ def report_allocations_main ():
             raise exceptions.NotPermitted(user)
     resources = check_resources(options.resources)
     views.print_allocations_report(users=options.users, projects=projects,
+        resources=resources, after=options.after, before=options.before)
+
+@handle_exceptions
+def report_holds_main ():
+    user = get_current_user()
+    parser = build_report_charges_parser()
+    options, args = parser.parse_args()
+    if args:
+        raise exceptions.UnexpectedArguments(args)
+    if options.users:
+        users = options.users
+        projects = options.projects or \
+            set(sum([model.user_projects(user) for user in users], []))
+    elif options.projects:
+        projects = options.projects
+        users = options.users or \
+            set(sum([model.project_members(project)
+                for project in projects], []))
+    else:
+        users = [user]
+        projects = set(sum([model.user_projects(user) for user in users], []))
+    if not user.is_admin:
+        if not set(options.users).issubset(set([user])):
+            raise exceptions.NotPermitted(user)
+        if not set(options.projects).issubset(model.user_projects(user)):
+            raise exceptions.NotPermitted(user)
+    resources = check_resources(options.resources)
+    views.print_holds_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before)
 
 @handle_exceptions

@@ -27,6 +27,7 @@ setup(
             "cbank-report-users = clusterbank.cbank.controllers:report_users_main",
             "cbank-report-projects = clusterbank.cbank.controllers:report_projects_main",
             "cbank-report-allocations = clusterbank.cbank.controllers:report_allocations_main",
+            "cbank-report-holds = clusterbank.cbank.controllers:report_holds_main",
             "cbank-report-charges = clusterbank.cbank.controllers:report_charges_main",
             "cbank-new = clusterbank.cbank.controllers:new_main",
             "cbank-new-allocation = clusterbank.cbank.controllers:new_allocation_main",

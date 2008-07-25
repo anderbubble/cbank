@@ -343,6 +343,72 @@ def print_allocations_report (**kwargs):
         'Charges':total_charges,
         'Charged':display_units(total_charged)})
 
+def print_holds_report (**kwargs):
+    
+    """Holds report.
+    
+    The holds report displays individual holds.
+    """
+    
+    format = Formatter([
+        "Hold", "User", "Project", "Resource", "Datetime", "Held"])
+    format.widths = {
+        'Hold':6, 'User':8, 'Project':15, 'Held':13, 'Datetime':10}
+    format.aligns = {'Held':"right"}
+    print format.header()
+    print format.bar()
+    
+    s = model.Session()
+    now = datetime.now()
+    
+    query = sql.select([
+        model.holds_table.c.id,
+        model.holds_table.c.user_id,
+        model.allocations_table.c.project_id,
+        model.allocations_table.c.resource_id,
+        model.holds_table.c.datetime,
+        model.holds_table.c.amount]).where(model.holds_table.c.active==True)
+    query = query.order_by(model.holds_table.c.datetime)
+    query = query.select_from(
+        model.holds_table.join(model.allocations_table))
+    
+    if kwargs.get("users"):
+        query = query.where(model.holds_table.c.user_id.in_(
+            user.id for user in kwargs.get("users")))
+    if kwargs.get("projects"):
+        query = query.where(model.allocations_table.c.project_id.in_(
+            project.id for project in kwargs.get("projects")))
+    if kwargs.get("resources"):
+        query = query.where(model.allocations_table.c.resource_id.in_(
+            resources.id for resources in kwargs.get("resources")))
+    if kwargs.get("after"):
+        query = query.where(
+            model.holds_table.c.datetime>=kwargs.get("after"))
+    if kwargs.get("before"):
+        query = query.where(
+            model.holds_table.c.datetime<kwargs.get("before"))
+    
+    total_held = 0
+    for row in s.execute(query):
+        hold = row[model.holds_table.c.id]
+        user = model.upstream.get_user_name(row[model.holds_table.c.user_id])
+        project = model.project_by_id(
+            row[model.allocations_table.c.project_id])
+        resource = model.resource_by_id(
+            row[model.allocations_table.c.resource_id])
+        dt = row[model.holds_table.c.datetime]
+        held = row[model.holds_table.c.amount]
+        total_held += held
+        print format({
+            'Hold':hold,
+            'User':user,
+            'Project':project,
+            'Resource':resource,
+            'Datetime':format_datetime(dt),
+            'Held':display_units(held)})
+    print format.bar(["Held"])
+    print format({'Held':display_units(total_held)})
+
 def print_charges_report (**kwargs):
     
     """Charges report.
