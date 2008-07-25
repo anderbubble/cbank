@@ -188,7 +188,7 @@ def new_refund_main ():
 
 @handle_exceptions
 def report_main ():
-    commands = ["users", "projects", "allocations"]
+    commands = ["users", "projects", "allocations", "charges"]
     try:
         command = normalize(sys.argv[1], commands)
     except (IndexError, exceptions.UnknownCommand):
@@ -202,6 +202,8 @@ def report_main ():
         return report_projects_main()
     elif command == "allocations":
         return report_allocations_main()
+    elif command == "charges":
+        return report_charges_main()
 
 @handle_exceptions
 def report_users_main ():
@@ -272,6 +274,35 @@ def report_allocations_main ():
     views.print_allocations_report(users=options.users, projects=projects,
         resources=resources, after=options.after, before=options.before)
 
+@handle_exceptions
+def report_charges_main ():
+    user = get_current_user()
+    parser = build_report_charges_parser()
+    options, args = parser.parse_args()
+    if args:
+        raise exceptions.UnexpectedArguments(args)
+    if options.users:
+        users = options.users
+        projects = options.projects or \
+            set(sum([model.user_projects(user) for user in users], []))
+    elif options.projects:
+        projects = options.projects
+        users = options.users or \
+            set(sum([model.project_members(project)
+                for project in projects], []))
+    else:
+        users = [user]
+        projects = set(sum([model.project_members(project)
+            for project in projects], []))
+    if not user.is_admin:
+        if not set(options.users).issubset(set([user])):
+            raise exceptions.NotPermitted(user)
+        if not set(options.projects).issubset(model.user_projects(user)):
+            raise exceptions.NotPermitted(user)
+    resources = check_resources(options.resources)
+    views.print_charges_report(users=users, projects=projects,
+        resources=resources, after=options.after, before=options.before)
+
 def check_resources (resources):
     """If no resources are specified, check the config file."""
     if resources:
@@ -284,33 +315,6 @@ def check_resources (resources):
         else:
             resource = model.resource_by_name(resource)
             return [resource]
-
-@handle_exceptions
-def report_charges_main ():
-    parser = build_report_parser()
-    options, args = parser.parse_args()
-    if args:
-        raise exceptions.UnexpectedArguments(args)
-    if options.resources:
-        resources = options.resources
-    else:
-        try:
-            default_resource = config.get("cbank", "resource")
-        except ConfigParser.Error:
-            resources = []
-        else:
-            resources = [default_resource]
-    user = get_current_user()
-    if user.is_admin:
-        views.print_admin_charges_report(
-            projects=options.projects, users=options.users,
-            resources=resources, after=options.after,
-            before=options.before, extra=options.extra)
-    else:
-        views.print_member_charges_report(user,
-            projects=options.projects, users=options.users,
-            resources=resources, after=options.after,
-            before=options.before, extra=options.extra)
 
 def get_current_user ():
     uid = os.getuid()
@@ -359,7 +363,7 @@ def build_report_projects_parser ():
         help="display charges by USER", metavar="USER"))
     parser.add_option(Option("-p", "--project",
         dest="projects", type="project", action="append",
-        help="display charges to the given PROJECT", metavar="PROJECT"))
+        help="display charges to PROJECT", metavar="PROJECT"))
     parser.add_option(Option("-r", "--resource",
         dest="resources", type="resource", action="append",
         help="display charges on RESOURCE", metavar="RESOURCE"))
@@ -392,76 +396,73 @@ def build_report_allocations_parser ():
     parser.set_defaults(projects=[], users=[], resources=[])
     return parser
 
-def build_report_parser ():
+def build_report_charges_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
-    parser.add_option(Option("-p", "--project",
-        dest="projects", type="project", action="append",
-        help="filter by project NAME", metavar="NAME"))
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
-        help="filter by user NAME", metavar="NAME"))
+        help="display charges by USER", metavar="USER"))
+    parser.add_option(Option("-p", "--project",
+        dest="projects", type="project", action="append",
+        help="display charges to PROJECT", metavar="PROJECT"))
     parser.add_option(Option("-r", "--resource",
         dest="resources", type="resource", action="append",
-        help="filter by resource NAME", metavar="NAME"))
+        help="display charges for RESOURCE", metavar="RESOURCE"))
     parser.add_option(Option("-a", "--after",
         dest="after", type="date",
-        help="filter by start DATE", metavar="DATE"))
+        help="display charges after (and including) DATE", metavar="DATE"))
     parser.add_option(Option("-b", "--before",
         dest="before", type="date",
-        help="filter by end DATE", metavar="DATE"))
-    parser.add_option(Option("-e", "--extra-data",
-        dest="extra", action="store_true",
-        help="display extra data"))
-    parser.set_defaults(extra=False, projects=[], users=[], resources=[])
+        help="display charges before (and excluding) DATE", metavar="DATE"))
+    parser.set_defaults(projects=[], users=[], resources=[])
     return parser
 
 def build_new_allocation_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-p", "--project",
         type="project", dest="project",
-        help="specify project NAME", metavar="NAME"))
+        help="allocate to PROJECT", metavar="PROJECT"))
     parser.add_option(Option("-r", "--resource",
         type="resource", dest="resource",
-        help="specify resource NAME", metavar="NAME"))
+        help="allocate for RESOURCE", metavar="RESOURCE"))
     parser.add_option(Option("-s", "--start",
         dest="start", type="date",
-        help="specify start DATE", metavar="DATE"))
+        help="allocation starts at DATE", metavar="DATE"))
     parser.add_option(Option("-e", "--expiration",
         dest="expiration", type="date",
-        help="specify expiration DATE", metavar="DATE"))
+        help="allocation expires at DATE", metavar="DATE"))
     parser.add_option("-a", "--amount", dest="amount", type="float",
-        help="specify allocation AMOUNT", metavar="AMOUNT")
+        help="allocation AMOUNT", metavar="AMOUNT")
     parser.add_option("-m", "--comment", dest="comment",
-        help="add an string COMMENT", metavar="COMMENT")
+        help="arbitrary COMMENT", metavar="COMMENT")
     return parser
 
 def build_new_charge_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
-    parser.add_option(Option("-p", "--project", type="project",
-        dest="project", help="specify project NAME", metavar="NAME"))
-    parser.add_option(Option("-r", "--resource",
-        type="resource", dest="resource",
-        help="specify resource NAME", metavar="NAME"))
     parser.add_option(Option("-u", "--user",
         type="user", dest="user",
-        help="specify user NAME", metavar="NAME"))
+        help="charge made by USER", metavar="USER"))
+    parser.add_option(Option("-p", "--project", type="project",
+        dest="project", help="charge against PROJECT", metavar="PROJECT"))
+    parser.add_option(Option("-r", "--resource",
+        type="resource", dest="resource",
+        help="charge for RESOURCE", metavar="RESOURCE"))
     parser.add_option("-a", "--amount",
         dest="amount", type="float",
-        help="specify allocation AMOUNT", metavar="AMOUNT")
-    parser.add_option("-m", "--comment",
-        dest="comment", help="add an string COMMENT", metavar="COMMENT")
+        help="charge AMOUNT", metavar="AMOUNT")
+    parser.add_option("-m", "--comment", dest="comment",
+        help="arbitrary COMMENT", metavar="COMMENT")
     return parser
 
 def build_new_refund_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-c", "--charge",
         type="charge", dest="charge",
-        help="specify charge ID", metavar="ID"))
+        help="refund CHARGE", metavar="CHARGE"))
     parser.add_option("-a", "--amount",
         dest="amount", type="float",
-        help="specify allocation AMOUNT", metavar="AMOUNT")
-    parser.add_option("-m", "--comment",
-        dest="comment", help="add an string COMMENT", metavar="COMMENT")
+        help="refund AMOUNT", metavar="AMOUNT")
+    parser.add_option("-m", "--comment", dest="comment",
+        help="arbitrary COMMENT", metavar="COMMENT")
     return parser
 
 

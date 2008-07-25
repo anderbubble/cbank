@@ -343,57 +343,71 @@ def print_allocations_report (**kwargs):
         'Charges':total_charges,
         'Charged':display_units(total_charged)})
 
-def print_member_charges_report (user, **kwargs):
-    charges = model.Session.query(model.Charge)
-    member_project_ids = [project.id for project in model.user_projects(user)]
-    owner_project_ids = [project.id for project in model.user_projects_owned(user)]
-    charges = charges.filter(sql.or_(
-        sql.and_(
-            model.Charge.allocation.has(model.Allocation.project.has(model.Project.id.in_(member_project_ids))),
-            model.Charge.user==user),
-        model.Charge.allocation.has(model.Allocation.project.has(model.Project.id.in_(owner_project_ids)))))
-    print_raw_charges_report(charges, **kwargs)
-
-def print_admin_charges_report (**kwargs):
-    charges = model.Session.query(model.Charge)
-    print_raw_charges_report(charges, **kwargs)
-
-def print_raw_charges_report (charges_query, **kwargs):
-    charges = charges_query
-    if kwargs.get("projects"):
-        project_ids = [project.id for project in kwargs.get("projects")]
-        charges = charges.filter(model.Charge.allocation.has(model.Allocation.project.has(model.Project.id.in_(project_ids))))
+def print_charges_report (**kwargs):
+    
+    """Charges report.
+    
+    The charges report displays individual charges.
+    """
+    
+    format = Formatter([
+        "Charge", "User", "Project", "Resource", "Datetime", "Charged"])
+    format.widths = {
+        'Charge':6, 'User':8, 'Project':15, 'Charged':13, 'Datetime':10}
+    format.aligns = {'Charged':"right"}
+    print format.header()
+    print format.bar()
+    
+    s = model.Session()
+    now = datetime.now()
+    
+    query = sql.select([
+        model.charges_table.c.id,
+        model.charges_table.c.user_id,
+        model.allocations_table.c.project_id,
+        model.allocations_table.c.resource_id,
+        model.charges_table.c.datetime,
+        model.charges_table.c.amount])
+    query = query.order_by(model.charges_table.c.datetime)
+    query = query.select_from(
+        model.charges_table.join(model.allocations_table))
+    
     if kwargs.get("users"):
-        user_ids = [user.id for user in kwargs.get("users")]
-        charges = charges.filter(model.Charge.user.has(model.User.id.in_(user_ids)))
+        query = query.where(model.charges_table.c.user_id.in_(
+            user.id for user in kwargs.get("users")))
+    if kwargs.get("projects"):
+        query = query.where(model.allocations_table.c.project_id.in_(
+            project.id for project in kwargs.get("projects")))
     if kwargs.get("resources"):
-        resource_ids = [resource.id for resource in kwargs.get("resources")]
-        charges = charges.filter(model.Charge.allocation.has(model.Allocation.resource.has(model.Resource.id.in_(resource_ids))))
+        query = query.where(model.allocations_table.c.resource_id.in_(
+            resources.id for resources in kwargs.get("resources")))
     if kwargs.get("after"):
-        charges = charges.filter(model.Charge.datetime>=kwargs.get("after"))
+        query = query.where(
+            model.charges_table.c.datetime>=kwargs.get("after"))
     if kwargs.get("before"):
-        charges = charges.filter(model.Charge.datetime<kwargs.get("before"))
-    if not charges.count():
-        print >> sys.stderr, "No charges found."
-        return
-    if kwargs.get("extra"):
-        format = Formatter(["Date", "Resource", "Project", "User", "Amount", "Comment"])
-    else:
-        format = Formatter(["Date", "Resource", "Project", "User", "Amount"])
-    format.widths = dict(Date=10, Resource=10, Project=15, User=8, Amount=15, Comment=7)
-    format.aligns = dict(Amount=string.rjust)
-    print >> sys.stderr, format.header
-    print >> sys.stderr, format.bar
-    for charge in charges:
-        print format(dict(Date=charge.datetime.strftime("%Y-%m-%d"),
-            Resource=charge.allocation.resource,
-            Project=charge.allocation.project, User=charge.user,
-            Amount=display_units(charge.effective_amount),
-            Comment=charge.comment))
-    print >> sys.stderr, format.bar
-    total = int(charges.sum(model.Charge.amount) or 0) - int(charges.join("refunds").sum(model.Refund.amount) or 0)
-    print >> sys.stderr, format(dict(Amount=display_units(total))), "(total)"
-    print_unit_definition()
+        query = query.where(
+            model.charges_table.c.datetime<kwargs.get("before"))
+    
+    total_charged = 0
+    for row in s.execute(query):
+        charge = row[model.charges_table.c.id]
+        user = model.upstream.get_user_name(row[model.charges_table.c.user_id])
+        project = model.project_by_id(
+            row[model.allocations_table.c.project_id])
+        resource = model.resource_by_id(
+            row[model.allocations_table.c.resource_id])
+        dt = row[model.charges_table.c.datetime]
+        charged = row[model.charges_table.c.amount]
+        total_charged += charged
+        print format({
+            'Charge':charge,
+            'User':user,
+            'Project':project,
+            'Resource':resource,
+            'Datetime':format_datetime(dt),
+            'Charged':display_units(charged)})
+    print format.bar(["Charged"])
+    print format({'Charged':display_units(total_charged)})
 
 def display_units (amount):
     mul, div = get_unit_factor()
