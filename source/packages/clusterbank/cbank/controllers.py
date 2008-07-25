@@ -17,7 +17,7 @@ import os
 import sys
 import pwd
 import ConfigParser
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import sqlalchemy.exceptions
 
@@ -278,6 +278,7 @@ def report_allocations_main ():
 def report_charges_main ():
     user = get_current_user()
     parser = build_report_charges_parser()
+    parser.set_defaults(after=datetime.now()-timedelta(days=7))
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnexpectedArguments(args)
@@ -292,8 +293,7 @@ def report_charges_main ():
                 for project in projects], []))
     else:
         users = [user]
-        projects = set(sum([model.project_members(project)
-            for project in projects], []))
+        projects = set(sum([model.user_projects(user) for user in users], []))
     if not user.is_admin:
         if not set(options.users).issubset(set([user])):
             raise exceptions.NotPermitted(user)
