@@ -241,7 +241,7 @@ def report_projects_main ():
         projects = options.projects
     elif options.users:
         projects = set(sum([model.user_projects(user)
-            for user in options.users], []))
+            for u in options.users], []))
     else:
         projects = model.user_projects(user)
     if not user.is_admin:
@@ -264,7 +264,7 @@ def report_allocations_main ():
         projects = options.projects
     elif options.users:
         projects = set(sum([model.user_projects(user)
-            for user in options.users], []))
+            for u in options.users], []))
     else:
         projects = model.user_projects(user)
     if not user.is_admin:
@@ -286,7 +286,7 @@ def report_holds_main ():
     if options.users:
         users = options.users
         projects = options.projects or \
-            set(sum([model.user_projects(user) for user in users], []))
+            set(sum([model.user_projects(user) for u in users], []))
     elif options.projects:
         projects = options.projects
         users = options.users or \
@@ -294,7 +294,7 @@ def report_holds_main ():
                 for project in projects], []))
     else:
         users = [user]
-        projects = set(sum([model.user_projects(user) for user in users], []))
+        projects = set(sum([model.user_projects(user) for u in users], []))
     if not user.is_admin:
         if not set(options.users).issubset(set([user])):
             raise exceptions.NotPermitted(user)
@@ -315,7 +315,7 @@ def report_charges_main ():
     if options.users:
         users = options.users
         projects = options.projects or \
-            set(sum([model.user_projects(user) for user in users], []))
+            set(sum([model.user_projects(user) for u in users], []))
     elif options.projects:
         projects = options.projects
         users = options.users or \
@@ -323,7 +323,7 @@ def report_charges_main ():
                 for project in projects], []))
     else:
         users = [user]
-        projects = set(sum([model.user_projects(user) for user in users], []))
+        projects = set(sum([model.user_projects(user) for u in users], []))
     if not user.is_admin:
         if not set(options.users).issubset(set([user])):
             raise exceptions.NotPermitted(user)
