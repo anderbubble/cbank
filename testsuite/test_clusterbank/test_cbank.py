@@ -16,7 +16,7 @@ def get_current_username ():
     return pwd.getpwuid(os.getuid())[0]
 
 def setup ():
-    model.metadata.bind = create_engine("sqlite:///:memory:")
+    model.metadata.bind = create_engine("sqlite:///:memory:", echo=True)
     upstream.metadata.bind = create_engine("sqlite:///:memory:", echo=True)
     upstream.metadata.create_all()
     populate_upstream()
@@ -747,33 +747,37 @@ class TestReportMain (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._report_usage_main = \
-            controllers.report_usage_main
+        self._report_users_main = \
+            controllers.report_users_main
         self._report_projects_main = \
             controllers.report_projects_main
         self._report_allocations_main = \
             controllers.report_allocations_main
+        self._report_holds_main = \
+            controllers.report_holds_main
         self._report_charges_main = \
             controllers.report_charges_main
     
     def teardown (self):
         CbankTester.teardown(self)
-        controllers.report_usage_main = \
-            self._report_usage_main
+        controllers.report_users_main = \
+            self._report_users_main
         controllers.report_projects_main = \
             self._report_projects_main
         controllers.report_allocations_main = \
             self._report_allocations_main
+        controllers.report_holds_main = \
+            self._report_holds_main
         controllers.report_charges_main = \
             self._report_charges_main
     
-    def test_usage (self):
-        args = "usage 1 2 3"
+    def test_users (self):
+        args = "users 1 2 3"
         def fake ():
             self.fake_called = True
-            assert sys.argv[0] == "report_main usage", sys.argv
+            assert sys.argv[0] == "report_main users", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        controllers.report_usage_main = fake
+        controllers.report_users_main = fake
         run(controllers.report_main, args.split())
         assert self.fake_called
     
@@ -797,6 +801,16 @@ class TestReportMain (CbankTester):
         run(controllers.report_main, args.split())
         assert self.fake_called
     
+    def test_holds (self):
+        args = "holds 1 2 3"
+        def fake ():
+            self.fake_called = True
+            assert sys.argv[0] == "report_main holds", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.report_holds_main = fake
+        run(controllers.report_main, args.split())
+        assert self.fake_called
+    
     def test_charges (self):
         args = "charges 1 2 3"
         def fake ():
@@ -813,7 +827,7 @@ class TestReportMain (CbankTester):
             self.fake_called = True
             assert sys.argv[0] == "report_main", sys.argv
             assert sys.argv[1:] == args.split(), sys.argv
-        controllers.report_usage_main = fake
+        controllers.report_projects_main = fake
         run(controllers.report_main, args.split())
         assert self.fake_called
     
@@ -823,7 +837,7 @@ class TestReportMain (CbankTester):
             self.fake_called = True
             assert sys.argv[0] == "report_main", sys.argv
             assert sys.argv[1:] == args.split(), sys.argv
-        controllers.report_usage_main = fake
+        controllers.report_projects_main = fake
         run(controllers.report_main, args.split())
         assert self.fake_called
     
@@ -839,6 +853,6 @@ class TestReportMain (CbankTester):
         self._run_all_reports()
     
     def _run_all_reports (self):
-        for report in ("usage", "projects", "charges", "allocations"):
+        for report in ("users", "projects", "allocations", "holds", "charges"):
             code, stdout, stderr = run(controllers.report_main, [report])
             assert code == 0, report
