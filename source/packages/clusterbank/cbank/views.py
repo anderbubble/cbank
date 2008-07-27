@@ -18,7 +18,8 @@ from clusterbank.cbank.common import get_unit_factor
 import clusterbank.model as model
 
 __all__ = ["print_unit_definition", "display_units",
-    "print_users_report", "print_projects_report", "print_allocations_report"]
+    "print_users_report", "print_projects_report", "print_allocations_report",
+    "print_holds_report", "print_charges_report"]
 
 
 class IntSum (types.TypeDecorator):
