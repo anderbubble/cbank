@@ -17,9 +17,11 @@ from clusterbank import config
 from clusterbank.cbank.common import get_unit_factor
 import clusterbank.model as model
 
-__all__ = ["print_unit_definition", "display_units",
+__all__ = ["unit_definition", "display_units",
     "print_users_report", "print_projects_report", "print_allocations_report",
     "print_holds_report", "print_charges_report"]
+
+locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 
 
 class IntSum (types.TypeDecorator):
@@ -37,16 +39,6 @@ class IntSum (types.TypeDecorator):
             else:
                 return value
 
-
-def print_unit_definition ():
-    try:
-        unit_label = config.get("cbank", "unit_label")
-    except ConfigParser.Error:
-        return
-    unit_definition = "Units are in %s." % unit_label
-    print unit_definition
-
-locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 
 def print_users_report (**kwargs):
     
@@ -122,6 +114,7 @@ def print_users_report (**kwargs):
     print format.bar(["Charges", "Charged"])
     print format({'Charges':total_charges,
         'Charged':display_units(total_charged)})
+    print unit_definition()
 
 def print_projects_report (**kwargs):
     
@@ -227,6 +220,7 @@ def print_projects_report (**kwargs):
     print format({'Charges':total_charges,
         'Charged':display_units(total_charged),
         'Available':display_units(total_available)})
+    print unit_definition()
 
 def print_allocations_report (**kwargs):
     
@@ -343,6 +337,7 @@ def print_allocations_report (**kwargs):
         'Available':display_units(total_available),
         'Charges':total_charges,
         'Charged':display_units(total_charged)})
+    print unit_definition()
 
 def print_holds_report (**kwargs):
     
@@ -409,6 +404,7 @@ def print_holds_report (**kwargs):
             'Held':display_units(held)})
     print format.bar(["Held"])
     print format({'Held':display_units(total_held)})
+    print unit_definition()
 
 def print_charges_report (**kwargs):
     
@@ -475,17 +471,7 @@ def print_charges_report (**kwargs):
             'Charged':display_units(charged)})
     print format.bar(["Charged"])
     print format({'Charged':display_units(total_charged)})
-
-def display_units (amount):
-    mul, div = get_unit_factor()
-    converted_amount = amount * mul / div
-    if 0 < converted_amount < 0.1:
-        return "< 0.1"
-    else:
-        return locale.format("%.1f", converted_amount, True)
-
-def format_datetime (dt):
-    return dt.strftime("%Y-%m-%d")
+    print unit_definition()
 
 def print_allocation (allocation):
     amount = display_units(allocation.amount)
@@ -528,6 +514,25 @@ def print_refund (refund):
     print " * model.Charge #%i -- %s (originally %s)" % (
         refund.charge.id, charge_effective_amount,
         charge_amount)
+
+def unit_definition ():
+    try:
+        unit_label = config.get("cbank", "unit_label")
+    except ConfigParser.Error:
+        return "Units are undefined."
+    else:
+        return "Units are in %s." % unit_label
+
+def display_units (amount):
+    mul, div = get_unit_factor()
+    converted_amount = amount * mul / div
+    if 0 < converted_amount < 0.1:
+        return "< 0.1"
+    else:
+        return locale.format("%.1f", converted_amount, True)
+
+def format_datetime (dt):
+    return dt.strftime("%Y-%m-%d")
 
 
 class Formatter (object):
