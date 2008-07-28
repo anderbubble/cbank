@@ -48,6 +48,9 @@ class Entity (object):
     
     def __repr__ (self):
         return "<%s id=%r>" % (self.__class__.__name__, self.id)
+    
+    def __str__ (self):
+        return "#%i" % self.id
 
 
 class UpstreamEntity (Entity):

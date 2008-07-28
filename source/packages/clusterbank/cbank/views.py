@@ -472,47 +472,78 @@ def print_charges_report (**kwargs):
     print format({'Charged':display_units(total_charged)})
     print unit_definition()
 
+def print_allocations_by_id (allocation_ids):
+    s = model.Session()
+    allocations = s.query(model.Allocation).filter(
+        model.Allocation.id.in_(allocation_ids))
+    for allocation in allocations:
+        print_allocation(allocation)
+
+def print_holds_by_id (hold_ids):
+    s = model.Session()
+    holds = s.query(model.Hold).filter(
+        model.Hold.id.in_(hold_ids))
+    for hold in holds:
+        print_hold(hold)
+
+def print_charges_by_id (charge_ids):
+    s = model.Session()
+    charges = s.query(model.Charge).filter(
+        model.Charge.id.in_(charge_ids))
+    print_charges(charges)
+
+def print_refunds_by_id (refund_ids):
+    s = model.Session()
+    refunds = s.query(model.Refund).filter(
+        model.Refund.id.in_(refund_ids))
+    for refund in refunds:
+        print_refund(refund)
+
 def print_allocation (allocation):
     amount = display_units(allocation.amount)
-    amount_available = display_units(allocation.amount_available)
-    allocation_str = "Allocation #%i -- %s (%s available)" % (
-        allocation.id, amount, amount_available)
-    if allocation.comment:
-        allocation_str = " ".join([allocation_str, "(%s)" % allocation.comment])
+    allocation_str = "Allocation %s -- %s" % (allocation, amount)
     print allocation_str
-    print " * model.Project: '%s'" % allocation.project
-    print " * model.Resource: '%s'" % allocation.resource
+    print " * Datetime: %s" % allocation.datetime
+    print " * Project: %s" % allocation.project
+    print " * Resource: %s" % allocation.resource
     print " * Start: %s" % allocation.start
     print " * Expiration: %s" % allocation.expiration
+    print " * Comment: %s" % allocation.comment
+
+def print_hold (hold):
+    print "Hold %s -- %s" % (hold, display_units(hold.amount))
+    print " * Datetime: %s" % hold.datetime
+    print " * Active: %s" % hold.active
+    print " * Allocation: %s" % hold.allocation
+    print " * Project: %s" % hold.allocation.project
+    print " * Resource: %s" % hold.allocation.resource
+    print " * Comment: %s" % hold.comment
 
 def print_charges (charges):
     for charge in charges:
         print_charge(charge)
 
 def print_charge (charge):
-    effective_amount = display_units(charge.effective_amount)
-    amount = display_units(charge.amount)
-    charge_str = "Charge #%i -- %s" % (charge.id, effective_amount)
-    if amount != effective_amount:
-        charge_str = " ".join([charge_str, "(originally %s)" % amount])
-    if charge.comment:
-        charge_str = " ".join([charge_str, "(%s)" % charge.comment])
+    charge_str = "Charge %s -- %s" % (
+        charge, display_units(charge.effective_amount))
+    if charge.amount != charge.effective_amount:
+        addendum = "(originally %s)" % display_units(amount)
+        charge_str = " ".join([charge_str, addendum])
     print charge_str
-    print " * model.Allocation #%i -- %s (%s available)" % (
-        charge.allocation.id, charge.allocation.amount,
-        charge.allocation.amount_available)
+    print " * Datetime: %s" % charge.datetime
+    print " * Allocation: %s" % charge.allocation
+    print " * Project: %s" % charge.allocation.project
+    print " * Resource: %s" % charge.allocation.resource
+    print " * Comment: %s" % charge.comment
 
 def print_refund (refund):
-    amount = display_units(refund.amount)
-    refund_str = "Refund #%i -- %s" % (refund.id, amount)
-    if refund.comment:
-        refund_str = " ".join([refund_str, "(%s)" % refund.comment])
-    print refund_str
-    charge_effective_amount = display_units(refund.charge.effective_amount)
-    charge_amount = display_units(refund.charge.amount)
-    print " * model.Charge #%i -- %s (originally %s)" % (
-        refund.charge.id, charge_effective_amount,
-        charge_amount)
+    print "Refund %s -- %s" % (refund, display_units(refund.amount))
+    print " * Datetime: %s" % refund.datetime
+    print " * Charge: %s" % refund.charge
+    print " * Allocation: %s" % refund.charge.allocation
+    print " * Project: %s" % refund.charge.allocation.project
+    print " * Resource: %s" % refund.charge.allocation.resource
+    print " * Comment: %s" % refund.comment
 
 def unit_definition ():
     try:

@@ -72,39 +72,33 @@ def require_admin (func):
 @handle_exceptions
 def main ():
     try:
-        command = normalize(sys.argv[1], ["new", "report"])
+        command = normalize(sys.argv[1], ["new", "report", "detail"])
     except (IndexError, exceptions.UnknownCommand):
         command = "report"
     else:
-        arg0 = " ".join([sys.argv[0], sys.argv[1]])
-        sys.argv = [arg0] + sys.argv[2:]
+        replace_command()
     if command == "new":
         return new_main()
     elif command == "report":
         return report_main()
+    elif command == "detail":
+        return detail_main()
 
 @handle_exceptions
 @require_admin
 def new_main ():
+    commands = ["allocation", "charge", "refund"]
     try:
-        command = normalize(sys.argv[1], ["allocation", "charge", "refund"])
+        command = normalize(sys.argv[1], commands)
     except IndexError:
-        raise exceptions.MissingCommand("specify allocation, charge, or refund")
-    arg0 = " ".join([sys.argv[0], sys.argv[1]])
-    sys.argv = [arg0] + sys.argv[2:]
+        raise exceptions.MissingCommand(", ".join(commands))
+    replace_command()
     if command == "allocation":
         return new_allocation_main()
     elif command == "charge":
         return new_charge_main()
     elif command == "refund":
         return new_refund_main()
-
-def normalize (command, commands):
-    possible_commands = [cmd for cmd in commands if cmd.startswith(command)]
-    if not possible_commands or len(possible_commands) > 1:
-        raise exceptions.UnknownCommand(command)
-    else:
-        return possible_commands[0]
 
 @handle_exceptions
 @require_admin
@@ -194,8 +188,7 @@ def report_main ():
     except (IndexError, exceptions.UnknownCommand):
         command = "projects"
     else:
-        arg0 = " ".join([sys.argv[0], sys.argv[1]])
-        sys.argv = [arg0] + sys.argv[2:]
+        replace_command()
     if command == "users":
         return report_users_main()
     elif command == "projects":
@@ -332,6 +325,50 @@ def report_charges_main ():
     resources = check_resources(options.resources)
     views.print_charges_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before)
+
+@handle_exceptions
+def detail_main ():
+    commands = ["allocations", "holds", "charges", "refunds"]
+    try:
+        command = normalize(sys.argv[1], commands)
+    except IndexError:
+        raise exceptions.MissingCommand(", ".join(commands))
+    replace_command()
+    if command == "allocations":
+        return detail_allocations_main()
+    elif command == "holds":
+        return detail_holds_main()
+    elif command == "charges":
+        return detail_charges_main()
+    elif command == "refunds":
+        return detail_refunds_main()
+
+@handle_exceptions
+def detail_allocations_main ():
+    views.print_allocations_by_id(sys.argv[1:])
+
+@handle_exceptions
+def detail_holds_main ():
+    views.print_holds_by_id(sys.argv[1:])
+
+@handle_exceptions
+def detail_charges_main ():
+    views.print_charges_by_id(sys.argv[1:])
+
+@handle_exceptions
+def detail_refunds_main ():
+    views.print_refunds_by_id(sys.argv[1:])
+
+def replace_command ():
+    arg0 = " ".join([sys.argv[0], sys.argv[1]])
+    sys.argv = [arg0] + sys.argv[2:]
+
+def normalize (command, commands):
+    possible_commands = [cmd for cmd in commands if cmd.startswith(command)]
+    if not possible_commands or len(possible_commands) > 1:
+        raise exceptions.UnknownCommand(command)
+    else:
+        return possible_commands[0]
 
 def check_resources (resources):
     """If no resources are specified, check the config file."""
