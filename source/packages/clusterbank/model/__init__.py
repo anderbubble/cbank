@@ -34,9 +34,9 @@ from sqlalchemy.orm.session import SessionExtension
 from clusterbank import config
 from clusterbank.model.entities import upstream, User, Project, Resource, Request, Allocation, CreditLimit, Hold, Charge, Refund
 from clusterbank.model.database import metadata, \
-    users_table, projects_table, resources_table, requests_table, \
-    requests_allocations_table, allocations_table, credit_limits_table, \
-    holds_table, charges_table, refunds_table
+    users, projects, resources, requests, \
+    requests_allocations, allocations, credit_limits, \
+    holds, charges, refunds
 import clusterbank.exceptions as exceptions
 
 __all__ = [
@@ -115,75 +115,75 @@ class SessionConstraints (SessionExtension):
 Session = scoped_session(sessionmaker(transactional=True, autoflush=True,
     extension=SessionConstraints()))
 
-mapper(User, users_table, properties=dict(
-    id = users_table.c.id,
+mapper(User, users, properties=dict(
+    id = users.c.id,
 ))
 
-mapper(Project, projects_table, properties=dict(
-    id = projects_table.c.id,
+mapper(Project, projects, properties=dict(
+    id = projects.c.id,
 ))
 
-mapper(Resource, resources_table, properties=dict(
-    id = resources_table.c.id,
+mapper(Resource, resources, properties=dict(
+    id = resources.c.id,
 ))
 
-mapper(Request, requests_table, properties=dict(
-    id = requests_table.c.id,
+mapper(Request, requests, properties=dict(
+    id = requests.c.id,
     project = relation(Project, backref="requests"),
     resource = relation(Resource, backref="requests"),
-    datetime = requests_table.c.datetime,
-    amount = requests_table.c.amount,
-    comment = requests_table.c.comment,
-    start = requests_table.c.start,
+    datetime = requests.c.datetime,
+    amount = requests.c.amount,
+    comment = requests.c.comment,
+    start = requests.c.start,
 ))
 
-mapper(Allocation, allocations_table, properties=dict(
-    id = allocations_table.c.id,
+mapper(Allocation, allocations, properties=dict(
+    id = allocations.c.id,
     project = relation(Project, backref="allocations"),
     resource = relation(Resource, backref="allocations"),
-    datetime = allocations_table.c.datetime,
-    amount = allocations_table.c.amount,
-    start = allocations_table.c.start,
-    expiration = allocations_table.c.expiration,
-    comment = allocations_table.c.comment,
-    requests = relation(Request, secondary=requests_allocations_table, backref="allocations"),
+    datetime = allocations.c.datetime,
+    amount = allocations.c.amount,
+    start = allocations.c.start,
+    expiration = allocations.c.expiration,
+    comment = allocations.c.comment,
+    requests = relation(Request, secondary=requests_allocations, backref="allocations"),
 ))
 
-mapper(CreditLimit, credit_limits_table, properties=dict(
-    id = credit_limits_table.c.id,
+mapper(CreditLimit, credit_limits, properties=dict(
+    id = credit_limits.c.id,
     project = relation(Project, backref="credit_limits"),
     resource = relation(Resource, backref="credit_limits"),
-    start = credit_limits_table.c.start,
-    datetime = credit_limits_table.c.datetime,
-    amount = credit_limits_table.c.amount,
-    comment = credit_limits_table.c.comment,
+    start = credit_limits.c.start,
+    datetime = credit_limits.c.datetime,
+    amount = credit_limits.c.amount,
+    comment = credit_limits.c.comment,
 ))
 
-mapper(Hold, holds_table, properties=dict(
-    id = holds_table.c.id,
+mapper(Hold, holds, properties=dict(
+    id = holds.c.id,
     allocation = relation(Allocation, backref="holds"),
-    datetime = holds_table.c.datetime,
+    datetime = holds.c.datetime,
     user = relation(User, backref="holds"),
-    amount = holds_table.c.amount,
-    comment = holds_table.c.comment,
-    active = holds_table.c.active,
+    amount = holds.c.amount,
+    comment = holds.c.comment,
+    active = holds.c.active,
 ))
 
-mapper(Charge, charges_table, properties=dict(
-    id = charges_table.c.id,
+mapper(Charge, charges, properties=dict(
+    id = charges.c.id,
     allocation = relation(Allocation, backref="charges"),
-    datetime = charges_table.c.datetime,
+    datetime = charges.c.datetime,
     user = relation(User, backref="charges"),
-    amount = charges_table.c.amount,
-    comment = charges_table.c.comment,
+    amount = charges.c.amount,
+    comment = charges.c.comment,
 ))
 
-mapper(Refund, refunds_table, properties=dict(
-    id = refunds_table.c.id,
+mapper(Refund, refunds, properties=dict(
+    id = refunds.c.id,
     charge = relation(Charge, backref="refunds"),
-    datetime = refunds_table.c.datetime,
-    amount = refunds_table.c.amount,
-    comment = refunds_table.c.comment,
+    datetime = refunds.c.datetime,
+    amount = refunds.c.amount,
+    comment = refunds.c.comment,
 ))
 
 def _get_upstream_entity (cls, upstream_function, entity_name):

@@ -5,14 +5,14 @@ is layed out, so that it can map local classes to a relational database.
 
 Objects:
 metadata -- master metadata object
-projects_table -- projects
-resources_table -- resources
-requests_table -- requests
-allocations_table -- allocations
-credit_limits_table -- credit limits
-holds_table -- holds
-charges_table -- charges
-refunds_table -- refunds
+projects -- projects
+resources -- resources
+requests -- requests
+allocations -- allocations
+credit_limits -- credit limits
+holds -- holds
+charges -- charges
+refunds -- refunds
 """
 
 from datetime import datetime
@@ -21,29 +21,29 @@ from sqlalchemy import MetaData, Table, Column, ForeignKey, UniqueConstraint, ty
 
 __all__ = [
     "metadata",
-    "users_table", "projects_table", "resources_table",
-    "requests_table", "allocations_table", "credit_limits_table",
-    "holds_table", "charges_table", "refunds_table",
+    "users", "projects", "resources",
+    "requests", "allocations", "credit_limits",
+    "holds", "charges", "refunds",
 ]
 
 metadata = MetaData()
 
-users_table = Table("users", metadata,
+users = Table("users", metadata,
     Column("id", types.Integer, primary_key=True),
     mysql_engine="InnoDB",
 )
 
-projects_table = Table("projects", metadata,
+projects = Table("projects", metadata,
     Column("id", types.Integer, primary_key=True),
     mysql_engine="InnoDB",
 )
 
-resources_table = Table("resources", metadata,
+resources = Table("resources", metadata,
     Column("id", types.Integer, primary_key=True),
     mysql_engine="InnoDB",
 )
 
-requests_table = Table("requests", metadata,
+requests = Table("requests", metadata,
     Column("id", types.Integer, primary_key=True),
     Column("project_id", None, ForeignKey("projects.id"), nullable=False),
     Column("resource_id", None, ForeignKey("resources.id"), nullable=False),
@@ -54,7 +54,7 @@ requests_table = Table("requests", metadata,
     mysql_engine="InnoDB",
 )
 
-allocations_table = Table("allocations", metadata,
+allocations = Table("allocations", metadata,
     Column("id", types.Integer, primary_key=True),
     Column("project_id", None, ForeignKey("projects.id"), nullable=False),
     Column("resource_id", None, ForeignKey("resources.id"), nullable=False),
@@ -66,13 +66,13 @@ allocations_table = Table("allocations", metadata,
     mysql_engine="InnoDB",
 )
 
-requests_allocations_table = Table("requests_allocations", metadata,
+requests_allocations = Table("requests_allocations", metadata,
     Column("request_id", None, ForeignKey("requests.id"), primary_key=True),
     Column("allocation_id", None, ForeignKey("allocations.id"), primary_key=True),
     mysql_engine="InnoDB",
 )
 
-credit_limits_table = Table("credit_limits", metadata,
+credit_limits = Table("credit_limits", metadata,
     Column("id", types.Integer, primary_key=True),
     Column("project_id", None, ForeignKey("projects.id"), nullable=False),
     Column("resource_id", None, ForeignKey("resources.id"), nullable=False),
@@ -84,7 +84,7 @@ credit_limits_table = Table("credit_limits", metadata,
     mysql_engine="InnoDB",
 )
 
-holds_table = Table("holds", metadata,
+holds = Table("holds", metadata,
     Column("id", types.Integer, primary_key=True),
     Column("allocation_id", None, ForeignKey("allocations.id"), nullable=False),
     Column("datetime", types.DateTime, nullable=False, default=datetime.now),
@@ -95,7 +95,7 @@ holds_table = Table("holds", metadata,
     mysql_engine="InnoDB",
 )
 
-charges_table = Table("charges", metadata,
+charges = Table("charges", metadata,
     Column("id", types.Integer, primary_key=True),
     Column("allocation_id", None, ForeignKey("allocations.id"), nullable=False),
     Column("datetime", types.DateTime, nullable=False, default=datetime.now),
@@ -105,7 +105,7 @@ charges_table = Table("charges", metadata,
     mysql_engine="InnoDB",
 )
 
-refunds_table = Table("refunds", metadata,
+refunds = Table("refunds", metadata,
     Column("id", types.Integer, primary_key=True),
     Column("charge_id", None, ForeignKey("charges.id"), nullable=False),
     Column("datetime", types.DateTime, nullable=False, default=datetime.now),

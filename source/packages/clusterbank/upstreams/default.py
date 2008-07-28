@@ -149,48 +149,48 @@ class Resource (UpstreamEntity):
 
 metadata = MetaData()
 
-users_table = Table("users", metadata,
+users = Table("users", metadata,
     Column("id", types.Integer, primary_key=True),
     Column("name", types.Text, nullable=False, unique=True),
 )
 
-projects_table = Table("projects", metadata,
+projects = Table("projects", metadata,
     Column("id", types.Integer, primary_key=True),
     Column("name", types.Text, nullable=False, unique=True),
 )
 
-projects_members_table = Table("projects_members", metadata,
+projects_members = Table("projects_members", metadata,
     Column("project_id", None, ForeignKey("projects.id"), primary_key=True),
     Column("user_id", None, ForeignKey("users.id"), primary_key=True),
 )
 
-projects_owners_table = Table("projects_owners", metadata,
+projects_owners = Table("projects_owners", metadata,
     Column("project_id", None, ForeignKey("projects.id"), primary_key=True),
     Column("user_id", None, ForeignKey("users.id"), primary_key=True),
 )
 
-resources_table = Table("resources", metadata,
+resources = Table("resources", metadata,
     Column("id", types.Integer, nullable=False, primary_key=True),
     Column("name", types.Text, nullable=False, unique=True),
 )
 
 Session = scoped_session(sessionmaker(autoflush=True, transactional=True))
 
-mapper(User, users_table, properties=dict(
-    id = users_table.c.id,
-    name = users_table.c.name,
+mapper(User, users, properties=dict(
+    id = users.c.id,
+    name = users.c.name,
 ))
 
-mapper(Project, projects_table, properties=dict(
-    id = projects_table.c.id,
-    name = projects_table.c.name,
-    members = relation(User, secondary=projects_members_table, backref="projects"),
-    owners = relation(User, secondary=projects_owners_table, backref="projects_owned"),
+mapper(Project, projects, properties=dict(
+    id = projects.c.id,
+    name = projects.c.name,
+    members = relation(User, secondary=projects_members, backref="projects"),
+    owners = relation(User, secondary=projects_owners, backref="projects_owned"),
 ))
 
-mapper(Resource, resources_table, properties=dict(
-    id = resources_table.c.id,
-    name = resources_table.c.name,
+mapper(Resource, resources, properties=dict(
+    id = resources.c.id,
+    name = resources.c.name,
 ))
 
 def configure ():
