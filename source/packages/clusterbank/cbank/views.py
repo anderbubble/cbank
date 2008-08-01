@@ -472,32 +472,9 @@ def print_charges_report (**kwargs):
     print format({'Charged':display_units(total_charged)})
     print unit_definition()
 
-def print_allocations_by_id (allocation_ids):
-    s = model.Session()
-    allocations = s.query(model.Allocation).filter(
-        model.Allocation.id.in_(allocation_ids))
+def print_allocations (allocations):
     for allocation in allocations:
         print_allocation(allocation)
-
-def print_holds_by_id (hold_ids):
-    s = model.Session()
-    holds = s.query(model.Hold).filter(
-        model.Hold.id.in_(hold_ids))
-    for hold in holds:
-        print_hold(hold)
-
-def print_charges_by_id (charge_ids):
-    s = model.Session()
-    charges = s.query(model.Charge).filter(
-        model.Charge.id.in_(charge_ids))
-    print_charges(charges)
-
-def print_refunds_by_id (refund_ids):
-    s = model.Session()
-    refunds = s.query(model.Refund).filter(
-        model.Refund.id.in_(refund_ids))
-    for refund in refunds:
-        print_refund(refund)
 
 def print_allocation (allocation):
     amount = display_units(allocation.amount)
@@ -509,6 +486,10 @@ def print_allocation (allocation):
     print " * Start: %s" % allocation.start
     print " * Expiration: %s" % allocation.expiration
     print " * Comment: %s" % allocation.comment
+
+def print_holds (holds):
+    for hold in holds:
+        print_hold(hold)
 
 def print_hold (hold):
     print "Hold %s -- %s" % (hold, display_units(hold.amount))
@@ -535,6 +516,10 @@ def print_charge (charge):
     print " * Project: %s" % charge.allocation.project
     print " * Resource: %s" % charge.allocation.resource
     print " * Comment: %s" % charge.comment
+
+def print_refunds (refunds):
+    for refund in refunds:
+        print_refund(refund)
 
 def print_refund (refund):
     print "Refund %s -- %s" % (refund, display_units(refund.amount))

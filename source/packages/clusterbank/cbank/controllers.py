@@ -345,19 +345,66 @@ def detail_main ():
 
 @handle_exceptions
 def detail_allocations_main ():
-    views.print_allocations_by_id(sys.argv[1:])
+    user = get_current_user()
+    s = model.Session()
+    allocations = \
+        s.query(model.Allocation).filter(model.Allocation.id.in_(sys.argv[1:]))
+    if not user.is_admin:
+        projects = model.user_projects(user)
+        permitted_allocations = []
+        for allocation in allocations:
+            if not allocation.project in projects:
+                print >> sys.stderr, "%s: not permitted: %s" % (
+                    allocation.id, user)
+            else:
+                permitted_allocations.append(allocation)
+        allocations = permitted_allocations
+    views.print_allocations(allocations)
 
 @handle_exceptions
 def detail_holds_main ():
-    views.print_holds_by_id(sys.argv[1:])
+    user = get_current_user()
+    s = model.Session()
+    holds = s.query(model.Hold).filter(model.Hold.id.in_(sys.argv[1:]))
+    if not user.is_admin:
+        permitted_holds = []
+        for hold in holds:
+            if not hold.user is user:
+                print >> sys.stderr, "%s: not permitted: %s" % (hold.id, user)
+            else:
+                permitted_holds.append(hold)
+        holds = permitted_holds
+    views.print_holds(holds)
 
 @handle_exceptions
 def detail_charges_main ():
-    views.print_charges_by_id(sys.argv[1:])
+    user = get_current_user()
+    s = model.Session()
+    charges = s.query(model.Charge).filter(model.Charge.id.in_(sys.argv[1:]))
+    if not user.is_admin:
+        permitted_charges = []
+        for charge in charges:
+            if not charge.user is user:
+                print >> sys.stderr, "%s: not permitted: %s" % (charge.id, user)
+            else:
+                permitted_charges.append(charge)
+        charges = permitted_charges
+    views.print_charges(charges)
 
 @handle_exceptions
 def detail_refunds_main ():
-    views.print_refunds_by_id(sys.argv[1:])
+    user = get_current_user()
+    s = model.Session()
+    refunds = s.query(model.Refund).filter(model.Refund.id.in_(sys.argv[1:]))
+    if not user.is_admin:
+        permitted_refunds = []
+        for refund in refunds:
+            if not refund.user is user:
+                print >> sys.stderr, "%s: not permitted: %s" % (refund.id, user)
+            else:
+                permitted_refunds.append(refund)
+        refunds = permitted_refunds
+    views.print_refunds(refunds)
 
 def replace_command ():
     arg0 = " ".join([sys.argv[0], sys.argv[1]])
