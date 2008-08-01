@@ -336,7 +336,7 @@ def detail_allocations_main ():
     allocations = \
         s.query(model.Allocation).filter(model.Allocation.id.in_(sys.argv[1:]))
     if not user.is_admin:
-        projects = model.user_projects(user)
+        projects = model.user_projects(user) + model.user_projects_owned(user)
         permitted_allocations = []
         for allocation in allocations:
             if not allocation.project in projects:
@@ -353,9 +353,10 @@ def detail_holds_main ():
     s = model.Session()
     holds = s.query(model.Hold).filter(model.Hold.id.in_(sys.argv[1:]))
     if not user.is_admin:
+        owned_projects = model.user_projects_owned(user)
         permitted_holds = []
         for hold in holds:
-            if not hold.user is user:
+            if not (hold.user is user or hold.allocation.project in owned_projects):
                 print >> sys.stderr, "%s: not permitted: %s" % (hold.id, user)
             else:
                 permitted_holds.append(hold)
@@ -368,9 +369,10 @@ def detail_charges_main ():
     s = model.Session()
     charges = s.query(model.Charge).filter(model.Charge.id.in_(sys.argv[1:]))
     if not user.is_admin:
+        owned_projects = model.user_projects_owned(user)
         permitted_charges = []
         for charge in charges:
-            if not charge.user is user:
+            if not (charge.user is user or charge.allocation.project in owned_projects):
                 print >> sys.stderr, "%s: not permitted: %s" % (charge.id, user)
             else:
                 permitted_charges.append(charge)
@@ -383,9 +385,10 @@ def detail_refunds_main ():
     s = model.Session()
     refunds = s.query(model.Refund).filter(model.Refund.id.in_(sys.argv[1:]))
     if not user.is_admin:
+        owned_projects = model.user_projects_owned(user)
         permitted_refunds = []
         for refund in refunds:
-            if not refund.user is user:
+            if not (refund.charge.user is user or refund.charge.allocation.project in owned_projects):
                 print >> sys.stderr, "%s: not permitted: %s" % (refund.id, user)
             else:
                 permitted_refunds.append(refund)
