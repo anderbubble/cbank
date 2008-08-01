@@ -202,127 +202,113 @@ def report_main ():
 
 @handle_exceptions
 def report_users_main ():
-    user = get_current_user()
     parser = build_report_users_parser()
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnexpectedArguments(args)
-    if options.users:
-        users = options.users
-    elif options.projects:
-        users = set(sum([model.project_members(project)
-            for project in options.projects], []))
-    else:
-        users = [user]
-    if not user.is_admin:
-        if not set(users).issubset(set([user])):
-            raise exceptions.NotPermitted(user)
-        if not set(options.projects).issubset(set(model.user_projects(user))):
-            raise exceptions.NotPermitted(user)
+    users = check_users(options.users, options.projects)
+    projects = check_projects(options.projects, users)
     resources = check_resources(options.resources)
-    views.print_users_report(projects=options.projects, users=users,
+    user = get_current_user()
+    if not user.is_admin:
+        member_projects = set(model.user_projects(user))
+        owned_projects = set(model.user_projects_owned(user))
+        if not set(users).issubset(set([user])):
+            if not set(projects).issubset(owned_projects):
+                raise exceptions.NotPermitted(user)
+        if not set(projects).issubset(member_projects | owned_projects):
+            raise exceptions.NotPermitted(user)
+    views.print_users_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before)
 
 @handle_exceptions
 def report_projects_main ():
-    user = get_current_user()
     parser = build_report_projects_parser()
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnexpectedArguments(args)
-    if options.projects:
-        projects = options.projects
-    elif options.users:
-        projects = set(sum([model.user_projects(u)
-            for u in options.users], []))
-    else:
-        projects = model.user_projects(user)
-    if not user.is_admin:
-        if not set(projects).issubset(set(model.user_projects(user))):
-            raise exceptions.NotPermitted(user)
-        if not set(options.users).issubset(set([user])):
-            raise exceptions.NotPermitted(user)
+    users = options.users
+    projects = check_projects(options.projects, options.users)
     resources = check_resources(options.resources)
-    views.print_projects_report(projects=projects, resources=resources,
-        users=options.users, after=options.after, before=options.before)
+    user = get_current_user()
+    if not user.is_admin:
+        member_projects = set(model.user_projects(user))
+        owned_projects = set(model.user_projects_owned(user))
+        if not set(users).issubset(set([user])):
+            if not set(projects).issubset(owned_projects):
+                raise exceptions.NotPermitted(user)
+        if not set(projects).issubset(member_projects | owned_projects):
+            raise exceptions.NotPermitted(user)
+    views.print_projects_report(users=users, projects=projects,
+        resources=resources, after=options.after, before=options.before)
 
 @handle_exceptions
 def report_allocations_main ():
-    user = get_current_user()
     parser = build_report_allocations_parser()
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnexpectedArguments(args)
-    if options.projects:
-        projects = options.projects
-    elif options.users:
-        projects = set(sum([model.user_projects(u)
-            for u in options.users], []))
-    else:
-        projects = model.user_projects(user)
-    if not user.is_admin:
-        if not set(projects).issubset(set(model.user_projects(user))):
-            raise exceptions.NotPermitted(user)
-        if not set(options.users).issubset(set([user])):
-            raise exceptions.NotPermitted(user)
+    users = options.users
+    projects = check_projects(options.projects, options.users)
     resources = check_resources(options.resources)
-    views.print_allocations_report(users=options.users, projects=projects,
+    user = get_current_user()
+    if not user.is_admin:
+        member_projects = set(model.user_projects(user))
+        owned_projects = set(model.user_projects_owned(user))
+        if not set(users).issubset(set([user])):
+            if not set(projects).issubset(owned_projects):
+                raise exceptions.NotPermitted(user)
+        if not set(projects).issubset(member_projects | owned_projects):
+            raise exceptions.NotPermitted(user)
+    views.print_allocations_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before)
 
 @handle_exceptions
 def report_holds_main ():
-    user = get_current_user()
     parser = build_report_charges_parser()
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnexpectedArguments(args)
-    if options.users:
-        users = options.users
-        projects = options.projects or \
-            set(sum([model.user_projects(u) for u in users], []))
-    elif options.projects:
-        projects = options.projects
-        users = options.users or \
-            set(sum([model.project_members(project)
-                for project in projects], []))
-    else:
-        users = [user]
-        projects = set(sum([model.user_projects(u) for u in users], []))
-    if not user.is_admin:
-        if not set(options.users).issubset(set([user])):
-            raise exceptions.NotPermitted(user)
-        if not set(options.projects).issubset(model.user_projects(user)):
-            raise exceptions.NotPermitted(user)
+    users = options.users
+    projects = check_projects(options.projects, options.users)
     resources = check_resources(options.resources)
-    views.print_holds_report(users=users, projects=projects,
+    user = get_current_user()
+    if not user.is_admin:
+        member_projects = set(model.user_projects(user))
+        owned_projects = set(model.user_projects_owned(user))
+        if not users:
+            if not set(projects).issubset(owned_projects):
+                users = [user]
+        if not set(users).issubset(set([user])):
+            if not set(projects).issubset(owned_projects):
+                raise exceptions.NotPermitted(user)
+        if not set(projects).issubset(member_projects | owned_projects):
+            raise exceptions.NotPermitted(user)
+    views.print_charges_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before)
 
 @handle_exceptions
 def report_charges_main ():
-    user = get_current_user()
     parser = build_report_charges_parser()
     parser.set_defaults(after=datetime.now()-timedelta(days=7))
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnexpectedArguments(args)
-    if options.users:
-        users = options.users
-        projects = options.projects or \
-            set(sum([model.user_projects(u) for u in users], []))
-    elif options.projects:
-        projects = options.projects
-        users = options.users or \
-            set(sum([model.project_members(project)
-                for project in projects], []))
-    else:
-        users = [user]
-        projects = set(sum([model.user_projects(u) for u in users], []))
-    if not user.is_admin:
-        if not set(options.users).issubset(set([user])):
-            raise exceptions.NotPermitted(user)
-        if not set(options.projects).issubset(model.user_projects(user)):
-            raise exceptions.NotPermitted(user)
+    users = options.users
+    projects = check_projects(options.projects, options.users)
     resources = check_resources(options.resources)
+    user = get_current_user()
+    if not user.is_admin:
+        member_projects = set(model.user_projects(user))
+        owned_projects = set(model.user_projects_owned(user))
+        if not users:
+            if not set(projects).issubset(owned_projects):
+                users = [user]
+        if not set(users).issubset(set([user])):
+            if not set(projects).issubset(owned_projects):
+                raise exceptions.NotPermitted(user)
+        if not set(projects).issubset(member_projects | owned_projects):
+            raise exceptions.NotPermitted(user)
     views.print_charges_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before)
 
@@ -416,6 +402,29 @@ def normalize (command, commands):
         raise exceptions.UnknownCommand(command)
     else:
         return possible_commands[0]
+
+def check_users (users, projects=None):
+    if users:
+        users = users
+    elif projects:
+        users = set(sum([model.project_members(project)
+            for project in projects], []))
+    else:
+        current_user = get_current_user()
+        users = [current_user]
+    return users
+
+def check_projects (projects, users=None):
+    if projects:
+        projects = projects
+    elif users:
+        projects = set(sum([model.user_projects(user) for user in users], []))
+    else:
+        user = get_current_user()
+        member_projects = set(model.user_projects(user))
+        managed_projects = set(model.user_projects_owned(user))
+        projects = member_projects | managed_projects
+    return projects
 
 def check_resources (resources):
     """If no resources are specified, check the config file."""
