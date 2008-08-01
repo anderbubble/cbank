@@ -259,7 +259,7 @@ def print_allocations_report (**kwargs):
     
     m_conditions = []
     if kwargs.get("users"):
-        m_conditions.append(m_condition, model.charges.c.user_id.in_(
+        m_conditions.append(model.charges.c.user_id.in_(
             user.id for user in kwargs.get("users")))
     if kwargs.get("after"):
         m_conditions.append(model.charges.c.datetime>=kwargs.get("after"))
