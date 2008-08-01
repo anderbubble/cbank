@@ -1,0 +1,57 @@
+.Dd 1 August 2008
+.Os Python 2.x
+.Dt CBANK 7 USD
+.Sh NAME
+.Nm cbank-new-allocation
+.Nd clusterbank command-line interface
+.Sh SYNOPSIS
+.Nm
+.Op Fl r, -resource Ar resource
+.Op Fl s, -start Ar date
+.Op Fl e, -expiration Ar date
+.Op Fl m, -comment Ar message
+.Ar project
+.Ar amount
+.Sh DESCRIPTION
+.Nm
+allocates a specified
+.Ar amount
+of a resource to a
+.Ar project .
+.Pp
+Available options:
+.Bl -tag
+.It Fl r, -resource
+Specify which resource to allocate. (default specified in
+.Pa /etc/clusterbank.conf )
+.It Fl s, -start
+Specify when the allocation becomes usable. (default now)
+.It Fl e, -expiration
+Specify when the allocation expires. (default next year)
+.It Fl m, -comment
+Supply an informative message.
+.El
+.Sh FILES
+.Pa /etc/clusterbank.conf
+.Nm
+uses the following directives in the [cbank] section:
+.Bl -tag
+.It admins
+usernames of clusterbank administrators.
+(Only administrators can create allocations.)
+.It unit_factor
+The conversion factor between internal units and external units.
+.Ar amount .
+.It unit_label
+A description of external units.
+.It resource
+The default
+.Ar resource
+to allocate time for.
+.El
+.Sh AUTHORS
+.An Jonathon Anderson
+.Ad janderso@alcf.anl.gov
+.Sh BUGS
+Submit bug reports to the clusterbank trac at
+.Ad http://trac.mcs.anl.gov/projects/clusterbank
