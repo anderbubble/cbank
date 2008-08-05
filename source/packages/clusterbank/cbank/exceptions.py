@@ -55,6 +55,19 @@ class UnknownProject (CbankError):
             return "cbank: unknown project: %s" % self.args[0]
 
 
+class UnknownCharge (CbankError):
+    
+    """The specified charge is not present in the system."""
+    
+    exit_code = -2
+    
+    def __str__ (self):
+        if not self.args:
+            return "cbank: unknown charge"
+        else:
+            return "cbank: unknown charge: %s" % self.args[0]
+
+
 class MissingArgument (CbankError):
     
     """An expected argument was not passed to the script."""

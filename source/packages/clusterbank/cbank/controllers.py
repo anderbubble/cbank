@@ -149,14 +149,25 @@ def new_charge_main ():
 
 def pop_project (args, index):
     try:
-        project = args.pop(index)
+        project_name = args.pop(index)
     except IndexError:
         raise exceptions.MissingArgument("project")
     try:
-        project = project_by_name(project)
+        project = project_by_name(project_name)
     except clusterbank.exceptions.NotFound:
-        raise exceptions.UnknownProject(project)
+        raise exceptions.UnknownProject(project_name)
     return project
+
+def pop_charge (args, index):
+    try:
+        charge_id = args.pop(index)
+    except IndexError:
+        raise exceptions.MissingArgument("charge")
+    try:
+        charge = Session.query(Charge).filter_by(id=charge_id).one()
+    except sqlalchemy.exceptions.InvalidRequestError:
+        raise exceptions.UnknownCharge(charge_id)
+    return charge
 
 def pop_amount (args, index):
     try:
@@ -171,16 +182,15 @@ def pop_amount (args, index):
 def new_refund_main ():
     parser = build_new_refund_parser()
     options, args = parser.parse_args()
+    charge = pop_charge(args, 0)
+    try:
+        amount = pop_amount(args, 0)
+    except exceptions.MissingArgument:
+        amount = charge.effective_amount
     if args:
         raise exceptions.UnexpectedArguments(args)
-    if not options.charge:
-        raise exceptions.MissingOption("charge")
-    try:
-        amount = parse_units(options.amount)
-    except TypeError:
-        amount = options.amount
     refund = Refund(
-        charge=options.charge, amount=amount, comment=options.comment)
+        charge=charge, amount=amount, comment=options.comment)
     Session.save(refund)
     try:
         Session.commit()

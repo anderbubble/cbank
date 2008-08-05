@@ -617,7 +617,7 @@ class TestNewRefundMain (CbankTester):
         model.Session.save(allocation)
         model.Session.save(charge)
         model.Session.commit()
-        args = "-c %s -a 50 -m test" % charge.id
+        args = "%s 50 -m test" % charge.id
         code, stdout, stderr = run(controllers.new_refund_main, args.split())
         assert code == 0, code
         assert refunds.count() == 1, "didn't create a refund"
@@ -637,7 +637,7 @@ class TestNewRefundMain (CbankTester):
         model.Session.save(allocation)
         model.Session.save(charge)
         model.Session.commit()
-        args = "-c %s -a 50 -m test asdf" % charge.id
+        args = "%s 50 -m test asdf" % charge.id
         code, stdout, stderr = run(controllers.new_refund_main, args.split())
         assert not refunds.count()
         assert code == exceptions.UnexpectedArguments.exit_code, code
@@ -654,7 +654,7 @@ class TestNewRefundMain (CbankTester):
         model.Session.save(allocation)
         model.Session.save(charge)
         model.Session.commit()
-        args = "-c %s -a 50 -m test" % charge.id
+        args = "%s 50 -m test" % charge.id
         code, stdout, stderr = run(controllers.new_refund_main, args.split())
         assert code == 0, code
         assert refunds.count() == 1, "didn't create a refund"
@@ -674,7 +674,7 @@ class TestNewRefundMain (CbankTester):
         model.Session.save(allocation)
         model.Session.save(charge)
         model.Session.commit()
-        args = "-c %s -a 50" % charge.id
+        args = "%s 50" % charge.id
         code, stdout, stderr = run(controllers.new_refund_main, args.split())
         assert code == 0, code
         assert refunds.count() == 1, "didn't create a refund"
@@ -694,11 +694,11 @@ class TestNewRefundMain (CbankTester):
         model.Session.save(allocation)
         model.Session.save(charge)
         model.Session.commit()
-        args = "-a 50 -m test"
+        args = "50 -m test"
         code, stdout, stderr = run(controllers.new_refund_main, args.split())
         model.Session.remove()
         assert not refunds.count(), "created refund without charge"
-        assert code == exceptions.MissingOption.exit_code, code
+        assert code in (exceptions.MissingArgument.exit_code, exceptions.UnknownCharge.exit_code), code
     
     def test_without_amount (self):
         now = datetime.now()
@@ -711,7 +711,7 @@ class TestNewRefundMain (CbankTester):
         model.Session.save(allocation)
         model.Session.save(charge)
         model.Session.commit()
-        args = "-c %s -m test" % charge.id
+        args = "%s -m test" % charge.id
         code, stdout, stderr = run(controllers.new_refund_main, args.split())
         model.Session.remove()
         assert refunds.count() == 1, "incorrect refund count: %r" % [(refund, refund.amount) for refund in refunds]
@@ -732,12 +732,12 @@ class TestNewRefundMain (CbankTester):
         model.Session.save(charge)
         model.Session.save(refund)
         model.Session.commit()
-        args = "-c %s -m test" % charge.id
+        args = "%s -m test" % charge.id
         code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        assert code == 0, code
         model.Session.remove()
         assert refunds.count() == 2, "incorrect refund count: %r" % [(refund, refund.amount) for refund in refunds]
         assert sum(refund.amount for refund in refunds) == 100
-        assert code == 0, code
     
     def test_non_admin (self):
         clusterbank.config.set("cbank", "admins", "")
@@ -751,7 +751,7 @@ class TestNewRefundMain (CbankTester):
         model.Session.save(allocation)
         model.Session.save(charge)
         model.Session.commit()
-        args = "-c %s -a 50 -m test" % charge.id
+        args = "%s 50 -m test" % charge.id
         code, stdout, stderr = run(controllers.new_refund_main, args.split())
         model.Session.remove()
         assert not refunds.count(), "created a refund when not an admin"
