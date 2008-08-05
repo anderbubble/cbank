@@ -208,8 +208,11 @@ class TestNewAllocationMain (CbankTester):
         resource = model.resource_by_name("resource1")
         query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
+        args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
         code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        print code
+        print stdout.read()
+        print stderr.read()
         model.Session.remove()
         assert query.count() == 1, "didn't create an allocation"
         allocation = query.one()
@@ -224,7 +227,7 @@ class TestNewAllocationMain (CbankTester):
         resource = model.resource_by_name("resource1")
         query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test asdf"
+        args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test asdf"
         code, stdout, stderr = run(controllers.new_allocation_main, args.split())
         model.Session.remove()
         assert not query.count()
@@ -236,7 +239,7 @@ class TestNewAllocationMain (CbankTester):
         resource = model.resource_by_name("resource1")
         query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
+        args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
         code, stdout, stderr = run(controllers.new_allocation_main, args.split())
         model.Session.remove()
         assert query.count() == 1, "didn't create an allocation"
@@ -252,7 +255,7 @@ class TestNewAllocationMain (CbankTester):
         resource = model.resource_by_name("resource1")
         query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s bad_start -e 2009-01-01 -a 1000 -m test"
+        args = "project1 1000 -r resource1 -s bad_start -e 2009-01-01 -m test"
         code, stdout, stderr = run(controllers.new_allocation_main, args.split())
         model.Session.remove()
         assert not query.count(), "created an allocation with bad start"
@@ -263,7 +266,7 @@ class TestNewAllocationMain (CbankTester):
         resource = model.resource_by_name("resource1")
         query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -e bad_end -a 1000 -m test"
+        args = "project1 1000 -r resource1 -s 2008-01-01 -e bad_end -m test"
         code, stdout, stderr = run(controllers.new_allocation_main, args.split())
         model.Session.remove()
         assert not query.count(), "created an allocation with bad end"
@@ -274,36 +277,22 @@ class TestNewAllocationMain (CbankTester):
         resource = model.resource_by_name("resource1")
         query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a bad_amount -m test"
+        args = "project1 bad_amount -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
         code, stdout, stderr = run(controllers.new_allocation_main, args.split())
         model.Session.remove()
         assert not query.count(), "created an allocation with bad amount"
         assert code != 0, code
 
-    def test_with_negative_amount (self):
-        project = model.project_by_name("project1")
-        resource = model.resource_by_name("resource1")
-        allocations = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
-        assert not allocations.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a -1000 -m test"
-        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
-        model.Session.remove()
-        assert not allocations.count(), "created an allocation with negative amount"
-        assert code == exceptions.ValueError.exit_code, code
-    
     def test_without_comment (self):
         project = model.project_by_name("project1")
         resource = model.resource_by_name("resource1")
         query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000"
+        args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01"
         code, stdout, stderr = run(controllers.new_allocation_main, args.split())
         model.Session.remove()
         assert query.count() == 1, "didn't create an allocation"
         allocation = query.one()
-        assert allocation.start == datetime(2008, 1, 1), allocation.start
-        assert allocation.expiration == datetime(2009, 1, 1), allocation.expiration
-        assert allocation.amount == 1000, allocation.amount
         assert allocation.comment is None, allocation.comment
         assert code == 0, code
     
@@ -312,68 +301,74 @@ class TestNewAllocationMain (CbankTester):
         resource = model.resource_by_name("resource1")
         query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
+        args = "1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
         code, stdout, stderr = run(controllers.new_allocation_main, args.split())
         model.Session.remove()
         assert not query.count(), "created allocation without project: %s" % new_allocations
-        assert code == exceptions.MissingOption.exit_code, code
+        assert code == exceptions.UnknownProject.exit_code, code
     
     def test_without_amount (self):
         project = model.project_by_name("project1")
         resource = model.resource_by_name("resource1")
         query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
+        args = "project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
         code, stdout, stderr = run(controllers.new_allocation_main, args.split())
         model.Session.remove()
         assert not query.count(), "created allocation without amount"
-        assert code == exceptions.MissingOption.exit_code, code
+        assert code == exceptions.MissingArgument.exit_code, code
     
     def test_without_start (self):
         project = model.project_by_name("project1")
         resource = model.resource_by_name("resource1")
         query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -e 2009-01-01 -a 1000 -m test"
+        args = "project1 1000 -r resource1 -e 2009-01-01 -m test"
         code, stdout, stderr = run(controllers.new_allocation_main, args.split())
         model.Session.remove()
-        assert not query.count(), "created allocation without start"
-        sys.stdout.write(stderr.read())
-        assert code == exceptions.MissingOption.exit_code, code
+        assert query.count() == 1, "didn't create an allocation"
+        allocation = query.one()
+        assert datetime.now() - allocation.start < timedelta(minutes=1), allocation.start
+        assert code == 0, code
     
     def test_without_expiration (self):
         project = model.project_by_name("project1")
         resource = model.resource_by_name("resource1")
         query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -a 1000 -m test"
+        args = "project1 1000 -r resource1 -s 2008-01-01 -m test"
         code, stdout, stderr = run(controllers.new_allocation_main, args.split())
         model.Session.remove()
-        assert not query.count(), "created allocation without expiration"
-        sys.stdout.write(stderr.read())
-        assert code == exceptions.MissingOption.exit_code, code
+        assert query.count() == 1, "didn't create an allocation"
+        allocation = query.one()
+        assert allocation.start == datetime(2008, 1, 1), allocation.start
+        now = datetime.now()
+        assert allocation.expiration == datetime(now.year+1, 1, 1), allocation.expiration
+        assert code == 0, code
 
-    def test_without_project_or_resource (self):
-        project = model.project_by_name("project1")
-        resource = model.resource_by_name("resource1")
-        query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
-        assert not query.count(), "started with existing allocations"
-        args = "-s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
-        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
-        model.Session.remove()
-        assert not query.count(), "created allocation without project or resource: %s" % new_allocations
-        assert code == exceptions.MissingOption.exit_code, code
-    
     def test_without_resource (self):
         project = model.project_by_name("project1")
         resource = model.resource_by_name("resource1")
         query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
+        args = "project1 1000 -s 2008-01-01 -e 2009-01-01 -m test"
         code, stdout, stderr = run(controllers.new_allocation_main, args.split())
         model.Session.remove()
         assert not query.count(), "created allocation without resource: %s" % new_allocations
-        assert code == exceptions.MissingOption.exit_code, code
+        assert code == exceptions.MissingResource.exit_code, code
+    
+    def test_with_configured_resource (self):
+        clusterbank.config.set("cbank", "resource", "resource1")
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = "project1 1000 -s 2008-01-01 -e 2009-01-01 -m test"
+        code, stdout, stderr = run(controllers.new_allocation_main, args.split())
+        assert query.count() == 1, "didn't create an allocation"
+        allocation = query.one()
+        assert allocation.resource is resource
+        assert code == 0, code
 
     def test_non_admin (self):
         clusterbank.config.set("cbank", "admins", "")
@@ -381,7 +376,7 @@ class TestNewAllocationMain (CbankTester):
         resource = model.resource_by_name("resource1")
         query = model.Session.query(model.Allocation).filter_by(project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "-p project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -a 1000 -m test"
+        args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
         code, stdout, stderr = run(controllers.new_allocation_main, args.split())
         model.Session.remove()
         assert not query.count(), "created allocation when not admin: %s" % new_allocations

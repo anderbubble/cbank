@@ -42,11 +42,37 @@ class UnknownUser (CbankError):
             return "cbank: unknown user: %s" % self.args[0]
 
 
+class UnknownProject (CbankError):
+    
+    """The specified project is not present in the system."""
+    
+    exit_code = -2
+    
+    def __str__ (self):
+        if not self.args:
+            return "cbank: unknown project"
+        else:
+            return "cbank: unknown project: %s" % self.args[0]
+
+
+class MissingArgument (CbankError):
+    
+    """An expected argument was not passed to the script."""
+    
+    exit_code = -3
+    
+    def __str__ (self):
+        if not self.args:
+            return "cbank: missing argument"
+        else:
+            return "cbank: missing argument: %s" % self.args[0]
+
+
 class UnexpectedArguments (CbankError):
     
     """Unexpected arguments were passed to the script."""
     
-    exit_code = -3
+    exit_code = -4
     
     def __str__ (self):
         if not self.args:
@@ -63,7 +89,7 @@ class UnknownCommand (CbankError):
     
     """A metacommand received an invalid command string."""
     
-    exit_code = -4
+    exit_code = -5
     
     def __str__ (self):
         if not self.args:
@@ -76,7 +102,7 @@ class NotPermitted (CbankError):
     
     """The requested action is not permitted by the specified user."""
     
-    exit_code = -5
+    exit_code = -6
     
     def __str__ (self):
         if not self.args:
@@ -87,7 +113,7 @@ class NotPermitted (CbankError):
 
 class MissingOption (CbankError):
     
-    exit_code = -6
+    exit_code = -7
     
     def __str__ (self):
         if not self.args:
@@ -96,9 +122,17 @@ class MissingOption (CbankError):
             return "cbank: missing option: %s" % self.args[0]
 
 
-class ValueError (CbankError):
+class MissingResource (CbankError):
     
     exit_code = -7
+    
+    def __str__ (self):
+        return "cbank: missing resource"
+
+
+class ValueError (CbankError):
+    
+    exit_code = -8
     
     def __str__ (self):
         if not self.args:
@@ -109,7 +143,7 @@ class ValueError (CbankError):
 
 class MissingCommand (CbankError):
     
-    exit_code = -8
+    exit_code = -9
     
     def __str__ (self):
         if not self.args:

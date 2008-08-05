@@ -105,21 +105,13 @@ def new_main ():
 def new_allocation_main ():
     parser = build_new_allocation_parser()
     options, args = parser.parse_args()
-    if args:
-        raise exceptions.UnexpectedArguments(args)
-    if not options.project:
-        raise exceptions.MissingOption("project")
+    project = pop_project(args, 0)
+    amount = pop_amount(args, 0)
     if not options.resource:
-        raise exceptions.MissingOption("resource")
-    if not options.amount:
-        raise exceptions.MissingOption("amount")
-    if not options.start:
-        raise exceptions.MissingOption("start")
-    if not options.expiration:
-        raise exceptions.MissingOption("expiration")
-    amount = parse_units(options.amount)
+        raise exceptions.MissingResource()
+    check_empty(args)
     allocation = Allocation(
-        project=options.project, resource=options.resource,
+        project=project, resource=options.resource,
         start=options.start, expiration=options.expiration,
         amount=amount, comment=options.comment)
     Session.save(allocation)
@@ -129,6 +121,29 @@ def new_allocation_main ():
         raise exceptions.ValueError(e)
     else:
         views.print_allocation(allocation)
+
+def pop_project (args, index):
+    try:
+        project = args.pop(index)
+    except IndexError:
+        raise exceptions.MissingArgument("project")
+    try:
+        project = project_by_name(project)
+    except clusterbank.exceptions.NotFound:
+        raise exceptions.UnknownProject(project)
+    return project
+
+def pop_amount (args, index):
+    try:
+        amount = args.pop(index)
+    except IndexError:
+        raise exceptions.MissingArgument("amount")
+    amount = parse_units(amount)
+    return amount
+
+def check_empty (args):
+    if args:
+        raise exceptions.UnexpectedArguments(args)
 
 @handle_exceptions
 @require_admin
@@ -433,14 +448,20 @@ def check_resources (resources):
     """If no resources are specified, check the config file."""
     if resources:
         return resources
+    resource = configured_resource()
+    if resource:
+        return [resource]
     else:
-        try:
-            resource = config.get("cbank", "resource")
-        except ConfigParser.Error:
-            return []
-        else:
-            resource = model.resource_by_name(resource)
-            return [resource]
+        return []
+
+def configured_resource ():
+    try:
+        resource = config.get("cbank", "resource")
+    except ConfigParser.Error:
+        resource = None
+    else:
+        resource = model.resource_by_name(resource)
+    return resource
 
 def get_current_user ():
     uid = os.getuid()
@@ -456,7 +477,10 @@ def get_current_user ():
     return user
 
 def parse_units (units):
-    units = float(units)
+    try:
+        units = float(units)
+    except ValueError:
+        raise exceptions.ValueError(units)
     mul, div = get_unit_factor()
     raw_units = units / mul * div
     raw_units = int(raw_units)
@@ -544,9 +568,6 @@ def build_report_charges_parser ():
 
 def build_new_allocation_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
-    parser.add_option(Option("-p", "--project",
-        type="project", dest="project",
-        help="allocate to PROJECT", metavar="PROJECT"))
     parser.add_option(Option("-r", "--resource",
         type="resource", dest="resource",
         help="allocate for RESOURCE", metavar="RESOURCE"))
@@ -556,10 +577,11 @@ def build_new_allocation_parser ():
     parser.add_option(Option("-e", "--expiration",
         dest="expiration", type="date",
         help="allocation expires at DATE", metavar="DATE"))
-    parser.add_option("-a", "--amount", dest="amount", type="float",
-        help="allocation AMOUNT", metavar="AMOUNT")
     parser.add_option("-m", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
+    now = datetime.now()
+    parser.set_defaults(start=now, expiration=datetime(now.year+1, 1, 1),
+        resource=configured_resource())
     return parser
 
 def build_new_charge_parser ():
