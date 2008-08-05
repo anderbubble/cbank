@@ -107,9 +107,10 @@ def new_allocation_main ():
     options, args = parser.parse_args()
     project = pop_project(args, 0)
     amount = pop_amount(args, 0)
+    if args:
+        raise exceptions.UnexpectedArguments(args)
     if not options.resource:
         raise exceptions.MissingResource()
-    check_empty(args)
     allocation = Allocation(
         project=project, resource=options.resource,
         start=options.start, expiration=options.expiration,
@@ -121,6 +122,30 @@ def new_allocation_main ():
         raise exceptions.ValueError(e)
     else:
         views.print_allocation(allocation)
+
+@handle_exceptions
+@require_admin
+def new_charge_main ():
+    parser = build_new_charge_parser()
+    options, args = parser.parse_args()
+    project = pop_project(args, 0)
+    amount = pop_amount(args, 0)
+    if args:
+        raise exceptions.UnexpectedArguments(args)
+    if not options.resource:
+        raise exceptions.MissingResource("resource")
+    allocations = Session.query(Allocation).filter_by(
+        project=project, resource=options.resource)
+    charges = Charge.distributed(allocations,
+        user=options.user, amount=amount, comment=options.comment)
+    for charge in charges:
+        Session.save(charge)
+    try:
+        Session.commit()
+    except ValueError, e:
+        raise exceptions.ValueError(e)
+    else:
+        views.print_charges(charges)
 
 def pop_project (args, index):
     try:
@@ -140,37 +165,6 @@ def pop_amount (args, index):
         raise exceptions.MissingArgument("amount")
     amount = parse_units(amount)
     return amount
-
-def check_empty (args):
-    if args:
-        raise exceptions.UnexpectedArguments(args)
-
-@handle_exceptions
-@require_admin
-def new_charge_main ():
-    parser = build_new_charge_parser()
-    options, args = parser.parse_args()
-    if args:
-        raise exceptions.UnexpectedArguments(args)
-    if not options.project:
-        raise exceptions.MissingOption("project")
-    if not options.resource:
-        raise exceptions.MissingOption("resource")
-    if not options.amount:
-        raise exceptions.MissingOption("amount")
-    allocations = Session.query(Allocation).filter_by(
-        project=options.project, resource=options.resource)
-    amount = parse_units(options.amount)
-    charges = Charge.distributed(allocations,
-        user=options.user, amount=amount, comment=options.comment)
-    for charge in charges:
-        Session.save(charge)
-    try:
-        Session.commit()
-    except ValueError, e:
-        raise exceptions.ValueError(e)
-    else:
-        views.print_charges(charges)
 
 @handle_exceptions
 @require_admin
@@ -599,6 +593,7 @@ def build_new_charge_parser ():
         help="charge AMOUNT", metavar="AMOUNT")
     parser.add_option("-m", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
+    parser.set_defaults(resource=configured_resource())
     return parser
 
 def build_new_refund_parser ():

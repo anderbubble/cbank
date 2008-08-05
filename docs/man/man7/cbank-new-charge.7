@@ -2,31 +2,29 @@
 .Os Python 2.x
 .Dt CBANK 7 USD
 .Sh NAME
-.Nm cbank-new-allocation
+.Nm cbank-new-charge
 .Nd clusterbank command-line interface
 .Sh SYNOPSIS
 .Nm
+.Op Fl u , -user Ar user
 .Op Fl r , -resource Ar resource
-.Op Fl s , -start Ar date
-.Op Fl e , -expiration Ar date
 .Op Fl m , -comment Ar message
 .Ar project
 .Ar amount
 .Sh DESCRIPTION
-allocate an
+Charge an
 .Ar amount
 of a resource to a
 .Ar project .
 .Pp
 Available options:
 .Bl -tag
+.It Fl u , -user
+Specify an associated
+.Ar user .
 .It Fl r , -resource
-Specify which resource to allocate. (default specified in
+Specify which resource to charge. (default specified in
 .Pa /etc/clusterbank.conf )
-.It Fl s , -start
-Specify when the allocation becomes usable. (default now)
-.It Fl e , -expiration
-Specify when the allocation expires. (default next year)
 .It Fl m , -comment
 Supply an informative message.
 .El

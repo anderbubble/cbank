@@ -401,7 +401,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         model.Session.save(allocation)
         model.Session.commit()
-        args = "-p project1 -r resource1 -a 100 -m test -u user1"
+        args = "project1 100 -r resource1 -m test -u user1"
         code, stdout, stderr = run(controllers.new_charge_main, args.split())
         assert code == 0
         assert charges.count() == 1, "didn't create a charge"
@@ -423,7 +423,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         model.Session.save(allocation)
         model.Session.commit()
-        args = "-p project1 -r resource1 -a 100 -m test -u user1 asdf"
+        args = "project1 100 -r resource1 -m test -u user1 asdf"
         code, stdout, stderr = run(controllers.new_charge_main, args.split())
         assert not charges.count()
         assert code == exceptions.UnexpectedArguments.exit_code, code
@@ -441,7 +441,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         model.Session.save(allocation)
         model.Session.commit()
-        args = "-p project1 -r resource1 -a 100 -m test -u user1"
+        args = "project1 100 -r resource1 -m test -u user1"
         code, stdout, stderr = run(controllers.new_charge_main, args.split())
         assert code == 0
         assert charges.count() == 1, "didn't create a charge"
@@ -463,10 +463,30 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         model.Session.save(allocation)
         model.Session.commit()
-        args = "-p project1 -a 100 -m test -u user1"
+        args = "project1 100 -m test -u user1"
         code, stdout, stderr = run(controllers.new_charge_main, args.split())
-        assert code == exceptions.MissingOption.exit_code, code
+        assert code == exceptions.MissingResource.exit_code, code
         assert not charges.count(), "created a charge"
+    
+    def test_with_configured_resource (self):
+        clusterbank.config.set("cbank", "resource", "resource1")
+        project = model.project_by_name("project1")
+        resource = model.resource_by_name("resource1")
+        user = model.user_by_name("user1")
+        charges = model.Session.query(model.Charge)
+        assert not charges.count(), "started with existing charges"
+        now = datetime.now()
+        allocation = model.Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        model.Session.save(allocation)
+        model.Session.commit()
+        args = "project1 100 -m test -u user1"
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        assert code == 0, code
+        assert charges.count(), "didn't create a charge"
+        charge = charges.one()
+        assert charge.allocation.resource is resource
 
     def test_without_project (self):
         project = model.project_by_name("project1")
@@ -480,9 +500,9 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         model.Session.save(allocation)
         model.Session.commit()
-        args = "-r resource1 -a 100 -m test -u user1"
+        args = "100 -r resource1 -m test -u user1"
         code, stdout, stderr = run(controllers.new_charge_main, args.split())
-        assert code == exceptions.MissingOption.exit_code, code
+        assert code == exceptions.UnknownProject.exit_code, code
         assert not charges.count(), "created a charge"
     
     def test_without_amount (self):
@@ -497,9 +517,9 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         model.Session.save(allocation)
         model.Session.commit()
-        args = "-p project1 -r resource1 -m test -u user1"
+        args = "project1 -r resource1 -m test -u user1"
         code, stdout, stderr = run(controllers.new_charge_main, args.split())
-        assert code == exceptions.MissingOption.exit_code, code
+        assert code == exceptions.MissingArgument.exit_code, code
         assert not charges.count(), "created a charge"
     
     def test_with_negative_amount (self):
@@ -514,7 +534,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         model.Session.save(allocation)
         model.Session.commit()
-        args = "-p project1 -r resource1 -a -100 -m test -u user1"
+        args = "project1 '-100' -r resource1 -m test -u user1"
         code, stdout, stderr = run(controllers.new_charge_main, args.split())
         model.Session.remove()
         assert not charges.count(), "created a charge with negative amount: %s" % [(charge, charge.amount) for charge in charges]
@@ -532,7 +552,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         model.Session.save(allocation)
         model.Session.commit()
-        args = "-p project1 -r resource1 -a 100 -u user1"
+        args = "project1 100 -r resource1 -u user1"
         code, stdout, stderr = run(controllers.new_charge_main, args.split())
         assert code == 0
         assert charges.count() == 1, "didn't create a charge"
@@ -553,9 +573,9 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         model.Session.save(allocation)
         model.Session.commit()
-        args = "-p project1 -r resource1 -a 100 -m test"
+        args = "project1 100 -r resource1 -m test"
         code, stdout, stderr = run(controllers.new_charge_main, args.split())
-        assert code == 0
+        assert code == 0, 0
         assert charges.count() == 1, "didn't create a charge"
         charge = charges.one()
         assert charge.allocation is allocation, "incorrect allocation: %r" % charge.allocation
@@ -573,7 +593,7 @@ class TestNewChargeMain (CbankTester):
         allocation = model.Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         model.Session.save(allocation)
         model.Session.commit()
-        args = "-p project1 -r resource1 -a 100 -m test"
+        args = "project1 100 -r resource1 -m test"
         code, stdout, stderr = run(controllers.new_charge_main, args.split())
         model.Session.remove()
         assert not charges.count(), "created a charge without admin privileges"
@@ -599,7 +619,7 @@ class TestNewRefundMain (CbankTester):
         model.Session.commit()
         args = "-c %s -a 50 -m test" % charge.id
         code, stdout, stderr = run(controllers.new_refund_main, args.split())
-        assert code == 0
+        assert code == 0, code
         assert refunds.count() == 1, "didn't create a refund"
         refund = refunds.one()
         assert refund.charge is charge, refund.charge
@@ -636,7 +656,7 @@ class TestNewRefundMain (CbankTester):
         model.Session.commit()
         args = "-c %s -a 50 -m test" % charge.id
         code, stdout, stderr = run(controllers.new_refund_main, args.split())
-        assert code == 0
+        assert code == 0, code
         assert refunds.count() == 1, "didn't create a refund"
         refund = refunds.one()
         assert refund.charge is charge, refund.charge
@@ -656,7 +676,7 @@ class TestNewRefundMain (CbankTester):
         model.Session.commit()
         args = "-c %s -a 50" % charge.id
         code, stdout, stderr = run(controllers.new_refund_main, args.split())
-        assert code == 0
+        assert code == 0, code
         assert refunds.count() == 1, "didn't create a refund"
         refund = refunds.one()
         assert refund.charge is charge, refund.charge
