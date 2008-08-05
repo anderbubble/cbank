@@ -1,0 +1,34 @@
+.Dd 1 August 2008
+.Os Python 2.x
+.Dt CBANK 7 USD
+.Sh NAME
+.Nm cbank-new-charge
+.Nd clusterbank command-line interface
+.Sh SYNOPSIS
+.Nm
+.Op Fl m , -comment Ar message
+.Ar charge
+.Ar [ amount ]
+.Sh DESCRIPTION
+Refund an
+.Ar amount
+(default all)
+of a
+.Ar charge .
+.Pp
+Available options:
+.Bl -tag
+.It Fl m , -comment
+Supply an informative message.
+.El
+.Sh FILES
+.Bl -tag
+.It /etc/clusterbank.conf
+Global configuration and defaults.
+.El
+.Sh AUTHORS
+.An Jonathon Anderson
+.Ad janderso@alcf.anl.gov
+.Sh BUGS
+Submit bug reports to the clusterbank trac at
+.Ad http://trac.mcs.anl.gov/projects/clusterbank
