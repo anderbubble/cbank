@@ -124,17 +124,6 @@ class NotPermitted (CbankError):
             return "cbank: not permitted: %s" % self.args[0]
 
 
-class MissingOption (CbankError):
-    
-    exit_code = -7
-    
-    def __str__ (self):
-        if not self.args:
-            return "cbank: missing option"
-        else:
-            return "cbank: missing option: %s" % self.args[0]
-
-
 class MissingResource (CbankError):
     
     exit_code = -7
