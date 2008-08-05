@@ -593,14 +593,9 @@ def build_new_charge_parser ():
     parser.add_option(Option("-u", "--user",
         type="user", dest="user",
         help="charge made by USER", metavar="USER"))
-    parser.add_option(Option("-p", "--project", type="project",
-        dest="project", help="charge against PROJECT", metavar="PROJECT"))
     parser.add_option(Option("-r", "--resource",
         type="resource", dest="resource",
         help="charge for RESOURCE", metavar="RESOURCE"))
-    parser.add_option("-a", "--amount",
-        dest="amount", type="float",
-        help="charge AMOUNT", metavar="AMOUNT")
     parser.add_option("-m", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.set_defaults(resource=configured_resource())
@@ -608,12 +603,6 @@ def build_new_charge_parser ():
 
 def build_new_refund_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
-    parser.add_option(Option("-c", "--charge",
-        type="charge", dest="charge",
-        help="refund CHARGE", metavar="CHARGE"))
-    parser.add_option("-a", "--amount",
-        dest="amount", type="float",
-        help="refund AMOUNT", metavar="AMOUNT")
     parser.add_option("-m", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     return parser
