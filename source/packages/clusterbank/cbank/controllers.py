@@ -284,7 +284,7 @@ def report_allocations_main ():
 
 @handle_exceptions
 def report_holds_main ():
-    parser = build_report_charges_parser()
+    parser = build_report_holds_parser()
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnexpectedArguments(args)
@@ -543,10 +543,30 @@ def build_report_allocations_parser ():
         help="display allocations for RESOURCE", metavar="RESOURCE"))
     parser.add_option(Option("-a", "--after",
         dest="after", type="date",
-        help="display charges after (and including) DATE", metavar="DATE"))
+        help="display allocations and charges after (and including) DATE", metavar="DATE"))
     parser.add_option(Option("-b", "--before",
         dest="before", type="date",
-        help="display charges before (and excluding) DATE", metavar="DATE"))
+        help="display allocations and charges before (and excluding) DATE", metavar="DATE"))
+    parser.set_defaults(projects=[], users=[], resources=[])
+    return parser
+
+def build_report_holds_parser ():
+    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser.add_option(Option("-u", "--user",
+        dest="users", type="user", action="append",
+        help="display holds by USER", metavar="USER"))
+    parser.add_option(Option("-p", "--project",
+        dest="projects", type="project", action="append",
+        help="display holds on PROJECT", metavar="PROJECT"))
+    parser.add_option(Option("-r", "--resource",
+        dest="resources", type="resource", action="append",
+        help="display holds for RESOURCE", metavar="RESOURCE"))
+    parser.add_option(Option("-a", "--after",
+        dest="after", type="date",
+        help="display holds after (and including) DATE", metavar="DATE"))
+    parser.add_option(Option("-b", "--before",
+        dest="before", type="date",
+        help="display holds before (and excluding) DATE", metavar="DATE"))
     parser.set_defaults(projects=[], users=[], resources=[])
     return parser
 
