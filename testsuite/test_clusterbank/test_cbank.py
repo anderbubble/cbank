@@ -581,7 +581,7 @@ class TestNewChargeMain (CbankTester):
         assert charge.allocation is allocation, "incorrect allocation: %r" % charge.allocation
         assert charge.amount == 100, "incorrect charge amount: %i" % charge.amount
         assert charge.comment == "test", "incorrect comment: %s" % charge.comment
-        assert charge.user is None, "incorrect user on charge: %s" % charge.user
+        assert charge.user is model.user_by_name(get_current_username()), "incorrect user on charge: %s" % charge.user
     
     def test_non_admin (self):
         clusterbank.config.set("cbank", "admins", "")
