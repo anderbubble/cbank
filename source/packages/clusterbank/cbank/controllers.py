@@ -618,7 +618,7 @@ def build_new_charge_parser ():
         help="charge for RESOURCE", metavar="RESOURCE"))
     parser.add_option("-m", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
-    parser.set_defaults(resource=configured_resource())
+    parser.set_defaults(user=current_user(), resource=configured_resource())
     return parser
 
 def build_new_refund_parser ():
