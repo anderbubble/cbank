@@ -1,0 +1,49 @@
+.Dd 1 August 2008
+.Os Python 2.x
+.Dt CBANK 7 USD
+.Sh NAME
+.Nm cbank-report-charges
+.Nd clusterbank command-line interface
+.Sh SYNOPSIS
+.Nm
+.Op OPTIONS
+.Sh DESCRIPTION
+For each applicable charge, report the associated user, project, and resource, the charge date, and the effective amount charged.
+.Sh OPTIONS
+.Bl -tag
+.It Fl u , -user Ar user
+Display charges associated with and to projects of
+.Ar user .
+.It Fl p , -project Ar project
+Display charges to projects of
+.Ar project .
+.It Fl r , -resource Ar resource
+Display charges for
+.Ar resource .
+(default specified in
+.Pa /etc/clusterbank.conf )
+.It Fl a , -after Ar date
+Display charges created after (and including)
+.Ar date .
+(default 7 days ago)
+.It Fl b , -before Ar date
+Display charges created before (and excluding)
+.Ar date .
+.El
+.Sh EXAMPLES
+Generate a report of all charges associated with the current user:
+.D1 cbank report charges
+or
+.D1 cbank charges
+.Pp
+Report charges to the project 'grail' associated with users 'monty' and 'python':
+.D1 cbank report charges -p grail -u monty -u python
+.Pp
+Report charges associated with 'monty' between 5 October 1969 and 5 December 1974.
+.D1 cbank report charges -u monty -a 1969-10-5 -b 1974-12-5
+.Sh AUTHORS
+.An Jonathon Anderson
+.Ad janderso@alcf.anl.gov
+.Sh BUGS
+Submit bug reports to the clusterbank trac at
+.Ad http://trac.mcs.anl.gov/projects/clusterbank
