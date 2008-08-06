@@ -303,7 +303,7 @@ def report_holds_main ():
                 raise exceptions.NotPermitted(user)
         if not set(projects).issubset(member_projects | owned_projects):
             raise exceptions.NotPermitted(user)
-    views.print_charges_report(users=users, projects=projects,
+    views.print_holds_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before)
 
 @handle_exceptions
