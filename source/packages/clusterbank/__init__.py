@@ -8,7 +8,7 @@ model -- data model
 
 import ConfigParser
 
-__all__ = ["config", "model", "interfaces", "__version__"]
+__all__ = ["config", "model", "__version__"]
 
 __version__ = "trunk"
 
