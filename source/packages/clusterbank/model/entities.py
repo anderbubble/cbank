@@ -30,9 +30,6 @@ __all__ = [
 ]
 
 
-config.read(["/etc/clusterbank.conf"])
-
-
 class UpstreamProxy (object):
 
     def __init__ (self, use=None):
