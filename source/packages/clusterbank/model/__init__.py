@@ -15,20 +15,15 @@ Refund -- refund of a charge
 Objects:
 metadata -- metadata collection
 Session -- sessionmaker (and default session)
-
-metadata will be automatically bound to an engine specified in a config
-file if present.
-
-Configuration:
-/etc/clusterbank.conf -- [main] database
 """
 
 import warnings
 import ConfigParser
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, types
+from sqlalchemy.sql import select, func, cast
 import sqlalchemy.exceptions
-from sqlalchemy.orm import scoped_session, sessionmaker, mapper, relation, synonym
+from sqlalchemy.orm import scoped_session, sessionmaker, mapper, relation, column_property, synonym
 from sqlalchemy.orm.session import SessionExtension
 
 from clusterbank import config
@@ -175,6 +170,10 @@ mapper(Charge, charges, properties=dict(
     datetime = charges.c.datetime,
     user = relation(User, backref="charges"),
     amount = charges.c.amount,
+    _effective_amount = column_property(charges.c.amount - \
+        cast(func.coalesce(select([func.sum(refunds.c.amount)],
+            refunds.c.charge_id==charges.c.id).label("amount_refunded"), 0), types.Integer)),
+    effective_amount = synonym("_effective_amount"),
     comment = charges.c.comment,
 ))
 
