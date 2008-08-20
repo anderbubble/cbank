@@ -155,6 +155,13 @@ class Project (UpstreamEntity):
             return credit_limits[0]
         except IndexError:
             return None
+    
+    def charge (self, **kwargs):
+        dt = kwargs.get("datetime", datetime.now())
+        allocations = [allocation for allocation in self.allocations
+            if allocation.start <= dt and allocation.expiration > dt]
+        charges = Charge.distributed(allocations, **kwargs)
+        return charges
 
 
 class Resource (UpstreamEntity):
@@ -528,7 +535,19 @@ class Charge (Entity):
         return self.amount - amount_refunded
     
     effective_amount = property(_get_effective_amount)
-
+    
+    def transfer (self, project, **kwargs):
+        kwargs_ = {'amount':self.effective_amount, 'user':self.user,
+            'comment':self.comment}
+        kwargs_.update(kwargs)
+        charges = project.charge(**kwargs_)
+        refund = self.refund(
+            amount=sum(charge.amount for charge in charges),
+            comment="transferred to %s" % project)
+        return refund, charges
+    
+    def refund (self, **kwargs):
+        return Refund(charge=self, **kwargs)
 
 class Refund (Entity):
     
