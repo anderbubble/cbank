@@ -142,6 +142,9 @@ mapper(Allocation, allocations, properties=dict(
     expiration = allocations.c.expiration,
     comment = allocations.c.comment,
     requests = relation(Request, secondary=requests_allocations, backref="allocations"),
+    _amount_charged = column_property(cast(func.coalesce(
+        select([func.sum(charges.c.amount)], charges.c.allocation_id==allocations.c.id).as_scalar(), 0).label("_amount_charged"), types.Integer)),
+    amount_charged = synonym("_amount_charged"),
 ))
 
 mapper(CreditLimit, credit_limits, properties=dict(
