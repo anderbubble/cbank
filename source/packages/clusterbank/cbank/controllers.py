@@ -632,9 +632,17 @@ class Option (optparse.Option):
     
     DATE_FORMATS = [
         "%Y-%m-%d",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
         "%y-%m-%d",
+        "%y-%m-%d %H:%M:%S",
+        "%y-%m-%d %H:%M",
         "%m/%d/%Y",
+        "%m/%d/%Y %H:%M:%S",
+        "%m/%d/%Y %H:%M",
         "%m/%d/%y",
+        "%m/%d/%y %H:%M:%S",
+        "%m/%d/%y %H:%M",
         "%Y%m%d",
     ]
     
