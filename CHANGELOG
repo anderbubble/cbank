@@ -1,8 +1,40 @@
- * made usage report correctly reflect -r option
- * made the "usage" report the default
- * added a new report, "usage" (also available as "use")
- * fixed date ranges in the projects report
- * require charges to exist within their allocation
+clusterbank (api) changes
+
+ * mapped Allocation.amount_charged to a query
+ * Project.charge performs a distributed charge
+ * Charge.transfer refunds a charge and re-applies it as charges to a project
+ * fixed a bug where clusterbank.model configured independently
+
+cbank (cli) changes
+
+ * date options can now accept times
+
+-- 0.3.0 --
+
+clusterbank (api) changes
+
+ * removed _table suffix from table objects in clusterbank.model.database
+ * consolidated configuration at clusterbank.config
+ * user, project, and resource __str__ returns entity name
+ * user, project, and resource __repr__ include entity name
+ * moved mapper-aware code from clusterbank.model.entities to clusterbank.model
+ * <Entity>.by_name has become clusterbank.model.<entity>_by_name
+ * moved from Session.mapper to mapper
+
+cbank (cli) changes
+
+ * added commands to create a new allocation, hold, charge, or refund
+ * adopted a formal metacommand dispatch architecture (new, report, detail)
+ * removed usage report
+ * "projects" returns to the default report
+ * "projects", "allocations", and "charges" reports redesigned (again)
+ * added a "holds" report
+ * added a "users" report
+ * rebase reports outside the ORM for better performance until SA 0.5
+ * improved error messages
+ * cbank errors provide distinct error codes
+ * changed multi-value options from comma-separated lists to multi-options
+ * added shell-level entry points for all cbank commands
 
 -- 0.2.15.1 --
 
@@ -11,6 +43,8 @@
 -- 0.2.15 --
 
  * moved SQLAlchemy version dependency to 0.4.5
+ * fixed date ranges in the projects report
+ * require charges to exist within their allocation
  * moved the example upstream module into clusterbank as a default
  * added autoconfiguration to the default upstream module
  * added cbank examples to clusterbank.conf.sample
@@ -21,6 +55,7 @@
  * added start date to the cbank allocation report (in --extra-data)
  * removed arbitrary restrictions on admin reports
  * removed cbank_old
+ * added a new report, "usage" (also available as "use")
 
 -- 0.2.14 --
 
