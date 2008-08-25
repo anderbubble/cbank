@@ -9,6 +9,7 @@ cbank (cli) changes
 
  * date options can now accept times
  * restored ability to display comments inline
+ * charge report reflects refunds in charge amount
 
 -- 0.3.0 --
 

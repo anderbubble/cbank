@@ -460,6 +460,13 @@ def print_charges_report (**kwargs):
     s = model.Session()
     now = datetime.now()
     
+    charge_refunded = sql.cast(
+        sql.func.coalesce(sql.select([sql.func.sum(model.refunds.c.amount)],
+            model.refunds.c.charge_id==model.charges.c.id).label("amount_refunded"), 0),
+        types.Integer)
+    
+    effective_amount = (model.charges.c.amount - charge_refunded).label("effective_amount")
+    
     query = sql.select([
         model.charges.c.id,
         model.charges.c.comment,
@@ -467,7 +474,7 @@ def print_charges_report (**kwargs):
         model.allocations.c.project_id,
         model.allocations.c.resource_id,
         model.charges.c.datetime,
-        model.charges.c.amount])
+        effective_amount])
     query = query.order_by(model.charges.c.datetime)
     query = query.select_from(
         model.charges.join(model.allocations))
@@ -498,7 +505,7 @@ def print_charges_report (**kwargs):
         resource = model.resource_by_id(
             row[model.allocations.c.resource_id])
         dt = row[model.charges.c.datetime]
-        charged = row[model.charges.c.amount]
+        charged = row[effective_amount]
         total_charged += charged
         if kwargs.get("comments"):
             print format({
@@ -557,7 +564,7 @@ def print_charge (charge):
     charge_str = "Charge %s -- %s" % (
         charge, display_units(charge.effective_amount))
     if charge.amount != charge.effective_amount:
-        addendum = "(originally %s)" % display_units(amount)
+        addendum = "(originally %s)" % display_units(charge.amount)
         charge_str = " ".join([charge_str, addendum])
     print charge_str
     print " * Datetime: %s" % charge.datetime
