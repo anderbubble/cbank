@@ -116,11 +116,14 @@ def new_allocation_main ():
         project=project, resource=options.resource,
         start=options.start, expiration=options.expiration,
         amount=amount, comment=options.comment)
-    Session.save(allocation)
-    try:
-        Session.commit()
-    except ValueError, e:
-        raise exceptions.ValueError(e)
+    if options.commit:
+        Session.save(allocation)
+        try:
+            Session.commit()
+        except ValueError, e:
+            raise exceptions.ValueError(e)
+        else:
+            views.print_allocation(allocation)
     else:
         views.print_allocation(allocation)
 
@@ -139,12 +142,15 @@ def new_charge_main ():
         project=project, resource=options.resource)
     charges = Charge.distributed(allocations,
         user=options.user, amount=amount, comment=options.comment)
-    for charge in charges:
-        Session.save(charge)
-    try:
-        Session.commit()
-    except ValueError, e:
-        raise exceptions.ValueError(e)
+    if options.commit:
+        for charge in charges:
+            Session.save(charge)
+        try:
+            Session.commit()
+        except ValueError, e:
+            raise exceptions.ValueError(e)
+        else:
+            views.print_charges(charges)
     else:
         views.print_charges(charges)
 
@@ -192,11 +198,14 @@ def new_refund_main ():
         raise exceptions.UnexpectedArguments(args)
     refund = Refund(
         charge=charge, amount=amount, comment=options.comment)
-    Session.save(refund)
-    try:
-        Session.commit()
-    except ValueError, e:
-        raise exceptions.ValueError(e)
+    if options.commit:
+        Session.save(refund)
+        try:
+            Session.commit()
+        except ValueError, e:
+            raise exceptions.ValueError(e)
+        else:
+            views.print_refund(refund)
     else:
         views.print_refund(refund)
 
@@ -634,9 +643,11 @@ def build_new_allocation_parser ():
         help="allocation expires at DATE", metavar="DATE"))
     parser.add_option("-m", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
+    parser.add_option(Option("-n", dest="commit", action="store_false",
+        help="do not save the allocation"))
     now = datetime.now()
     parser.set_defaults(start=now, expiration=datetime(now.year+1, 1, 1),
-        resource=configured_resource())
+        commit=True, resource=configured_resource())
     return parser
 
 def build_new_charge_parser ():
@@ -649,13 +660,19 @@ def build_new_charge_parser ():
         help="charge for RESOURCE", metavar="RESOURCE"))
     parser.add_option("-m", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
-    parser.set_defaults(user=get_current_user(), resource=configured_resource())
+    parser.add_option(Option("-n", dest="commit", action="store_false",
+        help="do not save the charge"))
+    parser.set_defaults(user=get_current_user(),
+        commit=True, resource=configured_resource())
     return parser
 
 def build_new_refund_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser.add_option(Option("-n", dest="commit", action="store_false",
+        help="do not save the refund"))
     parser.add_option("-m", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
+    parser.set_defaults(commit=True)
     return parser
 
 

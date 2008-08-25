@@ -10,6 +10,8 @@ cbank (cli) changes
  * date options can now accept times
  * restored ability to display comments inline
  * charge report reflects refunds in charge amount
+ * added '-n' flag to cbank-new scripts
+ * fixed a bug that caused the detail view to crash on charges with refunds
 
 -- 0.3.0 --
 

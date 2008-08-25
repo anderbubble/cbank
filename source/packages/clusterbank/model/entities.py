@@ -47,7 +47,10 @@ class Entity (object):
         return "<%s id=%r>" % (self.__class__.__name__, self.id)
     
     def __str__ (self):
-        return "#%i" % self.id
+        try:
+            return "#%i" % self.id
+        except TypeError:
+            return "#?"
 
 
 class UpstreamEntity (Entity):
