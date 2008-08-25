@@ -340,10 +340,13 @@ def report_charges_main ():
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnexpectedArguments(args)
-    users = options.users
+    user = get_current_user()
+    if user.is_admin:
+        users = check_users(options.users, options.projects)
+    else:
+        users = options.users
     projects = check_projects(options.projects, options.users)
     resources = check_resources(options.resources)
-    user = get_current_user()
     member_projects = set(model.user_projects(user))
     owned_projects = set(model.user_projects_owned(user))
     if not users:
