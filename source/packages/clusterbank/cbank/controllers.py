@@ -6,9 +6,9 @@ report_main -- metacontroller that dispatches to report controllers
 new_allocation_main -- creates new allocations
 new_charge_main -- creates new charges
 new_refund_main -- creates new refunds
-report_usage_main -- usage report
 report_projects_main -- projects report
 report_allocations_main -- allocations report
+report_holds_main -- holds report
 report_charges_main -- charges report
 """
 
@@ -18,6 +18,7 @@ import sys
 import pwd
 import ConfigParser
 from datetime import datetime, timedelta
+from warnings import warn
 
 import sqlalchemy.exceptions
 
@@ -279,9 +280,12 @@ def report_allocations_main ():
                 raise exceptions.NotPermitted(user)
         if not set(projects).issubset(member_projects | owned_projects):
             raise exceptions.NotPermitted(user)
+    if options.extra_data is not None:
+        warn("use of -e is deprecated: use -c in stead", DeprecationWarning)
+    comments = options.comments or options.extra_data
     views.print_allocations_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before,
-        comments=options.comments)
+        comments=comments)
 
 @handle_exceptions
 def report_holds_main ():
@@ -304,9 +308,12 @@ def report_holds_main ():
                 raise exceptions.NotPermitted(user)
         if not set(projects).issubset(member_projects | owned_projects):
             raise exceptions.NotPermitted(user)
+    if options.extra_data is not None:
+        warn("use of -e is deprecated: use -c in stead", DeprecationWarning)
+    comments = options.comments or options.extra_data
     views.print_holds_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before,
-        comments=options.comments)
+        comments=comments)
 
 @handle_exceptions
 def report_charges_main ():
@@ -330,9 +337,12 @@ def report_charges_main ():
                 raise exceptions.NotPermitted(user)
         if not set(projects).issubset(member_projects | owned_projects):
             raise exceptions.NotPermitted(user)
+    if options.extra_data is not None:
+        warn("use of -e is deprecated: use -c in stead", DeprecationWarning)
+    comments = options.comments or options.extra_data
     views.print_charges_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before,
-        comments=options.comments)
+        comments=comments)
 
 @handle_exceptions
 def detail_main ():
@@ -553,6 +563,9 @@ def build_report_allocations_parser ():
     parser.add_option(Option("-c", "--with-comments",
         dest="comments", action="store_true",
         help="include the comment line for each allocation"))
+    parser.add_option(Option("-e", "--extra-data",
+        dest="extra_data", action="store_true",
+        help="deprecated: use '-c' instead"))
     parser.set_defaults(projects=[], users=[], resources=[], comments=False)
     return parser
 
@@ -576,6 +589,9 @@ def build_report_holds_parser ():
     parser.add_option(Option("-c", "--with-comments",
         dest="comments", action="store_true",
         help="include the comment line for each hold"))
+    parser.add_option(Option("-e", "--extra-data",
+        dest="extra_data", action="store_true",
+        help="deprecated: use '-c' instead"))
     parser.set_defaults(projects=[], users=[], resources=[], comments=False)
     return parser
 
@@ -599,6 +615,9 @@ def build_report_charges_parser ():
     parser.add_option(Option("-c", "--with-comments",
         dest="comments", action="store_true",
         help="include the comment line for each charge"))
+    parser.add_option(Option("-e", "--extra-data",
+        dest="extra_data", action="store_true",
+        help="deprecated: use '-c' instead"))
     parser.set_defaults(projects=[], users=[], resources=[], comments=False)
     return parser
 
