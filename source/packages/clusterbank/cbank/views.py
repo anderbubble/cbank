@@ -17,7 +17,7 @@ from clusterbank import config
 from clusterbank.cbank.common import get_unit_factor
 import clusterbank.model as model
 
-__all__ = ["unit_definition", "display_units",
+__all__ = ["unit_definition", "convert_units", "display_units",
     "print_users_report", "print_projects_report", "print_allocations_report",
     "print_holds_report", "print_charges_report"]
 
@@ -446,8 +446,8 @@ def print_charges_report (**kwargs):
     """
     
     if kwargs.get("comments"):
-        format = Formatter([
-            "Charge", "User", "Project", "Resource", "Datetime", "Charged", "Comment"])
+        format = Formatter(["Charge", "User", "Project", "Resource",
+            "Datetime", "Charged", "Comment"])
     else:
         format = Formatter([
             "Charge", "User", "Project", "Resource", "Datetime", "Charged"])
@@ -588,12 +588,15 @@ def unit_definition ():
         return "Units are in %s." % unit_label
 
 def display_units (amount):
-    mul, div = get_unit_factor()
-    converted_amount = amount * mul / div
+    converted_amount = convert_units(amount)
     if 0 < converted_amount < 0.1:
         return "< 0.1"
     else:
         return locale.format("%.1f", converted_amount, True)
+
+def convert_units (amount):
+    mul, div = get_unit_factor()
+    return amount * mul / div
 
 def format_datetime (dt):
     return dt.strftime("%Y-%m-%d")
