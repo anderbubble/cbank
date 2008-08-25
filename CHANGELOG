@@ -8,6 +8,7 @@ clusterbank (api) changes
 cbank (cli) changes
 
  * date options can now accept times
+ * restored ability to display comments inline
 
 -- 0.3.0 --
 

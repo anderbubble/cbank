@@ -229,8 +229,12 @@ def print_allocations_report (**kwargs):
     in the system.
     """
     
-    format = Formatter(["Allocation", "Project", "Resource", "Expiration",
-        "Available", "Charges", "Charged"])
+    if kwargs.get("comments"):
+        format = Formatter(["Allocation", "Project", "Resource", "Expiration",
+            "Available", "Charges", "Charged", "Comment"])
+    else:
+        format = Formatter(["Allocation", "Project", "Resource", "Expiration",
+            "Available", "Charges", "Charged"])
     format.headers = {'Allocation':"#"}
     format.widths = {'Allocation':4, 'Project':15, 'Available':13,
         'Charges':7, 'Charged':13, 'Expiration':10}
@@ -277,6 +281,7 @@ def print_allocations_report (**kwargs):
         model.resources.c.id,
         model.allocations.c.expiration,
         model.allocations.c.amount,
+        model.allocations.c.comment,
         holds_sum_query.label("holds_sum"),
         charges_sum_query.label("charges_sum"),
         refunds_sum_query.label("refunds_sum"),
@@ -310,6 +315,7 @@ def print_allocations_report (**kwargs):
     total_charged = 0
     for row in s.execute(query):
         allocation = row[model.allocations.c.id]
+        comment = row[model.allocations.c.comment]
         project = model.upstream.get_project_name(
             row[model.projects.c.id])
         resource = model.upstream.get_resource_name(
@@ -323,14 +329,25 @@ def print_allocations_report (**kwargs):
         total_available += available
         charged = row['m_charges_sum'] - row['m_refunds_sum']
         total_charged += charged
-        print format({
-            'Allocation':allocation,
-            'Project':project,
-            'Resource':resource,
-            'Expiration':expiration,
-            'Available':display_units(available),
-            'Charges':charges,
-            'Charged':display_units(charged)})
+        if kwargs.get("comments"):
+            print format({
+                'Allocation':allocation,
+                'Project':project,
+                'Resource':resource,
+                'Expiration':expiration,
+                'Available':display_units(available),
+                'Charges':charges,
+                'Charged':display_units(charged),
+                'Comment':comment})
+        else:
+            print format({
+                'Allocation':allocation,
+                'Project':project,
+                'Resource':resource,
+                'Expiration':expiration,
+                'Available':display_units(available),
+                'Charges':charges,
+                'Charged':display_units(charged)})
     print format.bar(["Available", "Charges", "Charged"])
     print format({
         'Available':display_units(total_available),
@@ -345,8 +362,12 @@ def print_holds_report (**kwargs):
     The holds report displays individual holds.
     """
     
-    format = Formatter([
-        "Hold", "User", "Project", "Resource", "Datetime", "Held"])
+    if kwargs.get("comments"):
+        format = Formatter([
+            "Hold", "User", "Project", "Resource", "Datetime", "Held", "Comment"])
+    else:
+        format = Formatter([
+            "Hold", "User", "Project", "Resource", "Datetime", "Held"])
     format.widths = {
         'Hold':6, 'User':8, 'Project':15, 'Held':13, 'Datetime':10}
     format.aligns = {'Held':"right"}
@@ -362,7 +383,8 @@ def print_holds_report (**kwargs):
         model.allocations.c.project_id,
         model.allocations.c.resource_id,
         model.holds.c.datetime,
-        model.holds.c.amount]).where(model.holds.c.active==True)
+        model.holds.c.amount,
+        model.holds.c.comment]).where(model.holds.c.active==True)
     query = query.order_by(model.holds.c.datetime)
     query = query.select_from(
         model.holds.join(model.allocations))
@@ -386,6 +408,7 @@ def print_holds_report (**kwargs):
     total_held = 0
     for row in s.execute(query):
         hold = row[model.holds.c.id]
+        comment = row[model.holds.c.comment]
         user = model.upstream.get_user_name(row[model.holds.c.user_id])
         project = model.project_by_id(
             row[model.allocations.c.project_id])
@@ -394,13 +417,23 @@ def print_holds_report (**kwargs):
         dt = row[model.holds.c.datetime]
         held = row[model.holds.c.amount]
         total_held += held
-        print format({
-            'Hold':hold,
-            'User':user,
-            'Project':project,
-            'Resource':resource,
-            'Datetime':format_datetime(dt),
-            'Held':display_units(held)})
+        if kwargs.get("comments"):
+            print format({
+                'Hold':hold,
+                'User':user,
+                'Project':project,
+                'Resource':resource,
+                'Datetime':format_datetime(dt),
+                'Held':display_units(held),
+                'Comment':comment})
+        else:
+            print format({
+                'Hold':hold,
+                'User':user,
+                'Project':project,
+                'Resource':resource,
+                'Datetime':format_datetime(dt),
+                'Held':display_units(held)})
     print format.bar(["Held"])
     print format({'Held':display_units(total_held)})
     print unit_definition()
@@ -412,8 +445,12 @@ def print_charges_report (**kwargs):
     The charges report displays individual charges.
     """
     
-    format = Formatter([
-        "Charge", "User", "Project", "Resource", "Datetime", "Charged"])
+    if kwargs.get("comments"):
+        format = Formatter([
+            "Charge", "User", "Project", "Resource", "Datetime", "Charged", "Comment"])
+    else:
+        format = Formatter([
+            "Charge", "User", "Project", "Resource", "Datetime", "Charged"])
     format.widths = {
         'Charge':6, 'User':8, 'Project':15, 'Charged':13, 'Datetime':10}
     format.aligns = {'Charged':"right"}
@@ -425,6 +462,7 @@ def print_charges_report (**kwargs):
     
     query = sql.select([
         model.charges.c.id,
+        model.charges.c.comment,
         model.charges.c.user_id,
         model.allocations.c.project_id,
         model.allocations.c.resource_id,
@@ -453,6 +491,7 @@ def print_charges_report (**kwargs):
     total_charged = 0
     for row in s.execute(query):
         charge = row[model.charges.c.id]
+        comment = row[model.charges.c.comment]
         user = model.upstream.get_user_name(row[model.charges.c.user_id])
         project = model.project_by_id(
             row[model.allocations.c.project_id])
@@ -461,13 +500,23 @@ def print_charges_report (**kwargs):
         dt = row[model.charges.c.datetime]
         charged = row[model.charges.c.amount]
         total_charged += charged
-        print format({
-            'Charge':charge,
-            'User':user,
-            'Project':project,
-            'Resource':resource,
-            'Datetime':format_datetime(dt),
-            'Charged':display_units(charged)})
+        if kwargs.get("comments"):
+            print format({
+                'Charge':charge,
+                'User':user,
+                'Project':project,
+                'Resource':resource,
+                'Datetime':format_datetime(dt),
+                'Charged':display_units(charged),
+                'Comment':comment})
+        else:
+            print format({
+                'Charge':charge,
+                'User':user,
+                'Project':project,
+                'Resource':resource,
+                'Datetime':format_datetime(dt),
+                'Charged':display_units(charged)})
     print format.bar(["Charged"])
     print format({'Charged':display_units(total_charged)})
     print unit_definition()
