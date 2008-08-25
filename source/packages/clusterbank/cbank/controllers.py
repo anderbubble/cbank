@@ -110,12 +110,15 @@ def new_allocation_main ():
     amount = pop_amount(args, 0)
     if args:
         raise exceptions.UnexpectedArguments(args)
+    if options.deprecated_comment is not None:
+        warn("use of -m is deprecated: use -c instead", DeprecationWarning)
     if not options.resource:
         raise exceptions.MissingResource()
+    comment = options.comment or options.deprecated_comment
     allocation = Allocation(
         project=project, resource=options.resource,
         start=options.start, expiration=options.expiration,
-        amount=amount, comment=options.comment)
+        amount=amount, comment=comment)
     if options.commit:
         Session.save(allocation)
         try:
@@ -136,12 +139,15 @@ def new_charge_main ():
     amount = pop_amount(args, 0)
     if args:
         raise exceptions.UnexpectedArguments(args)
+    if options.deprecated_comment is not None:
+        warn("use of -m is deprecated: use -c instead", DeprecationWarning)
     if not options.resource:
         raise exceptions.MissingResource("resource")
     allocations = Session.query(Allocation).filter_by(
         project=project, resource=options.resource)
+    comment = options.comment or options.deprecated_comment
     charges = Charge.distributed(allocations,
-        user=options.user, amount=amount, comment=options.comment)
+        user=options.user, amount=amount, comment=comment)
     if options.commit:
         for charge in charges:
             Session.save(charge)
@@ -196,8 +202,11 @@ def new_refund_main ():
         amount = charge.effective_amount
     if args:
         raise exceptions.UnexpectedArguments(args)
+    if options.deprecated_comment is not None:
+        warn("use of -m is deprecated: use -c instead", DeprecationWarning)
+    comment = options.comment or options.deprecated_comment
     refund = Refund(
-        charge=charge, amount=amount, comment=options.comment)
+        charge=charge, amount=amount, comment=comment)
     if options.commit:
         Session.save(refund)
         try:
@@ -290,7 +299,7 @@ def report_allocations_main ():
         if not set(projects).issubset(member_projects | owned_projects):
             raise exceptions.NotPermitted(user)
     if options.extra_data is not None:
-        warn("use of -e is deprecated: use -c in stead", DeprecationWarning)
+        warn("use of -e is deprecated: use -c instead", DeprecationWarning)
     comments = options.comments or options.extra_data
     views.print_allocations_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before,
@@ -318,7 +327,7 @@ def report_holds_main ():
         if not set(projects).issubset(member_projects | owned_projects):
             raise exceptions.NotPermitted(user)
     if options.extra_data is not None:
-        warn("use of -e is deprecated: use -c in stead", DeprecationWarning)
+        warn("use of -e is deprecated: use -c instead", DeprecationWarning)
     comments = options.comments or options.extra_data
     views.print_holds_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before,
@@ -347,7 +356,7 @@ def report_charges_main ():
         if not set(projects).issubset(member_projects | owned_projects):
             raise exceptions.NotPermitted(user)
     if options.extra_data is not None:
-        warn("use of -e is deprecated: use -c in stead", DeprecationWarning)
+        warn("use of -e is deprecated: use -c instead", DeprecationWarning)
     comments = options.comments or options.extra_data
     views.print_charges_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before,
@@ -641,7 +650,9 @@ def build_new_allocation_parser ():
     parser.add_option(Option("-e", "--expiration",
         dest="expiration", type="date",
         help="allocation expires at DATE", metavar="DATE"))
-    parser.add_option("-m", "--comment", dest="comment",
+    parser.add_option("-m", dest="deprecated_comment",
+        help="deprecated: use -c instead")
+    parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save the allocation"))
@@ -658,7 +669,9 @@ def build_new_charge_parser ():
     parser.add_option(Option("-r", "--resource",
         type="resource", dest="resource",
         help="charge for RESOURCE", metavar="RESOURCE"))
-    parser.add_option("-m", "--comment", dest="comment",
+    parser.add_option("-m", dest="deprecated_comment",
+        help="deprecated: use -c instead")
+    parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save the charge"))
@@ -670,7 +683,9 @@ def build_new_refund_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save the refund"))
-    parser.add_option("-m", "--comment", dest="comment",
+    parser.add_option("-m", dest="deprecated_comment",
+        help="deprecated: use -c instead")
+    parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.set_defaults(commit=True)
     return parser
