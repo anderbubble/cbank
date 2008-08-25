@@ -248,9 +248,9 @@ def report_users_main ():
     projects = check_projects(options.projects, users)
     resources = check_resources(options.resources)
     user = get_current_user()
+    member_projects = set(model.user_projects(user))
+    owned_projects = set(model.user_projects_owned(user))
     if not user.is_admin:
-        member_projects = set(model.user_projects(user))
-        owned_projects = set(model.user_projects_owned(user))
         if not set(users).issubset(set([user])):
             if not set(projects).issubset(owned_projects):
                 raise exceptions.NotPermitted(user)
@@ -269,9 +269,9 @@ def report_projects_main ():
     projects = check_projects(options.projects, options.users)
     resources = check_resources(options.resources)
     user = get_current_user()
+    member_projects = set(model.user_projects(user))
+    owned_projects = set(model.user_projects_owned(user))
     if not user.is_admin:
-        member_projects = set(model.user_projects(user))
-        owned_projects = set(model.user_projects_owned(user))
         if not set(users).issubset(set([user])):
             if not set(projects).issubset(owned_projects):
                 raise exceptions.NotPermitted(user)
@@ -290,9 +290,9 @@ def report_allocations_main ():
     projects = check_projects(options.projects, options.users)
     resources = check_resources(options.resources)
     user = get_current_user()
+    member_projects = set(model.user_projects(user))
+    owned_projects = set(model.user_projects_owned(user))
     if not user.is_admin:
-        member_projects = set(model.user_projects(user))
-        owned_projects = set(model.user_projects_owned(user))
         if not set(users).issubset(set([user])):
             if not set(projects).issubset(owned_projects):
                 raise exceptions.NotPermitted(user)
@@ -315,12 +315,12 @@ def report_holds_main ():
     projects = check_projects(options.projects, options.users)
     resources = check_resources(options.resources)
     user = get_current_user()
+    member_projects = set(model.user_projects(user))
+    owned_projects = set(model.user_projects_owned(user))
+    if not users:
+        if not set(projects).issubset(owned_projects):
+            users = [user]
     if not user.is_admin:
-        member_projects = set(model.user_projects(user))
-        owned_projects = set(model.user_projects_owned(user))
-        if not users:
-            if not set(projects).issubset(owned_projects):
-                users = [user]
         if not set(users).issubset(set([user])):
             if not set(projects).issubset(owned_projects):
                 raise exceptions.NotPermitted(user)
@@ -344,12 +344,12 @@ def report_charges_main ():
     projects = check_projects(options.projects, options.users)
     resources = check_resources(options.resources)
     user = get_current_user()
+    member_projects = set(model.user_projects(user))
+    owned_projects = set(model.user_projects_owned(user))
+    if not users:
+        if not set(projects).issubset(owned_projects):
+            users = [user]
     if not user.is_admin:
-        member_projects = set(model.user_projects(user))
-        owned_projects = set(model.user_projects_owned(user))
-        if not users:
-            if not set(projects).issubset(owned_projects):
-                users = [user]
         if not set(users).issubset(set([user])):
             if not set(projects).issubset(owned_projects):
                 raise exceptions.NotPermitted(user)

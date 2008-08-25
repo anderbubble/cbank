@@ -13,6 +13,7 @@ cbank (cli) changes
  * added '-n' flag to cbank-new scripts
  * fixed a bug that caused the detail view to crash on charges with refunds
  * deprecated '-m' in favor of '-c' in cbank-new scripts
+ * fixed implementation of admin permissions (#216)
 
 -- 0.3.0 --
 
