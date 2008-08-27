@@ -1,6 +1,7 @@
 cbank (cli) changes
 
  * modified report columns to maintain consistency with 0.2 reports (#220)
+ * admins and project owners can see all charges to a project with -p (#218)
 
 -- 0.3.1 --
 
