@@ -277,6 +277,19 @@ def report_users_main ():
 
 @handle_exceptions
 def report_projects_main ():
+    """The projects report.
+    
+    admin       -p      -u      projects        users
+    =================================================
+    0           0       0       member          [u]
+    0           0       1       # NotPermitted ######
+    0           1       0       -p (if m/o)     [u]
+    0           1       1       # NotPermitted ######
+    1           0       0       p -u            -u
+    1           0       1       p -u            -u
+    1           1       0       -p              -u
+    1           1       1       -p              -u
+    """
     parser = build_report_projects_parser()
     options, args = parser.parse_args()
     if args:
