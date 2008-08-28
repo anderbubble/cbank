@@ -281,18 +281,27 @@ def report_projects_main ():
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnexpectedArguments(args)
-    users = options.users
-    projects = check_projects(options.projects, options.users)
-    resources = check_resources(options.resources)
     user = get_current_user()
-    member_projects = set(model.user_projects(user))
-    owned_projects = set(model.user_projects_owned(user))
-    if not user.is_admin:
-        if not set(users).issubset(set([user])):
-            if not set(projects).issubset(owned_projects):
-                raise exceptions.NotPermitted(user)
-        if not set(projects).issubset(member_projects | owned_projects):
+    member = set(model.user_projects(user))
+    owned = set(model.user_projects_owned(user))
+    like_admin = user.is_admin \
+        or (options.projects and set(options.projects).issubset(owned))
+    if like_admin:
+        users = options.users
+        projects = options.projects or set(sum((model.user_projects(user)
+            for user in options.users), []))
+    else:
+        if options.users and not set(options.users) == set([user]):
             raise exceptions.NotPermitted(user)
+        users = [user]
+        if options.projects:
+            if set(options.projects).issubset(member | owned):
+                projects = options.projects
+            else:
+                raise exceptions.NotPermitted(user)
+        else:
+            projects = member
+    resources = options.resources or configured_resources()
     views.print_projects_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before)
 
