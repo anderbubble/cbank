@@ -19,6 +19,7 @@ import pwd
 import ConfigParser
 from datetime import datetime, timedelta
 from warnings import warn
+from textwrap import dedent
 
 import sqlalchemy.exceptions
 
@@ -70,11 +71,18 @@ def require_admin (func):
     decorated_func.__dict__.update(func.__dict__)
     return decorated_func
 
+def help_requested ():
+    args = sys.argv[1:]
+    return "-h" in args or "--help" in args
+
 @handle_exceptions
 def main ():
     try:
         command = normalize(sys.argv[1], ["new", "report", "detail"])
     except (IndexError, exceptions.UnknownCommand):
+        if help_requested():
+            print_main_help()
+            sys.exit()
         command = "report"
     else:
         replace_command()
@@ -84,6 +92,23 @@ def main ():
         return report_main()
     elif command == "detail":
         return detail_main()
+
+def print_main_help ():
+    command = os.path.basename(sys.argv[0])
+    help = """\
+        usage: $CMD <subcommand>
+        
+        cbank is a metacommand that dispatches to other subcommands:
+          report (default) -- generate reports
+          details -- retrieve details on a specific entity
+          new -- create new entities
+        
+        Arguments (other than -h, --help) will be passed along to the
+        default subcommand (list above).
+        
+        For help with a specific subcommand, run
+          $CMD <command> -h"""
+    print dedent(help.replace("$CMD", command))
 
 @handle_exceptions
 @require_admin
