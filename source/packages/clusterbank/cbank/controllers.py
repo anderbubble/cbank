@@ -98,13 +98,13 @@ def print_main_help ():
     help = """\
         usage: $CMD <subcommand>
         
-        cbank is a metacommand that dispatches to other subcommands:
+        A metacommand that dispatches to other subcommands:
           report (default) -- generate reports
-          details -- retrieve details on a specific entity
+          detail -- retrieve details of a specific entity
           new -- create new entities
         
-        Arguments (other than -h, --help) will be passed along to the
-        default subcommand (list above).
+        Arguments (other than -h, --help) will be passed to the
+        default subcommand (listed above).
         
         For help with a specific subcommand, run
           $CMD <command> -h"""
@@ -116,8 +116,18 @@ def new_main ():
     commands = ["allocation", "charge", "refund"]
     try:
         command = normalize(sys.argv[1], commands)
+    except exceptions.UnknownCommand:
+        if help_requested():
+            print_new_main_help()
+            sys.exit()
+        else:
+            raise
     except IndexError:
-        raise exceptions.MissingCommand(", ".join(commands))
+        if help_requested():
+            print_new_main_help()
+            sys.exit()
+        else:
+            raise exceptions.MissingCommand(", ".join(commands))
     replace_command()
     if command == "allocation":
         return new_allocation_main()
@@ -125,6 +135,21 @@ def new_main ():
         return new_charge_main()
     elif command == "refund":
         return new_refund_main()
+
+def print_new_main_help ():
+    command = os.path.basename(sys.argv[0])
+    help = """\
+        usage: $CMD <entity>
+        
+        Create clusterbank entities:
+          allocation
+          charge
+          refund
+        
+        Each entity has its own set of options. For help with a specific
+        entity, run
+          $CMD <entity> -h"""
+    print dedent(help.replace("$CMD", command))
 
 @handle_exceptions
 @require_admin
@@ -249,6 +274,9 @@ def report_main ():
     try:
         command = normalize(sys.argv[1], commands)
     except (IndexError, exceptions.UnknownCommand):
+        if help_requested():
+            print_report_main_help()
+            sys.exit()
         command = "projects"
     else:
         replace_command()
@@ -262,6 +290,26 @@ def report_main ():
         return report_holds_main()
     elif command == "charges":
         return report_charges_main()
+
+def print_report_main_help ():
+    command = os.path.basename(sys.argv[0])
+    help = """\
+        usage: $CMD <report>
+        
+        Generate clusterbank reports:
+          users
+          projects (default)
+          allocations
+          holds
+          charges
+        
+        Arguments (other than -h, --help) will be passed to the
+        default report (listed above).
+        
+        Each report has its own set of options. For help with a specific
+        report, run
+          $CMD <report> -h"""
+    print dedent(help.replace("$CMD", command))
 
 @handle_exceptions
 def report_users_main ():
@@ -447,6 +495,9 @@ def report_charges_main ():
 
 @handle_exceptions
 def detail_main ():
+    if help_requested():
+        print_detail_main_help()
+        sys.exit()
     commands = ["allocations", "holds", "charges", "refunds"]
     try:
         command = normalize(sys.argv[1], commands)
@@ -461,6 +512,20 @@ def detail_main ():
         return detail_charges_main()
     elif command == "refunds":
         return detail_refunds_main()
+
+def print_detail_main_help ():
+    command = os.path.basename(sys.argv[0])
+    help = """\
+        usage: $CMD <entity> <id> ...
+        
+        Retrieve details of clusterbank entities:
+          allocations
+          holds
+          charges
+          refunds
+        
+        Entity ids are available using applicable reports."""
+    print dedent(help.replace("$CMD", command))
 
 @handle_exceptions
 def detail_allocations_main ():
