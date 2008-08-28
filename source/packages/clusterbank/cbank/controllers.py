@@ -248,7 +248,7 @@ def report_users_main ():
     0           0       1       # NotPermitted ######
     0           1       0       -p              [u]
     0           1       1       # NotPermitted ######
-    1           0       0       -p              -u
+    1           0       0       -p              m -p
     1           0       1       -p              -u
     1           1       0       -p              m -p
     1           1       1       -p              -u
