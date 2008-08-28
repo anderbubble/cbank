@@ -267,7 +267,7 @@ def report_users_main ():
             for project in options.projects), []))
         projects = options.projects
     else:
-        if options.users:
+        if options.users and set(options.users) != set([user]):
             raise exceptions.NotPermitted(user)
         users = [user]
         projects = options.projects or model.user_projects(user)
@@ -291,7 +291,7 @@ def report_projects_main ():
         projects = options.projects or set(sum((model.user_projects(user)
             for user in options.users), []))
     else:
-        if options.users and not set(options.users) == set([user]):
+        if options.users and set(options.users) != set([user]):
             raise exceptions.NotPermitted(user)
         users = [user]
         if options.projects:
