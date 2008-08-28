@@ -240,22 +240,38 @@ def report_main ():
 
 @handle_exceptions
 def report_users_main ():
+    """The users report.
+    
+    admin       -p      -u      projects        users
+    =================================================
+    0           0       0       member          [u]
+    0           0       1       # NotPermitted ######
+    0           1       0       -p              [u]
+    0           1       1       # NotPermitted ######
+    1           0       0       -p              -u
+    1           0       1       -p              -u
+    1           1       0       -p              m -p
+    1           1       1       -p              -u
+    """
     parser = build_report_users_parser()
     options, args = parser.parse_args()
     if args:
         raise exceptions.UnexpectedArguments(args)
-    users = check_users(options.users, options.projects)
-    projects = check_projects(options.projects, users)
-    resources = check_resources(options.resources)
     user = get_current_user()
-    member_projects = set(model.user_projects(user))
-    owned_projects = set(model.user_projects_owned(user))
-    if not user.is_admin:
-        if not set(users).issubset(set([user])):
-            if not set(projects).issubset(owned_projects):
-                raise exceptions.NotPermitted(user)
-        if not set(projects).issubset(member_projects | owned_projects):
+    member = set(model.user_projects(user))
+    owned = set(model.user_projects_owned(user))
+    like_admin = user.is_admin \
+        or (options.projects and set(options.projects).issubset(owned))
+    if like_admin:
+        users = options.users or set(sum((model.project_members(project)
+            for project in options.projects), []))
+        projects = options.projects
+    else:
+        if options.users:
             raise exceptions.NotPermitted(user)
+        users = [user]
+        projects = options.projects or model.user_projects(user)
+    resources = options.resources or configured_resources()
     views.print_users_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before)
 
@@ -483,15 +499,13 @@ def check_projects (projects, users=None):
         projects = member_projects | managed_projects
     return projects
 
-def check_resources (resources):
-    """If no resources are specified, check the config file."""
-    if resources:
-        return resources
+def configured_resources ():
     resource = configured_resource()
     if resource:
-        return [resource]
+        resources = [resource]
     else:
-        return []
+        resources = []
+    return resources
 
 def configured_resource ():
     try:
