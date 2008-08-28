@@ -306,7 +306,7 @@ def report_projects_main ():
     else:
         if options.users and set(options.users) != set([user]):
             raise exceptions.NotPermitted(user)
-        users = [user]
+        users = options.users
         if options.projects:
             if set(options.projects).issubset(member | owned):
                 projects = options.projects
