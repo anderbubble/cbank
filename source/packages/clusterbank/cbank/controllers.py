@@ -320,24 +320,46 @@ def report_projects_main ():
 
 @handle_exceptions
 def report_allocations_main ():
+    """The allocations report.
+    
+    admin       -p      -u      projects        users
+    =================================================
+    0           0       0       member          [u]
+    0           0       1       # NotPermitted ######
+    0           1       0       -p (if m/o)     [u]
+    0           1       1       # NotPermitted ######
+    1           0       0       p -u            -u
+    1           0       1       p -u            -u
+    1           1       0       -p              -u
+    1           1       1       -p              -u
+    """
     parser = build_report_allocations_parser()
     options, args = parser.parse_args()
-    if args:
-        raise exceptions.UnexpectedArguments(args)
-    users = options.users
-    projects = check_projects(options.projects, options.users)
-    resources = check_resources(options.resources)
-    user = get_current_user()
-    member_projects = set(model.user_projects(user))
-    owned_projects = set(model.user_projects_owned(user))
-    if not user.is_admin:
-        if not set(users).issubset(set([user])):
-            if not set(projects).issubset(owned_projects):
-                raise exceptions.NotPermitted(user)
-        if not set(projects).issubset(member_projects | owned_projects):
-            raise exceptions.NotPermitted(user)
     if options.extra_data is not None:
         warn("use of -e is deprecated: use -c instead", DeprecationWarning)
+    if args:
+        raise exceptions.UnexpectedArguments(args)
+    user = get_current_user()
+    member = set(model.user_projects(user))
+    owned = set(model.user_projects_owned(user))
+    like_admin = user.is_admin \
+        or (options.projects and set(options.projects).issubset(owned))
+    if like_admin:
+        users = options.users
+        projects = options.projects or set(sum((model.user_projects(user)
+            for user in options.users), []))
+    else:
+        if options.users and set(options.users) != set([user]):
+            raise exceptions.NotPermitted(user)
+        users = options.users
+        if options.projects:
+            if set(options.projects).issubset(member | owned):
+                projects = options.projects
+            else:
+                raise exceptions.NotPermitted(user)
+        else:
+            projects = member
+    resources = options.resources or configured_resources()
     comments = options.comments or options.extra_data
     views.print_allocations_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before,
