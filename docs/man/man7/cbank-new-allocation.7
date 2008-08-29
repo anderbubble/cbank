@@ -6,10 +6,10 @@
 .Nd clusterbank command-line interface
 .Sh SYNOPSIS
 .Nm
-.Op Fl r , -resource Ar resource
-.Op Fl s , -start Ar date
-.Op Fl e , -expiration Ar date
-.Op Fl m , -comment Ar message
+.Op Fl r Ar resource
+.Op Fl s Ar date
+.Op Fl e Ar date
+.Op Fl c Ar comment
 .Ar project
 .Ar amount
 .Sh DESCRIPTION
@@ -20,21 +20,24 @@ of a resource to a
 .Pp
 Available options:
 .Bl -tag
-.It Fl r , -resource
+.It Fl r
 Specify which resource to allocate. (default specified in
 .Pa /etc/clusterbank.conf )
-.It Fl s , -start
+.It Fl s
 Specify when the allocation becomes usable. (default now)
-.It Fl e , -expiration
+.It Fl e
 Specify when the allocation expires. (default next year)
-.It Fl m , -comment
-Supply an informative message.
+.It Fl c
+Supply an informative comment.
 .El
 .Sh FILES
 .Bl -tag
 .It /etc/clusterbank.conf
 Global configuration and defaults.
 .El
+.Sh SEE ALSO
+.Xr cbank 7 ,
+.Xr cbank-new 7
 .Sh AUTHORS
 .An Jonathon Anderson
 .Ad janderso@alcf.anl.gov
