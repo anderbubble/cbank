@@ -1,4 +1,4 @@
-.Dd 6 August 2008
+.Dd 29 August 2008
 .Os Python 2.x
 .Dt CBANK 7 USD
 .Sh NAME
@@ -6,40 +6,63 @@
 .Nd clusterbank command-line interface
 .Sh SYNOPSIS
 .Nm
-.Op OPTIONS
+.Op options
 .Sh DESCRIPTION
-For each applicable allocation, report the associated project and resource, the expiration date, the amount available to be charged, the current number of charges, and the total amount charged.
+For each applicable allocation report the expiration date, the associated resource and project, the number of charges, the total amount charged, and the amount available to be charged.
 .Sh OPTIONS
 .Bl -tag
-.It Fl u , -user Ar user
-Display allocations for projects of and charges by
+.It Fl u Ar user
+Report charges for
 .Ar user .
-.It Fl p , -project Ar project
-Display allocations for
+If no
+.Ar project
+is specified, projects that
+.Ar user
+is a member of will be included in the report.
+.It Fl p Ar project
+Report allocations to
 .Ar project .
-.It Fl r , -resource Ar resource
-Display allocations for
+.It Fl r Ar resource
+Report allocations for
 .Ar resource .
 (default specified in
 .Pa /etc/clusterbank.conf )
-.It Fl a , -after Ar date
-Display allocations available ond charges that occured after (and including)
+.It Fl a Ar date
+Report charges that occured after (and including)
 .Ar date .
-.It Fl b , -before Ar date
-Display allocations available and charges that occured before (and excluding)
+Allocations that expire after
+.Ar date
+will be included in the report.
+.It Fl b Ar date
+Report charges that occured before (and excluding)
 .Ar date .
+Allocations that start before
+.Ar date
+will be included in the report.
+.It Fl c
+Report associated comments.
 .El
 .Sh EXAMPLES
-Generate a report of all charges for the current users's projects:
-.D1 cbank report projects
-or
-.D1 cbank projects
-.Pp
 Report charges to the project 'grail' by users 'monty' and 'python':
-.D1 cbank report projects -p grail -u monty -u python
+.Bd -filled -offset indent
+.Nm
+-p grail -u monty -u python
+.Ed
 .Pp
-Report charges by and to the projects of 'monty' between 5 October 1969 and 5 December 1974.
-.D1 cbank report projects -u monty -a 1969-10-5 -b 1974-12-5
+Report charges by and to the projects of 'monty' between 5 October 1969 and 5 December 1974:
+.Bd -filled -offset indent
+.Nm
+-u monty -a 1969-10-05 -b 1974-12-05
+.Ed
+.Sh FILES
+.Bl -item
+.It
+.Pa /etc/clusterbank.conf
+Global configuration and defaults.
+.El
+.Sh SEE ALSO
+.Xr cbank 7 ,
+.Xr cbank-report 7
 .Sh AUTHORS
 .An Jonathon Anderson
 .Ad janderso@alcf.anl.gov

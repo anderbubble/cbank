@@ -25,22 +25,32 @@ Report individual charges.
 .Pp
 Additional arguments are passed to the specific
 .Ar report .
-.Pp
+.Sh EXAMPLES
 Any non-ambiguous value for
 .Ar report
 is valid. Therefore, the following commands are equivalent:
-.D1
+.Bd -filled -offset indent
 .Nm
 allocations
-.D1
+.Ed
+.Bd -filled -offset indent -compact
 .Nm
 allocation
-.D1
+.Ed
+.Bd -filled -offset indent -compact
 .Nm
 all
-.D1
+.Ed
+.Bd -filled -offset indent -compact
 .Nm
 a
+.Ed
+.Sh FILES
+.Bl -item
+.It
+.Pa /etc/clusterbank.conf
+Global configuration and defaults.
+.El
 .Sh SEE ALSO
 .Xr cbank 7 ,
 .Xr cbank-report-users 7 ,

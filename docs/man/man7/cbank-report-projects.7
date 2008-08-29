@@ -6,7 +6,7 @@
 .Nd clusterbank command-line interface
 .Sh SYNOPSIS
 .Nm
-.Op OPTIONS
+.Op options
 .Sh DESCRIPTION
 For each applicable project, report the current number of charges, the total amount charged, and the amount available.
 .Sh OPTIONS
@@ -30,7 +30,7 @@ Report charges to
 .It Fl a Ar date
 Report charges that occured after (and including)
 .Ar date .
-.It Fl b , -before Ar date
+.It Fl b Ar date
 Report charges that occured before (and excluding)
 .Ar date .
 .El
@@ -41,11 +41,20 @@ Report charges to the project 'grail' by users 'monty' and 'python':
 -p grail -u monty -u python
 .Ed
 .Pp
-Report charges by and to the projects of 'monty' between 5 October 1969 and 5 December 1974.
+Report charges by and to the projects of 'monty' between 5 October 1969 and 5 December 1974:
 .Bd -filled -offset indent
 .Nm
--u monty -a 1969-10-5 -b 1974-12-5
+-u monty -a 1969-10-05 -b 1974-12-05
 .Ed
+.Sh FILES
+.Bl -item
+.It
+.Pa /etc/clusterbank.conf
+Global configuration and defaults.
+.El
+.Sh SEE ALSO
+.Xr cbank 7 ,
+.Xr cbank-report 7
 .Sh AUTHORS
 .An Jonathon Anderson
 .Ad janderso@alcf.anl.gov

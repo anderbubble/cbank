@@ -24,19 +24,28 @@ Refund an existing charge.
 Additional arguments are passed to the specific
 .Ar entity
 command.
-.Pp
+.Sh EXAMPLES
 Any non-ambiguous value for
 .Ar entity
 is valid. Therefore, the following commands are equivalent:
-.D1
+.Bd -filled -offset indent
 .Nm
 allocation
-.D1
+.Ed
+.Bd -filled -offset indent -compact
 .Nm
 all
-.D1
+.Ed
+.Bd -filled -offset indent -compact
 .Nm
 a
+.Ed
+.Sh FILES
+.Bl -item
+.It
+.Pa /etc/clusterbank.conf
+Global configuration and defaults.
+.El
 .Sh SEE ALSO
 .Xr cbank 7 ,
 .Xr cbank-new-allocation 7 ,

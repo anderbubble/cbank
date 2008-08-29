@@ -6,13 +6,13 @@
 .Nd clusterbank command-line interface
 .Sh SYNOPSIS
 .Nm
-.Op OPTIONS
+.Op options
 .Sh DESCRIPTION
 For each applicable user, report the number of charges and the total amount charged.
 .Sh OPTIONS
 .Bl -tag
 .It Fl u Ar user
-Display charges for
+Report charges for
 .Ar user .
 If no
 .Ar project
@@ -41,14 +41,22 @@ Report charges that occured before (and excluding)
 .El
 .Sh EXAMPLES
 Report charges to the projects 'grail' and 'circus':
-.D1
+.Bd -filled -offset indent
 .Nm
 -p grail -p circus
+.Ed
 .Pp
-Report charges by user 'monty' between 5 October 1969 and 5 December 1974.
-.D1
+Report charges by user 'monty' between 5 October 1969 and 5 December 1974:
+.Bd -filled -offset indent
 .Nm
--u monty -a 1969-10-5 -b 1974-12-5
+-u monty -a 1969-10-05 -b 1974-12-05
+.Ed
+.Sh FILES
+.Bl -item
+.It
+.Pa /etc/clusterbank.conf
+Global configuration and defaults.
+.El
 .Sh SEE ALSO
 .Xr cbank 7 ,
 .Xr cbank-report 7
