@@ -4,6 +4,7 @@ cbank (cli) changes
  * admins and project owners can see all charges to a project with -p (#218)
  * improved report option behavior based on admin feedback (#219)
  * added help messages to metacommands (#221)
+ * improved manpages and help messages (#224)
 
 -- 0.3.1 --
 
