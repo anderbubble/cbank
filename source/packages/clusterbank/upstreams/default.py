@@ -8,7 +8,7 @@ User -- upstream user
 
 import ConfigParser
 
-from sqlalchemy import MetaData, Table, Column, ForeignKey
+from sqlalchemy import MetaData, Table, Column, ForeignKey, create_engine
 import sqlalchemy.types as types
 import sqlalchemy.exceptions as exceptions
 from sqlalchemy.orm import sessionmaker, scoped_session, mapper, relation
