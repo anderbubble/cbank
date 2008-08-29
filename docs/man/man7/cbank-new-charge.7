@@ -6,9 +6,9 @@
 .Nd clusterbank command-line interface
 .Sh SYNOPSIS
 .Nm
-.Op Fl u , -user Ar user
-.Op Fl r , -resource Ar resource
-.Op Fl m , -comment Ar message
+.Op Fl u Ar user
+.Op Fl r Ar resource
+.Op Fl c Ar comment
 .Ar project
 .Ar amount
 .Sh DESCRIPTION
@@ -19,20 +19,23 @@ of a resource to a
 .Pp
 Available options:
 .Bl -tag
-.It Fl u , -user
+.It Fl u
 Specify an associated
 .Ar user .
-.It Fl r , -resource
+.It Fl r
 Specify which resource to charge. (default specified in
 .Pa /etc/clusterbank.conf )
-.It Fl m , -comment
-Supply an informative message.
+.It Fl c
+Supply an informative comment.
 .El
 .Sh FILES
 .Bl -tag
 .It /etc/clusterbank.conf
 Global configuration and defaults.
 .El
+.Sh SEE ALSO
+.Xr cbank 7 ,
+.Xr cbank-new 7
 .Sh AUTHORS
 .An Jonathon Anderson
 .Ad janderso@alcf.anl.gov
