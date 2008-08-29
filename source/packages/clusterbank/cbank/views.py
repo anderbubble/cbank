@@ -354,10 +354,11 @@ def print_holds_report (**kwargs):
     
     if kwargs.get("comments"):
         format = Formatter([
-            "Hold", "User", "Project", "Resource", "Datetime", "Held", "Comment"])
+            "Hold", "Datetime", "Resource", "Project", "User", "Held", "Comment"])
     else:
         format = Formatter([
-            "Hold", "User", "Project", "Resource", "Datetime", "Held"])
+            "Hold", "Datetime", "Resource", "Project", "User", "Held"])
+    format.headers = {'Hold':"#", 'Datetime':"Date"}
     format.widths = {
         'Hold':6, 'User':8, 'Project':15, 'Held':13, 'Datetime':10}
     format.aligns = {'Held':"right"}
