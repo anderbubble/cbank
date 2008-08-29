@@ -1,4 +1,4 @@
-.Dd 6 August 2008
+.Dd 29 August 2008
 .Os Python 2.x
 .Dt CBANK 7 USD
 .Sh NAME
@@ -11,35 +11,43 @@
 For each applicable user, report the number of charges and the total amount charged.
 .Sh OPTIONS
 .Bl -tag
-.It Fl u , -user Ar user
+.It Fl u Ar user
 Display charges for
 .Ar user .
-.It Fl p , -project Ar project
-Display the members of and charges to
+If no
+.Ar project
+is specified, projects that
+.Ar user
+is a member of will be included in the report.
+.It Fl p Ar project
+Report charges to
 .Ar project .
-.It Fl r , -resource Ar resource
-Display charges to
+If no
+.Ar user
+is specified, members of
+.Ar project
+will be included in the report.
+.It Fl r Ar resource
+Report charges to
 .Ar resource .
 (default specified in
 .Pa /etc/clusterbank.conf )
-.It Fl a , -after Ar date
-Display charges that occured after (and including)
+.It Fl a Ar date
+Report charges that occured after (and including)
 .Ar date .
-.It Fl b , -before Ar date
-Display charges that occured before (and excluding)
+.It Fl b Ar date
+Report charges that occured before (and excluding)
 .Ar date .
 .El
 .Sh EXAMPLES
-Report charges for the current user:
-.D1 cbank report users
-or
-.D1 cbank users
-.Pp
-Report charges to and by members of the projects 'grail' and 'circus':
+Report charges to the projects 'grail' and 'circus':
 .D1 cbank report users -p grail -p circus
 .Pp
 Report charges by user 'monty' between 5 October 1969 and 5 December 1974.
 .D1 cbank report users -u monty -a 1969-10-5 -b 1974-12-5
+.Sh SEE ALSO
+.Xr cbank 7 ,
+.Xr cbank-report 7
 .Sh AUTHORS
 .An Jonathon Anderson
 .Ad janderso@alcf.anl.gov
