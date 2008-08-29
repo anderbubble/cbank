@@ -18,7 +18,6 @@ try:
     set
 except NameError:
     from sets import Set as set
-import warnings
 
 from clusterbank import config
 
