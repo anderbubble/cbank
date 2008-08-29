@@ -1,4 +1,13 @@
+"""Exceptional conditions for clusterbank."""
 
-class BaseException (Exception): pass
-class NotFound (BaseException): pass
-class InsufficientFunds (BaseException): pass
+__all__ = ["ClusterbankException", "NotFound", "InsufficientFunds"]
+
+class ClusterbankException (Exception):
+    """Base exception for clusterbank."""
+
+class NotFound (ClusterbankException):
+    """The specified entity was not found."""
+
+class InsufficientFunds (ClusterbankException):
+    """An entity has insufficient funds."""
+
