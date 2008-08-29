@@ -21,8 +21,6 @@ except NameError:
 import warnings
 
 from clusterbank import config
-import clusterbank.exceptions as exceptions
-import clusterbank.model
 
 __all__ = [
     "User", "Project", "Resource",
