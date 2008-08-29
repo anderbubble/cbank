@@ -671,19 +671,19 @@ def build_report_users_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
-        help="display charges by USER", metavar="USER"))
+        help="report charges by USER", metavar="USER"))
     parser.add_option(Option("-p", "--project",
         dest="projects", type="project", action="append",
-        help="display members of and charges to PROJECT", metavar="PROJECT"))
+        help="report charges to PROJECT", metavar="PROJECT"))
     parser.add_option(Option("-r", "--resource",
         dest="resources", type="resource", action="append",
-        help="display charges on RESOURCE", metavar="RESOURCE"))
+        help="report charges on RESOURCE", metavar="RESOURCE"))
     parser.add_option(Option("-a", "--after",
         dest="after", type="date",
-        help="display charges after (and including) DATE", metavar="DATE"))
+        help="report charges after (and including) DATE", metavar="DATE"))
     parser.add_option(Option("-b", "--before",
         dest="before", type="date",
-        help="display charges before (and excluding) DATE", metavar="DATE"))
+        help="report charges before (and excluding) DATE", metavar="DATE"))
     parser.set_defaults(projects=[], users=[], resources=[])
     return parser
 
@@ -691,19 +691,19 @@ def build_report_projects_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
-        help="display charges by USER", metavar="USER"))
+        help="report charges by USER", metavar="USER"))
     parser.add_option(Option("-p", "--project",
         dest="projects", type="project", action="append",
-        help="display charges to PROJECT", metavar="PROJECT"))
+        help="report charges to PROJECT", metavar="PROJECT"))
     parser.add_option(Option("-r", "--resource",
         dest="resources", type="resource", action="append",
-        help="display charges on RESOURCE", metavar="RESOURCE"))
+        help="report charges on RESOURCE", metavar="RESOURCE"))
     parser.add_option(Option("-a", "--after",
         dest="after", type="date",
-        help="display charges after (and including) DATE", metavar="DATE"))
+        help="report charges after (and including) DATE", metavar="DATE"))
     parser.add_option(Option("-b", "--before",
         dest="before", type="date",
-        help="display charges before (and excluding) DATE", metavar="DATE"))
+        help="report charges before (and excluding) DATE", metavar="DATE"))
     parser.set_defaults(projects=[], users=[], resources=[])
     return parser
 
@@ -711,19 +711,19 @@ def build_report_allocations_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
-        help="display allocations to and charges by USER", metavar="USER"))
+        help="charges by USER", metavar="USER"))
     parser.add_option(Option("-p", "--project",
         dest="projects", type="project", action="append",
-        help="display allocations to PROJECT", metavar="PROJECT"))
+        help="report allocations to PROJECT", metavar="PROJECT"))
     parser.add_option(Option("-r", "--resource",
         dest="resources", type="resource", action="append",
-        help="display allocations for RESOURCE", metavar="RESOURCE"))
+        help="report allocations for RESOURCE", metavar="RESOURCE"))
     parser.add_option(Option("-a", "--after", metavar="DATE",
         dest="after", type="date",
-        help="display allocations and charges after (and including) DATE"))
+        help="charges after (and including) DATE"))
     parser.add_option(Option("-b", "--before", metavar="DATE",
         dest="before", type="date",
-        help="display allocations and charges before (and excluding) DATE"))
+        help="charges before (and excluding) DATE"))
     parser.add_option(Option("-c", "--with-comments",
         dest="comments", action="store_true",
         help="include the comment line for each allocation"))
@@ -737,19 +737,19 @@ def build_report_holds_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
-        help="display holds by USER", metavar="USER"))
+        help="report holds by USER", metavar="USER"))
     parser.add_option(Option("-p", "--project",
         dest="projects", type="project", action="append",
-        help="display holds on PROJECT", metavar="PROJECT"))
+        help="report holds on PROJECT", metavar="PROJECT"))
     parser.add_option(Option("-r", "--resource",
         dest="resources", type="resource", action="append",
-        help="display holds for RESOURCE", metavar="RESOURCE"))
+        help="report holds for RESOURCE", metavar="RESOURCE"))
     parser.add_option(Option("-a", "--after",
         dest="after", type="date",
-        help="display holds after (and including) DATE", metavar="DATE"))
+        help="report holds after (and including) DATE", metavar="DATE"))
     parser.add_option(Option("-b", "--before",
         dest="before", type="date",
-        help="display holds before (and excluding) DATE", metavar="DATE"))
+        help="report holds before (and excluding) DATE", metavar="DATE"))
     parser.add_option(Option("-c", "--with-comments",
         dest="comments", action="store_true",
         help="include the comment line for each hold"))
@@ -763,19 +763,19 @@ def build_report_charges_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
-        help="display charges by USER", metavar="USER"))
+        help="report charges by USER", metavar="USER"))
     parser.add_option(Option("-p", "--project",
         dest="projects", type="project", action="append",
-        help="display charges to PROJECT", metavar="PROJECT"))
+        help="report charges to PROJECT", metavar="PROJECT"))
     parser.add_option(Option("-r", "--resource",
         dest="resources", type="resource", action="append",
-        help="display charges for RESOURCE", metavar="RESOURCE"))
+        help="report charges for RESOURCE", metavar="RESOURCE"))
     parser.add_option(Option("-a", "--after",
         dest="after", type="date",
-        help="display charges after (and including) DATE", metavar="DATE"))
+        help="report charges after (and including) DATE", metavar="DATE"))
     parser.add_option(Option("-b", "--before",
         dest="before", type="date",
-        help="display charges before (and excluding) DATE", metavar="DATE"))
+        help="report charges before (and excluding) DATE", metavar="DATE"))
     parser.add_option(Option("-c", "--with-comments",
         dest="comments", action="store_true",
         help="include the comment line for each charge"))
