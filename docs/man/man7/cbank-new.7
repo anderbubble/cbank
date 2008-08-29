@@ -21,9 +21,13 @@ Charge a project's allocation(s).
 Refund an existing charge.
 .El
 .Pp
+Additional arguments are passed to the specific
+.Ar entity
+command.
+.Pp
 Any non-ambiguous value for
 .Ar entity
-is valid. The following commands are equivalent:
+is valid. Therefore, the following commands are equivalent:
 .D1
 .Nm
 allocation
@@ -33,15 +37,15 @@ all
 .D1
 .Nm
 a
-.Sh AUTHORS
-.An Jonathon Anderson
-.Ad janderso@alcf.anl.gov
 .Sh SEE ALSO
 .Xr cbank 7 ,
 .Xr cbank-new-allocation 7 ,
 .Xr cbank-new-hold 7 ,
 .Xr cbank-new-charge 7 ,
 .Xr cbank-new-refund 7
+.Sh AUTHORS
+.An Jonathon Anderson
+.Ad janderso@alcf.anl.gov
 .Sh BUGS
 Submit bug reports to the clusterbank trac at
 .Ad http://trac.mcs.anl.gov/projects/clusterbank
