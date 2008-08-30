@@ -22,14 +22,16 @@ __all__ = [
 ]
 
 def _get_entity_id (cls, name):
+    s = Session()
     try:
-        return Session.query(cls).filter_by(name=name).one().id
+        return s.query(cls).filter_by(name=name).one().id
     except exceptions.InvalidRequestError:
         return None
 
 def _get_entity_name (cls, id):
+    s = Session()
     try:
-        return Session.query(cls).filter_by(id=id).one().name
+        return s.query(cls).filter_by(id=id).one().name
     except exceptions.InvalidRequestError:
         return None
 
@@ -40,16 +42,18 @@ def get_user_name (id):
     return _get_entity_name(User, id)
 
 def get_member_projects (id):
+    s = Session()
     try:
-        user = Session.query(User).filter_by(id=id).one()
+        user = s.query(User).filter_by(id=id).one()
     except exceptions.InvalidRequestError:
         return []
     else:
         return [project.id for project in user.projects]
 
 def get_owner_projects (id):
+    s = Session()
     try:
-        user = Session.query(User).filter_by(id=id).one()
+        user = s.query(User).filter_by(id=id).one()
     except exceptions.InvalidRequestError:
         return []
     else:
@@ -62,16 +66,18 @@ def get_project_name (id):
     return _get_entity_name(Project, id)
 
 def get_project_members (id):
+    s = Session()
     try:
-        project = Session.query(Project).filter_by(id=id).one()
+        project = s.query(Project).filter_by(id=id).one()
     except exceptions.InvalidRequestError:
         return []
     else:
         return [user.id for user in project.members]
 
 def get_project_owners (id):
+    s = Session()
     try:
-        project = Session.query(Project).filter_by(id=id).one()
+        project = s.query(Project).filter_by(id=id).one()
     except exceptions.InvalidRequestError:
         return []
     else:
