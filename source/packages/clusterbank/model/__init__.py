@@ -137,6 +137,11 @@ _allocation_amount_charged = cast(func.coalesce(
         charges.c.allocation_id==allocations.c.id).as_scalar(), 0),
     types.Integer)
 
+_allocation_amount_held = cast(func.coalesce(
+    select([func.sum(holds.c.amount)],
+        holds.c.allocation_id==allocations.c.id).as_scalar(), 0),
+    types.Integer)
+
 _allocation_amount_refunded = cast(func.coalesce(
     select([func.sum(refunds.c.amount)],
         and_(refunds.c.charge_id==charges.c.id,
@@ -153,9 +158,9 @@ mapper(Allocation, allocations, properties=dict(
     expiration = allocations.c.expiration,
     comment = allocations.c.comment,
     requests = relation(Request, secondary=requests_allocations, backref="allocations"),
-    _amount_charged = column_property(
+    amount_charged = column_property(
         _allocation_amount_charged - _allocation_amount_refunded),
-    amount_charged = synonym("_amount_charged"),
+    amount_held = column_property(_allocation_amount_held),
 ))
 
 mapper(CreditLimit, credit_limits, properties=dict(
