@@ -158,9 +158,11 @@ mapper(Allocation, allocations, properties=dict(
     expiration = allocations.c.expiration,
     comment = allocations.c.comment,
     requests = relation(Request, secondary=requests_allocations, backref="allocations"),
-    amount_charged = column_property(
+    _amount_charged = column_property(
         _allocation_amount_charged - _allocation_amount_refunded),
-    amount_held = column_property(_allocation_amount_held),
+    amount_charged = synonym("_amount_charged"),
+    _amount_held = column_property(_allocation_amount_held),
+    amount_held = synonym("_amount_held"),
 ))
 
 mapper(CreditLimit, credit_limits, properties=dict(
