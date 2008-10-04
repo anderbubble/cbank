@@ -13,7 +13,7 @@ Refund -- refund of a charge
 
 from datetime import datetime
 import ConfigParser
-import operator
+from operator import attrgetter
 try:
     set
 except NameError:
@@ -59,7 +59,8 @@ class UpstreamEntity (Entity):
             return "?"
     
     def __repr__ (self):
-        return "<%s name=%r id=%r>" % (self.__class__.__name__, self.name, self.id)
+        return "<%s name=%r id=%r>" % (
+            self.__class__.__name__, self.name, self.id)
     
 
 class User (UpstreamEntity):
@@ -150,7 +151,7 @@ class Project (UpstreamEntity):
             pass
         credit_limits = [limit for limit in self.credit_limits
             if limit.resource==resource and limit.start<=datetime]
-        credit_limits = sorted(credit_limits, key=operator.attrgetter("start"))
+        credit_limits = sorted(credit_limits, key=attrgetter("start"))
         try:
             return credit_limits[0]
         except IndexError:
@@ -194,6 +195,7 @@ class Resource (UpstreamEntity):
         return upstream.get_resource_name(self.id)
     
     name = property(_get_name)
+
 
 class Request (Entity):
     
@@ -290,12 +292,18 @@ class Allocation (Entity):
         self.charges = kwargs.get("charges", [])
     
     def _get_amount_charged (self):
-        return sum(charge.effective_amount for charge in self.charges)
+        if getattr(self, "_amount_charged", None) is not None:
+            return self._amount_charged
+        else:
+            return sum(charge.effective_amount for charge in self.charges)
     
     amount_charged = property(_get_amount_charged)
     
     def _get_amount_held (self):
-        return sum(hold.amount or 0 for hold in self.holds if hold.active)
+        if getattr(self, "_amount_held", None) is not None:
+            return self._amount_held
+        else:
+            return sum(hold.amount or 0 for hold in self.holds if hold.active)
     
     amount_held = property(_get_amount_held)
     
@@ -305,7 +313,6 @@ class Allocation (Entity):
     amount_available = property(_get_amount_available)
     
     def _get_active (self):
-        """Intelligent property accessor."""
         return self.start <= datetime.now() < self.expiration
     
     active = property(_get_active)
@@ -415,7 +422,8 @@ class Hold (Entity):
             if allocation.amount_available >= amount:
                 hold = cls(allocation=allocation, amount=amount, **kwargs)
             else:
-                hold = cls(allocation=allocation, amount=allocation.amount_available, **kwargs)
+                hold = cls(allocation=allocation,
+                    amount=allocation.amount_available, **kwargs)
             holds.append(hold)
             amount -= hold.amount
             if amount <= 0:
@@ -495,7 +503,7 @@ class Charge (Entity):
         
         Example:
         A project has multiple allocations on a single resource. Use a
-        distributed charge to easily charge more funds than any one allocation can
+        distributed charge to charge more funds than any one allocation can
         accomodate.
         """
         
@@ -508,7 +516,8 @@ class Charge (Entity):
             if allocation.amount_available >= amount:
                 charge = cls(allocation=allocation, amount=amount, **kwargs)
             else:
-                charge = cls(allocation=allocation, amount=allocation.amount_available, **kwargs)
+                charge = cls(allocation=allocation,
+                    amount=allocation.amount_available, **kwargs)
             amount -= charge.amount
             charges.append(charge)
             if amount <= 0:
@@ -523,7 +532,8 @@ class Charge (Entity):
                 except IndexError:
                     raise ValueError("no allocations to charge against")
                 else:
-                    charge = cls(allocation=allocation, amount=amount, **kwargs)
+                    charge = cls(
+                        allocation=allocation, amount=amount, **kwargs)
                     charges.append(charge)
                     amount = 0
             else:
@@ -531,9 +541,19 @@ class Charge (Entity):
         
         return charges
     
+    def _get_amount_refunded (self):
+        if getattr(self, "_amount_refunded", None) is not None:
+            return self._amount_refunded
+        else:
+            return sum(refund.amount or 0 for refund in self.refunds)
+    
+    amount_refunded = property(_get_amount_refunded)
+    
     def _get_effective_amount (self):
-        amount_refunded = sum(refund.amount or 0 for refund in self.refunds)
-        return self.amount - amount_refunded
+        if getattr(self, "_effective_amount", None) is not None:
+            return self._effective_amount
+        else:
+            return self.amount - self.amount_refunded
     
     effective_amount = property(_get_effective_amount)
     
@@ -549,6 +569,7 @@ class Charge (Entity):
     
     def refund (self, **kwargs):
         return Refund(charge=self, **kwargs)
+
 
 class Refund (Entity):
     
@@ -579,3 +600,4 @@ class Refund (Entity):
         self.amount = kwargs.get("amount")
         if self.amount is None and self.charge is not None:
             self.amount = self.charge.effective_amount
+

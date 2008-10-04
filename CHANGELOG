@@ -1,6 +1,7 @@
 api changes
 
  * fixed a bug where dates that were too old crashed the sql generator (#229)
+ * additional mapped queries (#209)
 
 -- 0.3.2 --
 

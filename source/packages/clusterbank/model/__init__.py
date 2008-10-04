@@ -4,6 +4,7 @@ This package contains the local data model, including reflected projects
 and resources from upstream, along with requests, allocations, charges, etc.
 
 Classes:
+User -- a user that can charge
 Project -- a project that can use a resource
 Resource -- a resource that can be allocated
 Request -- request for an allocation
@@ -22,17 +23,19 @@ import ConfigParser
 
 from sqlalchemy import create_engine, types
 from sqlalchemy.sql import select, func, cast, and_
-import sqlalchemy.exceptions
-from sqlalchemy.orm import scoped_session, sessionmaker, mapper, relation, column_property, synonym
+from sqlalchemy.exceptions import InvalidRequestError
+from sqlalchemy.orm import scoped_session, sessionmaker, mapper, \
+    relation, column_property, synonym
 from sqlalchemy.orm.session import SessionExtension
 
 from clusterbank import config
-from clusterbank.model.entities import upstream, User, Project, Resource, Request, Allocation, CreditLimit, Hold, Charge, Refund
+from clusterbank.model.entities import upstream, User, Project, \
+    Resource, Request, Allocation, CreditLimit, Hold, Charge, Refund
 from clusterbank.model.database import metadata, \
     users, projects, resources, requests, \
     requests_allocations, allocations, credit_limits, \
     holds, charges, refunds
-import clusterbank.exceptions as exceptions
+from clusterbank.exceptions import InsufficientFunds, NotFound
 
 __all__ = [
     "upstream", "Session",
@@ -40,7 +43,8 @@ __all__ = [
     "Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund",
     "user_by_id", "user_by_name", "project_by_id", "project_by_name",
     "resource_by_id", "resource_by_name",
-    "user_projects", "user_projects_owned", "project_members", "project_owners",
+    "user_projects", "user_projects_owned", "project_members",
+    "project_owners",
 ]
 
 try:
@@ -57,9 +61,12 @@ try:
 except ConfigParser.Error:
     upstream_module_name = "clusterbank.upstreams.default"
 try:
-    upstream.use = __import__(upstream_module_name, locals(), globals(), ["get_project_name", "get_project_id", "get_resource_name", "get_resource_id"])
+    upstream.use = __import__(upstream_module_name, locals(), globals(), [
+        "get_project_name", "get_project_id", "get_resource_name",
+        "get_resource_id"])
 except ImportError:
-    warnings.warn("invalid upstream module: %s" % (upstream_module_name), UserWarning)
+    warnings.warn("invalid upstream module: %s" % (upstream_module_name),
+        UserWarning)
 
 class SessionConstraints (SessionExtension):
     
@@ -67,25 +74,32 @@ class SessionConstraints (SessionExtension):
         for entity in (session.new | session.dirty):
             if isinstance(entity, Request):
                 if entity.amount < 0:
-                    raise ValueError("invalid amount for request: %r" % entity.amount)
+                    raise ValueError(
+                        "invalid amount for request: %r" % entity.amount)
             elif isinstance(entity, Allocation):
                 if entity.amount < 0:
-                    raise ValueError("invalid amount for allocation: %r" % entity.amount)
+                    raise ValueError(
+                        "invalid amount for allocation: %r" % entity.amount)
             elif isinstance(entity, CreditLimit):
                 if entity.amount < 0:
-                    raise ValueError("invalid amount for credit limit: %r" % entity.amount)
+                    raise ValueError(
+                        "invalid amount for credit limit: %r" % entity.amount)
             elif isinstance(entity, Hold):
                 if entity.amount < 0:
-                    raise ValueError("invalid amount for hold: %r" % entity.amount)
+                    raise ValueError(
+                        "invalid amount for hold: %r" % entity.amount)
             elif isinstance(entity, Charge):
                 if entity.amount < 0:
-                    raise ValueError("invalid amount for charge: %r" % entity.amount)
+                    raise ValueError(
+                        "invalid amount for charge: %r" % entity.amount)
             elif isinstance(entity, Refund):
                 if entity.amount < 0:
-                    raise ValueError("invalid amount for refund: %r" % entity.amount)
+                    raise ValueError(
+                        "invalid amount for refund: %r" % entity.amount)
     
     def forbid_holds_greater_than_allocation (self, session):
-        holds = [instance for instance in (session.new | session.dirty) if isinstance(instance, Hold)]
+        holds = [instance for instance in (session.new | session.dirty)
+            if isinstance(instance, Hold)]
         for allocation in set([hold.allocation for hold in holds]):
             credit_limit = allocation.project.credit_limit(allocation.resource)
             if credit_limit:
@@ -93,14 +107,15 @@ class SessionConstraints (SessionExtension):
             else:
                 credit_limit = 0
             if allocation.amount_available < -credit_limit:
-                raise exceptions.InsufficientFunds("not enough funds available")
+                raise InsufficientFunds("not enough funds available")
     
     def forbid_refunds_greater_than_charge (self, session):
-        refunds = [instance for instance in (session.new | session.dirty) if isinstance(instance, Refund)]
+        refunds = [instance for instance in (session.new | session.dirty)
+            if isinstance(instance, Refund)]
         charges = set([refund.charge for refund in refunds])
         for charge in charges:
             if charge.effective_amount < 0:
-                raise exceptions.InsufficientFunds("not enough funds available")
+                raise InsufficientFunds("not enough funds available")
     
     def before_commit (self, session):
         self.forbid_negative_amounts(session)
@@ -110,110 +125,108 @@ class SessionConstraints (SessionExtension):
 Session = scoped_session(sessionmaker(transactional=True, autoflush=True,
     extension=SessionConstraints()))
 
-mapper(User, users, properties=dict(
-    id = users.c.id,
-))
+mapper(User, users, properties={
+    'id':users.c.id})
 
-mapper(Project, projects, properties=dict(
-    id = projects.c.id,
-))
+mapper(Project, projects, properties={
+    'id':projects.c.id})
 
-mapper(Resource, resources, properties=dict(
-    id = resources.c.id,
-))
+mapper(Resource, resources, properties={
+    'id':resources.c.id})
 
-mapper(Request, requests, properties=dict(
-    id = requests.c.id,
-    project = relation(Project, backref="requests"),
-    resource = relation(Resource, backref="requests"),
-    datetime = requests.c.datetime,
-    amount = requests.c.amount,
-    comment = requests.c.comment,
-    start = requests.c.start,
-))
+mapper(Request, requests, properties={
+    'id':requests.c.id,
+    'project':relation(Project, backref="requests"),
+    'resource':relation(Resource, backref="requests"),
+    'datetime':requests.c.datetime,
+    'amount':requests.c.amount,
+    'comment':requests.c.comment,
+    'start':requests.c.start})
 
-_allocation_amount_charged = cast(func.coalesce(
+allocation_amount_charged = cast(func.coalesce(
     select([func.sum(charges.c.amount)],
         charges.c.allocation_id==allocations.c.id).as_scalar(), 0),
     types.Integer)
 
-_allocation_amount_held = cast(func.coalesce(
+allocation_amount_held = cast(func.coalesce(
     select([func.sum(holds.c.amount)],
         holds.c.allocation_id==allocations.c.id).as_scalar(), 0),
     types.Integer)
 
-_allocation_amount_refunded = cast(func.coalesce(
+allocation_amount_refunded = cast(func.coalesce(
     select([func.sum(refunds.c.amount)],
         and_(refunds.c.charge_id==charges.c.id,
             charges.c.allocation_id==allocations.c.id)
     ).as_scalar(), 0), types.Integer)
 
-mapper(Allocation, allocations, properties=dict(
-    id = allocations.c.id,
-    project = relation(Project, backref="allocations"),
-    resource = relation(Resource, backref="allocations"),
-    datetime = allocations.c.datetime,
-    amount = allocations.c.amount,
-    start = allocations.c.start,
-    expiration = allocations.c.expiration,
-    comment = allocations.c.comment,
-    requests = relation(Request, secondary=requests_allocations, backref="allocations"),
-    _amount_charged = column_property(
-        _allocation_amount_charged - _allocation_amount_refunded),
-    amount_charged = synonym("_amount_charged"),
-    _amount_held = column_property(_allocation_amount_held),
-    amount_held = synonym("_amount_held"),
-))
+mapper(Allocation, allocations, properties={
+    'id':allocations.c.id,
+    'project':relation(Project, backref="allocations"),
+    'resource':relation(Resource, backref="allocations"),
+    'datetime':allocations.c.datetime,
+    'amount':allocations.c.amount,
+    'start':allocations.c.start,
+    'expiration':allocations.c.expiration,
+    'comment':allocations.c.comment,
+    'requests':relation(Request, backref="allocations",
+        secondary=requests_allocations),
+    '_amount_charged':column_property(
+        allocation_amount_charged - allocation_amount_refunded),
+    'amount_charged':synonym("_amount_charged"),
+    '_amount_held':column_property(allocation_amount_held),
+    'amount_held':synonym("_amount_held")})
 
-mapper(CreditLimit, credit_limits, properties=dict(
-    id = credit_limits.c.id,
-    project = relation(Project, backref="credit_limits"),
-    resource = relation(Resource, backref="credit_limits"),
-    start = credit_limits.c.start,
-    datetime = credit_limits.c.datetime,
-    amount = credit_limits.c.amount,
-    comment = credit_limits.c.comment,
-))
+mapper(CreditLimit, credit_limits, properties={
+    'id':credit_limits.c.id,
+    'project':relation(Project, backref="credit_limits"),
+    'resource':relation(Resource, backref="credit_limits"),
+    'start':credit_limits.c.start,
+    'datetime':credit_limits.c.datetime,
+    'amount':credit_limits.c.amount,
+    'comment':credit_limits.c.comment})
 
-mapper(Hold, holds, properties=dict(
-    id = holds.c.id,
-    allocation = relation(Allocation, backref="holds"),
-    datetime = holds.c.datetime,
-    user = relation(User, backref="holds"),
-    amount = holds.c.amount,
-    comment = holds.c.comment,
-    active = holds.c.active,
-))
+mapper(Hold, holds, properties={
+    'id':holds.c.id,
+    'allocation':relation(Allocation, backref="holds"),
+    'datetime':holds.c.datetime,
+    'user':relation(User, backref="holds"),
+    'amount':holds.c.amount,
+    'comment':holds.c.comment,
+    'active':holds.c.active})
 
-mapper(Charge, charges, properties=dict(
-    id = charges.c.id,
-    allocation = relation(Allocation, backref="charges"),
-    datetime = charges.c.datetime,
-    user = relation(User, backref="charges"),
-    amount = charges.c.amount,
-    _effective_amount = column_property(charges.c.amount - \
-        cast(func.coalesce(select([func.sum(refunds.c.amount)],
-            refunds.c.charge_id==charges.c.id).label("amount_refunded"), 0), types.Integer)),
-    effective_amount = synonym("_effective_amount"),
-    comment = charges.c.comment,
-))
+charge_amount_refunded = cast(func.coalesce(
+    select([func.sum(refunds.c.amount)],
+        refunds.c.charge_id==charges.c.id).as_scalar(),
+    0), types.Integer)
 
-mapper(Refund, refunds, properties=dict(
-    id = refunds.c.id,
-    charge = relation(Charge, backref="refunds"),
-    datetime = refunds.c.datetime,
-    amount = refunds.c.amount,
-    comment = refunds.c.comment,
-))
+mapper(Charge, charges, properties={
+    'id':charges.c.id,
+    'allocation':relation(Allocation, backref="charges"),
+    'datetime':charges.c.datetime,
+    'user':relation(User, backref="charges"),
+    'amount':charges.c.amount,
+    '_amount_refunded':column_property(charge_amount_refunded),
+    'amount_refunded':synonym("_amount_refunded"),
+    '_effective_amount':column_property(
+        charges.c.amount - charge_amount_refunded),
+    'effective_amount':synonym("_effective_amount"),
+    'comment':charges.c.comment})
+
+mapper(Refund, refunds, properties={
+    'id':refunds.c.id,
+    'charge':relation(Charge, backref="refunds"),
+    'datetime':refunds.c.datetime,
+    'amount':refunds.c.amount,
+    'comment':refunds.c.comment})
 
 def _get_upstream_entity (cls, upstream_function, entity_name):
     upstream_id = upstream_function(entity_name)
     if upstream_id is None:
-        raise exceptions.NotFound("%s '%s' not found" % (
+        raise NotFound("%s '%s' not found" % (
             cls.__name__.lower(), entity_name))
     try:
         return Session.query(cls).filter_by(id=upstream_id).one()
-    except sqlalchemy.exceptions.InvalidRequestError:
+    except InvalidRequestError:
         entity = cls(id=upstream_id)
         Session.save(entity)
         return entity
@@ -221,7 +234,7 @@ def _get_upstream_entity (cls, upstream_function, entity_name):
 def user_by_id (user_id):
     try:
         return Session.query(User).filter_by(id=user_id).one()
-    except sqlalchemy.exceptions.InvalidRequestError:
+    except InvalidRequestError:
         user = User(id=user_id)
         Session.save(user)
         return user
@@ -238,7 +251,7 @@ def user_projects_owned (user):
 def project_by_id (project_id):
     try:
         return Session.query(Project).filter_by(id=project_id).one()
-    except sqlalchemy.exceptions.InvalidRequestError:
+    except InvalidRequestError:
         project = Project(id=project_id)
         Session.save(project)
         return project
@@ -255,7 +268,7 @@ def project_owners (project):
 def resource_by_id (resource_id):
     try:
         return Session.query(Resource).filter_by(id=resource_id).one()
-    except sqlalchemy.exceptions.InvalidRequestError:
+    except InvalidRequestError:
         resource = Resource(id=resource_id)
         Session.save(resource)
         return resource
