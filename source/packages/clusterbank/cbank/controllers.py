@@ -859,9 +859,17 @@ class Option (optparse.Option):
         """Return a datetime from YYYY-MM-DD."""
         for format in self.DATE_FORMATS:
             try:
-                return dt_strptime(value, format)
+                dt = dt_strptime(value, format)
             except ValueError:
                 continue
+            else:
+                # Python can't translate dates before 1900 to a string,
+                # causing crashes when trying to build sql with them.
+                if dt < datetime(1900, 1, 1):
+                    raise optparse.OptionValueError(
+                        "option %s: date must be after 1900: %s" % (opt, value))
+                else:
+                    return dt
         raise optparse.OptionValueError(
             "option %s: invalid date: %s" % (opt, value))
     

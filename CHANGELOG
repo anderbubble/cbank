@@ -1,6 +1,6 @@
 api changes
 
- * unified python properties and mapped queries on Allocation
+ * fixed a bug where dates that were too old crashed the sql generator (#229)
 
 -- 0.3.2 --
 
