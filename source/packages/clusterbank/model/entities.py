@@ -52,15 +52,15 @@ class Entity (object):
 
 class UpstreamEntity (Entity):
     
+    def __repr__ (self):
+        return "<%s name=%r id=%r>" % (
+            self.__class__.__name__, self.name, self.id)
+    
     def __str__ (self):
         if self.name is not None:
             return str(self.name)
         else:
             return "?"
-    
-    def __repr__ (self):
-        return "<%s name=%r id=%r>" % (
-            self.__class__.__name__, self.name, self.id)
     
 
 class User (UpstreamEntity):
@@ -292,18 +292,12 @@ class Allocation (Entity):
         self.charges = kwargs.get("charges", [])
     
     def _get_amount_charged (self):
-        if getattr(self, "_amount_charged", None) is not None:
-            return self._amount_charged
-        else:
-            return sum(charge.effective_amount for charge in self.charges)
+        return sum(charge.effective_amount for charge in self.charges)
     
     amount_charged = property(_get_amount_charged)
     
     def _get_amount_held (self):
-        if getattr(self, "_amount_held", None) is not None:
-            return self._amount_held
-        else:
-            return sum(hold.amount or 0 for hold in self.holds if hold.active)
+        return sum(hold.amount or 0 for hold in self.holds if hold.active)
     
     amount_held = property(_get_amount_held)
     
@@ -542,18 +536,12 @@ class Charge (Entity):
         return charges
     
     def _get_amount_refunded (self):
-        if getattr(self, "_amount_refunded", None) is not None:
-            return self._amount_refunded
-        else:
-            return sum(refund.amount or 0 for refund in self.refunds)
+        return sum(refund.amount or 0 for refund in self.refunds)
     
     amount_refunded = property(_get_amount_refunded)
     
     def _get_effective_amount (self):
-        if getattr(self, "_effective_amount", None) is not None:
-            return self._effective_amount
-        else:
-            return self.amount - self.amount_refunded
+        return self.amount - self.amount_refunded
     
     effective_amount = property(_get_effective_amount)
     
