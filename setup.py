@@ -16,7 +16,7 @@ setup(
     author="Jonathon Anderson",
     author_email="janderso@alcf.anl.gov",
     url="http://trac.mcs.anl.gov/projects/clusterbank",
-    install_requires=["SQLAlchemy >=0.4.4, <=0.4.7"],
+    install_requires=["SQLAlchemy >=0.4.4, <=0.4.7p1"],
     packages=find_packages("source/packages", exclude=['ez_setup']),
     package_dir={'':"source/packages"},
     test_suite="nose.collector",
