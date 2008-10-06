@@ -301,3 +301,9 @@ class TestRefund (object):
         assert refund.charge is charge
         assert refund.amount == 300
         assert refund.comment == "testing"
+    
+    def test_full_refund (self):
+        charge = Charge(amount=100)
+        refund = Refund(charge=charge)
+        assert refund.amount == 100
+
