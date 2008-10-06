@@ -47,26 +47,34 @@ __all__ = [
     "project_owners",
 ]
 
-try:
-    uri = config.get("main", "database")
-except ConfigParser.Error:
-    warnings.warn("no database specified", UserWarning)
-else:
+def get_configured_engine ():
     try:
-        metadata.bind = create_engine(uri)
-    except Exception, e:
-        warnings.warn("invalid database: %s (%s)" % (uri, e), UserWarning)
-try:
-    upstream_module_name = config.get("upstream", "module")
-except ConfigParser.Error:
-    upstream_module_name = "clusterbank.upstreams.default"
-try:
-    upstream.use = __import__(upstream_module_name, locals(), globals(), [
-        "get_project_name", "get_project_id", "get_resource_name",
-        "get_resource_id"])
-except ImportError:
-    warnings.warn("invalid upstream module: %s" % (upstream_module_name),
-        UserWarning)
+        uri = config.get("main", "database")
+    except ConfigParser.Error:
+        warnings.warn("no database specified", UserWarning)
+        engine = None
+    else:
+        try:
+            engine = create_engine(uri)
+        except Exception, e:
+            warnings.warn("invalid database: %s (%s)" % (uri, e), UserWarning)
+            engine = None
+    return engine
+
+def get_configured_upstream ():
+    try:
+        upstream_module_name = config.get("upstream", "module")
+    except ConfigParser.Error:
+        upstream_module_name = "clusterbank.upstreams.default"
+    try:
+        module = __import__(upstream_module_name, locals(), globals(), [
+            "get_project_name", "get_project_id", "get_resource_name",
+            "get_resource_id"])
+    except ImportError:
+        warnings.warn("invalid upstream module: %s" % (upstream_module_name),
+            UserWarning)
+        module = None
+    return module
 
 class SessionConstraints (SessionExtension):
     
@@ -276,3 +284,5 @@ def resource_by_id (resource_id):
 def resource_by_name (resource_name):
     return _get_upstream_entity(Resource, upstream.get_resource_id, resource_name)
 
+metadata.bind = get_configured_engine()
+upstream.use = get_configured_upstream()
