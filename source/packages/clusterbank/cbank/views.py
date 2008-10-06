@@ -5,10 +5,7 @@ import ConfigParser
 import string
 import warnings
 from datetime import datetime
-try:
-    set
-except NameError:
-    from sets import Set as set
+from sets import Set as set
 
 import sqlalchemy.sql as sql
 import sqlalchemy.types as types

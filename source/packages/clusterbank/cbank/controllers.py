@@ -6,6 +6,7 @@ report_main -- metacontroller that dispatches to report controllers
 new_allocation_main -- creates new allocations
 new_charge_main -- creates new charges
 new_refund_main -- creates new refunds
+report_users_main -- users report
 report_projects_main -- projects report
 report_allocations_main -- allocations report
 report_holds_main -- holds report
@@ -16,6 +17,7 @@ import optparse
 import os
 import sys
 import pwd
+import time
 import ConfigParser
 from datetime import datetime, timedelta
 from warnings import warn
@@ -36,14 +38,10 @@ from clusterbank.cbank.common import get_unit_factor
 __all__ = ["main", "new_main", "report_main",
     "new_allocation_main", "new_charge_main", "new_refund_main"
     "report_users_main", "report_projects_main", "report_allocations_main",
-    "report_charges_main"]
+    "report_holds_main", "report_charges_main"]
 
-try:
-    dt_strptime = datetime.strprime
-except AttributeError:
-    import time
-    def dt_strptime (value, format):
-        return datetime(*time.strptime(value, format)[0:6])
+def dt_strptime (value, format):
+    return datetime(*time.strptime(value, format)[0:6])
 
 def handle_exceptions (func):
     def decorated_func (*args, **kwargs):
@@ -915,3 +913,4 @@ class Option (optparse.Option):
     TYPE_CHECKER['resource'] = check_resource
     TYPE_CHECKER['user'] = check_user
     TYPE_CHECKER['charge'] = check_charge
+

@@ -1,6 +1,9 @@
 """Exceptional cases and errors in the cbank interface."""
 
-__all__ = ["CbankException", "CbankError", "UnknownUser"]
+__all__ = ["CbankException", "CbankError", "UnknownUser", "UnknownProject",
+    "UnknownCharge", "MissingArgument", "UnexpectedArguments",
+    "UnknownCommand", "NotPermitted", "MissingResource", "ValueError",
+    "MissingCommand"]
 
 
 class CbankException (Exception):
@@ -152,3 +155,4 @@ class MissingCommand (CbankError):
             return "cbank: missing command"
         else:
             return "cbank: missing command: %s" % self.args[0]
+
