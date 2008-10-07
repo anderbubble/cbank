@@ -10,6 +10,7 @@ Resource -- a resource that can be allocated
 Request -- request for an allocation
 Allocation -- allocation of a resource to a project
 Hold -- hold of funds from an account
+Job -- job run on a resource
 Charge -- charge against an account
 Refund -- refund of a charge
 
@@ -30,17 +31,17 @@ from sqlalchemy.orm.session import SessionExtension
 
 from clusterbank import config
 from clusterbank.model.entities import upstream, User, Project, \
-    Resource, Request, Allocation, CreditLimit, Hold, Charge, Refund
+    Resource, Request, Allocation, CreditLimit, Hold, Job, Charge, Refund
 from clusterbank.model.database import metadata, \
     users, projects, resources, requests, \
     requests_allocations, allocations, credit_limits, \
-    holds, charges, refunds
+    holds, jobs, charges, jobs_charges, refunds
 from clusterbank.exceptions import InsufficientFunds, NotFound
 
 __all__ = [
     "upstream", "Session",
     "User", "Project", "Resource",
-    "Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund",
+    "Request", "Allocation", "CreditLimit", "Hold", "Job", "Charge", "Refund",
     "user_by_id", "user_by_name", "project_by_id", "project_by_name",
     "resource_by_id", "resource_by_name",
     "user_projects", "user_projects_owned", "project_members",
@@ -206,6 +207,11 @@ charge_amount_refunded = cast(func.coalesce(
     select([func.sum(refunds.c.amount)],
         refunds.c.charge_id==charges.c.id).as_scalar(),
     0), types.Integer)
+
+mapper(Job, jobs, properties={
+    'id':jobs.c.id,
+    'resource':relation(Resource, backref="jobs"),
+    'charges':relation(Charge, backref="jobs", secondary=jobs_charges)})
 
 mapper(Charge, charges, properties={
     'id':charges.c.id,

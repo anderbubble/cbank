@@ -440,6 +440,16 @@ class Hold (Entity):
         return holds
 
 
+class Job (Entity):
+    
+    def __init__ (self, resource, id):
+        self.resource = resource
+        self.id = id
+        self.start = None
+        self.end = None
+        self.charges = []
+
+
 class Charge (Entity):
     
     """A charge against an allocation.
