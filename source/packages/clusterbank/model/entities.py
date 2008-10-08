@@ -370,24 +370,14 @@ class Hold (Entity):
     distributed -- construct multiple holds across multiple allocations
     """
     
-    def __init__ (self, **kwargs):
-        """Initialize a new hold.
-        
-        Keyword arguments:
-        id -- unique integer identifier
-        allocation -- allocation to which the hold applies
-        datetime -- when the hold was entered
-        amount -- amount held
-        comment -- misc. comments
-        active -- the hold is active
-        """
-        self.datetime = kwargs.get("datetime")
-        self.id = kwargs.get("id")
-        self.allocation = kwargs.get("allocation")
-        self.comment = kwargs.get("comment")
-        self.active = kwargs.get("active", True)
-        self.amount = kwargs.get("amount")
-        self.user = kwargs.get("user")
+    def __init__ (self, allocation, amount):
+        self.datetime = datetime.now()
+        self.id = None
+        self.allocation = allocation
+        self.comment = None
+        self.active = True
+        self.amount = amount
+        self.user = None
     
     @classmethod
     def distributed (cls, allocations, **kwargs):

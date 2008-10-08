@@ -75,7 +75,7 @@ class TestAllocation (object):
         project = Project()
         resource = Resource()
         request = Request()
-        hold = Hold()
+        hold = Hold(None, 0)
         charge = Charge(None, 0)
         allocation = Allocation(id=1, datetime=now, project=project,
             resource=resource, amount=1500, comment="testing", start=now,
@@ -106,9 +106,9 @@ class TestAllocation (object):
     def test_amount_available (self):
         allocation = Allocation(amount=1500)
         assert allocation.amount_available == 1500
-        hold1 = Hold(allocation=allocation, amount=100)
+        hold1 = Hold(allocation, 100)
         assert allocation.amount_available == 1400
-        hold2 = Hold(allocation=allocation, amount=200)
+        hold2 = Hold(allocation, 200)
         assert allocation.amount_available == 1200
         charge1 = Charge(allocation, 100)
         assert allocation.amount_available == 1100
@@ -146,22 +146,14 @@ class TestCreditLimit (object):
 class TestHold (object):
     
     def test_init (self):
-        now = datetime.now()
-        user = User()
         allocation = Allocation()
-        hold = Hold(
-            id=1, datetime=now, active=False, user=user,
-            allocation=allocation, amount=600, comment="testing")
-        assert hold.id == 1
-        assert hold.datetime == now
+        hold = Hold(allocation, 600)
+        assert hold.id is None
+        assert datetime.now() - hold.datetime < timedelta(minutes=1)
         assert hold.allocation is allocation
         assert hold.amount == 600
-        assert hold.comment == "testing"
-        assert hold.user is user
-        assert not hold.active
-    
-    def test_default_active (self):
-        hold = Hold()
+        assert hold.comment is None
+        assert hold.user is None
         assert hold.active
     
     @raises(ValueError)
@@ -233,12 +225,13 @@ class TestCharge (object):
     
     def test_amount_with_active_hold (self):
         allocation = Allocation(amount=1200)
-        hold = Hold(allocation=allocation, amount=900, active=True)
+        hold = Hold(allocation, 900)
         assert allocation.amount_available == 300
     
     def test_amount_with_inactive_hold (self):
         allocation = Allocation(amount=1200)
-        hold = Hold(allocation=allocation, amount=allocation.amount, active=False)
+        hold = Hold(allocation, allocation.amount)
+        hold.active = False
         assert allocation.amount_available == 1200
     
     def test_amount_with_other_charge (self):
