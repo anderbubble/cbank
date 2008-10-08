@@ -249,7 +249,7 @@ def user_by_id (user_id):
     try:
         return Session.query(User).filter_by(id=user_id).one()
     except InvalidRequestError:
-        user = User(id=user_id)
+        user = User(user_id)
         Session.save(user)
         return user
 
@@ -266,7 +266,7 @@ def project_by_id (project_id):
     try:
         return Session.query(Project).filter_by(id=project_id).one()
     except InvalidRequestError:
-        project = Project(id=project_id)
+        project = Project(project_id)
         Session.save(project)
         return project
 
@@ -283,7 +283,7 @@ def resource_by_id (resource_id):
     try:
         return Session.query(Resource).filter_by(id=resource_id).one()
     except InvalidRequestError:
-        resource = Resource(id=resource_id)
+        resource = Resource(resource_id)
         Session.save(resource)
         return resource
 

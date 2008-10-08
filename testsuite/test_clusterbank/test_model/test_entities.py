@@ -18,41 +18,41 @@ __all__ = [
 class TestUser (object):
     
     def test_id (self):
-        user = User(id=1)
+        user = User(1)
         assert user.id == 1
     
     def test_name (self):
-        user = User(id=1)
+        user = User(1)
         assert user.name == "monty"
 
 
 class TestProject (object):
     
     def test_id (self):
-        project = Project(id=1)
+        project = Project(1)
         assert project.id == 1
     
     def test_name (self):
-        project = Project(id=1)
+        project = Project(1)
         assert project.name == "grail"
 
 
 class TestResource (object):
     
     def test_id (self):
-        resource = Resource(id=1)
+        resource = Resource(1)
         assert resource.id == 1
     
     def test_name (self):
-        resource = Resource(id=1)
+        resource = Resource(1)
         assert resource.name == "spam"
 
 
 class TestRequest (object):
     
     def test_init (self):
-        project = Project()
-        resource = Resource()
+        project = Project(1)
+        resource = Resource(1)
         request = Request(project, resource, 2000)
         assert request.id is None
         assert datetime.now() - request.datetime < timedelta(minutes=1)
@@ -73,8 +73,8 @@ class TestAllocation (object):
     
     def test_init (self):
         start = datetime.now()
-        project = Project()
-        resource = Resource()
+        project = Project(1)
+        resource = Resource(1)
         allocation = Allocation(project, resource, 1500,
             start, start+timedelta(days=1))
         assert allocation.id is None
@@ -163,8 +163,8 @@ class TestCreditLimit (object):
     
     def test_init (self):
         now = datetime.now()
-        project = Project()
-        resource = Resource()
+        project = Project(1)
+        resource = Resource(1)
         credit_limit = CreditLimit(project, resource, 100)
         assert credit_limit.id == None
         assert datetime.now() - credit_limit.datetime < timedelta(minutes=1)

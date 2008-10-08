@@ -59,6 +59,9 @@ class UpstreamEntity (Entity):
         else:
             return "?"
     
+    def __init__ (self, id):
+        self.id = id
+    
 
 class User (UpstreamEntity):
     
@@ -70,15 +73,10 @@ class User (UpstreamEntity):
     is_admin -- whether the user has admin privileges
     """
     
-    def __init__ (self, **kwargs):
-        """Initialize a user.
-        
-        Keyword arguments:
-        id -- unique integer identifier
-        """
-        self.id = kwargs.get("id")
-        self.holds = kwargs.get("holds", [])
-        self.charges = kwargs.get("charges", [])
+    def __init__ (self, id):
+        UpstreamEntity.__init__(self, id)
+        self.holds = []
+        self.charges = []
     
     def _get_name (self):
         return upstream.get_user_name(self.id)
@@ -116,19 +114,11 @@ class Project (UpstreamEntity):
     credit_limit -- credit limit for a resource at a given datetime
     """
     
-    def __init__ (self, **kwargs):
-        """Initialize a project.
-        
-        Keyword arguments:
-        id -- unique integer identifier
-        requests -- requests from the project
-        allocations -- allocations to the project
-        credit_limits -- credit limits for the project
-        """
-        self.id = kwargs.get("id")
-        self.requests = kwargs.get("requests", [])
-        self.allocations = kwargs.get("allocations", [])
-        self.credit_limits = kwargs.get("credit_limits", [])
+    def __init__ (self, id):
+        UpstreamEntity.__init__(self, id)
+        self.requests = []
+        self.allocations = []
+        self.credit_limits = []
     
     def _get_name (self):
         return upstream.get_project_name(self.id)
@@ -175,18 +165,11 @@ class Resource (UpstreamEntity):
     credit_limits -- credit limits on the resource
     """
     
-    def __init__ (self, **kwargs):
-        """Initialize a resource.
-        
-        Keyword arguments:
-        id -- canonical id of the resource
-        requests -- requests for the resource
-        credit_limits -- credit limits on the resource
-        """
-        self.id = kwargs.get("id")
-        self.requests = kwargs.get("requests", [])
-        self.allocations = kwargs.get("allocations", [])
-        self.credit_limits = kwargs.get("credit_limits", [])
+    def __init__ (self, id):
+        UpstreamEntity.__init__(self, id)
+        self.requests = []
+        self.allocations = []
+        self.credit_limits = []
     
     def _get_name (self):
         return upstream.get_resource_name(self.id)
