@@ -727,7 +727,7 @@ class TestNewRefundMain (CbankTester):
         assert not refunds.count(), "started with existing refunds"
         allocation = model.Allocation(project=project, resource=resource, amount=1000, start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         charge = model.Charge(allocation=allocation, amount=100)
-        refund = model.Refund(charge=charge, amount=25)
+        refund = model.Refund(charge, 25)
         model.Session.save(allocation)
         model.Session.save(charge)
         model.Session.save(refund)

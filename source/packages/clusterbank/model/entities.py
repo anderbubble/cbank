@@ -581,7 +581,7 @@ class Refund (Entity):
     comment -- misc. comments
     """
     
-    def __init__ (self, **kwargs):
+    def __init__ (self, charge, amount=None):
         """Initialize a new refund.
         
         Keyword arguments:
@@ -591,11 +591,12 @@ class Refund (Entity):
         amount -- amount refunded (default: charge amount)
         comment -- misc. comments
         """
-        self.datetime = kwargs.get("datetime")
-        self.id = kwargs.get("id")
-        self.charge = kwargs.get("charge")
-        self.comment = kwargs.get("comment")
-        self.amount = kwargs.get("amount")
-        if self.amount is None and self.charge is not None:
+        self.id = None
+        self.datetime = datetime.now()
+        self.charge = charge
+        if amount is not None:
+            self.amount = amount
+        else:
             self.amount = self.charge.effective_amount
+        self.comment = None
 

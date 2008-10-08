@@ -252,9 +252,8 @@ def new_refund_main ():
         raise exceptions.UnexpectedArguments(args)
     if options.deprecated_comment is not None:
         warn("use of -m is deprecated: use -c instead", DeprecationWarning)
-    comment = options.comment or options.deprecated_comment
-    refund = Refund(
-        charge=charge, amount=amount, comment=comment)
+    refund = Refund(charge, amount)
+    refund.comment = options.comment or options.deprecated_comment
     if options.commit:
         Session.save(refund)
         try:
