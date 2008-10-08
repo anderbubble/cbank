@@ -53,19 +53,20 @@ class TestRequest (object):
     def test_init (self):
         project = Project()
         resource = Resource()
-        now = datetime.now()
-        allocation = Allocation(project, resource, 0, None, None)
-        request = Request(id=1, datetime=now, project=project,
-            resource=resource, amount=2000, comment="testing", start=now,
-            allocations=[allocation])
-        assert request.id == 1
-        assert request.datetime == now
+        request = Request(project, resource, 2000)
+        assert request.id is None
+        assert datetime.now() - request.datetime < timedelta(minutes=1)
         assert request.project is project
         assert request.resource is resource
         assert request.amount == 2000
+        assert request.start is None
+        assert request.comment is None
+        assert request.allocations == []
+    
+    def test_init_start (self):
+        now = datetime.now()
+        request = Request(None, None, 0, now)
         assert request.start == now
-        assert request.comment == "testing"
-        assert request.allocations == [allocation]
 
 
 class TestAllocation (object):

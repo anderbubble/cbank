@@ -14,10 +14,7 @@ Refund -- refund of a charge
 from datetime import datetime
 import ConfigParser
 from operator import attrgetter
-try:
-    set
-except NameError:
-    from sets import Set as set
+from sets import Set as set
 
 from clusterbank import config
 
@@ -212,27 +209,15 @@ class Request (Entity):
     allocations -- allocations that was made in response to the request
     """
     
-    def __init__ (self, **kwargs):
-        """Initialize a new request.
-        
-        Keyword arguments:
-        id -- unique integer identifier
-        project -- project making the request
-        resource -- resource for which an allocation is requested
-        datetime -- timestamp for when this request was entered
-        amount -- amount requested
-        start -- date when the allocation is needed
-        comment -- misc. comments
-        allocations -- allocations that was made in response to the request
-        """
-        self.datetime = kwargs.get("datetime")
-        self.id = kwargs.get("id")
-        self.project = kwargs.get("project")
-        self.resource = kwargs.get("resource")
-        self.amount = kwargs.get("amount")
-        self.start = kwargs.get("start")
-        self.comment = kwargs.get("comment")
-        self.allocations = kwargs.get("allocations", [])
+    def __init__ (self, project, resource, amount, start=None):
+        self.datetime = datetime.now()
+        self.id = None
+        self.project = project
+        self.resource = resource
+        self.amount = amount
+        self.start = start
+        self.comment = None
+        self.allocations = []
 
 
 class Allocation (Entity):
