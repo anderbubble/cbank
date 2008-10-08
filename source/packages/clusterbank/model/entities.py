@@ -329,25 +329,13 @@ class CreditLimit (Entity):
     unique by project, resource, and start
     """
     
-    def __init__ (self, **kwargs):
-        """Initialize a new credit limit.
-        
-        Keyword arguments:
-        id -- unique integer identifier
-        project -- project to which the credit limit applies
-        resource -- resource to which the credit limit applies
-        datetime -- when the credit limit was entered
-        start -- when the credit limit goes into effect
-        amount -- amount available through credit
-        comment -- misc. comments
-        """
-        self.datetime = kwargs.get("datetime")
-        self.id = kwargs.get("id")
-        self.project = kwargs.get("project")
-        self.resource = kwargs.get("resource")
-        self.start = kwargs.get("start")
-        self.amount = kwargs.get("amount")
-        self.comment = kwargs.get("comment")
+    def __init__ (self, project, resource, amount):
+        self.datetime = self.start = datetime.now()
+        self.id = None
+        self.project = project
+        self.resource = resource
+        self.amount = amount
+        self.comment = None
 
 
 class Hold (Entity):

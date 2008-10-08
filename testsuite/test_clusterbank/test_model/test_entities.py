@@ -130,17 +130,14 @@ class TestCreditLimit (object):
         now = datetime.now()
         project = Project()
         resource = Resource()
-        credit_limit = CreditLimit(
-            id=1, datetime=now,
-            project=project, resource=resource,
-            start=now, amount=100, comment="testing")
-        assert credit_limit.id == 1
-        assert credit_limit.datetime == now
+        credit_limit = CreditLimit(project, resource, 100)
+        assert credit_limit.id == None
+        assert datetime.now() - credit_limit.datetime < timedelta(minutes=1)
         assert credit_limit.project is project
         assert credit_limit.resource is resource
-        assert credit_limit.start == now
+        assert credit_limit.start == credit_limit.datetime
         assert credit_limit.amount == 100
-        assert credit_limit.comment == "testing"
+        assert credit_limit.comment is None
 
 
 class TestHold (object):
