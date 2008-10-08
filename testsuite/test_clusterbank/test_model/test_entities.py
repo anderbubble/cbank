@@ -76,7 +76,7 @@ class TestAllocation (object):
         resource = Resource()
         request = Request()
         hold = Hold()
-        charge = Charge()
+        charge = Charge(None, 0)
         allocation = Allocation(id=1, datetime=now, project=project,
             resource=resource, amount=1500, comment="testing", start=now,
             expiration=now+timedelta(days=1),
@@ -110,9 +110,9 @@ class TestAllocation (object):
         assert allocation.amount_available == 1400
         hold2 = Hold(allocation=allocation, amount=200)
         assert allocation.amount_available == 1200
-        charge1 = Charge(allocation=allocation, amount=100)
+        charge1 = Charge(allocation, 100)
         assert allocation.amount_available == 1100
-        charge2 = Charge(allocation=allocation, amount=200)
+        charge2 = Charge(allocation, 200)
         assert allocation.amount_available == 900
         hold1.active = False
         assert allocation.amount_available == 1000
@@ -190,28 +190,15 @@ class TestCharge (object):
     
     def test_standard_init (self):
         now = datetime.now()
-        user = User()
         allocation = Allocation()
-        hold = Hold()
-        refund = Refund(None, 0)
-        charge = Charge(id=1, datetime=now, allocation=allocation, amount=600,
-            user=user, holds=[hold], refunds=[refund], comment="testing")
-        assert charge.id == 1
-        assert charge.datetime == now
+        charge = Charge(allocation, 600)
+        assert charge.id is None
+        assert charge.datetime - now < timedelta(minutes=1)
         assert charge.allocation is allocation
         assert charge.amount == 600
-        assert charge.comment == "testing"
-        assert charge.user is user
-        assert charge.allocation is allocation
-        assert charge.refunds == [refund]
-    
-    def test_hold_init_mod (self):
-        allocation = Allocation()
-        hold = Hold(allocation=allocation, amount=900, active=True)
-        charge = Charge(hold=hold)
-        assert not hold.active
-        assert charge.allocation is hold.allocation
-        assert charge.amount == hold.amount
+        assert charge.comment is None
+        assert charge.user is None
+        assert charge.refunds == []
     
     @raises(ValueError)
     def test_distributed_without_allocations (self):
@@ -256,34 +243,34 @@ class TestCharge (object):
     
     def test_amount_with_other_charge (self):
         allocation = Allocation(amount=1200)
-        charge1 = Charge(allocation=allocation, amount=600)
-        charge2 = Charge(allocation=allocation, amount=601)
+        Charge(allocation, 600)
+        Charge(allocation, 601)
         assert allocation.amount_available == -1
     
     def test_amount_with_refunded_charge (self):
         allocation = Allocation(amount=1200)
-        charge = Charge(allocation=allocation, amount=600)
+        charge = Charge(allocation, 600)
         Refund(charge, 600)
-        Charge(allocation=allocation, amount=300)
+        Charge(allocation, 300)
         assert allocation.amount_available == 900, allocation.amount_available
     
     def test_amount_with_partially_refunded_charge (self):
         allocation = Allocation(amount=1200)
-        charge = Charge(allocation=allocation, amount=600)
+        charge = Charge(allocation, 600)
         Refund(charge, 400)
-        Charge(allocation=allocation, amount=300)
+        Charge(allocation, 300)
         assert allocation.amount_available == 700
     
     def test_greater_amount_with_partially_refunded_charge (self):
         allocation = Allocation(amount=1200)
-        charge1 = Charge(allocation=allocation, amount=1200)
-        refund = Refund(charge1, 600)
-        charge2 = Charge(allocation=allocation, amount=601)
+        charge = Charge(allocation, 1200)
+        refund = Refund(charge, 600)
+        Charge(allocation, 601)
         assert allocation.amount_available == -1
     
     def test_effective_amount (self):
         allocation = Allocation()
-        charge = Charge(allocation=allocation, amount=100)
+        charge = Charge(allocation, 100)
         assert charge.effective_amount == 100
         refund1 = Refund(charge, 10)
         assert charge.effective_amount == 90
@@ -295,7 +282,7 @@ class TestRefund (object):
     
     def test_init (self):
         now = datetime.now()
-        charge = Charge()
+        charge = Charge(None, 0)
         refund = Refund(charge, 300)
         assert refund.id is None
         assert refund.datetime - now < timedelta(minutes=1)
@@ -304,7 +291,7 @@ class TestRefund (object):
         assert refund.comment is None
     
     def test_full_refund (self):
-        charge = Charge(amount=100)
+        charge = Charge(None, 100)
         refund = Refund(charge)
         assert refund.amount == 100
 

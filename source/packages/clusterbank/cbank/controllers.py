@@ -193,9 +193,10 @@ def new_charge_main ():
         raise exceptions.MissingResource("resource")
     allocations = Session.query(Allocation).filter_by(
         project=project, resource=options.resource)
-    comment = options.comment or options.deprecated_comment
-    charges = Charge.distributed(allocations,
-        user=options.user, amount=amount, comment=comment)
+    charges = Charge.distributed(allocations, amount)
+    for charge in charges:
+        charge.user=options.user
+        charge.comment = options.comment or options.deprecated_comment
     if options.commit:
         for charge in charges:
             Session.save(charge)

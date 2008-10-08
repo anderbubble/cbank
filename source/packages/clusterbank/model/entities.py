@@ -466,44 +466,23 @@ class Charge (Entity):
     distributed -- construct multiple charges across multiple allocations
     """
     
-    def __init__ (self, **kwargs):
-        """Initialize a new charge.
-        
-        Keyword arguments:
-        id -- unique integer identifier
-        allocation -- allocation to which the charge applies
-        amount -- amount charged
-        effective_amount -- amount after refunds
-        datetime -- when the chage was entered
-        comment -- misc. comments
-        refunds -- refunds from the charge
-        """
-        self.datetime = kwargs.get("datetime")
-        self.id = kwargs.get("id")
-        self.allocation = kwargs.get("allocation")
-        self.user = kwargs.get("user")
-        self.comment = kwargs.get("comment")
-        self.refunds = kwargs.get("refunds", [])
-        self.amount = kwargs.get("amount")
-        if kwargs.get("hold") is not None:
-            hold = kwargs.get("hold")
-            hold.active = False
-            if self.allocation is None:
-                self.allocation = hold.allocation
-            if self.amount is None:
-                self.amount = hold.amount
+    def __init__ (self, allocation, amount):
+        self.id = None
+        self.datetime = datetime.now()
+        self.allocation = allocation
+        self.user = None
+        self.comment = None
+        self.refunds = []
+        self.amount = amount
     
     @classmethod
-    def distributed (cls, allocations, **kwargs):
+    def distributed (cls, allocations, amount):
         
         """Construct multiple charges across multiple allocations.
         
         Arguments:
         allocations -- a list of allocations available for charges
-        
-        Keyword arguments:
-        amount -- total amount to be charged (required)
-        *additional keyword arguments are used to construct each charge
+        amount -- total amount to be charged
         
         Example:
         A project has multiple allocations on a single resource. Use a
@@ -511,17 +490,14 @@ class Charge (Entity):
         accomodate.
         """
         
-        amount = kwargs.pop("amount")
-        
-        charges = list()
+        charges = []
         for allocation in allocations:
             if allocation.amount_available <= 0:
                 continue
             if allocation.amount_available >= amount:
-                charge = cls(allocation=allocation, amount=amount, **kwargs)
+                charge = cls(allocation, amount)
             else:
-                charge = cls(allocation=allocation,
-                    amount=allocation.amount_available, **kwargs)
+                charge = cls(allocation, allocation.amount_available)
             amount -= charge.amount
             charges.append(charge)
             if amount <= 0:
@@ -536,8 +512,7 @@ class Charge (Entity):
                 except IndexError:
                     raise ValueError("no allocations to charge against")
                 else:
-                    charge = cls(
-                        allocation=allocation, amount=amount, **kwargs)
+                    charge = cls(allocation, amount)
                     charges.append(charge)
                     amount = 0
             else:
