@@ -54,7 +54,7 @@ class TestRequest (object):
         project = Project()
         resource = Resource()
         now = datetime.now()
-        allocation = Allocation()
+        allocation = Allocation(project, resource, 0, None, None)
         request = Request(id=1, datetime=now, project=project,
             resource=resource, amount=2000, comment="testing", start=now,
             allocations=[allocation])
@@ -71,31 +71,27 @@ class TestRequest (object):
 class TestAllocation (object):
     
     def test_init (self):
-        now = datetime.now()
+        start = datetime.now()
         project = Project()
         resource = Resource()
-        request = Request()
-        hold = Hold(None, 0)
-        charge = Charge(None, 0)
-        allocation = Allocation(id=1, datetime=now, project=project,
-            resource=resource, amount=1500, comment="testing", start=now,
-            expiration=now+timedelta(days=1),
-            requests=[request], holds=[hold], charges=[charge])
-        assert allocation.id == 1
-        assert allocation.datetime == now
+        allocation = Allocation(project, resource, 1500,
+            start, start+timedelta(days=1))
+        assert allocation.id is None
+        assert datetime.now() - allocation.datetime < timedelta(minutes=1)
         assert allocation.project is project
         assert allocation.resource is resource
         assert allocation.amount == 1500
-        assert allocation.comment == "testing"
-        assert allocation.start == now
-        assert allocation.expiration == now + timedelta(days=1)
-        assert allocation.requests == [request]
-        assert allocation.holds == [hold]
-        assert allocation.charges == [charge]
+        assert allocation.comment is None
+        assert allocation.start == start
+        assert allocation.expiration == start + timedelta(days=1)
+        assert allocation.requests == []
+        assert allocation.holds == []
+        assert allocation.charges == []
     
     def test_active (self):
         now = datetime.now()
-        allocation = Allocation(start=now+timedelta(days=1), expiration=now+timedelta(days=2))
+        allocation = Allocation(None, None, 0,
+            now+timedelta(days=1), now+timedelta(days=2))
         assert not allocation.active
         allocation.start = now - timedelta(days=2)
         allocation.expiration = now - timedelta(days=1)
@@ -103,8 +99,46 @@ class TestAllocation (object):
         allocation.expiration = now + timedelta(days=1)
         assert allocation.active
     
+    def test_amount_with_active_hold (self):
+        allocation = Allocation(None, None, 1200, None, None)
+        hold = Hold(allocation, 900)
+        assert allocation.amount_available == 300
+    
+    def test_amount_with_inactive_hold (self):
+        allocation = Allocation(None, None, 1200, None, None)
+        hold = Hold(allocation, allocation.amount)
+        hold.active = False
+        assert allocation.amount_available == 1200
+    
+    def test_amount_with_other_charge (self):
+        allocation = Allocation(None, None, 1200, None, None)
+        Charge(allocation, 600)
+        Charge(allocation, 601)
+        assert allocation.amount_available == -1
+    
+    def test_amount_with_refunded_charge (self):
+        allocation = Allocation(None, None, 1200, None, None)
+        charge = Charge(allocation, 600)
+        Refund(charge, 600)
+        Charge(allocation, 300)
+        assert allocation.amount_available == 900, allocation.amount_available
+    
+    def test_amount_with_partially_refunded_charge (self):
+        allocation = Allocation(None, None, 1200, None, None)
+        charge = Charge(allocation, 600)
+        Refund(charge, 400)
+        Charge(allocation, 300)
+        assert allocation.amount_available == 700
+    
+    def test_greater_amount_with_partially_refunded_charge (self):
+        allocation = Allocation(None, None, 1200, None, None)
+        charge = Charge(allocation, 1200)
+        refund = Refund(charge, 600)
+        Charge(allocation, 601)
+        assert allocation.amount_available == -1
+    
     def test_amount_available (self):
-        allocation = Allocation(amount=1500)
+        allocation = Allocation(None, None, 1500, None, None)
         assert allocation.amount_available == 1500
         hold1 = Hold(allocation, 100)
         assert allocation.amount_available == 1400
@@ -143,7 +177,7 @@ class TestCreditLimit (object):
 class TestHold (object):
     
     def test_init (self):
-        allocation = Allocation()
+        allocation = Allocation(None, None, 0, None, None)
         hold = Hold(allocation, 600)
         assert hold.id is None
         assert datetime.now() - hold.datetime < timedelta(minutes=1)
@@ -158,7 +192,11 @@ class TestHold (object):
         holds = Hold.distributed([], amount=900)
     
     def test_distributed (self):
-        allocations = [Allocation(amount=600), Allocation(amount=600)]
+        start = datetime.now()
+        expiration = start + timedelta(days=365)
+        allocations = [
+            Allocation(None, None, 600, start, expiration),
+            Allocation(None, None, 600, start, expiration)]
         holds = Hold.distributed(allocations, amount=900)
         assert len(holds) == 2
         assert holds[0].allocation is allocations[0]
@@ -167,7 +205,11 @@ class TestHold (object):
         assert holds[1].amount == 300
     
     def test_distributed_zero_amount (self):
-        allocations = [Allocation(amount=600), Allocation(amount=600)]
+        start = datetime.now()
+        expiration = start + timedelta(days=365)
+        allocations = [
+            Allocation(None, None, 600, start, expiration),
+            Allocation(None, None, 600, start, expiration)]
         holds = Hold.distributed(allocations, amount=0)
         assert len(holds) == 1, "holds: %i" % len(holds)
         hold = holds[0]
@@ -177,9 +219,9 @@ class TestHold (object):
 
 class TestCharge (object):
     
-    def test_standard_init (self):
+    def test_init (self):
         now = datetime.now()
-        allocation = Allocation()
+        allocation = Allocation(None, None, 0, None, None)
         charge = Charge(allocation, 600)
         assert charge.id is None
         assert charge.datetime - now < timedelta(minutes=1)
@@ -194,7 +236,11 @@ class TestCharge (object):
         charges = Charge.distributed([], amount=900)
     
     def test_distributed (self):
-        allocations = [Allocation(amount=600), Allocation(amount=600)]
+        start = datetime.now()
+        expiration = start + timedelta(days=365)
+        allocations = [
+            Allocation(None, None, 600, start, expiration),
+            Allocation(None, None, 600, start, expiration)]
         charges = Charge.distributed(allocations, amount=900)
         assert len(charges) == 2
         assert sum(charge.amount for charge in charges) == 900
@@ -204,7 +250,11 @@ class TestCharge (object):
         assert charges[1].amount == 300
     
     def test_distributed_zero_amount (self):
-        allocations = [Allocation(amount=600), Allocation(amount=600)]
+        start = datetime.now()
+        expiration = start + timedelta(days=365)
+        allocations = [
+            Allocation(None, None, 600, start, expiration),
+            Allocation(None, None, 600, start, expiration)]
         charges = Charge.distributed(allocations, amount=0)
         assert len(charges) == 1, "charges: %i" % len(charges)
         charge = charges[0]
@@ -212,7 +262,11 @@ class TestCharge (object):
         assert charge.allocation == allocations[0]
     
     def test_distributed_with_insufficient_allocation (self):
-        allocations = [Allocation(amount=600), Allocation(amount=600)]
+        start = datetime.now()
+        expiration = start + timedelta(days=365)
+        allocations = [
+            Allocation(None, None, 600, start, expiration),
+            Allocation(None, None, 600, start, expiration)]
         charges = Charge.distributed(allocations, amount=1300)
         assert len(charges) == 2
         assert charges[0].allocation is allocations[0]
@@ -220,51 +274,12 @@ class TestCharge (object):
         assert charges[1].allocation is allocations[1]
         assert charges[1].amount == 700
     
-    def test_amount_with_active_hold (self):
-        allocation = Allocation(amount=1200)
-        hold = Hold(allocation, 900)
-        assert allocation.amount_available == 300
-    
-    def test_amount_with_inactive_hold (self):
-        allocation = Allocation(amount=1200)
-        hold = Hold(allocation, allocation.amount)
-        hold.active = False
-        assert allocation.amount_available == 1200
-    
-    def test_amount_with_other_charge (self):
-        allocation = Allocation(amount=1200)
-        Charge(allocation, 600)
-        Charge(allocation, 601)
-        assert allocation.amount_available == -1
-    
-    def test_amount_with_refunded_charge (self):
-        allocation = Allocation(amount=1200)
-        charge = Charge(allocation, 600)
-        Refund(charge, 600)
-        Charge(allocation, 300)
-        assert allocation.amount_available == 900, allocation.amount_available
-    
-    def test_amount_with_partially_refunded_charge (self):
-        allocation = Allocation(amount=1200)
-        charge = Charge(allocation, 600)
-        Refund(charge, 400)
-        Charge(allocation, 300)
-        assert allocation.amount_available == 700
-    
-    def test_greater_amount_with_partially_refunded_charge (self):
-        allocation = Allocation(amount=1200)
-        charge = Charge(allocation, 1200)
-        refund = Refund(charge, 600)
-        Charge(allocation, 601)
-        assert allocation.amount_available == -1
-    
     def test_effective_amount (self):
-        allocation = Allocation()
-        charge = Charge(allocation, 100)
+        charge = Charge(None, 100)
         assert charge.effective_amount == 100
-        refund1 = Refund(charge, 10)
+        Refund(charge, 10)
         assert charge.effective_amount == 90
-        refund2 = Refund(charge, 20)
+        Refund(charge, 20)
         assert charge.effective_amount == 70
 
 

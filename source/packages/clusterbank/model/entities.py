@@ -253,43 +253,18 @@ class Allocation (Entity):
     charges -- charges against this allocation
     """
     
-    def __init__ (self, **kwargs):
-        """Initialize a new allocation.
-        
-        Keyword arguments:
-        request -- request prompting this allocation
-        id -- unique integer identifier
-        project -- project to which the resource has been allocated
-        resource -- resource allocated
-        datetime -- when the allocation was entered
-        amount -- amount allocated
-        start -- when the allocation becomes active
-        expiration -- when the allocation expires
-        comment -- misc. comments
-        requests -- requests answered by this allocation
-        holds -- holds on this allocation
-        charges -- charges against this allocation
-        amount_available -- allocated amount after charges, refunds, and holds
-        active -- current time is between start and expiration
-        
-        If a request is specified, and the request has no allocation, the new
-        allocation will be related to the request.
-        """
-        self.datetime = kwargs.get("datetime")
-        if kwargs.get("request") is not None:
-            request = kwargs.get("request")
-            if request.allocation is None:
-                request.allocation = self
-        self.id = kwargs.get("id")
-        self.project = kwargs.get("project")
-        self.resource = kwargs.get("resource")
-        self.amount = kwargs.get("amount")
-        self.start = kwargs.get("start")
-        self.expiration = kwargs.get("expiration")
-        self.comment = kwargs.get("comment")
-        self.requests = kwargs.get("requests", [])
-        self.holds = kwargs.get("holds", [])
-        self.charges = kwargs.get("charges", [])
+    def __init__ (self, project, resource, amount, start, expiration):
+        self.datetime = datetime.now()
+        self.project = project
+        self.resource = resource
+        self.amount = amount
+        self.start = start
+        self.expiration = expiration
+        self.id = None
+        self.comment = None
+        self.requests = []
+        self.holds = []
+        self.charges = []
     
     def _get_amount_charged (self):
         return sum(charge.effective_amount for charge in self.charges)

@@ -163,10 +163,9 @@ def new_allocation_main ():
     if not options.resource:
         raise exceptions.MissingResource()
     comment = options.comment or options.deprecated_comment
-    allocation = Allocation(
-        project=project, resource=options.resource,
-        start=options.start, expiration=options.expiration,
-        amount=amount, comment=comment)
+    allocation = Allocation(project, options.resource, amount,
+        options.start, options.expiration)
+    allocation.comment = comment
     if options.commit:
         Session.save(allocation)
         try:
