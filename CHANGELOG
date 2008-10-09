@@ -1,11 +1,33 @@
-api changes
+api
 
+ * cleaned up imports (#143)
  * fixed a bug where dates that were too old crashed the sql generator (#229)
  * additional mapped queries (#209)
+ * redesigned model init interfaces (#236)
+ * added (experimental) job objects to the model (#234)
+
+upstream
+
+ * rewrote default (testing) upstream module in pure Python (#227)
+
+-- 0.3.3 --
+
+api
+
+ * defined several aggregates as mapped queries on entities (#209)
+
+cbank
+
+ * fixed a bug where old dates crashed the sql generator (#229)
+
+misc.
+
+ * updated ez_setup.py
+ * pylint fixes
 
 -- 0.3.2 --
 
-cbank (cli) changes
+cbank (cli)
 
  * modified report columns to maintain consistency with 0.2 reports (#220)
  * admins and project owners can see all charges to a project with -p (#218)
@@ -15,14 +37,14 @@ cbank (cli) changes
 
 -- 0.3.1 --
 
-clusterbank (api) changes
+clusterbank (api)
 
  * mapped Allocation.amount_charged to a query
  * Project.charge performs a distributed charge
  * Charge.transfer refunds a charge and re-applies it as charges to a project
  * fixed a bug where clusterbank.model configured independently
 
-cbank (cli) changes
+cbank (cli)
 
  * date options can now accept times
  * restored ability to display comments inline
@@ -34,7 +56,7 @@ cbank (cli) changes
 
 -- 0.3.0 --
 
-clusterbank (api) changes
+api
 
  * removed _table suffix from table objects in clusterbank.model.database
  * consolidated configuration at clusterbank.config
@@ -44,7 +66,7 @@ clusterbank (api) changes
  * <Entity>.by_name has become clusterbank.model.<entity>_by_name
  * moved from Session.mapper to mapper
 
-cbank (cli) changes
+cbank
 
  * added commands to create a new allocation, hold, charge, or refund
  * adopted a formal metacommand dispatch architecture (new, report, detail)
