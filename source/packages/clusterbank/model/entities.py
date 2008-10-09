@@ -19,7 +19,7 @@ from sets import Set as set
 from clusterbank import config
 
 __all__ = [
-    "User", "Project", "Resource",
+    "upstream", "User", "Project", "Resource",
     "Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund"
 ]
 
