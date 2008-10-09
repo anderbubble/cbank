@@ -7,7 +7,7 @@ from sqlalchemy.types import Integer, String, TypeDecorator
 
 from clusterbank import config
 from clusterbank.cbank.common import get_unit_factor
-from clusterbank.model import Session
+from clusterbank.model import Session, upstream
 from clusterbank.model.database import users, projects, resources, \
     allocations, holds, charges, refunds
 
@@ -361,7 +361,6 @@ def print_holds_report (**kwargs):
     print format.bar()
     
     s = Session()
-    now = datetime.now()
     
     query = select([
         holds.c.id,
@@ -436,7 +435,6 @@ def print_charges_report (**kwargs):
     print format.bar()
     
     s = Session()
-    now = datetime.now()
     
     charge_refunded = cast(
         func.coalesce(select([func.sum(refunds.c.amount)],

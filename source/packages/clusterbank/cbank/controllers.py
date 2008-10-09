@@ -27,7 +27,7 @@ import sqlalchemy.exceptions
 
 import clusterbank
 from clusterbank import config
-from clusterbank.model import Session, Allocation, Charge, Refund, \
+from clusterbank.model import Session, Allocation, Hold, Charge, Refund, \
     user_by_name, project_by_name, resource_by_name, \
     project_members, user_projects, user_projects_owned
 import clusterbank.cbank.exceptions as exceptions
@@ -327,7 +327,6 @@ def report_users_main ():
     if args:
         raise exceptions.UnexpectedArguments(args)
     user = get_current_user()
-    member = set(user_projects(user))
     owned = set(user_projects_owned(user))
     like_admin = user.is_admin \
         or (options.projects and set(options.projects).issubset(owned))
