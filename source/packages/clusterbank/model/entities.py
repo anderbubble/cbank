@@ -13,7 +13,6 @@ Refund -- refund of a charge
 
 from datetime import datetime
 import ConfigParser
-from operator import attrgetter
 from sets import Set as set
 
 from clusterbank import config
@@ -138,7 +137,8 @@ class Project (UpstreamEntity):
             pass
         credit_limits = [limit for limit in self.credit_limits
             if limit.resource==resource and limit.start<=datetime]
-        credit_limits = sorted(credit_limits, key=attrgetter("start"))
+        credit_limits = sorted(credit_limits,
+            key=lambda credit_limit:credit_limit.start)
         try:
             return credit_limits[0]
         except IndexError:
