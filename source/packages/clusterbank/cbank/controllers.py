@@ -27,10 +27,9 @@ import sqlalchemy.exceptions
 
 import clusterbank
 from clusterbank import config
-import clusterbank.model as model
-from clusterbank.model import \
-    Session, user_by_name, project_by_name, resource_by_name, \
-    Allocation, Charge, Refund
+from clusterbank.model import Session, Allocation, Charge, Refund, \
+    user_by_name, project_by_name, resource_by_name, \
+    project_members, user_projects, user_projects_owned
 import clusterbank.cbank.exceptions as exceptions
 import clusterbank.cbank.views as views
 from clusterbank.cbank.common import get_unit_factor
@@ -328,19 +327,19 @@ def report_users_main ():
     if args:
         raise exceptions.UnexpectedArguments(args)
     user = get_current_user()
-    member = set(model.user_projects(user))
-    owned = set(model.user_projects_owned(user))
+    member = set(user_projects(user))
+    owned = set(user_projects_owned(user))
     like_admin = user.is_admin \
         or (options.projects and set(options.projects).issubset(owned))
     if like_admin:
-        users = options.users or set(sum((model.project_members(project)
+        users = options.users or set(sum((project_members(project)
             for project in options.projects), []))
         projects = options.projects
     else:
         if options.users and set(options.users) != set([user]):
             raise exceptions.NotPermitted(user)
         users = [user]
-        projects = options.projects or model.user_projects(user)
+        projects = options.projects or user_projects(user)
     resources = options.resources or configured_resources()
     views.print_users_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before)
@@ -365,13 +364,13 @@ def report_projects_main ():
     if args:
         raise exceptions.UnexpectedArguments(args)
     user = get_current_user()
-    member = set(model.user_projects(user))
-    owned = set(model.user_projects_owned(user))
+    member = set(user_projects(user))
+    owned = set(user_projects_owned(user))
     like_admin = user.is_admin \
         or (options.projects and set(options.projects).issubset(owned))
     if like_admin:
         users = options.users
-        projects = options.projects or set(sum((model.user_projects(user)
+        projects = options.projects or set(sum((user_projects(user)
             for user in options.users), []))
     else:
         if options.users and set(options.users) != set([user]):
@@ -410,13 +409,13 @@ def report_allocations_main ():
     if args:
         raise exceptions.UnexpectedArguments(args)
     user = get_current_user()
-    member = set(model.user_projects(user))
-    owned = set(model.user_projects_owned(user))
+    member = set(user_projects(user))
+    owned = set(user_projects_owned(user))
     like_admin = user.is_admin \
         or (options.projects and set(options.projects).issubset(owned))
     if like_admin:
         users = options.users
-        projects = options.projects or set(sum((model.user_projects(user)
+        projects = options.projects or set(sum((user_projects(user)
             for user in options.users), []))
     else:
         if options.users and set(options.users) != set([user]):
@@ -444,8 +443,8 @@ def report_holds_main ():
     if args:
         raise exceptions.UnexpectedArguments(args)
     user = get_current_user()
-    member = set(model.user_projects(user))
-    owned = set(model.user_projects_owned(user))
+    member = set(user_projects(user))
+    owned = set(user_projects_owned(user))
     like_admin = user.is_admin \
         or (options.projects and set(options.projects).issubset(owned))
     if like_admin:
@@ -472,8 +471,8 @@ def report_charges_main ():
     if args:
         raise exceptions.UnexpectedArguments(args)
     user = get_current_user()
-    member = set(model.user_projects(user))
-    owned = set(model.user_projects_owned(user))
+    member = set(user_projects(user))
+    owned = set(user_projects_owned(user))
     like_admin = user.is_admin \
         or (options.projects and set(options.projects).issubset(owned))
     if like_admin:
@@ -527,11 +526,11 @@ def print_detail_main_help ():
 @handle_exceptions
 def detail_allocations_main ():
     user = get_current_user()
-    s = model.Session()
+    s = Session()
     allocations = \
-        s.query(model.Allocation).filter(model.Allocation.id.in_(sys.argv[1:]))
+        s.query(Allocation).filter(Allocation.id.in_(sys.argv[1:]))
     if not user.is_admin:
-        projects = model.user_projects(user) + model.user_projects_owned(user)
+        projects = user_projects(user) + user_projects_owned(user)
         permitted_allocations = []
         for allocation in allocations:
             if not allocation.project in projects:
@@ -545,10 +544,10 @@ def detail_allocations_main ():
 @handle_exceptions
 def detail_holds_main ():
     user = get_current_user()
-    s = model.Session()
-    holds = s.query(model.Hold).filter(model.Hold.id.in_(sys.argv[1:]))
+    s = Session()
+    holds = s.query(Hold).filter(Hold.id.in_(sys.argv[1:]))
     if not user.is_admin:
-        owned_projects = model.user_projects_owned(user)
+        owned_projects = user_projects_owned(user)
         permitted_holds = []
         for hold in holds:
             if not (hold.user is user or hold.allocation.project in owned_projects):
@@ -561,10 +560,10 @@ def detail_holds_main ():
 @handle_exceptions
 def detail_charges_main ():
     user = get_current_user()
-    s = model.Session()
-    charges = s.query(model.Charge).filter(model.Charge.id.in_(sys.argv[1:]))
+    s = Session()
+    charges = s.query(Charge).filter(Charge.id.in_(sys.argv[1:]))
     if not user.is_admin:
-        owned_projects = model.user_projects_owned(user)
+        owned_projects = user_projects_owned(user)
         permitted_charges = []
         for charge in charges:
             if not (charge.user is user or charge.allocation.project in owned_projects):
@@ -577,10 +576,10 @@ def detail_charges_main ():
 @handle_exceptions
 def detail_refunds_main ():
     user = get_current_user()
-    s = model.Session()
-    refunds = s.query(model.Refund).filter(model.Refund.id.in_(sys.argv[1:]))
+    s = Session()
+    refunds = s.query(Refund).filter(Refund.id.in_(sys.argv[1:]))
     if not user.is_admin:
-        owned_projects = model.user_projects_owned(user)
+        owned_projects = user_projects_owned(user)
         permitted_refunds = []
         for refund in refunds:
             if not (refund.charge.user is user or refund.charge.allocation.project in owned_projects):
@@ -605,7 +604,7 @@ def check_users (users, projects=None):
     if users:
         users = users
     elif projects:
-        users = set(sum([model.project_members(project)
+        users = set(sum([project_members(project)
             for project in projects], []))
     else:
         current_user = get_current_user()
@@ -616,11 +615,11 @@ def check_projects (projects, users=None):
     if projects:
         projects = projects
     elif users:
-        projects = set(sum([model.user_projects(user) for user in users], []))
+        projects = set(sum([user_projects(user) for user in users], []))
     else:
         user = get_current_user()
-        member_projects = set(model.user_projects(user))
-        managed_projects = set(model.user_projects_owned(user))
+        member_projects = set(user_projects(user))
+        managed_projects = set(user_projects_owned(user))
         projects = member_projects | managed_projects
     return projects
 
@@ -638,7 +637,7 @@ def configured_resource ():
     except ConfigParser.Error:
         resource = None
     else:
-        resource = model.resource_by_name(resource)
+        resource = resource_by_name(resource)
     return resource
 
 def get_current_user ():
