@@ -13,7 +13,6 @@ Refund -- refund of a charge
 
 from datetime import datetime
 import ConfigParser
-from sets import Set as set
 
 from clusterbank import config
 

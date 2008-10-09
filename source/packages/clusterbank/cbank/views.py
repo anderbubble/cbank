@@ -1,10 +1,6 @@
-import os
-import sys
 import locale
 import ConfigParser
-import warnings
 from datetime import datetime
-from sets import Set as set
 
 from sqlalchemy.sql import and_, cast, func, select
 from sqlalchemy.types import Integer, String, TypeDecorator

@@ -6,8 +6,6 @@ Resource -- upstream resource
 User -- upstream user
 """
 
-import ConfigParser
-
 __all__ = [
     "get_project_id", "get_project_name",
     "get_project_members", "get_project_owners",
