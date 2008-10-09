@@ -21,7 +21,8 @@ class Entity (object):
         self.name = name
 
 
-class User (Entity): pass
+class User (Entity):
+    pass
 
 
 class Project (Entity):
@@ -32,7 +33,8 @@ class Project (Entity):
         self.owners = []
 
 
-class Resource (Entity): pass
+class Resource (Entity):
+    pass
 
 users = []
 projects = []
@@ -65,12 +67,12 @@ def get_project_owners (id):
 def get_member_projects (id):
     return [project.id for project in projects
         if [user for user in project.members
-            if user.id==id]]
+            if user.id == id]]
 
 def get_owner_projects (id):
     return [project.id for project in projects
         if [user for user in project.owners
-            if user.id==id]]
+            if user.id == id]]
 
 def get_resource_id (name):
     for resource in resources:

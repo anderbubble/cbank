@@ -24,7 +24,7 @@ import ConfigParser
 
 from sqlalchemy import create_engine, types
 from sqlalchemy.sql import select, func, cast, and_
-from sqlalchemy.exceptions import InvalidRequestError
+from sqlalchemy.exceptions import InvalidRequestError, ArgumentError
 from sqlalchemy.orm import scoped_session, sessionmaker, mapper, \
     relation, column_property, synonym
 from sqlalchemy.orm.session import SessionExtension
@@ -57,7 +57,7 @@ def get_configured_engine ():
     else:
         try:
             engine = create_engine(uri)
-        except Exception, e:
+        except (ImportError, ArgumentError), e:
             warnings.warn("invalid database: %s (%s)" % (uri, e), UserWarning)
             engine = None
     return engine
@@ -238,57 +238,64 @@ def _get_upstream_entity (cls, upstream_function, entity_name):
     if upstream_id is None:
         raise NotFound("%s '%s' not found" % (
             cls.__name__.lower(), entity_name))
+    s = Session()
     try:
-        return Session.query(cls).filter_by(id=upstream_id).one()
+        return s.query(cls).filter_by(id=upstream_id).one()
     except InvalidRequestError:
         entity = cls(id=upstream_id)
-        Session.save(entity)
+        s.save(entity)
         return entity
 
 def user_by_id (user_id):
+    s = Session()
     try:
-        return Session.query(User).filter_by(id=user_id).one()
+        return s.query(User).filter_by(id=user_id).one()
     except InvalidRequestError:
         user = User(user_id)
-        Session.save(user)
+        s.save(user)
         return user
 
 def user_by_name (user_name):
     return _get_upstream_entity(User, upstream.get_user_id, user_name)
 
 def user_projects (user):
-    return [project_by_id(project_id) for project_id in user._get_project_ids()]
+    return [project_by_id(project_id) for project_id in user.projects]
 
 def user_projects_owned (user):
-    return [project_by_id(project_id) for project_id in user._get_owned_project_ids()]
+    return [project_by_id(project_id) for project_id in user.projects_owned]
 
 def project_by_id (project_id):
+    s = Session()
     try:
-        return Session.query(Project).filter_by(id=project_id).one()
+        return s.query(Project).filter_by(id=project_id).one()
     except InvalidRequestError:
         project = Project(project_id)
-        Session.save(project)
+        s.save(project)
         return project
 
 def project_by_name (project_name):
-    return _get_upstream_entity(Project, upstream.get_project_id, project_name)
+    return _get_upstream_entity(
+        Project, upstream.get_project_id, project_name)
 
 def project_members (project):
-    return [user_by_id(user_id) for user_id in project._get_member_ids()]
+    return [user_by_id(user_id) for user_id in project.members]
 
 def project_owners (project):
-    return [user_by_id(user_id) for user_id in project._get_owner_ids()]
+    return [user_by_id(user_id) for user_id in project.owners]
 
 def resource_by_id (resource_id):
+    s = Session()
     try:
-        return Session.query(Resource).filter_by(id=resource_id).one()
+        return s.query(Resource).filter_by(id=resource_id).one()
     except InvalidRequestError:
         resource = Resource(resource_id)
-        Session.save(resource)
+        s.save(resource)
         return resource
 
 def resource_by_name (resource_name):
-    return _get_upstream_entity(Resource, upstream.get_resource_id, resource_name)
+    return _get_upstream_entity(
+        Resource, upstream.get_resource_id, resource_name)
 
 metadata.bind = get_configured_engine()
 upstream.use = get_configured_upstream()
+

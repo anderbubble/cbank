@@ -53,7 +53,7 @@ def print_users_report (**kwargs):
     
     s = Session()
     
-    correlation = charges.c.user_id==users.c.id
+    correlation = charges.c.user_id == users.c.id
     charges_count_query = select([
         func.count(charges.c.id)], correlation,
         from_obj=charges.join(allocations))
@@ -127,8 +127,7 @@ def print_projects_report (**kwargs):
     s = Session()
     now = datetime.now()
     
-    correlation = \
-        allocations.c.project_id==projects.c.id
+    correlation = allocations.c.project_id == projects.c.id
     allocations_sum_query = select([
         func.sum(allocations.c.amount, type_=IntSum)],
         correlation, from_obj=allocations)
@@ -241,7 +240,7 @@ def print_allocations_report (**kwargs):
     now = datetime.now()
     
     correlation = \
-        charges.c.allocation_id==allocations.c.id
+        charges.c.allocation_id == allocations.c.id
     charges_sum_query = select([
         func.sum(charges.c.amount, type_=IntSum)],
         correlation)
@@ -348,8 +347,8 @@ def print_holds_report (**kwargs):
     """
     
     if kwargs.get("comments"):
-        format = Formatter([
-            "Hold", "Datetime", "Resource", "Project", "User", "Held", "Comment"])
+        format = Formatter(["Hold", "Datetime", "Resource", "Project",
+            "User", "Held", "Comment"])
     else:
         format = Formatter([
             "Hold", "Datetime", "Resource", "Project", "User", "Held"])
@@ -441,7 +440,8 @@ def print_charges_report (**kwargs):
             refunds.c.charge_id==charges.c.id).label("amount_refunded"), 0),
         Integer)
     
-    effective_amount = (charges.c.amount - charge_refunded).label("effective_amount")
+    effective_amount = (
+        charges.c.amount - charge_refunded).label("effective_amount")
     
     query = select([
         charges.c.id,

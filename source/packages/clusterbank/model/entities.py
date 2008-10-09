@@ -35,17 +35,27 @@ upstream = UpstreamProxy()
 
 class Entity (object):
     
+    def __init__ (self):
+        self.id = None
+    
     def __repr__ (self):
         return "<%s id=%r>" % (self.__class__.__name__, self.id)
     
     def __str__ (self):
-        try:
-            return "#%i" % self.id
-        except TypeError:
-            return "#?"
+        if self.id is not None:
+            id_ = self.id
+        else:
+            id_ = "?"
+        return "#%s" % id_
 
 
 class UpstreamEntity (Entity):
+    
+    name = None
+    
+    def __init__ (self, id):
+        Entity.__init__(self)
+        self.id = id
     
     def __repr__ (self):
         return "<%s name=%r id=%r>" % (
@@ -56,10 +66,7 @@ class UpstreamEntity (Entity):
             return str(self.name)
         else:
             return "?"
-    
-    def __init__ (self, id):
-        self.id = id
-    
+
 
 class User (UpstreamEntity):
     
@@ -81,11 +88,15 @@ class User (UpstreamEntity):
     
     name = property(_get_name)
     
-    def _get_project_ids (self):
+    def _get_projects (self):
         return upstream.get_member_projects(self.id)
     
-    def _get_owned_project_ids (self):
+    projects = property(_get_projects)
+    
+    def _get_projects_owned (self):
         return upstream.get_owner_projects(self.id)
+    
+    projects_owned = property(_get_projects_owned)
     
     def _get_is_admin (self):
         try:
@@ -123,19 +134,21 @@ class Project (UpstreamEntity):
     
     name = property(_get_name)
 
-    def _get_member_ids (self):
+    def _get_members (self):
         return upstream.get_project_members(self.id)
     
-    def _get_owner_ids (self):
+    members = property(_get_members)
+    
+    def _get_owners (self):
         return upstream.get_project_owners(self.id)
     
-    def credit_limit (self, resource, datetime=datetime.now):
-        try:
-            datetime = datetime()
-        except TypeError:
-            pass
+    owners = property(_get_owners)
+    
+    def credit_limit (self, resource, dt=None):
+        if dt is None:
+            dt = datetime.now()
         credit_limits = [limit for limit in self.credit_limits
-            if limit.resource==resource and limit.start<=datetime]
+            if limit.resource == resource and limit.start <= dt]
         credit_limits = sorted(credit_limits,
             key=lambda credit_limit:credit_limit.start)
         try:
@@ -143,12 +156,12 @@ class Project (UpstreamEntity):
         except IndexError:
             return None
     
-    def charge (self, resource, **kwargs):
-        dt = kwargs.get("datetime", datetime.now())
+    def charge (self, resource, amount):
+        now = datetime.now()
         allocations = [allocation for allocation in self.allocations
-            if allocation.start <= dt and allocation.expiration > dt
-            and allocation.resource==resource]
-        charges = Charge.distributed(allocations, **kwargs)
+            if allocation.start <= now and allocation.expiration > now
+            and allocation.resource == resource]
+        charges = Charge.distributed(allocations, amount)
         return charges
 
 
@@ -192,8 +205,8 @@ class Request (Entity):
     """
     
     def __init__ (self, project, resource, amount, start=None):
+        Entity.__init__(self)
         self.datetime = datetime.now()
-        self.id = None
         self.project = project
         self.resource = resource
         self.amount = amount
@@ -221,13 +234,13 @@ class Allocation (Entity):
     """
     
     def __init__ (self, project, resource, amount, start, expiration):
+        Entity.__init__(self)
         self.datetime = datetime.now()
         self.project = project
         self.resource = resource
         self.amount = amount
         self.start = start
         self.expiration = expiration
-        self.id = None
         self.comment = None
         self.requests = []
         self.holds = []
@@ -272,8 +285,8 @@ class CreditLimit (Entity):
     """
     
     def __init__ (self, project, resource, amount):
+        Entity.__init__(self)
         self.datetime = self.start = datetime.now()
-        self.id = None
         self.project = project
         self.resource = resource
         self.amount = amount
@@ -301,8 +314,8 @@ class Hold (Entity):
     """
     
     def __init__ (self, allocation, amount):
+        Entity.__init__(self)
         self.datetime = datetime.now()
-        self.id = None
         self.allocation = allocation
         self.comment = None
         self.active = True
@@ -310,7 +323,7 @@ class Hold (Entity):
         self.user = None
     
     @classmethod
-    def distributed (cls, allocations, **kwargs):
+    def distributed (cls, allocations, amount):
         
         """Construct multiple holds across multiple allocations.
         
@@ -327,17 +340,14 @@ class Hold (Entity):
         accomodate.
         """
         
-        amount = kwargs.pop("amount")
-        
         holds = list()
         for allocation in allocations:
             if allocation.amount_available <= 0:
                 continue
             if allocation.amount_available >= amount:
-                hold = cls(allocation=allocation, amount=amount, **kwargs)
+                hold = cls(allocation, amount)
             else:
-                hold = cls(allocation=allocation,
-                    amount=allocation.amount_available, **kwargs)
+                hold = cls(allocation, allocation.amount_available)
             holds.append(hold)
             amount -= hold.amount
             if amount <= 0:
@@ -352,7 +362,7 @@ class Hold (Entity):
                 except IndexError:
                     raise ValueError("no allocation to hold on")
                 else:
-                    hold = cls(allocation=allocation, amount=amount, **kwargs)
+                    hold = cls(allocation=allocation, amount=amount)
                     holds.append(hold)
                     amount = 0
             else:
@@ -363,8 +373,9 @@ class Hold (Entity):
 class Job (Entity):
     
     def __init__ (self, resource, id):
-        self.resource = resource
+        Entity.__init__(self)
         self.id = id
+        self.resource = resource
         self.start = None
         self.end = None
         self.charges = []
@@ -387,7 +398,7 @@ class Charge (Entity):
     """
     
     def __init__ (self, allocation, amount):
-        self.id = None
+        Entity.__init__(self)
         self.datetime = datetime.now()
         self.allocation = allocation
         self.user = None
@@ -450,18 +461,19 @@ class Charge (Entity):
     
     effective_amount = property(_get_effective_amount)
     
-    def transfer (self, project, **kwargs):
-        kwargs_ = {'amount':self.effective_amount, 'user':self.user,
-            'comment':self.comment}
-        kwargs_.update(kwargs)
-        charges = project.charge(self.allocation.resource, **kwargs_)
-        refund = self.refund(
-            amount=sum(charge.amount for charge in charges),
-            comment="transferred to %s" % project)
+    def transfer (self, project, amount=None):
+        if amount is None:
+            amount = self.effective_amount
+        charges = project.charge(self.allocation.resource, amount)
+        for charge in charges:
+            charge.user = self.user
+            charge.comment = self.comment
+        refund = self.refund(amount)
+        refund.comment = "transferred to %s" % project
         return refund, charges
     
-    def refund (self, **kwargs):
-        return Refund(charge=self, **kwargs)
+    def refund (self, amount=None):
+        return Refund(self, amount)
 
 
 class Refund (Entity):
@@ -477,16 +489,7 @@ class Refund (Entity):
     """
     
     def __init__ (self, charge, amount=None):
-        """Initialize a new refund.
-        
-        Keyword arguments:
-        id -- unique integer identifier
-        charge -- charge being refunded
-        datetime -- when the charge was entered
-        amount -- amount refunded (default: charge amount)
-        comment -- misc. comments
-        """
-        self.id = None
+        Entity.__init__(self)
         self.datetime = datetime.now()
         self.charge = charge
         if amount is not None:

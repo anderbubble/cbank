@@ -92,8 +92,8 @@ def main ():
 
 def print_main_help ():
     command = os.path.basename(sys.argv[0])
-    help = """\
-        usage: $CMD <subcommand>
+    message = """\
+        usage: %(command)s <subcommand>
         
         A metacommand that dispatches to other subcommands:
           report (default) -- generate reports
@@ -104,8 +104,8 @@ def print_main_help ():
         default subcommand (listed above).
         
         For help with a specific subcommand, run
-          $CMD <command> -h"""
-    print dedent(help.replace("$CMD", command))
+          %(command)s <command> -h"""
+    print dedent(message % {'command':command})
 
 @handle_exceptions
 @require_admin
@@ -135,8 +135,8 @@ def new_main ():
 
 def print_new_main_help ():
     command = os.path.basename(sys.argv[0])
-    help = """\
-        usage: $CMD <entity>
+    message = """\
+        usage: %(command)s <entity>
         
         Create clusterbank entities:
           allocation
@@ -145,8 +145,8 @@ def print_new_main_help ():
         
         Each entity has its own set of options. For help with a specific
         entity, run
-          $CMD <entity> -h"""
-    print dedent(help.replace("$CMD", command))
+          %(command)s <entity> -h"""
+    print dedent(message % {'command':command})
 
 @handle_exceptions
 @require_admin
@@ -166,9 +166,10 @@ def new_allocation_main ():
         options.start, options.expiration)
     allocation.comment = comment
     if options.commit:
-        Session.save(allocation)
+        s = Session()
+        s.save(allocation)
         try:
-            Session.commit()
+            s.commit()
         except ValueError, e:
             raise exceptions.ValueError(e)
         else:
@@ -189,17 +190,18 @@ def new_charge_main ():
         warn("use of -m is deprecated: use -c instead", DeprecationWarning)
     if not options.resource:
         raise exceptions.MissingResource("resource")
-    allocations = Session.query(Allocation).filter_by(
+    s = Session()
+    allocations = s.query(Allocation).filter_by(
         project=project, resource=options.resource)
     charges = Charge.distributed(allocations, amount)
     for charge in charges:
-        charge.user=options.user
+        charge.user = options.user
         charge.comment = options.comment or options.deprecated_comment
     if options.commit:
         for charge in charges:
-            Session.save(charge)
+            s.save(charge)
         try:
-            Session.commit()
+            s.commit()
         except ValueError, e:
             raise exceptions.ValueError(e)
         else:
@@ -224,7 +226,7 @@ def pop_charge (args, index):
     except IndexError:
         raise exceptions.MissingArgument("charge")
     try:
-        charge = Session.query(Charge).filter_by(id=charge_id).one()
+        charge = Session().query(Charge).filter_by(id=charge_id).one()
     except sqlalchemy.exceptions.InvalidRequestError:
         raise exceptions.UnknownCharge(charge_id)
     return charge
@@ -254,9 +256,10 @@ def new_refund_main ():
     refund = Refund(charge, amount)
     refund.comment = options.comment or options.deprecated_comment
     if options.commit:
-        Session.save(refund)
+        s = Session()
+        s.save(refund)
         try:
-            Session.commit()
+            s.commit()
         except ValueError, e:
             raise exceptions.ValueError(e)
         else:
@@ -289,8 +292,8 @@ def report_main ():
 
 def print_report_main_help ():
     command = os.path.basename(sys.argv[0])
-    help = """\
-        usage: $CMD <report>
+    message = """\
+        usage: %(command)s <report>
         
         Generate clusterbank reports:
           users
@@ -304,8 +307,8 @@ def print_report_main_help ():
         
         Each report has its own set of options. For help with a specific
         report, run
-          $CMD <report> -h"""
-    print dedent(help.replace("$CMD", command))
+          %(command)s <report> -h"""
+    print dedent(message % {'command':command})
 
 @handle_exceptions
 def report_users_main ():
@@ -510,8 +513,8 @@ def detail_main ():
 
 def print_detail_main_help ():
     command = os.path.basename(sys.argv[0])
-    help = """\
-        usage: $CMD <entity> <id> ...
+    message = """\
+        usage: %(command)s <entity> <id> ...
         
         Retrieve details of clusterbank entities:
           allocations
@@ -520,7 +523,7 @@ def print_detail_main_help ():
           refunds
         
         Entity ids are available using applicable reports."""
-    print dedent(help.replace("$CMD", command))
+    print dedent(message % {'command':command})
 
 @handle_exceptions
 def detail_allocations_main ():
@@ -549,7 +552,9 @@ def detail_holds_main ():
         owned_projects = user_projects_owned(user)
         permitted_holds = []
         for hold in holds:
-            if not (hold.user is user or hold.allocation.project in owned_projects):
+            allowed = hold.user is user \
+                or hold.allocation.project in owned_projects
+            if not allowed:
                 print >> sys.stderr, "%s: not permitted: %s" % (hold.id, user)
             else:
                 permitted_holds.append(hold)
@@ -565,8 +570,11 @@ def detail_charges_main ():
         owned_projects = user_projects_owned(user)
         permitted_charges = []
         for charge in charges:
-            if not (charge.user is user or charge.allocation.project in owned_projects):
-                print >> sys.stderr, "%s: not permitted: %s" % (charge.id, user)
+            allowed = charge.user is user \
+                or charge.allocation.project in owned_projects
+            if not allowed:
+                print >> sys.stderr, "%s: not permitted: %s" % (
+                    charge.id, user)
             else:
                 permitted_charges.append(charge)
         charges = permitted_charges
@@ -581,8 +589,11 @@ def detail_refunds_main ():
         owned_projects = user_projects_owned(user)
         permitted_refunds = []
         for refund in refunds:
-            if not (refund.charge.user is user or refund.charge.allocation.project in owned_projects):
-                print >> sys.stderr, "%s: not permitted: %s" % (refund.id, user)
+            allowed = refund.charge.user is user \
+                or refund.charge.allocation.project in owned_projects
+            if not allowed:
+                print >> sys.stderr, "%s: not permitted: %s" % (
+                    refund.id, user)
             else:
                 permitted_refunds.append(refund)
         refunds = permitted_refunds
@@ -896,7 +907,7 @@ class Option (optparse.Option):
             raise optparse.OptionValueError(
                 "option %s: invalid charge id: %s" % (opt, value))
         try:
-            return Session.query(Charge).filter_by(id=charge_id).one()
+            return Session().query(Charge).filter_by(id=charge_id).one()
         except sqlalchemy.exceptions.InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown charge: %i" % (opt, value))
