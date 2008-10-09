@@ -1,113 +1,90 @@
 from nose.tools import raises
 
-from sqlalchemy import create_engine
-
+import clusterbank.upstreams.default
 from clusterbank.upstreams.default import \
     get_owner_projects, get_member_projects, get_user_name, \
     get_user_id, get_resource_name, get_resource_id, \
     get_project_owners, get_project_name, \
     get_project_members, get_project_id, \
-    Session, metadata, User, Project, Resource
+    User, Project, Resource
 
 
-class UpstreamEntityTester (object):
-    
-    def setup (self):
-        metadata.bind = create_engine("sqlite:///:memory:", echo=True)
-        metadata.create_all()
+class UpstreamTester (object):
     
     def teardown (self):
-        Session.remove()
-        metadata.drop_all()
-        metadata.bind = None
+        clusterbank.upstreams.default.users = []
+        clusterbank.upstreams.default.projects = []
+        clusterbank.upstreams.default.resources = []
 
 
-class TestProject (UpstreamEntityTester):
+class TestProject (UpstreamTester):
     
     def setup (self):
-        UpstreamEntityTester.setup(self)
-        self.project = Project(id=1, name="Shrubbery",
-            members=[User(id=1, name="Monty")],
-            owners=[User(id=2, name="Python")])
-        Session.save(self.project)
-        Session.commit()
+        project = Project(1, "Shrubbery")
+        project.members = [User(1, "Monty")]
+        project.owners = [User(2, "Python")]
+        clusterbank.upstreams.default.projects = [project]
+        clusterbank.upstreams.default.users = project.members + project.owners
     
-    def test_missing_name (self):
+    def test_name (self):
+        assert get_project_name(1) == "Shrubbery"
         assert get_project_name(2) is None
     
-    def test_existing_name (self):
-        assert get_project_name(1) == "Shrubbery"
-    
-    def test_missing_id (self):
+    def test_id (self):
         assert get_project_id("Spam") is None
-    
-    def test_existing_id (self):
         assert get_project_id("Shrubbery") == 1
     
-    def test_missing_members (self):
+    def test_members (self):
         assert get_project_members(2) == []
-    
-    def test_existing_members (self):
         assert get_project_members(1) == [1], get_project_members(1)
     
-    def test_missing_owners (self):
+    def test_owners (self):
         assert get_project_owners(2) == []
-    
-    def test_existing_owners (self):
         assert get_project_owners(1) == [2], get_project_owners(1)
 
 
-class TestResource (UpstreamEntityTester):
+class TestResource (UpstreamTester):
     
     def setup (self):
-        UpstreamEntityTester.setup(self)
-        self.resource = Resource(id=1, name="Spam")
-        Session.save(self.resource)
-        Session.commit()
-    
-    def test_missing_by_id (self):
-        assert get_resource_name(2) is None
-    
-    def test_existing_by_id (self):
+        clusterbank.upstreams.default.resources = [
+            Resource(1, "Spam"),
+            Resource(3, "Life")]
+            
+    def test_id (self):
         assert get_resource_name(1) == "Spam"
+        assert get_resource_name(2) is None
+        assert get_resource_name(3) == "Life"
     
-    def test_by_name (self):
-        assert get_resource_id("more spam") is None
-    
-    def test_existing_by_name (self):
+    def test_name (self):
         assert get_resource_id("Spam") == 1
+        assert get_resource_id("more spam") is None
+        assert get_resource_id("Life") == 3
 
 
-class TestUser (UpstreamEntityTester):
+class TestUser (UpstreamTester):
     
     def setup (self):
-        UpstreamEntityTester.setup(self)
-        self.user = User(id=1, name="Monty",
-            projects=[Project(id=1, name="Shrubbery")],
-            projects_owned=[Project(id=2, name="Spam")])
-        Session.save(self.user)
-        Session.commit()
+        user = User(1, "Monty")
+        shrubbery = Project(1, "Shrubbery")
+        shrubbery.members = [user]
+        spam = Project(2, "Spam")
+        spam.owners = [user]
+        clusterbank.upstreams.default.projects = [shrubbery, spam]
+        clusterbank.upstreams.default.users = [user]
     
-    def test_missing_name (self):
+    def test_name (self):
         assert get_user_name(2) is None
-    
-    def test_existing_name (self):
         assert get_user_name(1) == "Monty"
     
-    def test_missing_id (self):
+    def test_id (self):
         assert get_user_id("Python") is None
-    
-    def test_existing_id (self):
         assert get_user_id("Monty") == 1
     
-    def test_missing_projects (self):
+    def test_projects (self):
         assert get_member_projects(2) == []
-    
-    def test_existing_projects (self):
         assert get_member_projects(1) == [1]
     
-    def test_missing_projects_owned (self):
+    def test_projects_owned (self):
         assert get_owner_projects(2) == []
-    
-    def test_existing_projects_owned (self):
         assert get_owner_projects(1) == [2]
+

@@ -17,23 +17,21 @@ def get_current_username ():
 
 def setup ():
     model.metadata.bind = create_engine("sqlite:///:memory:", echo=True)
-    upstream.metadata.bind = create_engine("sqlite:///:memory:", echo=True)
-    upstream.metadata.create_all()
     populate_upstream()
     model.upstream.use = upstream
 
 def populate_upstream ():
-    upstream.Session.save(upstream.Project(id=1, name="project1"))
-    upstream.Session.save(upstream.Resource(id=1, name="resource1"))
-    upstream.Session.save(upstream.User(id=1, name="user1"))
+    upstream.projects = [upstream.Project(1, "project1")]
+    upstream.resources = [upstream.Resource(1, "resource1")]
     current_user = get_current_username()
-    upstream.Session.save(upstream.User(id=2, name=current_user))
-    upstream.Session.commit()
-    upstream.Session.remove()
+    upstream.users = [
+        upstream.User(1, "user1"),
+        upstream.User(2, current_user)]
 
 def teardown ():
-    upstream.metadata.drop_all()
-    upstream.metadata.bind = None
+    upstream.users = []
+    upstream.projects = []
+    upstream.resources = []
     model.upstream.use = None
     model.metadata.bind = None
 
@@ -75,7 +73,6 @@ class CbankTester (object):
     def teardown (self):
         model.metadata.drop_all()
         model.Session.remove()
-        upstream.Session.remove()
         clusterbank.config.remove_section("cbank")
 
 

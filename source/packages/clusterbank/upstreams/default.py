@@ -8,11 +8,6 @@ User -- upstream user
 
 import ConfigParser
 
-from sqlalchemy import MetaData, Table, Column, ForeignKey, create_engine
-from sqlalchemy.types import Integer, Text
-from sqlalchemy.exceptions import InvalidRequestError
-from sqlalchemy.orm import sessionmaker, scoped_session, mapper, relation
-
 __all__ = [
     "get_project_id", "get_project_name",
     "get_project_members", "get_project_owners",
@@ -21,192 +16,85 @@ __all__ = [
     "get_member_projects", "get_owner_projects",
 ]
 
-def _get_entity_id (cls, name):
-    s = Session()
-    try:
-        return s.query(cls).filter_by(name=name).one().id
-    except InvalidRequestError:
-        return None
+class Entity (object):
+    
+    def __init__ (self, id, name):
+        self.id = id
+        self.name = name
 
-def _get_entity_name (cls, id):
-    s = Session()
-    try:
-        return s.query(cls).filter_by(id=id).one().name
-    except InvalidRequestError:
-        return None
 
-def get_user_id (name):
-    return _get_entity_id(User, name)
+class User (Entity): pass
 
-def get_user_name (id):
-    return _get_entity_name(User, id)
 
-def get_member_projects (id):
-    s = Session()
-    try:
-        user = s.query(User).filter_by(id=id).one()
-    except InvalidRequestError:
-        return []
-    else:
-        return [project.id for project in user.projects]
+class Project (Entity):
+    
+    def __init__ (self, id, name):
+        Entity.__init__(self, id, name)
+        self.members = []
+        self.owners = []
 
-def get_owner_projects (id):
-    s = Session()
-    try:
-        user = s.query(User).filter_by(id=id).one()
-    except InvalidRequestError:
-        return []
-    else:
-        return [project.id for project in user.projects_owned]
+
+class Resource (Entity): pass
+
+users = []
+projects = []
+resources = []
 
 def get_project_id (name):
-    return _get_entity_id(Project, name)
+    for project in projects:
+        if project.name == name:
+            return project.id
+    return None
 
 def get_project_name (id):
-    return _get_entity_name(Project, id)
+    for project in projects:
+        if project.id == id:
+            return project.name
+    return None
 
 def get_project_members (id):
-    s = Session()
-    try:
-        project = s.query(Project).filter_by(id=id).one()
-    except InvalidRequestError:
-        return []
-    else:
-        return [user.id for user in project.members]
+    for project in projects:
+        if project.id == id:
+            return [user.id for user in project.members]
+    return []
 
 def get_project_owners (id):
-    s = Session()
-    try:
-        project = s.query(Project).filter_by(id=id).one()
-    except InvalidRequestError:
-        return []
-    else:
-        return [user.id for user in project.owners]
+    for project in projects:
+        if project.id == id:
+            return [user.id for user in project.owners]
+    return []
+
+def get_member_projects (id):
+    return [project.id for project in projects
+        if [user for user in project.members
+            if user.id==id]]
+
+def get_owner_projects (id):
+    return [project.id for project in projects
+        if [user for user in project.owners
+            if user.id==id]]
 
 def get_resource_id (name):
-    return _get_entity_id(Resource, name)
+    for resource in resources:
+        if resource.name == name:
+            return resource.id
+    return None
 
 def get_resource_name (id):
-    return _get_entity_name(Resource, id)
+    for resource in resources:
+        if resource.id == id:
+            return resource.name
+    return None
 
+def get_user_id (name):
+    for user in users:
+        if user.name == name:
+            return user.id
+    return None
 
-class UpstreamEntity (object):
-    
-    """Superclass for entities in the upstream model.
-    
-    Class methods:
-    by_id -- Retrieve an entity by canonical identifier.
-    by_name -- Retrieve an entity by name.
-    """
-    
-    def __init__ (self, **kwargs):
-        self.id = kwargs.get("id")
-        self.name = kwargs.get("name")
-    
-    def __repr__ (self):
-        return "<%s %r>" % (self.__class__.__name__, self.id)
-    
-    def __str__ (self):
-        if self.name is not None:
-            return str(self.name)
-        else:
-            return repr(self)
+def get_user_name (id):
+    for user in users:
+        if user.id == id:
+            return user.name
+    return None
 
-
-class User (UpstreamEntity):
-    
-    """Upstream user.
-    
-    Attributes:
-    id -- canonical, immutable integer identifier
-    name -- canonical string identifier
-    """
-    
-    def __init__ (self, **kwargs):
-        UpstreamEntity.__init__(self, **kwargs)
-        self.projects = kwargs.get("projects", [])
-        self.projects_owned = kwargs.get("projects_owned", [])
-
-
-class Project (UpstreamEntity):
-    
-    """Upstream project.
-    
-    Attributes:
-    id -- canonical, immutable integer identifier
-    name -- canonical string identifier
-    """
-    
-    def __init__ (self, **kwargs):
-        UpstreamEntity.__init__(self, **kwargs)
-        self.members = kwargs.get("members", [])
-        self.owners = kwargs.get("owners", [])
-
-
-class Resource (UpstreamEntity):
-    
-    """Upstream resource.
-    
-    Attributes:
-    id -- canonical, immutable integer identifier
-    name -- canonical string identifier
-    """
-
-
-metadata = MetaData()
-
-users = Table("users", metadata,
-    Column("id", Integer, primary_key=True),
-    Column("name", Text, nullable=False, unique=True),
-)
-
-projects = Table("projects", metadata,
-    Column("id", Integer, primary_key=True),
-    Column("name", Text, nullable=False, unique=True),
-)
-
-projects_members = Table("projects_members", metadata,
-    Column("project_id", None, ForeignKey("projects.id"), primary_key=True),
-    Column("user_id", None, ForeignKey("users.id"), primary_key=True),
-)
-
-projects_owners = Table("projects_owners", metadata,
-    Column("project_id", None, ForeignKey("projects.id"), primary_key=True),
-    Column("user_id", None, ForeignKey("users.id"), primary_key=True),
-)
-
-resources = Table("resources", metadata,
-    Column("id", Integer, nullable=False, primary_key=True),
-    Column("name", Text, nullable=False, unique=True),
-)
-
-Session = scoped_session(sessionmaker(autoflush=True, transactional=True))
-
-mapper(User, users, properties=dict(
-    id = users.c.id,
-    name = users.c.name,
-))
-
-mapper(Project, projects, properties=dict(
-    id = projects.c.id,
-    name = projects.c.name,
-    members = relation(User, secondary=projects_members, backref="projects"),
-    owners = relation(User, secondary=projects_owners, backref="projects_owned"),
-))
-
-mapper(Resource, resources, properties=dict(
-    id = resources.c.id,
-    name = resources.c.name,
-))
-
-def configure ():
-    config = ConfigParser.SafeConfigParser()
-    config.read(["/etc/clusterbank.conf"])
-    uri = config.get("upstream", "database")
-    metadata.bind = create_engine(uri)
-    Session.bind = metadata.bind
-
-try:
-    configure()
-except:
-    pass

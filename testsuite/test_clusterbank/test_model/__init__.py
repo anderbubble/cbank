@@ -1,27 +1,23 @@
 from sqlalchemy import create_engine
 
-import clusterbank.model
+import clusterbank.model.database
 from clusterbank.upstreams import default as upstream
+from clusterbank.upstreams.default import User, Project, Resource
 
 __all__ = ["test_base", "test_entities", "test_accounting"]
 
 def setup ():
-    clusterbank.model.metadata.bind = create_engine("sqlite:///:memory:")
-    upstream.metadata.bind = create_engine("sqlite:///:memory:", echo=True)
-    upstream.metadata.create_all()
-    populate_upstream()
+    clusterbank.model.database.metadata.bind = \
+        create_engine("sqlite:///:memory:")
     clusterbank.model.upstream.use = upstream
-
-def populate_upstream ():
-    upstream.Session.save(upstream.User(id=1, name="monty"))
-    upstream.Session.save(upstream.Project(id=1, name="grail"))
-    upstream.Session.save(upstream.Resource(id=1, name="spam"))
-    upstream.Session.commit()
-    upstream.Session.remove()
+    upstream.users = [User(1, "monty")]
+    upstream.projects = [Project(1, "grail")]
+    upstream.resources = [Resource(1, "spam")]
 
 def teardown ():
-    upstream.metadata.drop_all()
-    upstream.metadata.bind = None
-    upstream.Session.remove()
+    upstream.users = []
+    upstream.projects = []
+    upstream.resources = []
     clusterbank.model.upstream.use = None
     clusterbank.model.metadata.bind = None
+
