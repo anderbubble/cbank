@@ -48,9 +48,9 @@ def handle_exceptions (func):
             return func(*args, **kwargs)
         except KeyboardInterrupt:
             sys.exit(1)
-        except exceptions.CbankException, e:
-            print >> sys.stderr, e
-            sys.exit(e.exit_code)
+        except exceptions.CbankException, ex:
+            print >> sys.stderr, ex
+            sys.exit(ex.exit_code)
     decorated_func.__name__ = func.__name__
     decorated_func.__doc__ = func.__doc__
     decorated_func.__dict__.update(func.__dict__)
@@ -170,8 +170,8 @@ def new_allocation_main ():
         s.save(allocation)
         try:
             s.commit()
-        except ValueError, e:
-            raise exceptions.ValueError(e)
+        except ValueError, ex:
+            raise exceptions.ValueError(ex)
         else:
             views.print_allocation(allocation)
     else:
@@ -202,8 +202,8 @@ def new_charge_main ():
             s.save(charge)
         try:
             s.commit()
-        except ValueError, e:
-            raise exceptions.ValueError(e)
+        except ValueError, ex:
+            raise exceptions.ValueError(ex)
         else:
             views.print_charges(charges)
     else:
@@ -260,8 +260,8 @@ def new_refund_main ():
         s.save(refund)
         try:
             s.commit()
-        except ValueError, e:
-            raise exceptions.ValueError(e)
+        except ValueError, ex:
+            raise exceptions.ValueError(ex)
         else:
             views.print_refund(refund)
     else:

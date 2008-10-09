@@ -57,8 +57,8 @@ def get_configured_engine ():
     else:
         try:
             engine = create_engine(uri)
-        except (ImportError, ArgumentError), e:
-            warnings.warn("invalid database: %s (%s)" % (uri, e), UserWarning)
+        except (ImportError, ArgumentError), ex:
+            warnings.warn("invalid database: %s (%s)" % (uri, ex), UserWarning)
             engine = None
     return engine
 
