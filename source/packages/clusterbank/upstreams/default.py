@@ -9,8 +9,8 @@ User -- upstream user
 import ConfigParser
 
 from sqlalchemy import MetaData, Table, Column, ForeignKey, create_engine
-import sqlalchemy.types as types
-import sqlalchemy.exceptions as exceptions
+from sqlalchemy.types import Integer, Text
+from sqlalchemy.exceptions import InvalidRequestError
 from sqlalchemy.orm import sessionmaker, scoped_session, mapper, relation
 
 __all__ = [
@@ -25,14 +25,14 @@ def _get_entity_id (cls, name):
     s = Session()
     try:
         return s.query(cls).filter_by(name=name).one().id
-    except exceptions.InvalidRequestError:
+    except InvalidRequestError:
         return None
 
 def _get_entity_name (cls, id):
     s = Session()
     try:
         return s.query(cls).filter_by(id=id).one().name
-    except exceptions.InvalidRequestError:
+    except InvalidRequestError:
         return None
 
 def get_user_id (name):
@@ -45,7 +45,7 @@ def get_member_projects (id):
     s = Session()
     try:
         user = s.query(User).filter_by(id=id).one()
-    except exceptions.InvalidRequestError:
+    except InvalidRequestError:
         return []
     else:
         return [project.id for project in user.projects]
@@ -54,7 +54,7 @@ def get_owner_projects (id):
     s = Session()
     try:
         user = s.query(User).filter_by(id=id).one()
-    except exceptions.InvalidRequestError:
+    except InvalidRequestError:
         return []
     else:
         return [project.id for project in user.projects_owned]
@@ -69,7 +69,7 @@ def get_project_members (id):
     s = Session()
     try:
         project = s.query(Project).filter_by(id=id).one()
-    except exceptions.InvalidRequestError:
+    except InvalidRequestError:
         return []
     else:
         return [user.id for user in project.members]
@@ -78,7 +78,7 @@ def get_project_owners (id):
     s = Session()
     try:
         project = s.query(Project).filter_by(id=id).one()
-    except exceptions.InvalidRequestError:
+    except InvalidRequestError:
         return []
     else:
         return [user.id for user in project.owners]
@@ -156,13 +156,13 @@ class Resource (UpstreamEntity):
 metadata = MetaData()
 
 users = Table("users", metadata,
-    Column("id", types.Integer, primary_key=True),
-    Column("name", types.Text, nullable=False, unique=True),
+    Column("id", Integer, primary_key=True),
+    Column("name", Text, nullable=False, unique=True),
 )
 
 projects = Table("projects", metadata,
-    Column("id", types.Integer, primary_key=True),
-    Column("name", types.Text, nullable=False, unique=True),
+    Column("id", Integer, primary_key=True),
+    Column("name", Text, nullable=False, unique=True),
 )
 
 projects_members = Table("projects_members", metadata,
@@ -176,8 +176,8 @@ projects_owners = Table("projects_owners", metadata,
 )
 
 resources = Table("resources", metadata,
-    Column("id", types.Integer, nullable=False, primary_key=True),
-    Column("name", types.Text, nullable=False, unique=True),
+    Column("id", Integer, nullable=False, primary_key=True),
+    Column("name", Text, nullable=False, unique=True),
 )
 
 Session = scoped_session(sessionmaker(autoflush=True, transactional=True))
