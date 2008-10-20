@@ -131,8 +131,7 @@ class SessionConstraints (SessionExtension):
         self.forbid_holds_greater_than_allocation(session)
         self.forbid_refunds_greater_than_charge(session)
 
-Session = scoped_session(sessionmaker(transactional=True, autoflush=True,
-    extension=SessionConstraints()))
+Session = scoped_session(sessionmaker(extension=SessionConstraints()))
 
 mapper(User, users, properties={
     'id':users.c.id})
@@ -239,21 +238,15 @@ def _get_upstream_entity (cls, upstream_function, entity_name):
         raise NotFound("%s '%s' not found" % (
             cls.__name__.lower(), entity_name))
     s = Session()
-    try:
-        return s.query(cls).filter_by(id=upstream_id).one()
-    except InvalidRequestError:
-        entity = cls(id=upstream_id)
-        s.save(entity)
-        return entity
+    entity = cls(id=upstream_id)
+    s.add(entity)
+    return entity
 
 def user_by_id (user_id):
     s = Session()
-    try:
-        return s.query(User).filter_by(id=user_id).one()
-    except InvalidRequestError:
-        user = User(user_id)
-        s.save(user)
-        return user
+    user = User(user_id)
+    s.add(user)
+    return user
 
 def user_by_name (user_name):
     return _get_upstream_entity(User, upstream.get_user_id, user_name)
@@ -266,12 +259,9 @@ def user_projects_owned (user):
 
 def project_by_id (project_id):
     s = Session()
-    try:
-        return s.query(Project).filter_by(id=project_id).one()
-    except InvalidRequestError:
-        project = Project(project_id)
-        s.save(project)
-        return project
+    project = Project(project_id)
+    s.add(project)
+    return project
 
 def project_by_name (project_name):
     return _get_upstream_entity(
@@ -285,12 +275,9 @@ def project_owners (project):
 
 def resource_by_id (resource_id):
     s = Session()
-    try:
-        return s.query(Resource).filter_by(id=resource_id).one()
-    except InvalidRequestError:
-        resource = Resource(resource_id)
-        s.save(resource)
-        return resource
+    resource = Resource(resource_id)
+    s.add(resource)
+    return resource
 
 def resource_by_name (resource_name):
     return _get_upstream_entity(

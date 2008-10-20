@@ -167,7 +167,7 @@ def new_allocation_main ():
     allocation.comment = comment
     if options.commit:
         s = Session()
-        s.save(allocation)
+        s.add(allocation)
         try:
             s.commit()
         except ValueError, ex:
@@ -199,7 +199,7 @@ def new_charge_main ():
         charge.comment = options.comment or options.deprecated_comment
     if options.commit:
         for charge in charges:
-            s.save(charge)
+            s.add(charge)
         try:
             s.commit()
         except ValueError, ex:
@@ -257,7 +257,7 @@ def new_refund_main ():
     refund.comment = options.comment or options.deprecated_comment
     if options.commit:
         s = Session()
-        s.save(refund)
+        s.add(refund)
         try:
             s.commit()
         except ValueError, ex:
