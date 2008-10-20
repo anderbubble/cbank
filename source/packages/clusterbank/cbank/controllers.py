@@ -110,7 +110,7 @@ def print_main_help ():
 @handle_exceptions
 @require_admin
 def new_main ():
-    commands = ["allocation", "charge", "refund"]
+    commands = ["allocation", "hold", "charge", "refund"]
     try:
         command = normalize(sys.argv[1], commands)
     except exceptions.UnknownCommand:
@@ -128,6 +128,8 @@ def new_main ():
     replace_command()
     if command == "allocation":
         return new_allocation_main()
+    elif command == "hold":
+        return new_hold_main()
     elif command == "charge":
         return new_charge_main()
     elif command == "refund":
@@ -172,10 +174,7 @@ def new_allocation_main ():
             s.commit()
         except ValueError, ex:
             raise exceptions.ValueError(ex)
-        else:
-            views.print_allocation(allocation)
-    else:
-        views.print_allocation(allocation)
+    views.print_allocation(allocation)
 
 @handle_exceptions
 @require_admin
@@ -204,10 +203,36 @@ def new_charge_main ():
             s.commit()
         except ValueError, ex:
             raise exceptions.ValueError(ex)
-        else:
-            views.print_charges(charges)
-    else:
-        views.print_charges(charges)
+    views.print_charges(charges)
+
+@handle_exceptions
+@require_admin
+def new_hold_main ():
+    parser = build_new_hold_parser()
+    options, args = parser.parse_args()
+    project = pop_project(args, 0)
+    amount = pop_amount(args, 0)
+    if args:
+        raise exceptions.UnexpectedArguments(args)
+    if options.deprecated_comment is not None:
+        warn("use of -m is deprecated: use -c instead", DeprecationWarning)
+    if not options.resource:
+        raise exceptions.MissingResource("resource")
+    s = Session()
+    allocations = s.query(Allocation).filter_by(
+        project=project, resource=options.resource)
+    holds = Hold.distributed(allocations, amount)
+    for hold in holds:
+        hold.user = options.user
+        hold.comment = options.comment or options.deprecated_comment
+    if options.commit:
+        for hold in holds:
+            s.add(hold)
+        try:
+            s.commit()
+        except ValueError, ex:
+            raise exceptions.ValueError(ex)
+    views.print_holds(holds)
 
 def pop_project (args, index):
     try:
@@ -262,10 +287,7 @@ def new_refund_main ():
             s.commit()
         except ValueError, ex:
             raise exceptions.ValueError(ex)
-        else:
-            views.print_refund(refund)
-    else:
-        views.print_refund(refund)
+    views.print_refund(refund)
 
 @handle_exceptions
 def report_main ():
@@ -827,6 +849,24 @@ def build_new_charge_parser ():
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save the charge"))
+    parser.set_defaults(user=get_current_user(),
+        commit=True, resource=configured_resource())
+    return parser
+
+def build_new_hold_parser ():
+    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser.add_option(Option("-u", "--user",
+        type="user", dest="user",
+        help="hold for USER", metavar="USER"))
+    parser.add_option(Option("-r", "--resource",
+        type="resource", dest="resource",
+        help="hold for RESOURCE", metavar="RESOURCE"))
+    parser.add_option("-m", dest="deprecated_comment",
+        help="deprecated: use -c instead")
+    parser.add_option("-c", "--comment", dest="comment",
+        help="arbitrary COMMENT", metavar="COMMENT")
+    parser.add_option(Option("-n", dest="commit", action="store_false",
+        help="do not save the hold"))
     parser.set_defaults(user=get_current_user(),
         commit=True, resource=configured_resource())
     return parser

@@ -22,11 +22,11 @@ Session -- sessionmaker (and default session)
 import warnings
 import ConfigParser
 
-from sqlalchemy import create_engine, types
-from sqlalchemy.sql import select, func, cast, and_
+from sqlalchemy import create_engine
+from sqlalchemy.sql import and_
 from sqlalchemy.exceptions import InvalidRequestError, ArgumentError
 from sqlalchemy.orm import scoped_session, sessionmaker, mapper, \
-    relation, column_property, synonym
+    relation
 from sqlalchemy.orm.session import SessionExtension
 
 from clusterbank import config
@@ -151,22 +151,6 @@ mapper(Request, requests, properties={
     'comment':requests.c.comment,
     'start':requests.c.start})
 
-allocation_amount_charged = cast(func.coalesce(
-    select([func.sum(charges.c.amount)],
-        charges.c.allocation_id==allocations.c.id).as_scalar(), 0),
-    types.Integer)
-
-allocation_amount_held = cast(func.coalesce(
-    select([func.sum(holds.c.amount)],
-        holds.c.allocation_id==allocations.c.id).as_scalar(), 0),
-    types.Integer)
-
-allocation_amount_refunded = cast(func.coalesce(
-    select([func.sum(refunds.c.amount)],
-        and_(refunds.c.charge_id==charges.c.id,
-            charges.c.allocation_id==allocations.c.id)
-    ).as_scalar(), 0), types.Integer)
-
 mapper(Allocation, allocations, properties={
     'id':allocations.c.id,
     'project':relation(Project, backref="allocations"),
@@ -177,12 +161,7 @@ mapper(Allocation, allocations, properties={
     'expiration':allocations.c.expiration,
     'comment':allocations.c.comment,
     'requests':relation(Request, backref="allocations",
-        secondary=requests_allocations),
-    '_amount_charged':column_property(
-        allocation_amount_charged - allocation_amount_refunded),
-    'amount_charged':synonym("_amount_charged"),
-    '_amount_held':column_property(allocation_amount_held),
-    'amount_held':synonym("_amount_held")})
+        secondary=requests_allocations)})
 
 mapper(CreditLimit, credit_limits, properties={
     'id':credit_limits.c.id,
@@ -202,11 +181,6 @@ mapper(Hold, holds, properties={
     'comment':holds.c.comment,
     'active':holds.c.active})
 
-charge_amount_refunded = cast(func.coalesce(
-    select([func.sum(refunds.c.amount)],
-        refunds.c.charge_id==charges.c.id).as_scalar(),
-    0), types.Integer)
-
 mapper(Job, jobs, properties={
     'id':jobs.c.id,
     'resource':relation(Resource, backref="jobs"),
@@ -218,11 +192,6 @@ mapper(Charge, charges, properties={
     'datetime':charges.c.datetime,
     'user':relation(User, backref="charges"),
     'amount':charges.c.amount,
-    '_amount_refunded':column_property(charge_amount_refunded),
-    'amount_refunded':synonym("_amount_refunded"),
-    '_effective_amount':column_property(
-        charges.c.amount - charge_amount_refunded),
-    'effective_amount':synonym("_effective_amount"),
     'comment':charges.c.comment})
 
 mapper(Refund, refunds, properties={

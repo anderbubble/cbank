@@ -25,6 +25,7 @@ setup(
         "cbank = clusterbank.cbank.controllers:main",
         "cbank-new = clusterbank.cbank.controllers:new_main",
         "cbank-new-allocation = clusterbank.cbank.controllers:new_allocation_main",
+        "cbank-new-hold = clusterbank.cbank.controllers:new_hold_main",
         "cbank-new-charge = clusterbank.cbank.controllers:new_charge_main",
         "cbank-new-refund = clusterbank.cbank.controllers:new_refund_main",
         "cbank-report = clusterbank.cbank.controllers:report_main",
