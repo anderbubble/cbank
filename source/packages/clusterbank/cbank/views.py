@@ -56,9 +56,11 @@ def print_users_report (users=None, projects=None, resources=None,
         charges_q = charges_q.filter(Charge.datetime<before)
     charges_q = charges_q.subquery()
     query = s.query(User,
-        func.coalesce(charges_q.c.charge_count, 0),
-        cast(func.coalesce(charges_q.c.charge_sum, 0), Integer)).outerjoin(
-        (charges_q, User.id==charges_q.c.user_id)).group_by(User.id)
+            func.coalesce(charges_q.c.charge_count, 0),
+            cast(func.coalesce(charges_q.c.charge_sum, 0), Integer)
+        ).outerjoin(
+            (charges_q, User.id==charges_q.c.user_id)
+        ).group_by(User.id)
     if users:
         query = query.filter(User.id.in_(user.id for user in users))
     
@@ -141,9 +143,9 @@ def print_projects_report (users=None, projects=None, resources=None,
     allocations_q = allocations_q.subquery()
     charges_q = charges_q.subquery()
     query = s.query(Project,
-        func.coalesce(charges_q.c.charge_count, 0),
-        func.coalesce(charges_q.c.charge_sum, 0),
-        func.coalesce(allocations_q.c.allocation_sum, 0)
+            func.coalesce(charges_q.c.charge_count, 0),
+            cast(func.coalesce(charges_q.c.charge_sum, 0), Integer),
+            cast(func.coalesce(allocations_q.c.allocation_sum, 0), Integer)
         ).outerjoin(
             (allocations_q, Project.id==allocations_q.c.project_id),
             (charges_q, Project.id==charges_q.c.project_id))
@@ -235,8 +237,8 @@ def print_allocations_report (users=None, projects=None, resources=None,
     charges_q = charges_q.subquery()
     query = s.query(Allocation,
             func.coalesce(charges_q.c.charge_count, 0),
-            func.coalesce(charges_q.c.charge_sum, 0),
-            func.coalesce(allocations_q.c.allocation_sum, 0)
+            cast(func.coalesce(charges_q.c.charge_sum, 0), Integer),
+            cast(func.coalesce(allocations_q.c.allocation_sum, 0), Integer)
         ).outerjoin(
             (allocations_q, Allocation.id==allocations_q.c.id),
             (charges_q, Allocation.id==charges_q.c.allocation_id))
@@ -344,7 +346,8 @@ def print_charges_report (users=None, projects=None, resources=None,
     
     s = Session()
     query = s.query(Charge,
-            Charge.amount - func.coalesce(func.sum(Refund.amount), 0)
+            cast(Charge.amount
+                - func.coalesce(func.sum(Refund.amount), 0), Integer)
         ).join(Charge.allocation).outerjoin(Charge.refunds
         ).options(eagerload(
             Charge.allocation, Allocation.project, Allocation.resource)
