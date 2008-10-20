@@ -238,15 +238,21 @@ def _get_upstream_entity (cls, upstream_function, entity_name):
         raise NotFound("%s '%s' not found" % (
             cls.__name__.lower(), entity_name))
     s = Session()
-    entity = cls(id=upstream_id)
-    s.add(entity)
-    return entity
+    try:
+        return s.query(cls).filter_by(id=upstream_id).one()
+    except InvalidRequestError:
+        entity = cls(id=upstream_id)
+        s.add(entity)
+        return entity
 
 def user_by_id (user_id):
     s = Session()
-    user = User(user_id)
-    s.add(user)
-    return user
+    try:
+        return s.query(User).filter_by(id=user_id).one()
+    except InvalidRequestError:
+        user = User(user_id)
+        s.add(user)
+        return user
 
 def user_by_name (user_name):
     return _get_upstream_entity(User, upstream.get_user_id, user_name)
@@ -259,9 +265,12 @@ def user_projects_owned (user):
 
 def project_by_id (project_id):
     s = Session()
-    project = Project(project_id)
-    s.add(project)
-    return project
+    try:
+        return s.query(Project).filter_by(id=project_id).one()
+    except InvalidRequestError:
+        project = Project(project_id)
+        s.add(project)
+        return project
 
 def project_by_name (project_name):
     return _get_upstream_entity(
@@ -275,9 +284,12 @@ def project_owners (project):
 
 def resource_by_id (resource_id):
     s = Session()
-    resource = Resource(resource_id)
-    s.add(resource)
-    return resource
+    try:
+        return s.query(Resource).filter_by(id=resource_id).one()
+    except InvalidRequestError:
+        resource = Resource(resource_id)
+        s.add(resource)
+        return resource
 
 def resource_by_name (resource_name):
     return _get_upstream_entity(
