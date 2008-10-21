@@ -45,9 +45,9 @@ def print_users_report (users=None, projects=None, resources=None,
         (func.sum(Charge.amount)
             - func.coalesce(func.sum(refunds_q.c.refund_sum), 0)
             ).label("charge_sum")).group_by(User.id)
-    charges_q = charges_q.join((refunds_q, Charge.id == refunds_q.c.charge_id))
     charges_q = charges_q.outerjoin(User.charges, Charge.allocation,
         Allocation.project, Allocation.resource)
+    charges_q = charges_q.join((refunds_q, Charge.id == refunds_q.c.charge_id))
     if projects:
         charges_q = charges_q.filter(Project.id.in_(
             project.id for project in projects))
