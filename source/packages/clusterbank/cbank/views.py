@@ -96,36 +96,39 @@ def print_projects_report (users=None, projects=None, resources=None,
 
     now = datetime.now()
     s = Session()
-    refunds_q = s.query(Charge.id.label("charge_id"),
-            func.coalesce(func.sum(Refund.amount), 0).label("refund_sum")
-        ).outerjoin(Charge.refunds).group_by(Charge.id).subquery()
+    refunds_q = s.query(
+        Charge.id.label("charge_id"),
+        func.sum(Refund.amount).label("refund_sum")).join(
+        Refund.charge).group_by(Charge.id).subquery()
     holds_q = s.query(Allocation.id.label("allocation_id"),
-            func.coalesce(func.sum(Hold.amount), 0).label("hold_sum")
-        ).outerjoin(Allocation.holds).group_by(Allocation.id)
-    holds_q = holds_q.filter(Hold.active==True).subquery()
+        func.sum(Hold.amount).label("hold_sum")).join(
+        Hold.allocation).group_by(Allocation.id).filter(
+        Hold.active==True).subquery()
     allocation_charges_q = s.query(Allocation.id.label("allocation_id"),
-            func.coalesce(func.sum(Charge.amount
-                - refunds_q.c.refund_sum), 0).label("charge_sum")
-        ).outerjoin(
-            Allocation.charges,
-            (refunds_q, Charge.id==refunds_q.c.charge_id)
-        ).group_by(Allocation.id).subquery()
+        (func.sum(Charge.amount) - func.coalesce(func.sum(
+            refunds_q.c.refund_sum), 0)).label("charge_sum")).join(
+        Charge.allocation).outerjoin(
+        (refunds_q, Charge.id==refunds_q.c.charge_id)).group_by(
+        Allocation.id).subquery()
     allocations_q = s.query(Project.id.label("project_id"),
-        func.coalesce(func.sum(Allocation.amount
-            - func.coalesce(holds_q.c.hold_sum, 0)
-            - allocation_charges_q.c.charge_sum), 0).label("allocation_sum")
-        ).outerjoin(Project.allocations,
+        (func.coalesce(func.sum(Allocation.amount), 0)
+            - func.coalesce(func.sum(holds_q.c.hold_sum), 0)
+            - func.coalesce(func.sum(allocation_charges_q.c.charge_sum), 0)
+        ).label("allocation_sum")
+        ).join(Allocation.project
+        ).outerjoin(
             (holds_q, Allocation.id==holds_q.c.allocation_id),
-        ).join((allocation_charges_q,
-            Allocation.id==allocation_charges_q.c.allocation_id)
+            (allocation_charges_q,
+                Allocation.id==allocation_charges_q.c.allocation_id)
         ).group_by(Project.id)
     allocations_q = allocations_q.filter(
         and_(Allocation.start<=now, Allocation.expiration>now))
     charges_q = s.query(Project.id.label("project_id"),
-            func.count(Charge.id).label("charge_count"),
-            func.coalesce(func.sum(Charge.amount
-                - refunds_q.c.refund_sum), 0).label("charge_sum")
-        ).outerjoin(Project.allocations, Allocation.charges,
+        func.count(Charge.id).label("charge_count"),
+        (func.coalesce(func.sum(Charge.amount), 0)
+            - func.coalesce(func.sum(refunds_q.c.refund_sum), 0)
+        ).label("charge_sum")
+        ).join(Charge.allocation, Allocation.project).outerjoin(
             (refunds_q, Charge.id==refunds_q.c.charge_id)
         ).group_by(Project.id)
     if users:
@@ -143,12 +146,11 @@ def print_projects_report (users=None, projects=None, resources=None,
     allocations_q = allocations_q.subquery()
     charges_q = charges_q.subquery()
     query = s.query(Project,
-            func.coalesce(charges_q.c.charge_count, 0),
-            cast(func.coalesce(charges_q.c.charge_sum, 0), Integer),
-            cast(func.coalesce(allocations_q.c.allocation_sum, 0), Integer)
-        ).outerjoin(
-            (allocations_q, Project.id==allocations_q.c.project_id),
-            (charges_q, Project.id==charges_q.c.project_id))
+        func.coalesce(charges_q.c.charge_count, 0),
+        cast(func.coalesce(charges_q.c.charge_sum, 0), Integer),
+        cast(func.coalesce(allocations_q.c.allocation_sum, 0), Integer)
+        ).outerjoin((charges_q, Project.id==charges_q.c.project_id),
+        (allocations_q, Project.id==allocations_q.c.project_id))
     if projects:
         query = query.filter(Project.id.in_(
             project.id for project in projects))
