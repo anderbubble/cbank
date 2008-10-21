@@ -34,38 +34,44 @@ def print_users_report (users=None, projects=None, resources=None,
     print format.bar()
     
     s = Session()
-    refunds_q = s.query(
-        Charge.id.label("charge_id"),
-        func.sum(Refund.amount).label("refund_sum")).group_by(Charge.id)
-    refunds_q = refunds_q.outerjoin(Charge.refunds)
-    refunds_q = refunds_q.subquery()
     charges_q = s.query(
         User.id.label("user_id"),
         func.count(Charge.id).label("charge_count"),
-        (func.sum(Charge.amount)
-            - func.coalesce(func.sum(refunds_q.c.refund_sum), 0)
-            ).label("charge_sum")).group_by(User.id)
-    charges_q = charges_q.outerjoin(User.charges, Charge.allocation,
-        Allocation.project, Allocation.resource)
-    charges_q = charges_q.join((refunds_q, Charge.id == refunds_q.c.charge_id))
+        func.sum(Charge.amount).label("charge_sum")).group_by(User.id)
+    charges_q = charges_q.join(Charge.user)
+    refunds_q = s.query(
+        User.id.label("user_id"),
+        func.sum(Refund.amount).label("refund_sum")).group_by(User.id)
+    refunds_q = refunds_q.join(Refund.charge, Charge.user)
     if projects:
-        charges_q = charges_q.filter(Project.id.in_(
-            project.id for project in projects))
+        projects_ = Charge.allocation.has(Allocation.project.has(
+            Project.id.in_(project.id for project in projects)))
+        charges_q = charges_q.filter(projects_)
+        refunds_q = refunds_q.filter(projects_)
     if resources:
-        charges_q = charges_q.filter(Resource.id.in_(
-            resource.id for resource in resources))
+        resources_ = Charge.allocation.has(Allocation.resource.has(
+            Resource.id.in_(resource.id for resource in resources)))
+        charges_q = charges_q.filter(resources_)
+        refunds_q = refunds_q.filter(resources_)
     if after:
-        charges_q = charges_q.filter(Charge.datetime>=after)
+        after_ = Charge.datetime >= after
+        charges_q = charges_q.filter(after_)
+        refunds_q = refunds_q.filter(after_)
     if before:
-        charges_q = charges_q.filter(Charge.datetime<before)
+        before_ = Charge.datetime < before
+        charges_q = charges_q.filter(before_)
+        refunds_q = refunds_q.filter(before_)
     charges_q = charges_q.subquery()
+    refunds_q = refunds_q.subquery()
     query = s.query(
         User,
         func.coalesce(charges_q.c.charge_count, 0),
-        cast(func.coalesce(charges_q.c.charge_sum, 0), Integer)
+        cast(func.coalesce(charges_q.c.charge_sum, 0)
+            - func.coalesce(refunds_q.c.refund_sum, 0), Integer)
         ).group_by(User.id)
     query = query.outerjoin(
-        (charges_q, User.id == charges_q.c.user_id)).group_by(User.id)
+        (charges_q, User.id == charges_q.c.user_id),
+        (refunds_q, User.id == refunds_q.c.user_id)).group_by(User.id)
     if users:
         query = query.filter(User.id.in_(user.id for user in users))
     
