@@ -315,7 +315,6 @@ def print_holds_report (users=None, projects=None, resources=None,
     
     s = Session()
     query = s.query(Hold)
-    query = query.join(Hold.allocation)
     query = query.filter(Hold.active==True)
     query = query.options(eagerload(
         Hold.user, Hold.allocation, Allocation.project, Allocation.resource))
@@ -324,11 +323,11 @@ def print_holds_report (users=None, projects=None, resources=None,
         query = query.filter(Hold.user.has(User.id.in_(
             user.id for user in users)))
     if projects:
-        query = query.filter(Allocation.project.has(Project.id.in_(
-            project.id for project in projects)))
+        query = query.filter(Hold.allocation.has(Allocation.project.has(
+            Project.id.in_(project.id for project in projects))))
     if resources:
-        query = query.filter(Allocation.resource.has(Resource.id.in_(
-            resource.id for resource in resources)))
+        query = query.filter(Hold.allocation.has(Allocation.resource.has(
+            Resource.id.in_(resource.id for resource in resources))))
     if after:
         query = query.filter(Hold.datetime >= after)
     if before:
@@ -370,25 +369,26 @@ def print_charges_report (users=None, projects=None, resources=None,
     
     s = Session()
     query = s.query(Charge,
-            cast(Charge.amount
-                - func.coalesce(func.sum(Refund.amount), 0), Integer)
-        ).join(Charge.allocation).outerjoin(Charge.refunds
-        ).options(eagerload(
-            Charge.allocation, Allocation.project, Allocation.resource)
-        ).group_by(Charge.id).order_by(Charge.datetime, Charge.id)
+        cast(Charge.amount
+            - func.coalesce(func.sum(Refund.amount), 0), Integer)
+        ).group_by(Charge.id)
+    query = query.outerjoin(Charge.refunds)
+    query = query.options(eagerload(Charge.user, Charge.allocation,
+        Allocation.project, Allocation.resource))
+    query = query.order_by(Charge.datetime, Charge.id)
     if users:
         query = query.filter(Charge.user.has(User.id.in_(
             user.id for user in users)))
     if projects:
-        query = query.filter(Allocation.project.has(Project.id.in_(
-            project.id for project in projects)))
+        query = query.filter(Charge.allocation.has(Allocation.project.has(
+            Project.id.in_(project.id for project in projects))))
     if resources:
-        query = query.filter(Allocation.resource.has(Resource.id.in_(
-            resource.id for resource in resources)))
+        query = query.filter(Charge.allocation.has(Allocation.resource.has(
+            Resource.id.in_(resource.id for resource in resources))))
     if after:
-        query = query.filter(Charge.datetime>=after)
+        query = query.filter(Charge.datetime >= after)
     if before:
-        query = query.filter(Charge.datetime<before)
+        query = query.filter(Charge.datetime < before)
     
     total_charged = 0
     for charge, charge_amount in query:
