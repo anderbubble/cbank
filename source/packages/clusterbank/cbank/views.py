@@ -34,16 +34,20 @@ def print_users_report (users=None, projects=None, resources=None,
     print format.bar()
     
     s = Session()
-    refunds_q = s.query(Charge.id.label("charge_id"),
-        func.coalesce(func.sum(Refund.amount), 0).label("refund_sum")
-    ).outerjoin(Charge.refunds).group_by(Charge.id).subquery()
-    charges_q = s.query(User.id.label("user_id"),
+    refunds_q = s.query(
+        Charge.id.label("charge_id"),
+        func.sum(Refund.amount).label("refund_sum")).group_by(Charge.id)
+    refunds_q = refunds_q.outerjoin(Charge.refunds)
+    refunds_q = refunds_q.subquery()
+    charges_q = s.query(
+        User.id.label("user_id"),
         func.count(Charge.id).label("charge_count"),
-        func.coalesce(func.sum(Charge.amount-refunds_q.c.refund_sum), 0
-            ).label("charge_sum")
-        ).join((refunds_q, Charge.id==refunds_q.c.charge_id)
-        ).outerjoin(User.charges, Charge.allocation, Allocation.project,
-            Allocation.resource).group_by(User.id)
+        (func.sum(Charge.amount)
+            - func.coalesce(func.sum(refunds_q.c.refund_sum), 0)
+            ).label("charge_sum")).group_by(User.id)
+    charges_q = charges_q.join((refunds_q, Charge.id == refunds_q.c.charge_id))
+    charges_q = charges_q.outerjoin(User.charges, Charge.allocation,
+        Allocation.project, Allocation.resource)
     if projects:
         charges_q = charges_q.filter(Project.id.in_(
             project.id for project in projects))
@@ -55,12 +59,13 @@ def print_users_report (users=None, projects=None, resources=None,
     if before:
         charges_q = charges_q.filter(Charge.datetime<before)
     charges_q = charges_q.subquery()
-    query = s.query(User,
-            func.coalesce(charges_q.c.charge_count, 0),
-            cast(func.coalesce(charges_q.c.charge_sum, 0), Integer)
-        ).outerjoin(
-            (charges_q, User.id==charges_q.c.user_id)
+    query = s.query(
+        User,
+        func.coalesce(charges_q.c.charge_count, 0),
+        cast(func.coalesce(charges_q.c.charge_sum, 0), Integer)
         ).group_by(User.id)
+    query = query.outerjoin(
+        (charges_q, User.id == charges_q.c.user_id)).group_by(User.id)
     if users:
         query = query.filter(User.id.in_(user.id for user in users))
     
