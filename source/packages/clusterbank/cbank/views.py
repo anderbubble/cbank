@@ -314,10 +314,12 @@ def print_holds_report (users=None, projects=None, resources=None,
     print format.bar()
     
     s = Session()
-    query = s.query(Hold).join(Hold.allocation).filter(Hold.active==True
-        ).options(eagerload(Hold.allocation, Allocation.project,
-            Allocation.resource)
-        ).order_by(Hold.datetime, Hold.id)
+    query = s.query(Hold)
+    query = query.join(Hold.allocation)
+    query = query.filter(Hold.active==True)
+    query = query.options(eagerload(
+        Hold.user, Hold.allocation, Allocation.project, Allocation.resource))
+    query = query.order_by(Hold.datetime, Hold.id)
     if users:
         query = query.filter(Hold.user.has(User.id.in_(
             user.id for user in users)))
@@ -328,9 +330,9 @@ def print_holds_report (users=None, projects=None, resources=None,
         query = query.filter(Allocation.resource.has(Resource.id.in_(
             resource.id for resource in resources)))
     if after:
-        query = query.filter(Hold.datetime>=after)
+        query = query.filter(Hold.datetime >= after)
     if before:
-        query = query.filter(Hold.datetime<before)
+        query = query.filter(Hold.datetime < before)
     
     hold_sum = 0
     for hold in query:
