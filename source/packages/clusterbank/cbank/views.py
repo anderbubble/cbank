@@ -111,6 +111,9 @@ def print_projects_report (users=None, projects=None, resources=None,
         func.sum(Allocation.amount).label("allocation_sum")
         ).group_by(Project.id)
     allocations_q = allocations_q.join(Allocation.project)
+    now = datetime.now()
+    allocations_q = allocations_q.filter(
+        and_(Allocation.start<=now, Allocation.expiration>now))
     holds_q = s.query(
         Project.id.label("project_id"),
         func.sum(Hold.amount).label("hold_sum")).group_by(Project.id)
