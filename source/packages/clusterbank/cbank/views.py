@@ -72,6 +72,7 @@ def print_users_report (users=None, projects=None, resources=None,
     query = query.outerjoin(
         (charges_q, User.id == charges_q.c.user_id),
         (refunds_q, User.id == refunds_q.c.user_id)).group_by(User.id)
+    query = query.order_by(User.id)
     if users:
         query = query.filter(User.id.in_(user.id for user in users))
     
@@ -171,6 +172,7 @@ def print_projects_report (users=None, projects=None, resources=None,
         (holds_q, Project.id == holds_q.c.project_id),
         (charges_q, Project.id == charges_q.c.project_id),
         (refunds_q, Project.id == refunds_q.c.project_id))
+    query = query.order_by(Project.id)
     if projects:
         query = query.filter(Project.id.in_(
             project.id for project in projects))
@@ -264,6 +266,7 @@ def print_allocations_report (users=None, projects=None, resources=None,
         (holds_q, Allocation.id == holds_q.c.allocation_id),
         (charges_q, Allocation.id == charges_q.c.allocation_id),
         (refunds_q, Allocation.id == refunds_q.c.allocation_id))
+    query = query.order_by(Allocation.id)
     if projects:
         query = query.filter(Allocation.project.has(Project.id.in_(
             project.id for project in projects)))
