@@ -308,6 +308,12 @@ def print_holds_report (holds, comments=None):
     print format.header()
     print format.bar()
     
+    query = Session().query(Hold)
+    query = query.options(eagerload(
+        Hold.user, Hold.allocation, Allocation.project, Allocation.resource))
+    query = query.filter(Hold.id.in_(hold.id for hold in holds))
+    query = query.order_by(Hold.datetime, Hold.id)
+    
     hold_sum = 0
     for hold in holds:
         hold_sum += hold.amount

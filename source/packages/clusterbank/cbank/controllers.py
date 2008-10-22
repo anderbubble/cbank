@@ -481,8 +481,7 @@ def report_allocations_main ():
             projects = member
     resources = options.resources or configured_resources()
     comments = options.comments or options.extra_data
-    s = Session()
-    allocations = s.query(Allocation)
+    allocations = Session().query(Allocation)
     allocations = allocations.filter(Allocation.resource.has(Resource.id.in_(
         resource.id for resource in resources)))
     allocations = allocations.filter(Allocation.project.has(Project.id.in_(
@@ -514,12 +513,8 @@ def report_holds_main ():
         projects = options.projects or member
     resources = options.resources or configured_resources()
     comments = options.comments or options.extra_data
-    s = Session()
-    holds = s.query(Hold)
+    holds = Session().query(Hold)
     holds = holds.filter(Hold.active==True)
-    holds = holds.options(eagerload(
-        Hold.user, Hold.allocation, Allocation.project, Allocation.resource))
-    holds = holds.order_by(Hold.datetime, Hold.id)
     if users:
         holds = holds.filter(Hold.user.has(User.id.in_(
             user.id for user in users)))
@@ -561,8 +556,7 @@ def report_charges_main ():
     resources = options.resources or configured_resources()
     comments = options.comments or options.extra_data
     
-    s = Session()
-    charges = s.query(Charge)
+    charges = Session().query(Charge)
     if users:
         charges = charges.filter(Charge.user.has(User.id.in_(
             user.id for user in users)))
