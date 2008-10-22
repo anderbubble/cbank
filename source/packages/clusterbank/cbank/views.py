@@ -324,8 +324,7 @@ def print_holds_report (holds, comments=None):
     print unit_definition()
 
 
-def print_charges_report (users=None, projects=None, resources=None,
-                          after=None, before=None, comments=False):
+def print_charges_report (charges, comments=False):
     
     """Charges report.
     
@@ -351,19 +350,7 @@ def print_charges_report (users=None, projects=None, resources=None,
     query = query.options(eagerload(Charge.user, Charge.allocation,
         Allocation.project, Allocation.resource))
     query = query.order_by(Charge.datetime, Charge.id)
-    if users:
-        query = query.filter(Charge.user.has(User.id.in_(
-            user.id for user in users)))
-    if projects:
-        query = query.filter(Charge.allocation.has(Allocation.project.has(
-            Project.id.in_(project.id for project in projects))))
-    if resources:
-        query = query.filter(Charge.allocation.has(Allocation.resource.has(
-            Resource.id.in_(resource.id for resource in resources))))
-    if after:
-        query = query.filter(Charge.datetime >= after)
-    if before:
-        query = query.filter(Charge.datetime < before)
+    query = query.filter(Charge.id.in_(charge.id for charge in charges))
     
     total_charged = 0
     for charge, charge_amount in query:

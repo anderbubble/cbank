@@ -23,8 +23,10 @@ from datetime import datetime, timedelta
 from warnings import warn
 from textwrap import dedent
 
-import sqlalchemy.exceptions
 from sqlalchemy.orm import eagerload
+from sqlalchemy import cast, func
+from sqlalchemy.types import Integer
+import sqlalchemy.exceptions
 
 import clusterbank
 from clusterbank import config
@@ -44,8 +46,10 @@ __all__ = ["main", "new_main", "report_main",
     "report_users_main", "report_projects_main", "report_allocations_main",
     "report_holds_main", "report_charges_main"]
 
+
 def dt_strptime (value, format):
     return datetime(*time.strptime(value, format)[0:6])
+
 
 def handle_exceptions (func):
     def decorated_func (*args, **kwargs):
@@ -61,6 +65,7 @@ def handle_exceptions (func):
     decorated_func.__dict__.update(func.__dict__)
     return decorated_func
 
+
 def require_admin (func):
     def decorated_func (*args, **kwargs):
         user = get_current_user()
@@ -73,9 +78,11 @@ def require_admin (func):
     decorated_func.__dict__.update(func.__dict__)
     return decorated_func
 
+
 def help_requested ():
     args = sys.argv[1:]
     return "-h" in args or "--help" in args
+
 
 @handle_exceptions
 def main ():
@@ -95,6 +102,7 @@ def main ():
     elif command == "detail":
         return detail_main()
 
+
 def print_main_help ():
     command = os.path.basename(sys.argv[0])
     message = """\
@@ -111,6 +119,7 @@ def print_main_help ():
         For help with a specific subcommand, run
           %(command)s <command> -h"""
     print dedent(message % {'command':command})
+
 
 @handle_exceptions
 @require_admin
@@ -140,6 +149,7 @@ def new_main ():
     elif command == "refund":
         return new_refund_main()
 
+
 def print_new_main_help ():
     command = os.path.basename(sys.argv[0])
     message = """\
@@ -154,6 +164,7 @@ def print_new_main_help ():
         entity, run
           %(command)s <entity> -h"""
     print dedent(message % {'command':command})
+
 
 @handle_exceptions
 @require_admin
@@ -180,6 +191,7 @@ def new_allocation_main ():
         except ValueError, ex:
             raise exceptions.ValueError(ex)
     print_allocation(allocation)
+
 
 @handle_exceptions
 @require_admin
@@ -210,6 +222,7 @@ def new_charge_main ():
             raise exceptions.ValueError(ex)
     print_charges(charges)
 
+
 @handle_exceptions
 @require_admin
 def new_hold_main ():
@@ -239,6 +252,7 @@ def new_hold_main ():
             raise exceptions.ValueError(ex)
     print_holds(holds)
 
+
 def pop_project (args, index):
     try:
         project_name = args.pop(index)
@@ -249,6 +263,7 @@ def pop_project (args, index):
     except clusterbank.exceptions.NotFound:
         raise exceptions.UnknownProject(project_name)
     return project
+
 
 def pop_charge (args, index):
     try:
@@ -261,6 +276,7 @@ def pop_charge (args, index):
         raise exceptions.UnknownCharge(charge_id)
     return charge
 
+
 def pop_amount (args, index):
     try:
         amount = args.pop(index)
@@ -268,6 +284,7 @@ def pop_amount (args, index):
         raise exceptions.MissingArgument("amount")
     amount = parse_units(amount)
     return amount
+
 
 @handle_exceptions
 @require_admin
@@ -294,6 +311,7 @@ def new_refund_main ():
             raise exceptions.ValueError(ex)
     print_refund(refund)
 
+
 @handle_exceptions
 def report_main ():
     commands = ["users", "projects", "allocations", "holds", "charges"]
@@ -317,6 +335,7 @@ def report_main ():
     elif command == "charges":
         return report_charges_main()
 
+
 def print_report_main_help ():
     command = os.path.basename(sys.argv[0])
     message = """\
@@ -336,6 +355,7 @@ def print_report_main_help ():
         report, run
           %(command)s <report> -h"""
     print dedent(message % {'command':command})
+
 
 @handle_exceptions
 def report_users_main ():
@@ -372,6 +392,7 @@ def report_users_main ():
     resources = options.resources or configured_resources()
     print_users_report(users, projects=projects,
         resources=resources, after=options.after, before=options.before)
+
 
 @handle_exceptions
 def report_projects_main ():
@@ -415,6 +436,7 @@ def report_projects_main ():
     resources = options.resources or configured_resources()
     print_projects_report(projects, users=users, resources=resources,
         after=options.after, before=options.before)
+
 
 @handle_exceptions
 def report_allocations_main ():
@@ -468,6 +490,7 @@ def report_allocations_main ():
     print_allocations_report(allocations.all(), users=users,
         after=options.after, before=options.before, comments=comments)
 
+
 @handle_exceptions
 def report_holds_main ():
     parser = build_report_holds_parser()
@@ -507,10 +530,11 @@ def report_holds_main ():
         holds = holds.filter(Hold.allocation.has(Allocation.resource.has(
             Resource.id.in_(resource.id for resource in resources))))
     if options.after:
-        holds = holds.filter(Hold.datetime >= after)
+        holds = holds.filter(Hold.datetime >= options.after)
     if options.before:
-        holds = holds.filter(Hold.datetime < before)
+        holds = holds.filter(Hold.datetime < options.before)
     print_holds_report(holds, comments=comments)
+
 
 @handle_exceptions
 def report_charges_main ():
@@ -536,9 +560,24 @@ def report_charges_main ():
         projects = options.projects or member
     resources = options.resources or configured_resources()
     comments = options.comments or options.extra_data
-    print_charges_report(users=users, projects=projects,
-        resources=resources, after=options.after, before=options.before,
-        comments=comments)
+    
+    s = Session()
+    charges = s.query(Charge)
+    if users:
+        charges = charges.filter(Charge.user.has(User.id.in_(
+            user.id for user in users)))
+    if projects:
+        charges = charges.filter(Charge.allocation.has(Allocation.project.has(
+            Project.id.in_(project.id for project in projects))))
+    if resources:
+        charges = charges.filter(Charge.allocation.has(Allocation.resource.has(
+            Resource.id.in_(resource.id for resource in resources))))
+    if options.after:
+        charges = charges.filter(Charge.datetime >= options.after)
+    if options.before:
+        charges = charges.filter(Charge.datetime < options.before)
+    print_charges_report(charges, comments=comments)
+
 
 @handle_exceptions
 def detail_main ():
@@ -560,6 +599,7 @@ def detail_main ():
     elif command == "refunds":
         return detail_refunds_main()
 
+
 def print_detail_main_help ():
     command = os.path.basename(sys.argv[0])
     message = """\
@@ -573,6 +613,7 @@ def print_detail_main_help ():
         
         Entity ids are available using applicable reports."""
     print dedent(message % {'command':command})
+
 
 @handle_exceptions
 def detail_allocations_main ():
@@ -592,6 +633,7 @@ def detail_allocations_main ():
         allocations = permitted_allocations
     print_allocations(allocations)
 
+
 @handle_exceptions
 def detail_holds_main ():
     user = get_current_user()
@@ -609,6 +651,7 @@ def detail_holds_main ():
                 permitted_holds.append(hold)
         holds = permitted_holds
     print_holds(holds)
+
 
 @handle_exceptions
 def detail_charges_main ():
@@ -629,6 +672,7 @@ def detail_charges_main ():
         charges = permitted_charges
     print_charges(charges)
 
+
 @handle_exceptions
 def detail_refunds_main ():
     user = get_current_user()
@@ -648,9 +692,11 @@ def detail_refunds_main ():
         refunds = permitted_refunds
     print_refunds(refunds)
 
+
 def replace_command ():
     arg0 = " ".join([sys.argv[0], sys.argv[1]])
     sys.argv = [arg0] + sys.argv[2:]
+
 
 def normalize (command, commands):
     possible_commands = [cmd for cmd in commands if cmd.startswith(command)]
@@ -658,6 +704,7 @@ def normalize (command, commands):
         raise exceptions.UnknownCommand(command)
     else:
         return possible_commands[0]
+
 
 def check_users (users, projects=None):
     if users:
@@ -669,6 +716,7 @@ def check_users (users, projects=None):
         current_user = get_current_user()
         users = [current_user]
     return users
+
 
 def check_projects (projects, users=None):
     if projects:
@@ -682,6 +730,7 @@ def check_projects (projects, users=None):
         projects = member_projects | managed_projects
     return projects
 
+
 def configured_resources ():
     resource = configured_resource()
     if resource:
@@ -689,6 +738,7 @@ def configured_resources ():
     else:
         resources = []
     return resources
+
 
 def configured_resource ():
     try:
@@ -698,6 +748,7 @@ def configured_resource ():
     else:
         resource = resource_by_name(resource)
     return resource
+
 
 def get_current_user ():
     uid = os.getuid()
@@ -712,6 +763,7 @@ def get_current_user ():
         raise exceptions.UnknownUser(username)
     return user
 
+
 def parse_units (units):
     try:
         units = float(units)
@@ -721,6 +773,7 @@ def parse_units (units):
     raw_units = units / mul * div
     raw_units = int(raw_units)
     return raw_units
+
 
 def build_report_users_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
@@ -742,6 +795,7 @@ def build_report_users_parser ():
     parser.set_defaults(projects=[], users=[], resources=[])
     return parser
 
+
 def build_report_projects_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
@@ -761,6 +815,7 @@ def build_report_projects_parser ():
         help="report charges before (and excluding) DATE", metavar="DATE"))
     parser.set_defaults(projects=[], users=[], resources=[])
     return parser
+
 
 def build_report_allocations_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
@@ -788,6 +843,7 @@ def build_report_allocations_parser ():
     parser.set_defaults(projects=[], users=[], resources=[], comments=False)
     return parser
 
+
 def build_report_holds_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
@@ -813,6 +869,7 @@ def build_report_holds_parser ():
         help="deprecated: use '-c' instead"))
     parser.set_defaults(projects=[], users=[], resources=[], comments=False)
     return parser
+
 
 def build_report_charges_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
@@ -840,6 +897,7 @@ def build_report_charges_parser ():
     parser.set_defaults(projects=[], users=[], resources=[], comments=False)
     return parser
 
+
 def build_new_allocation_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-r", "--resource",
@@ -862,6 +920,7 @@ def build_new_allocation_parser ():
         commit=True, resource=configured_resource())
     return parser
 
+
 def build_new_charge_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
@@ -880,6 +939,7 @@ def build_new_charge_parser ():
         commit=True, resource=configured_resource())
     return parser
 
+
 def build_new_hold_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
@@ -897,6 +957,7 @@ def build_new_hold_parser ():
     parser.set_defaults(user=get_current_user(),
         commit=True, resource=configured_resource())
     return parser
+
 
 def build_new_refund_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
