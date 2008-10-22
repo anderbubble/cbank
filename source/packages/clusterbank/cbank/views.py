@@ -291,8 +291,7 @@ def print_allocations_report (allocations, users=None,
     print unit_definition()
 
 
-def print_holds_report (users=None, projects=None, resources=None,
-                        after=None, before=None, comments=False):
+def print_holds_report (holds, comments=None):
     
     """Holds report.
     
@@ -309,28 +308,8 @@ def print_holds_report (users=None, projects=None, resources=None,
     print format.header()
     print format.bar()
     
-    s = Session()
-    query = s.query(Hold)
-    query = query.filter(Hold.active==True)
-    query = query.options(eagerload(
-        Hold.user, Hold.allocation, Allocation.project, Allocation.resource))
-    query = query.order_by(Hold.datetime, Hold.id)
-    if users:
-        query = query.filter(Hold.user.has(User.id.in_(
-            user.id for user in users)))
-    if projects:
-        query = query.filter(Hold.allocation.has(Allocation.project.has(
-            Project.id.in_(project.id for project in projects))))
-    if resources:
-        query = query.filter(Hold.allocation.has(Allocation.resource.has(
-            Resource.id.in_(resource.id for resource in resources))))
-    if after:
-        query = query.filter(Hold.datetime >= after)
-    if before:
-        query = query.filter(Hold.datetime < before)
-    
     hold_sum = 0
-    for hold in query:
+    for hold in holds:
         hold_sum += hold.amount
         print format({
             'Hold':hold.id,

@@ -24,11 +24,13 @@ from warnings import warn
 from textwrap import dedent
 
 import sqlalchemy.exceptions
+from sqlalchemy.orm import eagerload
 
 import clusterbank
 from clusterbank import config
-from clusterbank.model import Session, Project, Resource, Allocation, Hold, \
-    Charge, Refund, user_by_name, project_by_name, resource_by_name, \
+from clusterbank.model import Session, User, Project, Resource, \
+    Allocation, Hold, Charge, Refund, \
+    user_by_name, project_by_name, resource_by_name, \
     project_members, user_projects, user_projects_owned
 import clusterbank.cbank.exceptions as exceptions
 from clusterbank.cbank.views import print_allocation, print_charges, \
@@ -489,9 +491,26 @@ def report_holds_main ():
         projects = options.projects or member
     resources = options.resources or configured_resources()
     comments = options.comments or options.extra_data
-    print_holds_report(users=users, projects=projects,
-        resources=resources, after=options.after, before=options.before,
-        comments=comments)
+    s = Session()
+    holds = s.query(Hold)
+    holds = holds.filter(Hold.active==True)
+    holds = holds.options(eagerload(
+        Hold.user, Hold.allocation, Allocation.project, Allocation.resource))
+    holds = holds.order_by(Hold.datetime, Hold.id)
+    if users:
+        holds = holds.filter(Hold.user.has(User.id.in_(
+            user.id for user in users)))
+    if projects:
+        holds = holds.filter(Hold.allocation.has(Allocation.project.has(
+            Project.id.in_(project.id for project in projects))))
+    if resources:
+        holds = holds.filter(Hold.allocation.has(Allocation.resource.has(
+            Resource.id.in_(resource.id for resource in resources))))
+    if options.after:
+        holds = holds.filter(Hold.datetime >= after)
+    if options.before:
+        holds = holds.filter(Hold.datetime < before)
+    print_holds_report(holds, comments=comments)
 
 @handle_exceptions
 def report_charges_main ():
