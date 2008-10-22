@@ -27,8 +27,8 @@ import sqlalchemy.exceptions
 
 import clusterbank
 from clusterbank import config
-from clusterbank.model import Session, Allocation, Hold, Charge, Refund, \
-    user_by_name, project_by_name, resource_by_name, \
+from clusterbank.model import Session, Project, Resource, Allocation, Hold, \
+    Charge, Refund, user_by_name, project_by_name, resource_by_name, \
     project_members, user_projects, user_projects_owned
 import clusterbank.cbank.exceptions as exceptions
 from clusterbank.cbank.views import print_allocation, print_charges, \
@@ -457,9 +457,14 @@ def report_allocations_main ():
             projects = member
     resources = options.resources or configured_resources()
     comments = options.comments or options.extra_data
-    print_allocations_report(users=users, projects=projects,
-        resources=resources, after=options.after, before=options.before,
-        comments=comments)
+    s = Session()
+    allocations = s.query(Allocation)
+    allocations = allocations.filter(Allocation.resource.has(Resource.id.in_(
+        resource.id for resource in resources)))
+    allocations = allocations.filter(Allocation.project.has(Project.id.in_(
+            project.id for project in projects)))
+    print_allocations_report(allocations.all(), users=users,
+        after=options.after, before=options.before, comments=comments)
 
 @handle_exceptions
 def report_holds_main ():

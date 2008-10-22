@@ -192,7 +192,7 @@ def print_projects_report (projects, users=None, resources=None,
     print unit_definition()
 
 
-def print_allocations_report (users=None, projects=None, resources=None,
+def print_allocations_report (allocations, users=None,
                               before=None, after=None, comments=False):
     
     """Allocations report.
@@ -264,12 +264,8 @@ def print_allocations_report (users=None, projects=None, resources=None,
         (charges_q, Allocation.id == charges_q.c.allocation_id),
         (refunds_q, Allocation.id == refunds_q.c.allocation_id))
     query = query.order_by(Allocation.id)
-    if projects:
-        query = query.filter(Allocation.project.has(Project.id.in_(
-            project.id for project in projects)))
-    if resources:
-        query = query.filter(Allocation.resource.has(Resource.id.in_(
-            resource.id for resource in resources)))
+    query = query.filter(Allocation.id.in_(
+        allocation.id for allocation in allocations))
     
     charge_count_total = 0
     charge_sum_total = 0
