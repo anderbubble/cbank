@@ -18,7 +18,7 @@ __all__ = ["unit_definition", "convert_units", "display_units",
 locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 
 
-def print_users_report (users=None, projects=None, resources=None,
+def print_users_report (users, projects=None, resources=None,
                         after=None, before=None):
     
     """Users report.
@@ -73,8 +73,7 @@ def print_users_report (users=None, projects=None, resources=None,
         (charges_q, User.id == charges_q.c.user_id),
         (refunds_q, User.id == refunds_q.c.user_id)).group_by(User.id)
     query = query.order_by(User.id)
-    if users:
-        query = query.filter(User.id.in_(user.id for user in users))
+    query = query.filter(User.id.in_(user.id for user in users))
     
     charge_count_total = 0
     charge_sum_total = 0
@@ -89,7 +88,7 @@ def print_users_report (users=None, projects=None, resources=None,
     print unit_definition()
 
 
-def print_projects_report (users=None, projects=None, resources=None,
+def print_projects_report (projects, users=None, resources=None,
                            before=None, after=None):
     
     """Projects report.
@@ -173,9 +172,7 @@ def print_projects_report (users=None, projects=None, resources=None,
         (charges_q, Project.id == charges_q.c.project_id),
         (refunds_q, Project.id == refunds_q.c.project_id))
     query = query.order_by(Project.id)
-    if projects:
-        query = query.filter(Project.id.in_(
-            project.id for project in projects))
+    query = query.filter(Project.id.in_(project.id for project in projects))
     
     allocation_sum_total = 0
     charge_count_total = 0

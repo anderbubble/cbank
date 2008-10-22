@@ -31,7 +31,10 @@ from clusterbank.model import Session, Allocation, Hold, Charge, Refund, \
     user_by_name, project_by_name, resource_by_name, \
     project_members, user_projects, user_projects_owned
 import clusterbank.cbank.exceptions as exceptions
-import clusterbank.cbank.views as views
+from clusterbank.cbank.views import print_allocation, print_charges, \
+    print_holds, print_refund, print_users_report, print_projects_report, \
+    print_allocations_report, print_holds_report, print_charges_report, \
+    print_allocations, print_refunds
 from clusterbank.cbank.common import get_unit_factor
 
 __all__ = ["main", "new_main", "report_main",
@@ -174,7 +177,7 @@ def new_allocation_main ():
             s.commit()
         except ValueError, ex:
             raise exceptions.ValueError(ex)
-    views.print_allocation(allocation)
+    print_allocation(allocation)
 
 @handle_exceptions
 @require_admin
@@ -203,7 +206,7 @@ def new_charge_main ():
             s.commit()
         except ValueError, ex:
             raise exceptions.ValueError(ex)
-    views.print_charges(charges)
+    print_charges(charges)
 
 @handle_exceptions
 @require_admin
@@ -232,7 +235,7 @@ def new_hold_main ():
             s.commit()
         except ValueError, ex:
             raise exceptions.ValueError(ex)
-    views.print_holds(holds)
+    print_holds(holds)
 
 def pop_project (args, index):
     try:
@@ -287,7 +290,7 @@ def new_refund_main ():
             s.commit()
         except ValueError, ex:
             raise exceptions.ValueError(ex)
-    views.print_refund(refund)
+    print_refund(refund)
 
 @handle_exceptions
 def report_main ():
@@ -365,7 +368,7 @@ def report_users_main ():
         users = [user]
         projects = options.projects or user_projects(user)
     resources = options.resources or configured_resources()
-    views.print_users_report(users=users, projects=projects,
+    print_users_report(users, projects=projects,
         resources=resources, after=options.after, before=options.before)
 
 @handle_exceptions
@@ -408,8 +411,8 @@ def report_projects_main ():
         else:
             projects = member
     resources = options.resources or configured_resources()
-    views.print_projects_report(users=users, projects=projects,
-        resources=resources, after=options.after, before=options.before)
+    print_projects_report(projects, users=users, resources=resources,
+        after=options.after, before=options.before)
 
 @handle_exceptions
 def report_allocations_main ():
@@ -454,7 +457,7 @@ def report_allocations_main ():
             projects = member
     resources = options.resources or configured_resources()
     comments = options.comments or options.extra_data
-    views.print_allocations_report(users=users, projects=projects,
+    print_allocations_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before,
         comments=comments)
 
@@ -481,7 +484,7 @@ def report_holds_main ():
         projects = options.projects or member
     resources = options.resources or configured_resources()
     comments = options.comments or options.extra_data
-    views.print_holds_report(users=users, projects=projects,
+    print_holds_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before,
         comments=comments)
 
@@ -509,7 +512,7 @@ def report_charges_main ():
         projects = options.projects or member
     resources = options.resources or configured_resources()
     comments = options.comments or options.extra_data
-    views.print_charges_report(users=users, projects=projects,
+    print_charges_report(users=users, projects=projects,
         resources=resources, after=options.after, before=options.before,
         comments=comments)
 
@@ -563,7 +566,7 @@ def detail_allocations_main ():
             else:
                 permitted_allocations.append(allocation)
         allocations = permitted_allocations
-    views.print_allocations(allocations)
+    print_allocations(allocations)
 
 @handle_exceptions
 def detail_holds_main ():
@@ -581,7 +584,7 @@ def detail_holds_main ():
             else:
                 permitted_holds.append(hold)
         holds = permitted_holds
-    views.print_holds(holds)
+    print_holds(holds)
 
 @handle_exceptions
 def detail_charges_main ():
@@ -600,7 +603,7 @@ def detail_charges_main ():
             else:
                 permitted_charges.append(charge)
         charges = permitted_charges
-    views.print_charges(charges)
+    print_charges(charges)
 
 @handle_exceptions
 def detail_refunds_main ():
@@ -619,7 +622,7 @@ def detail_refunds_main ():
             else:
                 permitted_refunds.append(refund)
         refunds = permitted_refunds
-    views.print_refunds(refunds)
+    print_refunds(refunds)
 
 def replace_command ():
     arg0 = " ".join([sys.argv[0], sys.argv[1]])
