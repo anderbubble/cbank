@@ -100,9 +100,10 @@ def setup ():
         upstream.User(3, current_user)]
     upstream.projects = [
         upstream.Project(1, "project1"), upstream.Project(2, "project2")]
-    upstream.projects[0].members.append(upstream.users[2])
-    upstream.projects[1].members.append(upstream.users[0])
-    upstream.projects[1].owners.append(upstream.users[2])
+    upstream.projects[0].members.append(upstream.users[0])
+    upstream.projects[0].owners.append(upstream.users[2])
+    upstream.projects[1].members.append(upstream.users[1])
+    upstream.projects[1].members.append(upstream.users[2])
     upstream.resources = [
         upstream.Resource(1, "resource1"), upstream.Resource(2, "resource2")]
     clusterbank.model.upstream.use = upstream
@@ -1035,7 +1036,7 @@ class TestUsersReport (CbankTester):
         assert_equal(set(kwargs['projects']), set(projects))
     
     def test_other_users (self):
-        """Non-admin cannot specify other users."""
+        """cannot specify other users."""
         code, stdout, stderr = run(report_users_main, "-u user1".split())
         assert_equal(code, NotPermitted.exit_code)
         assert not controllers.print_users_report.calls
@@ -1050,9 +1051,9 @@ class TestUsersReport (CbankTester):
             for project in ["project1", "project2"]]
         assert_equal(set(kwargs['projects']), set(projects))
     
-    def test_owner (self):
-        users = project_members(project_by_name("project2"))
-        code, stdout, stderr = run(report_users_main, "-p project2".split())
+    def test_owner_projects (self):
+        users = project_members(project_by_name("project1"))
+        code, stdout, stderr = run(report_users_main, "-p project1".split())
         args, kwargs = controllers.print_users_report.calls[0]
         assert_equal(code, 0)
         assert_equal(set(args[0]), set(users))

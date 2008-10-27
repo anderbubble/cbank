@@ -360,6 +360,15 @@ def print_report_main_help ():
     print dedent(message % {'command':command})
 
 
+def user_owns_all (user, projects):
+    projects_owned = set(user_projects_owned(user))
+    return projects_owned.issubset(set(projects))
+
+
+def project_members_all (projects):
+    return set(sum([project_members(project) for project in projects], []))
+
+
 @handle_exceptions
 def report_users_main ():
     parser = build_report_users_parser()
@@ -371,10 +380,16 @@ def report_users_main ():
     projects = options.projects
     if user.is_admin:
         if not users:
-            users = Session().query(User).all()
+            if projects and user_owns_all(user, projects):
+                users = project_members_all(projects)
+            else:
+                users = Session().query(User).all()
     else:
         if not users:
-            users = [user]
+            if projects and user_owns_all(user, projects):
+                users = project_members_all(projects)
+            else:
+                users = [user]
         elif set(users) != set([user]):
             raise NotPermitted(user)
         if not projects:
