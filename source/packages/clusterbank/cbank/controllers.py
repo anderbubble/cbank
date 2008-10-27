@@ -407,10 +407,16 @@ def report_projects_main ():
     if args:
         raise UnexpectedArguments(args)
     user = get_current_user()
+    projects = options.projects
     if user.is_admin:
-        projects = Session().query(Project).all()
+        if not projects:
+            projects = Session().query(Project).all()
     else:
-        projects = user_projects(user)
+        if not projects:
+            projects = user_projects(user)
+        allowed_projects = set(user_projects(user) + user_projects_owned(user))
+        if not set(projects).issubset(allowed_projects):
+            raise NotPermitted(user)
     users = []
     resources = options.resources or configured_resources()
     print_projects_report(projects, users=users, resources=resources,

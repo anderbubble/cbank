@@ -103,7 +103,8 @@ def setup ():
         upstream.User(2, "user2"),
         upstream.User(3, current_user)]
     upstream.projects = [
-        upstream.Project(1, "project1"), upstream.Project(2, "project2")]
+        upstream.Project(1, "project1"), upstream.Project(2, "project2"),
+        upstream.Project(3, "project3")]
     upstream.projects[0].members.append(upstream.users[0])
     upstream.projects[0].owners.append(upstream.users[2])
     upstream.projects[1].members.append(upstream.users[1])
@@ -1137,6 +1138,26 @@ class TestProjectsReport (CbankTester):
         assert_equal(code, 0)
         args, kwargs = controllers.print_projects_report.calls[0]
         assert_equal(set(args[0]), set(projects))
+    
+    def test_member_projects (self):
+        """a specific project of the user"""
+        code, stdout, stderr = run(report_projects_main, "-p project2".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_projects_report.calls[0]
+        assert_equal(set(args[0]), set([project_by_name("project2")]))
+        
+    def test_owner_projects (self):
+        """a specific project the user owns"""
+        code, stdout, stderr = run(report_projects_main, "-p project1".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_projects_report.calls[0]
+        assert_equal(set(args[0]), set([project_by_name("project1")]))
+    
+    def test_other_projects (self):
+        """cannot see other projects (not member, not owner)"""
+        code, stdout, stderr = run(report_projects_main, "-p project3".split())
+        assert_equal(code, NotPermitted.exit_code)
+        assert not controllers.print_projects_report.calls
 
     def test_resources (self):
         code, stdout, stderr = run(report_projects_main, "-r resource1".split())
@@ -1173,3 +1194,9 @@ class TestProjectsReport_Admin (TestProjectsReport):
         args, kwargs = controllers.print_projects_report.calls[0]
         assert_equal(set(args[0]), set(projects))
 
+    def test_other_projects (self):
+        code, stdout, stderr = run(report_projects_main, "-p project3".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_projects_report.calls[0]
+        assert_equal(set(args[0]), set([project_by_name("project3")]))
+ 
