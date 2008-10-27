@@ -1052,12 +1052,22 @@ class TestUsersReport (CbankTester):
         assert_equal(set(kwargs['projects']), set(projects))
     
     def test_owner_projects (self):
-        users = project_members(project_by_name("project1"))
+        project = project_by_name("project1")
+        users = project_members(project)
         code, stdout, stderr = run(report_users_main, "-p project1".split())
-        args, kwargs = controllers.print_users_report.calls[0]
         assert_equal(code, 0)
+        args, kwargs = controllers.print_users_report.calls[0]
         assert_equal(set(args[0]), set(users))
- 
+        assert_equal(set(kwargs['projects']), set([project]))
+    
+    def test_owner_users (self):
+        code, stdout, stderr = run(
+            report_users_main, "-p project1 -u user1".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_users_report.calls[0]
+        assert_equal(set(args[0]), set([user_by_name("user1")]))
+        assert_equal(set(kwargs['projects']),
+            set([project_by_name("project1")]))
 
 class TestUsersReport_Admin (TestUsersReport):
     
