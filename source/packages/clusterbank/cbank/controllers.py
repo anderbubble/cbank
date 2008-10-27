@@ -189,7 +189,7 @@ def new_allocation_main ():
         try:
             s.commit()
         except ValueError, ex:
-            raise exceptions.ValueError(ex)
+            raise exceptions.ValueError_(ex)
     print_allocation(allocation)
 
 
@@ -219,7 +219,7 @@ def new_charge_main ():
         try:
             s.commit()
         except ValueError, ex:
-            raise exceptions.ValueError(ex)
+            raise exceptions.ValueError_(ex)
     print_charges(charges)
 
 
@@ -249,7 +249,7 @@ def new_hold_main ():
         try:
             s.commit()
         except ValueError, ex:
-            raise exceptions.ValueError(ex)
+            raise exceptions.ValueError_(ex)
     print_holds(holds)
 
 
@@ -308,7 +308,7 @@ def new_refund_main ():
         try:
             s.commit()
         except ValueError, ex:
-            raise exceptions.ValueError(ex)
+            raise exceptions.ValueError_(ex)
     print_refund(refund)
 
 
@@ -762,7 +762,7 @@ def parse_units (units):
     try:
         units = float(units)
     except ValueError:
-        raise exceptions.ValueError(units)
+        raise exceptions.ValueError_(units)
     mul, div = get_unit_factor()
     raw_units = units / mul * div
     raw_units = int(raw_units)

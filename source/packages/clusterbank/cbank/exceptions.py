@@ -2,7 +2,7 @@
 
 __all__ = ["CbankException", "CbankError", "UnknownUser", "UnknownProject",
     "UnknownCharge", "MissingArgument", "UnexpectedArguments",
-    "UnknownCommand", "NotPermitted", "MissingResource", "ValueError",
+    "UnknownCommand", "NotPermitted", "MissingResource", "ValueError_",
     "MissingCommand"]
 
 
@@ -135,7 +135,7 @@ class MissingResource (CbankError):
         return "cbank: missing resource"
 
 
-class ValueError (CbankError):
+class ValueError_ (CbankError):
     
     exit_code = -8
     

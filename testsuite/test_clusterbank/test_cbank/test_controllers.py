@@ -1,0 +1,706 @@
+import sys
+import pwd
+import os
+from datetime import datetime, timedelta
+from StringIO import StringIO
+from textwrap import dedent
+
+from sqlalchemy import create_engine
+
+import clusterbank
+import clusterbank.model
+from clusterbank.model import user_by_name, project_by_name, \
+    resource_by_name, Session, Allocation, Hold, Charge, Refund
+from clusterbank.model.database import metadata
+import clusterbank.upstreams.default as upstream
+import clusterbank.cbank.controllers as controllers
+from clusterbank.cbank.controllers import main
+from clusterbank.cbank.exceptions import UnknownCommand, UnexpectedArguments, \
+    UnknownProject, MissingArgument, MissingResource, NotPermitted, ValueError_
+
+
+def get_current_username ():
+    return pwd.getpwuid(os.getuid())[0]
+
+
+class FakeDateTime (object):
+    
+    def __init__ (self, now):
+        self._now = now
+    
+    def __call__ (self, *args):
+        return datetime(*args)
+    
+    def now (self):
+        return self._now
+
+
+class FakeFunc (object):
+    
+    def __init__ (self, func=lambda:None):
+        self.calls = []
+        self.func = func
+    
+    def __call__ (self, *args, **kwargs):
+        self.calls.append((args, kwargs))
+        return self.func()
+
+
+def setup ():
+    metadata.bind = create_engine("sqlite:///:memory:")
+    upstream.projects = [
+        upstream.Project(1, "project1"), upstream.Project(2, "project2")]
+    upstream.resources = [
+        upstream.Resource(1, "resource1"), upstream.Resource(2, "resource2")]
+    current_user = get_current_username()
+    upstream.users = [
+        upstream.User(1, "user1"),
+        upstream.User(2, "user2"),
+        upstream.User(3, current_user)]
+    clusterbank.model.upstream.use = upstream
+    fake_dt = FakeDateTime(datetime(2000, 1, 1))
+    clusterbank.cbank.views.datetime = fake_dt
+    clusterbank.cbank.controllers.datetime = fake_dt
+
+
+def teardown ():
+    upstream.users = []
+    upstream.projects = []
+    upstream.resources = []
+    clusterbank.model.upstream.use = None
+    Session.bind = None
+    clusterbank.cbank.views.datetime = datetime
+    clusterbank.cbank.controllers.datetime = datetime
+
+
+def run (func, args=None):
+    if args is None:
+        args = []
+    real_argv = sys.argv
+    real_stdout = sys.stdout
+    real_stderr = sys.stderr
+    try:
+        sys.argv = [func.__name__] + args
+        sys.stdout = StringIO()
+        sys.stderr = StringIO()
+        try:
+            func()
+        except SystemExit, e:
+            code = e.code
+        else:
+            code = 0
+        for stdf in (sys.stdout, sys.stderr):
+            stdf.flush()
+            stdf.seek(0)
+        return code, sys.stdout, sys.stderr
+    finally:
+        sys.argv = real_argv
+        sys.stdout = real_stdout
+        sys.stderr = real_stderr
+
+
+def assert_eq_output (output, correct):
+    assert output == correct, os.linesep.join([
+        "incorrect output", output, "expected", correct])
+
+
+class CbankTester (object):
+
+    def setup (self):
+        metadata.create_all()
+        current_user = get_current_username()
+        clusterbank.config.add_section("cbank")
+        clusterbank.config.set("cbank", "admins", current_user)
+        for user in upstream.users:
+            user_by_name(user.name)
+        for project in upstream.projects:
+            project_by_name(project.name)
+        for resource in upstream.resources:
+            resource_by_name(resource.name)
+    
+    def teardown (self):
+        metadata.drop_all()
+        Session.remove()
+        clusterbank.config.remove_section("cbank")
+
+
+class TestMain (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        self._report_main = controllers.report_main
+        self._new_main = controllers.new_main
+        controllers.report_main = FakeFunc()
+        controllers.new_main = FakeFunc()
+    
+    def teardown (self):
+        CbankTester.teardown(self)
+        controllers.report_main = self._report_main
+        controllers.new_main = self._new_main
+    
+    def test_exists_and_callable (self):
+        assert hasattr(controllers, "main"), "main does not exist"
+        assert callable(controllers.main), "main is not callable"
+    
+    def test_report (self):
+        def test_ ():
+            assert sys.argv[0] == "main report"
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.report_main.func = test_
+        args = "report 1 2 3"
+        run(main, args.split())
+        assert controllers.report_main.calls
+    
+    def test_new (self):
+        def test_ ():
+            assert sys.argv[0] == "main new", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.new_main.func = test_
+        args = "new 1 2 3"
+        run(main, args.split())
+        assert controllers.new_main.calls
+    
+    def test_default (self):
+        def test_ ():
+            assert sys.argv[0] == "main"
+            assert sys.argv[1:] == args.split(), sys.argv
+        controllers.report_main.func = test_
+        args = "1 2 3"
+        run(controllers.main, args.split())
+        assert controllers.report_main.calls
+    
+    def test_invalid (self):
+        def test_ ():
+            assert sys.argv[0] == "main"
+            assert sys.argv[1:] == args.split(), sys.argv
+        controllers.report_main.func = test_
+        args = "invalid_command 1 2 3"
+        run(controllers.main, args.split())
+        assert controllers.report_main.calls
+
+
+class TestNewMain (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        self._new_allocation_main = controllers.new_allocation_main
+        self._new_hold_main = controllers.new_hold_main
+        self._new_charge_main = controllers.new_charge_main
+        self._new_refund_main = controllers.new_refund_main
+        controllers.new_allocation_main = FakeFunc()
+        controllers.new_hold_main = FakeFunc()
+        controllers.new_charge_main = FakeFunc()
+        controllers.new_refund_main = FakeFunc()
+    
+    def teardown (self):
+        CbankTester.teardown(self)
+        controllers.new_allocation_main = self._new_allocation_main
+        controllers.new_hold_main = self._new_hold_main
+        controllers.new_charge_main = self._new_charge_main
+        controllers.new_refund_main = self._new_refund_main
+    
+    def test_exists_and_callable (self):
+        assert hasattr(controllers, "new_main"), "new_main does not exist"
+        assert callable(controllers.new_main), "new_main is not callable"
+    
+    def test_allocation (self):
+        args = "allocation 1 2 3"
+        def test_ ():
+            assert sys.argv[0] == "new_main allocation", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.new_allocation_main.func = test_
+        run(controllers.new_main, args.split())
+        assert controllers.new_allocation_main.calls
+    
+    def test_hold (self):
+        args = "hold 1 2 3"
+        def test_ ():
+            assert sys.argv[0] == "new_main hold", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.new_hold_main.func = test_
+        run(controllers.new_main, args.split())
+        assert controllers.new_hold_main.calls
+    
+    def test_charge (self):
+        args = "charge 1 2 3"
+        def test_ ():
+            assert sys.argv[0] == "new_main charge", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.new_charge_main.func = test_
+        run(controllers.new_main, args.split())
+        assert controllers.new_charge_main.calls
+    
+    def test_refund (self):
+        args = "refund 1 2 3"
+        def test_ ():
+            assert sys.argv[0] == "new_main refund", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.new_refund_main.func = test_
+        run(controllers.new_main, args.split())
+        assert controllers.new_refund_main.calls
+    
+    def test_invalid (self):
+        args = "invalid 1 2 3"
+        code, stdout, stderr = run(controllers.new_main, args.split())
+        assert code == UnknownCommand.exit_code, code
+
+
+class TestNewAllocationMain (CbankTester):
+    
+    def test_exists_and_callable (self):
+        assert hasattr(controllers, "new_allocation_main"), \
+            "new_allocation_main does not exist"
+        assert callable(controllers.new_allocation_main), \
+            "new_allocation_main is not callable"
+    
+    def test_complete (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(
+            project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
+        code, stdout, stderr = run(
+            controllers.new_allocation_main, args.split())
+        Session.remove()
+        assert query.count() == 1, "didn't create an allocation"
+        allocation = query.one()
+        assert allocation.start == datetime(2008, 1, 1), allocation.start
+        assert allocation.expiration == datetime(2009, 1, 1), \
+            allocation.expiration
+        assert allocation.amount == 1000, allocation.amount
+        assert allocation.comment == "test", allocation.comment
+        assert code == 0, code
+    
+    def test_unknown_arguments (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(
+            project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = """project1 1000 -r resource1 -s 2008-01-01 \
+            -e 2009-01-01 -m test asdf"""
+        code, stdout, stderr = run(
+            controllers.new_allocation_main, args.split())
+        Session.remove()
+        assert not query.count()
+        assert code == UnexpectedArguments.exit_code, code
+    
+    def test_with_defined_units (self):
+        clusterbank.config.set("cbank", "unit_factor", "1/2")
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(
+            project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
+        code, stdout, stderr = run(
+            controllers.new_allocation_main, args.split())
+        Session.remove()
+        assert query.count() == 1, "didn't create an allocation"
+        allocation = query.one()
+        assert allocation.start == datetime(2008, 1, 1), allocation.start
+        assert allocation.expiration == datetime(2009, 1, 1), \
+            allocation.expiration
+        assert allocation.amount == 2000, allocation.amount
+        assert allocation.comment == "test", allocation.comment
+        assert code == 0, code
+    
+    def test_with_bad_start (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(
+            project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = "project1 1000 -r resource1 -s bad_start -e 2009-01-01 -m test"
+        code, stdout, stderr = run(
+            controllers.new_allocation_main, args.split())
+        Session.remove()
+        assert not query.count(), "created an allocation with bad start"
+        assert code != 0, code
+    
+    def test_with_bad_end (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(
+            project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = "project1 1000 -r resource1 -s 2008-01-01 -e bad_end -m test"
+        code, stdout, stderr = run(
+            controllers.new_allocation_main, args.split())
+        Session.remove()
+        assert not query.count(), "created an allocation with bad end"
+        assert code != 0, code
+    
+    def test_with_bad_amount (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(
+            project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = """project1 bad_amount -r resource1 -s 2008-01-01 \
+            -e 2009-01-01 -m test"""
+        code, stdout, stderr = run(
+            controllers.new_allocation_main, args.split())
+        Session.remove()
+        assert not query.count(), "created an allocation with bad amount"
+        assert code != 0, code
+
+    def test_without_comment (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(
+            project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01"
+        code, stdout, stderr = run(
+            controllers.new_allocation_main, args.split())
+        Session.remove()
+        assert query.count() == 1, "didn't create an allocation"
+        allocation = query.one()
+        assert allocation.comment is None, allocation.comment
+        assert code == 0, code
+    
+    def test_without_project (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(
+            project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = "1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
+        code, stdout, stderr = run(
+            controllers.new_allocation_main, args.split())
+        Session.remove()
+        assert not query.count(), \
+            "created allocation without project: %s" % new_allocations
+        assert code == UnknownProject.exit_code, code
+    
+    def test_without_amount (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(
+            project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = "project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
+        code, stdout, stderr = run(
+            controllers.new_allocation_main, args.split())
+        Session.remove()
+        assert not query.count(), "created allocation without amount"
+        assert code == MissingArgument.exit_code, code
+    
+    def test_without_start (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(
+            project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = "project1 1000 -r resource1 -e 2009-01-01 -m test"
+        code, stdout, stderr = run(
+            controllers.new_allocation_main, args.split())
+        Session.remove()
+        assert query.count() == 1, "didn't create an allocation"
+        allocation = query.one()
+        assert allocation.start == datetime(2000, 1, 1), allocation.start
+        assert code == 0, code
+    
+    def test_without_expiration (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(
+            project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = "project1 1000 -r resource1 -s 2000-01-01 -m test"
+        code, stdout, stderr = run(
+            controllers.new_allocation_main, args.split())
+        Session.remove()
+        assert query.count() == 1, "didn't create an allocation"
+        allocation = query.one()
+        now = datetime(2000, 1, 1)
+        assert allocation.start == datetime(2000, 1, 1), allocation.start
+        assert allocation.expiration == datetime(2001, 1, 1), \
+            allocation.expiration
+        assert code == 0, code
+
+    def test_without_resource (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(
+            project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = "project1 1000 -s 2008-01-01 -e 2009-01-01 -m test"
+        code, stdout, stderr = run(
+            controllers.new_allocation_main, args.split())
+        Session.remove()
+        assert not query.count(), \
+            "created allocation without resource: %s" % new_allocations
+        assert code == MissingResource.exit_code, code
+    
+    def test_with_configured_resource (self):
+        clusterbank.config.set("cbank", "resource", "resource1")
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(
+            project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = "project1 1000 -s 2008-01-01 -e 2009-01-01 -m test"
+        code, stdout, stderr = run(
+            controllers.new_allocation_main, args.split())
+        assert query.count() == 1, "didn't create an allocation"
+        allocation = query.one()
+        assert allocation.resource is resource
+        assert code == 0, code
+
+    def test_non_admin (self):
+        clusterbank.config.set("cbank", "admins", "")
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        query = Session.query(Allocation).filter_by(
+            project=project, resource=resource)
+        assert not query.count(), "started with existing allocations"
+        args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
+        code, stdout, stderr = run(
+            controllers.new_allocation_main, args.split())
+        Session.remove()
+        assert not query.count(), \
+            "created allocation when not admin: %s" % new_allocations
+        assert code == NotPermitted.exit_code, code
+
+
+class TestNewChargeMain (CbankTester):
+    
+    def test_exists_and_callable (self):
+        assert hasattr(controllers, "new_charge_main"), \
+            "new_charge_main does not exist"
+        assert callable(controllers.new_charge_main), \
+            "new_charge_main is not callable"
+    
+    def test_complete (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        charges = Session.query(Charge)
+        assert not charges.count(), "started with existing charges"
+        now = datetime.now()
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        Session.save(allocation)
+        Session.commit()
+        args = "project1 100 -r resource1 -m test -u user1"
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        assert code == 0
+        assert charges.count() == 1, "didn't create a charge"
+        charge = charges.one()
+        assert charge.allocation is allocation, \
+            "incorrect allocation: %r" % charge.allocation
+        assert charge.amount == 100, \
+            "incorrect charge amount: %i" % charge.amount
+        assert charge.comment == "test", \
+            "incorrect comment: %s" % charge.comment
+        assert charge.user is user, \
+            "incorrect user on charge: %s" % charge.user
+    
+    def test_unknown_arguments (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        charges = Session.query(Charge)
+        assert not charges.count(), "started with existing charges"
+        now = datetime.now()
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        Session.save(allocation)
+        Session.commit()
+        args = "project1 100 -r resource1 -m test -u user1 asdf"
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        assert not charges.count()
+        assert code == UnexpectedArguments.exit_code, code
+    
+    def test_with_defined_units (self):
+        clusterbank.config.set("cbank", "unit_factor", "1/2")
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        charges = Session.query(Charge)
+        assert not charges.count(), "started with existing charges"
+        now = datetime.now()
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        Session.save(allocation)
+        Session.commit()
+        args = "project1 100 -r resource1 -m test -u user1"
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        assert code == 0
+        assert charges.count() == 1, "didn't create a charge"
+        charge = charges.one()
+        assert charge.allocation is allocation, \
+            "incorrect allocation: %r" % charge.allocation
+        assert charge.amount == 200, \
+            "incorrect charge amount: %i" % charge.amount
+        assert charge.comment == "test", \
+            "incorrect comment: %s" % charge.comment
+        assert charge.user is user, \
+            "incorrect user on charge: %s" % charge.user
+    
+    def test_without_resource (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        charges = Session.query(Charge)
+        assert not charges.count(), "started with existing charges"
+        now = datetime.now()
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        Session.save(allocation)
+        Session.commit()
+        args = "project1 100 -m test -u user1"
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        assert code == MissingResource.exit_code, code
+        assert not charges.count(), "created a charge"
+    
+    def test_with_configured_resource (self):
+        clusterbank.config.set("cbank", "resource", "resource1")
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        charges = Session.query(Charge)
+        assert not charges.count(), "started with existing charges"
+        now = datetime.now()
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        Session.save(allocation)
+        Session.commit()
+        args = "project1 100 -m test -u user1"
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        assert code == 0, code
+        assert charges.count(), "didn't create a charge"
+        charge = charges.one()
+        assert charge.allocation.resource is resource
+
+    def test_without_project (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        charges = Session.query(Charge)
+        assert not charges.count(), "started with existing charges"
+        now = datetime.now()
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        Session.save(allocation)
+        Session.commit()
+        args = "100 -r resource1 -m test -u user1"
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        assert code == UnknownProject.exit_code, code
+        assert not charges.count(), "created a charge"
+    
+    def test_without_amount (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        charges = Session.query(Charge)
+        assert not charges.count(), "started with existing charges"
+        now = datetime.now()
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        Session.save(allocation)
+        Session.commit()
+        args = "project1 -r resource1 -m test -u user1"
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        assert code == MissingArgument.exit_code, code
+        assert not charges.count(), "created a charge"
+    
+    def test_with_negative_amount (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        charges = Session.query(Charge)
+        assert not charges.count(), "started with existing charges"
+        now = datetime.now()
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        Session.save(allocation)
+        Session.commit()
+        args = "project1 '-100' -r resource1 -m test -u user1"
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        Session.remove()
+        assert not charges.count(), \
+            "created a charge with negative amount: %s" % [
+                (charge, charge.amount) for charge in charges]
+        assert code == ValueError_.exit_code, code
+    
+    def test_without_comment (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        charges = Session.query(Charge)
+        assert not charges.count(), "started with existing charges"
+        now = datetime.now()
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        Session.save(allocation)
+        Session.commit()
+        args = "project1 100 -r resource1 -u user1"
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        assert code == 0
+        assert charges.count() == 1, "didn't create a charge"
+        charge = charges.one()
+        assert charge.allocation is allocation, \
+            "incorrect allocation: %r" % charge.allocation
+        assert charge.amount == 100, \
+            "incorrect charge amount: %i" % charge.amount
+        assert charge.comment is None, \
+            "incorrect comment: %s" % charge.comment
+        assert charge.user is user, \
+            "incorrect user on charge: %s" % charge.user
+    
+    def test_without_user (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        charges = Session.query(Charge)
+        assert not charges.count(), "started with existing charges"
+        now = datetime.now()
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+        Session.save(allocation)
+        Session.commit()
+        args = "project1 100 -r resource1 -m test"
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        assert code == 0, 0
+        assert charges.count() == 1, "didn't create a charge"
+        charge = charges.one()
+        assert charge.allocation is allocation, \
+            "incorrect allocation: %r" % charge.allocation
+        assert charge.amount == 100, \
+            "incorrect charge amount: %i" % charge.amount
+        assert charge.comment == "test", \
+            "incorrect comment: %s" % charge.comment
+        assert charge.user is user_by_name(get_current_username()), \
+            "incorrect user on charge: %s" % charge.user
+    
+    def test_non_admin (self):
+        clusterbank.config.set("cbank", "admins", "")
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        charges = Session.query(Charge)
+        assert not charges.count(), "started with existing charges"
+        now = datetime.now()
+        allocation = Allocation(project=project, resource=resource,
+            amount=1000, start=now-timedelta(days=1),
+            expiration=now+timedelta(days=1))
+        Session.save(allocation)
+        Session.commit()
+        args = "project1 100 -r resource1 -m test"
+        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        Session.remove()
+        assert not charges.count(), "created a charge without admin privileges"
+        assert code == NotPermitted.exit_code, code
+

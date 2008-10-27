@@ -2,13 +2,13 @@ import locale
 import ConfigParser
 from datetime import datetime
 
-from sqlalchemy.sql import and_, cast, func, select
-from sqlalchemy.types import Integer, String, TypeDecorator
+from sqlalchemy.sql import and_, cast, func
+from sqlalchemy.types import Integer
 from sqlalchemy.orm import eagerload
 
 from clusterbank import config
 from clusterbank.cbank.common import get_unit_factor
-from clusterbank.model import Session, upstream, User, Project, Resource, \
+from clusterbank.model import Session, User, Project, Resource, \
     Allocation, Hold, Charge, Refund
 
 __all__ = ["unit_definition", "convert_units", "display_units",
@@ -25,6 +25,15 @@ def print_users_report (users, projects=None, resources=None,
     
     The users report lists the number of charges and total amount charged
     for each specified user.
+    
+    Arguments:
+    users -- users to report
+    
+    Keyword arguments:
+    projects -- only show charges for these projects
+    resources -- only show charges for these resources
+    after -- only show charges after this datetime (inclusive)
+    before -- only show charges before this datetime (exclusive)
     """
     
     format = Formatter(["Name", "Charges", "Charged"])
@@ -43,6 +52,7 @@ def print_users_report (users, projects=None, resources=None,
         User.id.label("user_id"),
         func.sum(Refund.amount).label("refund_sum")).group_by(User.id)
     refunds_q = refunds_q.join(Refund.charge, Charge.user)
+    
     if projects:
         projects_ = Charge.allocation.has(Allocation.project.has(
             Project.id.in_(project.id for project in projects)))
@@ -61,6 +71,7 @@ def print_users_report (users, projects=None, resources=None,
         before_ = Charge.datetime < before
         charges_q = charges_q.filter(before_)
         refunds_q = refunds_q.filter(before_)
+    
     charges_q = charges_q.subquery()
     refunds_q = refunds_q.subquery()
     query = s.query(
@@ -72,8 +83,8 @@ def print_users_report (users, projects=None, resources=None,
     query = query.outerjoin(
         (charges_q, User.id == charges_q.c.user_id),
         (refunds_q, User.id == refunds_q.c.user_id)).group_by(User.id)
-    query = query.order_by(User.id)
     query = query.filter(User.id.in_(user.id for user in users))
+    query = query.order_by(User.id)
     
     charge_count_total = 0
     charge_sum_total = 0
@@ -95,6 +106,15 @@ def print_projects_report (projects, users=None, resources=None,
     
     The projects report lists allocations and charges for each project
     in the system.
+    
+    Arguments:
+    projects -- projects to report
+    
+    Keyword arguments:
+    users -- only show charges by these users
+    resources -- only show charges for these resources
+    after -- only show charges after this datetime (inclusive)
+    before -- only show charges before this datetime (exclusive)
     """
     
     format = Formatter([
@@ -104,7 +124,7 @@ def print_projects_report (projects, users=None, resources=None,
         'Charged':"right", "Available":"right"}
     print format.header()
     print format.bar()
-
+    
     s = Session()
     allocations_q = s.query(
         Project.id.label("project_id"),
@@ -129,12 +149,14 @@ def print_projects_report (projects, users=None, resources=None,
         func.sum(Refund.amount).label("refund_sum")).group_by(Project.id)
     refunds_q = refunds_q.join(
         Refund.charge, Charge.allocation, Allocation.project)
+    
     if resources:
         resources_ = Allocation.resource.has(Resource.id.in_(
             resource.id for resource in resources))
         allocations_q = allocations_q.filter(resources_)
         charges_q = charges_q.filter(resources_)
         refunds_q = refunds_q.filter(resources_)
+    
     spec_charges_q = charges_q
     spec_refunds_q = refunds_q
     if users:
@@ -149,6 +171,7 @@ def print_projects_report (projects, users=None, resources=None,
         before_ = Charge.datetime < before
         spec_charges_q = spec_charges_q.filter(before_)
         spec_refunds_q = spec_refunds_q.filter(before_)
+    
     allocations_q = allocations_q.subquery()
     holds_q = holds_q.subquery()
     charges_q = charges_q.subquery()
@@ -199,6 +222,15 @@ def print_allocations_report (allocations, users=None,
     
     The allocations report lists attributes of and charges against allocations
     in the system.
+    
+    Arguments:
+    allocations -- allocations to report
+    
+    Keyword arguments:
+    users -- only show charges by these users
+    after -- only show charges after this datetime (inclusive)
+    before -- only show charges before this datetime (exclusive)
+    comments -- report allocation comments
     """
     
     fields = ["Allocation", "Expiration", "Resource", "Project", "Charges",
@@ -231,6 +263,7 @@ def print_allocations_report (allocations, users=None,
         Refund.charge, Charge.allocation)
     spec_charges_q = charges_q
     spec_refunds_q = refunds_q
+    
     if users:
         users_ = Charge.user.has(User.id.in_(user.id for user in users))
         spec_charges_q = spec_charges_q.filter(users_)
@@ -243,6 +276,7 @@ def print_allocations_report (allocations, users=None,
         before_ = Charge.datetime < before
         spec_charges_q = spec_charges_q.filter(before_)
         spec_refunds_q = spec_refunds_q.filter(before_)
+    
     holds_q = holds_q.subquery()
     charges_q = charges_q.subquery()
     refunds_q = refunds_q.subquery()
@@ -263,9 +297,9 @@ def print_allocations_report (allocations, users=None,
         (holds_q, Allocation.id == holds_q.c.allocation_id),
         (charges_q, Allocation.id == charges_q.c.allocation_id),
         (refunds_q, Allocation.id == refunds_q.c.allocation_id))
-    query = query.order_by(Allocation.id)
     query = query.filter(Allocation.id.in_(
         allocation.id for allocation in allocations))
+    query = query.order_by(Allocation.id)
     
     charge_count_total = 0
     charge_sum_total = 0
@@ -296,7 +330,14 @@ def print_holds_report (holds, comments=None):
     """Holds report.
     
     The holds report displays individual holds.
+    
+    Arguments:
+    holds -- holds to report
+    
+    Keyword arguments:
+    comments -- report hold comments
     """
+    
     fields = ["Hold", "Datetime", "Resource", "Project", "User", "Held"]
     if comments:
         fields.allend("Comment")
@@ -335,7 +376,14 @@ def print_charges_report (charges, comments=False):
     """Charges report.
     
     The charges report displays individual charges.
+    
+    Arguments:
+    charges -- charges to report
+    
+    Keyword arguments:
+    comments -- report charge comments
     """
+    
     fields = ["Charge", "Datetime", "Resource", "Project", "User", "Charged"]
     if comments:
         fields.append("Comment")
@@ -355,8 +403,8 @@ def print_charges_report (charges, comments=False):
     query = query.outerjoin(Charge.refunds)
     query = query.options(eagerload(Charge.user, Charge.allocation,
         Allocation.project, Allocation.resource))
-    query = query.order_by(Charge.datetime, Charge.id)
     query = query.filter(Charge.id.in_(charge.id for charge in charges))
+    query = query.order_by(Charge.datetime, Charge.id)
     
     total_charged = 0
     for charge, charge_amount in query:
