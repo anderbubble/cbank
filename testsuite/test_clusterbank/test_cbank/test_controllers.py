@@ -60,8 +60,7 @@ def setup ():
         upstream.User(3, current_user)]
     clusterbank.model.upstream.use = upstream
     fake_dt = FakeDateTime(datetime(2000, 1, 1))
-    clusterbank.cbank.views.datetime = fake_dt
-    clusterbank.cbank.controllers.datetimec = fake_dt
+    clusterbank.cbank.controllers.datetime = fake_dt
 
 
 def teardown ():
