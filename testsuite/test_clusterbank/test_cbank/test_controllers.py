@@ -1249,10 +1249,12 @@ class TestProjectsReport_Admin (TestProjectsReport):
         assert_equal(set(args[0]), set([project_by_name("project3")]))
     
     def test_other_users (self):
+        user = user_by_name("user1")
         code, stdout, stderr = run(report_projects_main, "-u user1".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_projects_report.calls[0]
         assert_equal(set(kwargs['users']), set([user_by_name("user1")]))
+        assert_equal(set(args[0]), set(user_projects(user)))
  
     def test_self_users (self):
         user = current_user()

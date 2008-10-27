@@ -387,8 +387,6 @@ def report_users_main ():
     else:
         if not projects:
             projects = user_projects(user)
-        print user
-        print projects
         print user_owns_all(user, projects)
         if projects and user_owns_all(user, projects):
             if not users:
@@ -403,6 +401,10 @@ def report_users_main ():
         resources=resources, after=options.after, before=options.before)
 
 
+def user_projects_all (users):
+    return set(sum([user_projects(user) for user in users], []))
+
+
 @handle_exceptions
 def report_projects_main ():
     parser = build_report_projects_parser()
@@ -414,7 +416,10 @@ def report_projects_main ():
     users = options.users
     if user.is_admin:
         if not projects:
-            projects = Session().query(Project).all()
+            if users:
+                projects = user_projects_all(users)
+            else:
+                projects = Session().query(Project).all()
     else:
         if not projects:
             projects = user_projects(user)
