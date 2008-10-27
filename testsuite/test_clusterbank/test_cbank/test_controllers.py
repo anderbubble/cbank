@@ -15,8 +15,9 @@ from clusterbank.model.database import metadata
 import clusterbank.upstreams.default as upstream
 import clusterbank.cbank.controllers as controllers
 from clusterbank.cbank.controllers import main
-from clusterbank.cbank.exceptions import UnknownCommand, UnexpectedArguments, \
-    UnknownProject, MissingArgument, MissingResource, NotPermitted, ValueError_
+from clusterbank.cbank.exceptions import UnknownCommand, \
+    UnexpectedArguments, UnknownProject, MissingArgument, MissingResource, \
+    NotPermitted, ValueError_, UnknownCharge
 
 
 def get_current_username ():
@@ -60,7 +61,7 @@ def setup ():
     clusterbank.model.upstream.use = upstream
     fake_dt = FakeDateTime(datetime(2000, 1, 1))
     clusterbank.cbank.views.datetime = fake_dt
-    clusterbank.cbank.controllers.datetime = fake_dt
+    clusterbank.cbank.controllers.datetimec = fake_dt
 
 
 def teardown ():
@@ -703,4 +704,287 @@ class TestNewChargeMain (CbankTester):
         Session.remove()
         assert not charges.count(), "created a charge without admin privileges"
         assert code == NotPermitted.exit_code, code
+
+
+class TestNewRefundMain (CbankTester):
+    
+    def test_exists_and_callable (self):
+        assert hasattr(controllers, "new_refund_main"), \
+            "new_refund_main does not exist"
+        assert callable(controllers.new_refund_main), \
+            "new_refund_main is not callable"
+    
+    def test_complete (self):
+        now = datetime.now()
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        refunds = Session.query(Refund)
+        assert not refunds.count(), "started with existing refunds"
+        allocation = Allocation(project=project, resource=resource,
+            amount=1000, start=now-timedelta(days=1),
+            expiration=now+timedelta(days=1))
+        charge = Charge(allocation=allocation, amount=100)
+        Session.save(allocation)
+        Session.save(charge)
+        Session.commit()
+        args = "%s 50 -m test" % charge.id
+        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        assert code == 0, code
+        assert refunds.count() == 1, "didn't create a refund"
+        refund = refunds.one()
+        assert refund.charge is charge, refund.charge
+        assert refund.amount == 50, refund.amount
+        assert refund.comment == "test", refund.comment
+    
+    def test_unknown_arguments (self):
+        now = datetime.now()
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        refunds = Session.query(Refund)
+        assert not refunds.count(), "started with existing refunds"
+        allocation = Allocation(project=project, resource=resource,
+            amount=1000, start=now-timedelta(days=1),
+            expiration=now+timedelta(days=1))
+        charge = Charge(allocation=allocation, amount=100)
+        Session.save(allocation)
+        Session.save(charge)
+        Session.commit()
+        args = "%s 50 -m test asdf" % charge.id
+        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        assert not refunds.count()
+        assert code == UnexpectedArguments.exit_code, code
+    
+    def test_with_defined_units (self):
+        clusterbank.config.set("cbank", "unit_factor", "1/2")
+        now = datetime.now()
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        refunds = Session.query(Refund)
+        assert not refunds.count(), "started with existing refunds"
+        allocation = Allocation(project=project, resource=resource,
+            amount=1000, start=now-timedelta(days=1),
+            expiration=now+timedelta(days=1))
+        charge = Charge(allocation=allocation, amount=100)
+        Session.save(allocation)
+        Session.save(charge)
+        Session.commit()
+        args = "%s 50 -m test" % charge.id
+        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        assert code == 0, code
+        assert refunds.count() == 1, "didn't create a refund"
+        refund = refunds.one()
+        assert refund.charge is charge, refund.charge
+        assert refund.amount == 100, refund.amount
+        assert refund.comment == "test", refund.comment
+    
+    def test_without_comment (self):
+        now = datetime.now()
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        refunds = Session.query(Refund)
+        assert not refunds.count(), "started with existing refunds"
+        allocation = Allocation(project=project, resource=resource,
+            amount=1000, start=now-timedelta(days=1),
+            expiration=now+timedelta(days=1))
+        charge = Charge(allocation=allocation, amount=100)
+        Session.save(allocation)
+        Session.save(charge)
+        Session.commit()
+        args = "%s 50" % charge.id
+        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        assert code == 0, code
+        assert refunds.count() == 1, "didn't create a refund"
+        refund = refunds.one()
+        assert refund.charge is charge, refund.charge
+        assert refund.amount == 50, refund.amount
+        assert refund.comment is None, refund.comment
+    
+    def test_without_charge (self):
+        now = datetime.now()
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        refunds = Session.query(Refund)
+        assert not refunds.count(), "started with existing refunds"
+        allocation = Allocation(project=project, resource=resource,
+            amount=1000, start=now-timedelta(days=1),
+            expiration=now+timedelta(days=1))
+        charge = Charge(allocation=allocation, amount=100)
+        Session.save(allocation)
+        Session.save(charge)
+        Session.commit()
+        args = "50 -m test"
+        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        Session.remove()
+        assert not refunds.count(), "created refund without charge"
+        assert code in (
+            MissingArgument.exit_code,
+            UnknownCharge.exit_code), code
+    
+    def test_without_amount (self):
+        now = datetime.now()
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        refunds = Session.query(Refund)
+        assert not refunds.count(), "started with existing refunds"
+        allocation = Allocation(project=project, resource=resource,
+            amount=1000, start=now-timedelta(days=1),
+            expiration=now+timedelta(days=1))
+        charge = Charge(allocation=allocation, amount=100)
+        Session.save(allocation)
+        Session.save(charge)
+        Session.commit()
+        args = "%s -m test" % charge.id
+        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        Session.remove()
+        assert refunds.count() == 1, "incorrect refund count: %r" %[
+            (refund, refund.amount) for refund in refunds]
+        refund = refunds.one()
+        assert refund.amount == 100
+        assert code == 0, code
+    
+    def test_without_amount_with_existing_refund (self):
+        now = datetime.now()
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        refunds = Session.query(Refund)
+        assert not refunds.count(), "started with existing refunds"
+        allocation = Allocation(project=project, resource=resource,
+            amount=1000, start=now-timedelta(days=1),
+            expiration=now+timedelta(days=1))
+        charge = Charge(allocation=allocation, amount=100)
+        refund = Refund(charge, 25)
+        Session.save(allocation)
+        Session.save(charge)
+        Session.save(refund)
+        Session.commit()
+        args = "%s -m test" % charge.id
+        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        assert code == 0, code
+        Session.remove()
+        assert refunds.count() == 2, "incorrect refund count: %r" % [
+            (refund, refund.amount) for refund in refunds]
+        assert sum(refund.amount for refund in refunds) == 100
+    
+    def test_non_admin (self):
+        clusterbank.config.set("cbank", "admins", "")
+        now = datetime.now()
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        refunds = Session.query(Refund)
+        assert not refunds.count(), "started with existing refunds"
+        allocation = Allocation(project=project, resource=resource,
+            amount=1000, start=now-timedelta(days=1),
+            expiration=now+timedelta(days=1))
+        charge = Charge(allocation=allocation, amount=100)
+        Session.save(allocation)
+        Session.save(charge)
+        Session.commit()
+        args = "%s 50 -m test" % charge.id
+        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        Session.remove()
+        assert not refunds.count(), "created a refund when not an admin"
+        assert code == NotPermitted.exit_code, code
+
+
+class TestReportMain (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        self._report_users_main = \
+            controllers.report_users_main
+        self._report_projects_main = \
+            controllers.report_projects_main
+        self._report_allocations_main = \
+            controllers.report_allocations_main
+        self._report_holds_main = \
+            controllers.report_holds_main
+        self._report_charges_main = \
+            controllers.report_charges_main
+        controllers.report_users_main = FakeFunc()
+        controllers.report_projects_main = FakeFunc()
+        controllers.report_allocations_main = FakeFunc()
+        controllers.report_holds_main = FakeFunc()
+        controllers.report_charges_main = FakeFunc()
+    
+    def teardown (self):
+        CbankTester.teardown(self)
+        controllers.report_users_main = \
+            self._report_users_main
+        controllers.report_projects_main = \
+            self._report_projects_main
+        controllers.report_allocations_main = \
+            self._report_allocations_main
+        controllers.report_holds_main = \
+            self._report_holds_main
+        controllers.report_charges_main = \
+            self._report_charges_main
+    
+    def test_exists_and_callable (self):
+        assert hasattr(controllers, "report_main"), \
+            "report_main does not exist"
+        assert callable(controllers.report_main), \
+            "report_main is not callable"
+    
+    def test_users (self):
+        def test_ ():
+            assert sys.argv[0] == "report_main users", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.report_users_main.func = test_
+        args = "users 1 2 3"
+        run(controllers.report_main, args.split())
+        assert controllers.report_users_main.calls
+    
+    def test_projects (self):
+        def test_ ():
+            assert sys.argv[0] == "report_main projects", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.report_projects_main.func = test_
+        args = "projects 1 2 3"
+        run(controllers.report_main, args.split())
+        assert controllers.report_projects_main.calls
+    
+    def test_allocations (self):
+        def test_ ():
+            assert sys.argv[0] == "report_main allocations", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.report_allocations_main.func = test_
+        args = "allocations 1 2 3"
+        run(controllers.report_main, args.split())
+        assert controllers.report_allocations_main.calls
+    
+    def test_holds (self):
+        def test_ ():
+            assert sys.argv[0] == "report_main holds", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.report_holds_main.func = test_
+        args = "holds 1 2 3"
+        run(controllers.report_main, args.split())
+        assert controllers.report_holds_main.calls
+    
+    def test_charges (self):
+        def test_ ():
+            assert sys.argv[0] == "report_main charges", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.report_charges_main.func = test_
+        args = "charges 1 2 3"
+        run(controllers.report_main, args.split())
+        assert controllers.report_charges_main.calls
+    
+    def test_default (self):
+        def test_ ():
+            assert sys.argv[0] == "report_main", sys.argv
+            assert sys.argv[1:] == args.split(), sys.argv
+        controllers.report_projects_main.func = test_
+        args = "1 2 3"
+        run(controllers.report_main, args.split())
+        assert controllers.report_projects_main.calls
+    
+    def test_invalid (self):
+        def test_ ():
+            assert sys.argv[0] == "report_main", sys.argv
+            assert sys.argv[1:] == args.split(), sys.argv
+        controllers.report_projects_main.func = test_
+        args = "invalid 1 2 3"
+        run(controllers.report_main, args.split())
+        assert controllers.report_projects_main.calls
 
