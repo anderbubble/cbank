@@ -1068,6 +1068,25 @@ class TestUsersReport (CbankTester):
         assert_equal(set(args[0]), set([user_by_name("user1")]))
         assert_equal(set(kwargs['projects']),
             set([project_by_name("project1")]))
+    
+    def test_resources (self):
+        code, stdout, stderr = run(report_users_main, "-r resource1".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_users_report.calls[0]
+        assert_equal(set(kwargs['resources']),
+            set([resource_by_name("resource1")]))
+        
+    def test_after (self):
+        code, stdout, stderr = run(report_users_main, "-a 2000-01-01".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_users_report.calls[0]
+        assert_equal(kwargs['after'], datetime(2000, 1, 1))
+    
+    def test_before (self):
+        code, stdout, stderr = run(report_users_main, "-b 2000-01-01".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_users_report.calls[0]
+        assert_equal(kwargs['before'], datetime(2000, 1, 1))
 
 class TestUsersReport_Admin (TestUsersReport):
     
