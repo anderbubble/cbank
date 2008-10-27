@@ -1040,6 +1040,16 @@ class TestUsersReport (CbankTester):
         assert_equal(set(args[0]), set([user]))
         assert_equal(set(kwargs['projects']), set(projects))
     
+    def test_self_users (self):
+        user = current_user()
+        projects = user_projects(user)
+        code, stdout, stderr = run(report_users_main,
+            ("-u %s" % user.name).split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_users_report.calls[0]
+        assert_equal(set(args[0]), set([user]))
+        assert_equal(set(kwargs['projects']), set(projects))
+    
     def test_other_users (self):
         """cannot specify other users."""
         code, stdout, stderr = run(report_users_main, "-u user1".split())
@@ -1118,6 +1128,16 @@ class TestUsersReport_Admin (TestUsersReport):
         users = [user_by_name(user) for user in ["user1", "user2"]]
         assert_equal(set(args[0]), set(users))
         assert_equal(kwargs['projects'], [])
+    
+    def test_self_users (self):
+        user = current_user()
+        projects = user_projects(user)
+        code, stdout, stderr = run(report_users_main,
+            ("-u %s" % user.name).split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_users_report.calls[0]
+        assert_equal(set(args[0]), set([user]))
+        assert_equal(set(kwargs['projects']), set([]))
 
 
 class TestProjectsReport (CbankTester):
