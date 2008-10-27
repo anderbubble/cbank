@@ -1204,7 +1204,6 @@ class TestProjectsReport (CbankTester):
             report_projects_main, ("-u %s" % user.name).split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_projects_report.calls[0]
-        assert_equal(set(args[0]), set(projects))
         assert_equal(set(kwargs['users']), set([user]))
     
     def test_resources (self):
@@ -1227,6 +1226,7 @@ class TestProjectsReport (CbankTester):
         assert_equal(code, 0)
         args, kwargs = controllers.print_projects_report.calls[0]
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
+
 
 class TestProjectsReport_Admin (TestProjectsReport):
     
@@ -1256,12 +1256,3 @@ class TestProjectsReport_Admin (TestProjectsReport):
         assert_equal(set(kwargs['users']), set([user_by_name("user1")]))
         assert_equal(set(args[0]), set(user_projects(user)))
  
-    def test_self_users (self):
-        user = current_user()
-        projects = user_projects(user)
-        code, stdout, stderr = run(
-            report_projects_main, ("-u %s" % user.name).split())
-        assert_equal(code, 0)
-        args, kwargs = controllers.print_projects_report.calls[0]
-        assert_equal(set(kwargs['users']), set([user]))
-
