@@ -24,7 +24,7 @@ from warnings import warn
 from textwrap import dedent
 
 from sqlalchemy.orm import eagerload
-from sqlalchemy import cast, func
+from sqlalchemy import cast, func, and_
 from sqlalchemy.types import Integer
 from sqlalchemy.exceptions import InvalidRequestError
 
@@ -442,32 +442,44 @@ def report_allocations_main ():
     if args:
         raise UnexpectedArguments(args)
     user = get_current_user()
-    member = set(user_projects(user))
-    owned = set(user_projects_owned(user))
-    like_admin = user.is_admin \
-        or (options.projects and set(options.projects).issubset(owned))
-    if like_admin:
-        users = options.users
-        projects = options.projects or set(sum((user_projects(user)
-            for user in options.users), []))
-    else:
-        if options.users and set(options.users) != set([user]):
-            raise NotPermitted(user)
-        users = options.users
-        if options.projects:
-            if set(options.projects).issubset(member | owned):
-                projects = options.projects
+    projects = options.projects
+    users = options.users
+    if user.is_admin:
+        if not projects:
+            if users:
+                projects = user_projects_all(users)
             else:
+                projects = Session().query(Project).all()
+    else:
+        if not projects:
+            projects = user_projects(user)
+        allowed_projects = set(user_projects(user) + user_projects_owned(user))
+        if not set(projects).issubset(allowed_projects):
+            raise NotPermitted(user)
+        if not (projects and user_owns_all(user, projects)):
+            if not set(users).issubset(set([user])):
                 raise NotPermitted(user)
-        else:
-            projects = member
     resources = options.resources or configured_resources()
     comments = options.comments or options.extra_data
     allocations = Session().query(Allocation)
-    allocations = allocations.filter(Allocation.resource.has(Resource.id.in_(
-        resource.id for resource in resources)))
-    allocations = allocations.filter(Allocation.project.has(Project.id.in_(
-            project.id for project in projects)))
+    if resources:
+        allocations = allocations.filter(Allocation.resource.has(
+            Resource.id.in_(resource.id for resource in resources)))
+    if projects:
+        allocations = allocations.filter(Allocation.project.has(
+            Project.id.in_(project.id for project in projects)))
+    now = datetime.now()
+    if options.after or options.before:
+        if options.after:
+            allocations = allocations.filter(
+                Allocation.expiration > options.after)
+        if options.before:
+            allocations = allocations.filter(
+                Allocation.start <= options.before)
+    else:
+        allocations = allocations.filter(and_(
+            Allocation.expiration > (options.after or now),
+            Allocation.start <= (options.before or now)))
     print_allocations_report(allocations.all(), users=users,
         after=options.after, before=options.before, comments=comments)
 

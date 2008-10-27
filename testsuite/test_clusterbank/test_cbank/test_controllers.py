@@ -1255,4 +1255,124 @@ class TestProjectsReport_Admin (TestProjectsReport):
         args, kwargs = controllers.print_projects_report.calls[0]
         assert_equal(set(kwargs['users']), set([user_by_name("user1")]))
         assert_equal(set(args[0]), set(user_projects(user)))
+
+
+def allocations (projects):
+    return sum((project.allocations for project in projects), [])
+
+
+def active (allocations):
+    now = datetime(2000, 1, 1)
+    return (allocation for allocation in allocations
+        if allocation.start <= now and allocation.expiration > now)
  
+
+class TestAllocationsReport (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        self._print_allocations_report = controllers.print_allocations_report
+        controllers.print_allocations_report = FakeFunc()
+        for project in Session().query(Project):
+            Allocation(project, resource_by_name("resource1"), 0,
+                datetime(1999, 1, 1), datetime(2000, 1, 1))
+            Allocation(project, resource_by_name("resource1"), 0,
+                datetime(1999, 1, 1), datetime(2001, 1, 1))
+            Allocation(project, resource_by_name("resource2"), 0,
+                datetime(2000, 1, 1), datetime(2001, 1, 1))
+            Allocation(project, resource_by_name("resource2"), 0,
+                datetime(2001, 1, 1), datetime(2002, 1, 1))
+        Session.flush()
+    
+    def teardown (self):
+        CbankTester.teardown(self)
+        controllers.print_allocations_report = self._print_allocations_report
+    
+    def test_default (self):
+        """Current user's allocations"""
+        projects = user_projects(current_user())
+        code, stdout, stderr = run(report_allocations_main)
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_allocations_report.calls[0]
+        assert_equal(set(args[0]), set(active(allocations(projects))))
+    
+    def test_member_projects (self):
+        """a specific project of the user"""
+        code, stdout, stderr = run(
+            report_allocations_main, "-p project2".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_allocations_report.calls[0]
+        assert_equal(set(args[0]),
+            set(active(project_by_name("project2").allocations)))
+        
+    def test_owner_projects (self):
+        """a specific project the user owns"""
+        code, stdout, stderr = run(
+            report_allocations_main, "-p project3".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_allocations_report.calls[0]
+        assert_equal(set(args[0]),
+            set(active(project_by_name("project3").allocations)))
+    
+    def test_other_projects (self):
+        """cannot see other projects (not member, not owner)"""
+        code, stdout, stderr = run(
+            report_allocations_main, "-p project1".split())
+        assert_equal(code, NotPermitted.exit_code)
+        assert not controllers.print_allocations_report.calls
+    
+    def test_other_users (self):
+        code, stdout, stderr = run(report_allocations_main, "-u user1".split())
+        assert_equal(code, NotPermitted.exit_code)
+        assert not controllers.print_allocations_report.calls
+
+    def test_owner_users (self):
+        code, stdout, stderr = run(
+            report_allocations_main, "-p project3 -u user1".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_allocations_report.calls[0]
+        assert_equal(set(args[0]),
+            set(active(project_by_name("project3").allocations)))
+        assert_equal(set(kwargs['users']), set([user_by_name("user1")]))
+    
+    def test_self_users (self):
+        user = current_user()
+        projects = user_projects(user)
+        code, stdout, stderr = run(
+            report_allocations_main, ("-u %s" % user.name).split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_allocations_report.calls[0]
+        assert_equal(set(kwargs['users']), set([user]))
+    
+    def test_resources (self):
+        allocations_ = active([allocation
+            for allocation in allocations(user_projects(current_user()))
+            if allocation.resource == resource_by_name("resource1")])
+        code, stdout, stderr = run(
+            report_allocations_main, "-r resource1".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_allocations_report.calls[0]
+        assert_equal(set(args[0]), set(allocations_))
+        
+    def test_after (self):
+        allocations_ = allocations(user_projects(current_user()))
+        allocations_ = [a for a in allocations_
+            if a.expiration > datetime(2001, 1, 1)]
+        code, stdout, stderr = run(
+            report_allocations_main, "-a 2001-01-01".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_allocations_report.calls[0]
+        assert_equal(set(args[0]), set(allocations_))
+        assert_equal(kwargs['after'], datetime(2001, 1, 1))
+    
+    def test_before (self):
+        allocations_ = allocations(user_projects(current_user()))
+        allocations_ = [a for a in allocations_
+            if a.start <= datetime(2000, 1, 1)]
+        code, stdout, stderr = run(
+            report_allocations_main, "-b 2000-01-01".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_allocations_report.calls[0]
+        assert_equal(set(args[0]), set(allocations_))
+        assert_equal(kwargs['before'], datetime(2000, 1, 1))
+
