@@ -11,7 +11,7 @@ import clusterbank
 import clusterbank.model
 from clusterbank.model import user_by_name, project_by_name, \
     resource_by_name, user_projects, project_members, Session, User, \
-    Allocation, Hold, Charge, Refund
+    Project, Allocation, Hold, Charge, Refund
 from clusterbank.model.database import metadata
 import clusterbank.upstreams.default as upstream
 import clusterbank.cbank.controllers as controllers
@@ -1144,4 +1144,12 @@ class TestProjectsReport_Admin (TestProjectsReport):
     def setup (self):
         TestProjectsReport.setup(self)
         be_admin()
+    
+    def test_default (self):
+        """all projects"""
+        projects = Session.query(Project).all()
+        code, stdout, stderr = run(report_projects_main)
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_projects_report.calls[0]
+        assert_equal(set(args[0]), set(projects))
 

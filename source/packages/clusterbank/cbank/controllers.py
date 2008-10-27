@@ -406,7 +406,11 @@ def report_projects_main ():
     options, args = parser.parse_args()
     if args:
         raise UnexpectedArguments(args)
-    projects = user_projects(get_current_user())
+    user = get_current_user()
+    if user.is_admin:
+        projects = Session().query(Project).all()
+    else:
+        projects = user_projects(user)
     users = []
     resources = options.resources or configured_resources()
     print_projects_report(projects, users=users, resources=resources,
