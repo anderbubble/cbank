@@ -47,32 +47,6 @@ class FakeFunc (object):
         return self.func()
 
 
-def setup ():
-    metadata.bind = create_engine("sqlite:///:memory:")
-    upstream.projects = [
-        upstream.Project(1, "project1"), upstream.Project(2, "project2")]
-    upstream.resources = [
-        upstream.Resource(1, "resource1"), upstream.Resource(2, "resource2")]
-    current_user = get_current_username()
-    upstream.users = [
-        upstream.User(1, "user1"),
-        upstream.User(2, "user2"),
-        upstream.User(3, current_user)]
-    clusterbank.model.upstream.use = upstream
-    fake_dt = FakeDateTime(datetime(2000, 1, 1))
-    clusterbank.cbank.controllers.datetime = fake_dt
-
-
-def teardown ():
-    upstream.users = []
-    upstream.projects = []
-    upstream.resources = []
-    clusterbank.model.upstream.use = None
-    Session.bind = None
-    clusterbank.cbank.views.datetime = datetime
-    clusterbank.cbank.controllers.datetime = datetime
-
-
 def run (func, args=None):
     if args is None:
         args = []
@@ -104,13 +78,44 @@ def assert_eq_output (output, correct):
         "incorrect output", output, "expected", correct])
 
 
+def be_admin ():
+    current_user = get_current_username()
+    clusterbank.config.set("cbank", "admins", current_user)
+
+def not_admin ():
+    clusterbank.config.remove_option("cbank", "admins")
+
+def setup ():
+    metadata.bind = create_engine("sqlite:///:memory:")
+    upstream.projects = [
+        upstream.Project(1, "project1"), upstream.Project(2, "project2")]
+    upstream.resources = [
+        upstream.Resource(1, "resource1"), upstream.Resource(2, "resource2")]
+    current_user = get_current_username()
+    upstream.users = [
+        upstream.User(1, "user1"),
+        upstream.User(2, "user2"),
+        upstream.User(3, current_user)]
+    clusterbank.model.upstream.use = upstream
+    fake_dt = FakeDateTime(datetime(2000, 1, 1))
+    clusterbank.cbank.controllers.datetime = fake_dt
+
+
+def teardown ():
+    upstream.users = []
+    upstream.projects = []
+    upstream.resources = []
+    clusterbank.model.upstream.use = None
+    Session.bind = None
+    clusterbank.cbank.views.datetime = datetime
+    clusterbank.cbank.controllers.datetime = datetime
+
+
 class CbankTester (object):
 
     def setup (self):
         metadata.create_all()
-        current_user = get_current_username()
         clusterbank.config.add_section("cbank")
-        clusterbank.config.set("cbank", "admins", current_user)
         for user in upstream.users:
             user_by_name(user.name)
         for project in upstream.projects:
@@ -119,9 +124,9 @@ class CbankTester (object):
             resource_by_name(resource.name)
     
     def teardown (self):
-        metadata.drop_all()
         Session.remove()
         clusterbank.config.remove_section("cbank")
+        metadata.drop_all()
 
 
 class TestMain (CbankTester):
@@ -183,6 +188,7 @@ class TestNewMain (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
+        be_admin()
         self._new_allocation_main = controllers.new_allocation_main
         self._new_hold_main = controllers.new_hold_main
         self._new_charge_main = controllers.new_charge_main
@@ -246,6 +252,10 @@ class TestNewMain (CbankTester):
 
 
 class TestNewAllocationMain (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        be_admin()
     
     def test_exists_and_callable (self):
         assert hasattr(controllers, "new_allocation_main"), \
@@ -467,6 +477,10 @@ class TestNewAllocationMain (CbankTester):
 
 
 class TestNewChargeMain (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        be_admin()
     
     def test_exists_and_callable (self):
         assert hasattr(controllers, "new_charge_main"), \
@@ -706,6 +720,10 @@ class TestNewChargeMain (CbankTester):
 
 
 class TestNewRefundMain (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        be_admin()
     
     def test_exists_and_callable (self):
         assert hasattr(controllers, "new_refund_main"), \
@@ -986,4 +1004,10 @@ class TestReportMain (CbankTester):
         args = "invalid 1 2 3"
         run(controllers.report_main, args.split())
         assert controllers.report_projects_main.calls
+
+
+class TestUsersReport (CbankTester):
+    
+    def test_default_no_admin (self):
+        pass
 
