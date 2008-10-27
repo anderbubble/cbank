@@ -385,6 +385,8 @@ def report_users_main ():
             else:
                 users = Session().query(User).all()
     else:
+        if not projects:
+            projects = user_projects(user)
         if projects and user_owns_all(user, projects):
             if not users:
                 users = project_members_all(projects)
@@ -393,8 +395,6 @@ def report_users_main ():
                 users = [user]
             elif set(users) != set([user]):
                 raise NotPermitted(user)
-        if not projects:
-            projects = user_projects(user)
     resources = options.resources or configured_resources()
     print_users_report(users, projects=projects,
         resources=resources, after=options.after, before=options.before)
