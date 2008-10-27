@@ -511,7 +511,7 @@ class TestNewChargeMain (CbankTester):
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
+        Session.add(allocation)
         Session.commit()
         args = "project1 100 -r resource1 -m test -u user1"
         code, stdout, stderr = run(new_charge_main, args.split())
@@ -537,7 +537,7 @@ class TestNewChargeMain (CbankTester):
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
+        Session.add(allocation)
         Session.commit()
         args = "project1 100 -r resource1 -m test -u user1 asdf"
         code, stdout, stderr = run(new_charge_main, args.split())
@@ -555,7 +555,7 @@ class TestNewChargeMain (CbankTester):
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
+        Session.add(allocation)
         Session.commit()
         args = "project1 100 -r resource1 -m test -u user1"
         code, stdout, stderr = run(new_charge_main, args.split())
@@ -581,7 +581,7 @@ class TestNewChargeMain (CbankTester):
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
+        Session.add(allocation)
         Session.commit()
         args = "project1 100 -m test -u user1"
         code, stdout, stderr = run(new_charge_main, args.split())
@@ -599,7 +599,7 @@ class TestNewChargeMain (CbankTester):
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
+        Session.add(allocation)
         Session.commit()
         args = "project1 100 -m test -u user1"
         code, stdout, stderr = run(new_charge_main, args.split())
@@ -618,7 +618,7 @@ class TestNewChargeMain (CbankTester):
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
+        Session.add(allocation)
         Session.commit()
         args = "100 -r resource1 -m test -u user1"
         code, stdout, stderr = run(new_charge_main, args.split())
@@ -635,7 +635,7 @@ class TestNewChargeMain (CbankTester):
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
+        Session.add(allocation)
         Session.commit()
         args = "project1 -r resource1 -m test -u user1"
         code, stdout, stderr = run(new_charge_main, args.split())
@@ -652,7 +652,7 @@ class TestNewChargeMain (CbankTester):
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
+        Session.add(allocation)
         Session.commit()
         args = "project1 '-100' -r resource1 -m test -u user1"
         code, stdout, stderr = run(new_charge_main, args.split())
@@ -672,7 +672,7 @@ class TestNewChargeMain (CbankTester):
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
+        Session.add(allocation)
         Session.commit()
         args = "project1 100 -r resource1 -u user1"
         code, stdout, stderr = run(new_charge_main, args.split())
@@ -697,7 +697,7 @@ class TestNewChargeMain (CbankTester):
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.save(allocation)
+        Session.add(allocation)
         Session.commit()
         args = "project1 100 -r resource1 -m test"
         code, stdout, stderr = run(new_charge_main, args.split())
@@ -723,7 +723,7 @@ class TestNewChargeMain (CbankTester):
         allocation = Allocation(project=project, resource=resource,
             amount=1000, start=now-timedelta(days=1),
             expiration=now+timedelta(days=1))
-        Session.save(allocation)
+        Session.add(allocation)
         Session.commit()
         args = "project1 100 -r resource1 -m test"
         code, stdout, stderr = run(new_charge_main, args.split())
@@ -754,8 +754,8 @@ class TestNewRefundMain (CbankTester):
             amount=1000, start=now-timedelta(days=1),
             expiration=now+timedelta(days=1))
         charge = Charge(allocation=allocation, amount=100)
-        Session.save(allocation)
-        Session.save(charge)
+        Session.add(allocation)
+        Session.add(charge)
         Session.commit()
         args = "%s 50 -m test" % charge.id
         code, stdout, stderr = run(new_refund_main, args.split())
@@ -776,8 +776,8 @@ class TestNewRefundMain (CbankTester):
             amount=1000, start=now-timedelta(days=1),
             expiration=now+timedelta(days=1))
         charge = Charge(allocation=allocation, amount=100)
-        Session.save(allocation)
-        Session.save(charge)
+        Session.add(allocation)
+        Session.add(charge)
         Session.commit()
         args = "%s 50 -m test asdf" % charge.id
         code, stdout, stderr = run(new_refund_main, args.split())
@@ -795,8 +795,8 @@ class TestNewRefundMain (CbankTester):
             amount=1000, start=now-timedelta(days=1),
             expiration=now+timedelta(days=1))
         charge = Charge(allocation=allocation, amount=100)
-        Session.save(allocation)
-        Session.save(charge)
+        Session.add(allocation)
+        Session.add(charge)
         Session.commit()
         args = "%s 50 -m test" % charge.id
         code, stdout, stderr = run(new_refund_main, args.split())
@@ -817,8 +817,8 @@ class TestNewRefundMain (CbankTester):
             amount=1000, start=now-timedelta(days=1),
             expiration=now+timedelta(days=1))
         charge = Charge(allocation=allocation, amount=100)
-        Session.save(allocation)
-        Session.save(charge)
+        Session.add(allocation)
+        Session.add(charge)
         Session.commit()
         args = "%s 50" % charge.id
         code, stdout, stderr = run(new_refund_main, args.split())
@@ -839,8 +839,8 @@ class TestNewRefundMain (CbankTester):
             amount=1000, start=now-timedelta(days=1),
             expiration=now+timedelta(days=1))
         charge = Charge(allocation=allocation, amount=100)
-        Session.save(allocation)
-        Session.save(charge)
+        Session.add(allocation)
+        Session.add(charge)
         Session.commit()
         args = "50 -m test"
         code, stdout, stderr = run(new_refund_main, args.split())
@@ -860,8 +860,8 @@ class TestNewRefundMain (CbankTester):
             amount=1000, start=now-timedelta(days=1),
             expiration=now+timedelta(days=1))
         charge = Charge(allocation=allocation, amount=100)
-        Session.save(allocation)
-        Session.save(charge)
+        Session.add(allocation)
+        Session.add(charge)
         Session.commit()
         args = "%s -m test" % charge.id
         code, stdout, stderr = run(new_refund_main, args.split())
@@ -883,9 +883,9 @@ class TestNewRefundMain (CbankTester):
             expiration=now+timedelta(days=1))
         charge = Charge(allocation=allocation, amount=100)
         refund = Refund(charge, 25)
-        Session.save(allocation)
-        Session.save(charge)
-        Session.save(refund)
+        Session.add(allocation)
+        Session.add(charge)
+        Session.add(refund)
         Session.commit()
         args = "%s -m test" % charge.id
         code, stdout, stderr = run(new_refund_main, args.split())
@@ -906,8 +906,8 @@ class TestNewRefundMain (CbankTester):
             amount=1000, start=now-timedelta(days=1),
             expiration=now+timedelta(days=1))
         charge = Charge(allocation=allocation, amount=100)
-        Session.save(allocation)
-        Session.save(charge)
+        Session.add(allocation)
+        Session.add(charge)
         Session.commit()
         args = "%s 50 -m test" % charge.id
         code, stdout, stderr = run(new_refund_main, args.split())
