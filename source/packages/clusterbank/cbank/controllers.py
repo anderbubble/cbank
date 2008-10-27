@@ -406,26 +406,8 @@ def report_projects_main ():
     options, args = parser.parse_args()
     if args:
         raise UnexpectedArguments(args)
-    user = get_current_user()
-    member = set(user_projects(user))
-    owned = set(user_projects_owned(user))
-    like_admin = user.is_admin \
-        or (options.projects and set(options.projects).issubset(owned))
-    if like_admin:
-        users = options.users
-        projects = options.projects or set(sum((user_projects(user)
-            for user in options.users), []))
-    else:
-        if options.users and set(options.users) != set([user]):
-            raise NotPermitted(user)
-        users = options.users
-        if options.projects:
-            if set(options.projects).issubset(member | owned):
-                projects = options.projects
-            else:
-                raise NotPermitted(user)
-        else:
-            projects = member
+    projects = user_projects(get_current_user())
+    users = []
     resources = options.resources or configured_resources()
     print_projects_report(projects, users=users, resources=resources,
         after=options.after, before=options.before)

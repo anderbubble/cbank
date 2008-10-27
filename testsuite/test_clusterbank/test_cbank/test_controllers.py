@@ -30,6 +30,10 @@ def current_username ():
     return pwd.getpwuid(os.getuid())[0]
 
 
+def current_user ():
+    return user_by_name(current_username())
+
+
 class FakeDateTime (object):
     
     def __init__ (self, now):
@@ -705,7 +709,7 @@ class TestNewChargeMain (CbankTester):
             "incorrect charge amount: %i" % charge.amount
         assert charge.comment == "test", \
             "incorrect comment: %s" % charge.comment
-        assert charge.user is user_by_name(current_username()), \
+        assert charge.user is current_user(), \
             "incorrect user on charge: %s" % charge.user
     
     def test_non_admin (self):
@@ -1027,7 +1031,7 @@ class TestUsersReport (CbankTester):
     
     def test_default (self):
         """Current user's charges filtered by user's projects."""
-        user = user_by_name(current_username())
+        user = current_user()
         projects = user_projects(user)
         code, stdout, stderr = run(report_users_main)
         assert_equal(code, 0)
@@ -1088,6 +1092,7 @@ class TestUsersReport (CbankTester):
         args, kwargs = controllers.print_users_report.calls[0]
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
 
+
 class TestUsersReport_Admin (TestUsersReport):
     
     def setup (self):
@@ -1112,4 +1117,31 @@ class TestUsersReport_Admin (TestUsersReport):
         users = [user_by_name(user) for user in ["user1", "user2"]]
         assert_equal(set(args[0]), set(users))
         assert_equal(kwargs['projects'], [])
- 
+
+
+class TestProjectsReport (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        self._print_projects_report = controllers.print_projects_report
+        controllers.print_projects_report = FakeFunc()
+    
+    def teardown (self):
+        CbankTester.teardown(self)
+        controllers.print_projects_report = self._print_projects_report
+    
+    def test_default (self):
+        """Current user's projects"""
+        projects = user_projects(current_user())
+        code, stdout, stderr = run(report_projects_main)
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_projects_report.calls[0]
+        assert_equal(set(args[0]), set(projects))
+
+
+class TestProjectsReport_Admin (TestProjectsReport):
+    
+    def setup (self):
+        TestProjectsReport.setup(self)
+        be_admin()
+
