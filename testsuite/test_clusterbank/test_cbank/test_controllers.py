@@ -10,17 +10,23 @@ from sqlalchemy import create_engine
 import clusterbank
 import clusterbank.model
 from clusterbank.model import user_by_name, project_by_name, \
-    resource_by_name, Session, Allocation, Hold, Charge, Refund
+    resource_by_name, user_projects, project_members, Session, User, \
+    Allocation, Hold, Charge, Refund
 from clusterbank.model.database import metadata
 import clusterbank.upstreams.default as upstream
 import clusterbank.cbank.controllers as controllers
-from clusterbank.cbank.controllers import main
+from clusterbank.cbank.controllers import main, report_main, new_main, \
+    report_users_main, report_projects_main, report_allocations_main, \
+    report_holds_main, report_charges_main, new_allocation_main, \
+    new_charge_main, new_hold_main, new_refund_main
 from clusterbank.cbank.exceptions import UnknownCommand, \
     UnexpectedArguments, UnknownProject, MissingArgument, MissingResource, \
     NotPermitted, ValueError_, UnknownCharge
 
+from nose.tools import assert_equal
 
-def get_current_username ():
+
+def current_username ():
     return pwd.getpwuid(os.getuid())[0]
 
 
@@ -79,7 +85,7 @@ def assert_eq_output (output, correct):
 
 
 def be_admin ():
-    current_user = get_current_username()
+    current_user = current_username()
     clusterbank.config.set("cbank", "admins", current_user)
 
 def not_admin ():
@@ -87,15 +93,18 @@ def not_admin ():
 
 def setup ():
     metadata.bind = create_engine("sqlite:///:memory:")
-    upstream.projects = [
-        upstream.Project(1, "project1"), upstream.Project(2, "project2")]
-    upstream.resources = [
-        upstream.Resource(1, "resource1"), upstream.Resource(2, "resource2")]
-    current_user = get_current_username()
+    current_user = current_username()
     upstream.users = [
         upstream.User(1, "user1"),
         upstream.User(2, "user2"),
         upstream.User(3, current_user)]
+    upstream.projects = [
+        upstream.Project(1, "project1"), upstream.Project(2, "project2")]
+    upstream.projects[0].members.append(upstream.users[2])
+    upstream.projects[1].members.append(upstream.users[0])
+    upstream.projects[1].owners.append(upstream.users[2])
+    upstream.resources = [
+        upstream.Resource(1, "resource1"), upstream.Resource(2, "resource2")]
     clusterbank.model.upstream.use = upstream
     fake_dt = FakeDateTime(datetime(2000, 1, 1))
     clusterbank.cbank.controllers.datetime = fake_dt
@@ -107,7 +116,6 @@ def teardown ():
     upstream.resources = []
     clusterbank.model.upstream.use = None
     Session.bind = None
-    clusterbank.cbank.views.datetime = datetime
     clusterbank.cbank.controllers.datetime = datetime
 
 
@@ -143,9 +151,8 @@ class TestMain (CbankTester):
         controllers.report_main = self._report_main
         controllers.new_main = self._new_main
     
-    def test_exists_and_callable (self):
-        assert hasattr(controllers, "main"), "main does not exist"
-        assert callable(controllers.main), "main is not callable"
+    def test_callable (self):
+        assert callable(main), "main is not callable"
     
     def test_report (self):
         def test_ ():
@@ -171,7 +178,7 @@ class TestMain (CbankTester):
             assert sys.argv[1:] == args.split(), sys.argv
         controllers.report_main.func = test_
         args = "1 2 3"
-        run(controllers.main, args.split())
+        run(main, args.split())
         assert controllers.report_main.calls
     
     def test_invalid (self):
@@ -180,7 +187,7 @@ class TestMain (CbankTester):
             assert sys.argv[1:] == args.split(), sys.argv
         controllers.report_main.func = test_
         args = "invalid_command 1 2 3"
-        run(controllers.main, args.split())
+        run(main, args.split())
         assert controllers.report_main.calls
 
 
@@ -215,7 +222,7 @@ class TestNewMain (CbankTester):
             assert sys.argv[0] == "new_main allocation", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
         controllers.new_allocation_main.func = test_
-        run(controllers.new_main, args.split())
+        run(new_main, args.split())
         assert controllers.new_allocation_main.calls
     
     def test_hold (self):
@@ -224,7 +231,7 @@ class TestNewMain (CbankTester):
             assert sys.argv[0] == "new_main hold", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
         controllers.new_hold_main.func = test_
-        run(controllers.new_main, args.split())
+        run(new_main, args.split())
         assert controllers.new_hold_main.calls
     
     def test_charge (self):
@@ -233,7 +240,7 @@ class TestNewMain (CbankTester):
             assert sys.argv[0] == "new_main charge", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
         controllers.new_charge_main.func = test_
-        run(controllers.new_main, args.split())
+        run(new_main, args.split())
         assert controllers.new_charge_main.calls
     
     def test_refund (self):
@@ -242,12 +249,12 @@ class TestNewMain (CbankTester):
             assert sys.argv[0] == "new_main refund", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
         controllers.new_refund_main.func = test_
-        run(controllers.new_main, args.split())
+        run(new_main, args.split())
         assert controllers.new_refund_main.calls
     
     def test_invalid (self):
         args = "invalid 1 2 3"
-        code, stdout, stderr = run(controllers.new_main, args.split())
+        code, stdout, stderr = run(new_main, args.split())
         assert code == UnknownCommand.exit_code, code
 
 
@@ -501,7 +508,7 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "project1 100 -r resource1 -m test -u user1"
-        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(new_charge_main, args.split())
         assert code == 0
         assert charges.count() == 1, "didn't create a charge"
         charge = charges.one()
@@ -527,7 +534,7 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "project1 100 -r resource1 -m test -u user1 asdf"
-        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(new_charge_main, args.split())
         assert not charges.count()
         assert code == UnexpectedArguments.exit_code, code
     
@@ -545,7 +552,7 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "project1 100 -r resource1 -m test -u user1"
-        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(new_charge_main, args.split())
         assert code == 0
         assert charges.count() == 1, "didn't create a charge"
         charge = charges.one()
@@ -571,7 +578,7 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "project1 100 -m test -u user1"
-        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(new_charge_main, args.split())
         assert code == MissingResource.exit_code, code
         assert not charges.count(), "created a charge"
     
@@ -589,7 +596,7 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "project1 100 -m test -u user1"
-        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(new_charge_main, args.split())
         assert code == 0, code
         assert charges.count(), "didn't create a charge"
         charge = charges.one()
@@ -608,7 +615,7 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "100 -r resource1 -m test -u user1"
-        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(new_charge_main, args.split())
         assert code == UnknownProject.exit_code, code
         assert not charges.count(), "created a charge"
     
@@ -625,7 +632,7 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "project1 -r resource1 -m test -u user1"
-        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(new_charge_main, args.split())
         assert code == MissingArgument.exit_code, code
         assert not charges.count(), "created a charge"
     
@@ -642,7 +649,7 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "project1 '-100' -r resource1 -m test -u user1"
-        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(new_charge_main, args.split())
         Session.remove()
         assert not charges.count(), \
             "created a charge with negative amount: %s" % [
@@ -662,7 +669,7 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "project1 100 -r resource1 -u user1"
-        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(new_charge_main, args.split())
         assert code == 0
         assert charges.count() == 1, "didn't create a charge"
         charge = charges.one()
@@ -687,7 +694,7 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "project1 100 -r resource1 -m test"
-        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(new_charge_main, args.split())
         assert code == 0, 0
         assert charges.count() == 1, "didn't create a charge"
         charge = charges.one()
@@ -697,7 +704,7 @@ class TestNewChargeMain (CbankTester):
             "incorrect charge amount: %i" % charge.amount
         assert charge.comment == "test", \
             "incorrect comment: %s" % charge.comment
-        assert charge.user is user_by_name(get_current_username()), \
+        assert charge.user is user_by_name(current_username()), \
             "incorrect user on charge: %s" % charge.user
     
     def test_non_admin (self):
@@ -713,7 +720,7 @@ class TestNewChargeMain (CbankTester):
         Session.save(allocation)
         Session.commit()
         args = "project1 100 -r resource1 -m test"
-        code, stdout, stderr = run(controllers.new_charge_main, args.split())
+        code, stdout, stderr = run(new_charge_main, args.split())
         Session.remove()
         assert not charges.count(), "created a charge without admin privileges"
         assert code == NotPermitted.exit_code, code
@@ -745,7 +752,7 @@ class TestNewRefundMain (CbankTester):
         Session.save(charge)
         Session.commit()
         args = "%s 50 -m test" % charge.id
-        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        code, stdout, stderr = run(new_refund_main, args.split())
         assert code == 0, code
         assert refunds.count() == 1, "didn't create a refund"
         refund = refunds.one()
@@ -767,7 +774,7 @@ class TestNewRefundMain (CbankTester):
         Session.save(charge)
         Session.commit()
         args = "%s 50 -m test asdf" % charge.id
-        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        code, stdout, stderr = run(new_refund_main, args.split())
         assert not refunds.count()
         assert code == UnexpectedArguments.exit_code, code
     
@@ -786,7 +793,7 @@ class TestNewRefundMain (CbankTester):
         Session.save(charge)
         Session.commit()
         args = "%s 50 -m test" % charge.id
-        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        code, stdout, stderr = run(new_refund_main, args.split())
         assert code == 0, code
         assert refunds.count() == 1, "didn't create a refund"
         refund = refunds.one()
@@ -808,7 +815,7 @@ class TestNewRefundMain (CbankTester):
         Session.save(charge)
         Session.commit()
         args = "%s 50" % charge.id
-        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        code, stdout, stderr = run(new_refund_main, args.split())
         assert code == 0, code
         assert refunds.count() == 1, "didn't create a refund"
         refund = refunds.one()
@@ -830,7 +837,7 @@ class TestNewRefundMain (CbankTester):
         Session.save(charge)
         Session.commit()
         args = "50 -m test"
-        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        code, stdout, stderr = run(new_refund_main, args.split())
         Session.remove()
         assert not refunds.count(), "created refund without charge"
         assert code in (
@@ -851,7 +858,7 @@ class TestNewRefundMain (CbankTester):
         Session.save(charge)
         Session.commit()
         args = "%s -m test" % charge.id
-        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        code, stdout, stderr = run(new_refund_main, args.split())
         Session.remove()
         assert refunds.count() == 1, "incorrect refund count: %r" %[
             (refund, refund.amount) for refund in refunds]
@@ -875,7 +882,7 @@ class TestNewRefundMain (CbankTester):
         Session.save(refund)
         Session.commit()
         args = "%s -m test" % charge.id
-        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        code, stdout, stderr = run(new_refund_main, args.split())
         assert code == 0, code
         Session.remove()
         assert refunds.count() == 2, "incorrect refund count: %r" % [
@@ -897,7 +904,7 @@ class TestNewRefundMain (CbankTester):
         Session.save(charge)
         Session.commit()
         args = "%s 50 -m test" % charge.id
-        code, stdout, stderr = run(controllers.new_refund_main, args.split())
+        code, stdout, stderr = run(new_refund_main, args.split())
         Session.remove()
         assert not refunds.count(), "created a refund when not an admin"
         assert code == NotPermitted.exit_code, code
@@ -948,7 +955,7 @@ class TestReportMain (CbankTester):
             assert sys.argv[1:] == args.split()[1:], sys.argv
         controllers.report_users_main.func = test_
         args = "users 1 2 3"
-        run(controllers.report_main, args.split())
+        run(report_main, args.split())
         assert controllers.report_users_main.calls
     
     def test_projects (self):
@@ -957,7 +964,7 @@ class TestReportMain (CbankTester):
             assert sys.argv[1:] == args.split()[1:], sys.argv
         controllers.report_projects_main.func = test_
         args = "projects 1 2 3"
-        run(controllers.report_main, args.split())
+        run(report_main, args.split())
         assert controllers.report_projects_main.calls
     
     def test_allocations (self):
@@ -966,7 +973,7 @@ class TestReportMain (CbankTester):
             assert sys.argv[1:] == args.split()[1:], sys.argv
         controllers.report_allocations_main.func = test_
         args = "allocations 1 2 3"
-        run(controllers.report_main, args.split())
+        run(report_main, args.split())
         assert controllers.report_allocations_main.calls
     
     def test_holds (self):
@@ -975,7 +982,7 @@ class TestReportMain (CbankTester):
             assert sys.argv[1:] == args.split()[1:], sys.argv
         controllers.report_holds_main.func = test_
         args = "holds 1 2 3"
-        run(controllers.report_main, args.split())
+        run(report_main, args.split())
         assert controllers.report_holds_main.calls
     
     def test_charges (self):
@@ -984,7 +991,7 @@ class TestReportMain (CbankTester):
             assert sys.argv[1:] == args.split()[1:], sys.argv
         controllers.report_charges_main.func = test_
         args = "charges 1 2 3"
-        run(controllers.report_main, args.split())
+        run(report_main, args.split())
         assert controllers.report_charges_main.calls
     
     def test_default (self):
@@ -993,7 +1000,7 @@ class TestReportMain (CbankTester):
             assert sys.argv[1:] == args.split(), sys.argv
         controllers.report_projects_main.func = test_
         args = "1 2 3"
-        run(controllers.report_main, args.split())
+        run(report_main, args.split())
         assert controllers.report_projects_main.calls
     
     def test_invalid (self):
@@ -1002,12 +1009,77 @@ class TestReportMain (CbankTester):
             assert sys.argv[1:] == args.split(), sys.argv
         controllers.report_projects_main.func = test_
         args = "invalid 1 2 3"
-        run(controllers.report_main, args.split())
+        run(report_main, args.split())
         assert controllers.report_projects_main.calls
 
 
 class TestUsersReport (CbankTester):
     
-    def test_default_no_admin (self):
-        pass
+    def setup (self):
+        CbankTester.setup(self)
+        self._print_users_report = controllers.print_users_report
+        controllers.print_users_report = FakeFunc()
+    
+    def teardown (self):
+        CbankTester.teardown(self)
+        controllers.print_users_report = self._print_users_report
+    
+    def test_default (self):
+        """Current user's charges filtered by user's projects."""
+        user = user_by_name(current_username())
+        projects = user_projects(user)
+        code, stdout, stderr = run(report_users_main)
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_users_report.calls[0]
+        assert_equal(set(args[0]), set([user]))
+        assert_equal(set(kwargs['projects']), set(projects))
+    
+    def test_other_users (self):
+        """Non-admin cannot specify other users."""
+        code, stdout, stderr = run(report_users_main, "-u user1".split())
+        assert_equal(code, NotPermitted.exit_code)
+        assert not controllers.print_users_report.calls
+    
+    def test_other_projects (self):
+        """anyone can specify any project filters"""
+        code, stdout, stderr = run(
+            report_users_main, "-p project1 -p project2".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_users_report.calls[0]
+        projects = [project_by_name(project)
+            for project in ["project1", "project2"]]
+        assert_equal(set(kwargs['projects']), set(projects))
+    
+    def test_owner (self):
+        users = project_members(project_by_name("project2"))
+        code, stdout, stderr = run(report_users_main, "-p project2".split())
+        args, kwargs = controllers.print_users_report.calls[0]
+        assert_equal(code, 0)
+        assert_equal(set(args[0]), set(users))
+ 
 
+class TestUsersReport_Admin (TestUsersReport):
+    
+    def setup (self):
+        TestUsersReport.setup(self)
+        be_admin()
+    
+    def test_default (self):
+        """All users, no filters."""
+        users = Session().query(User).all()
+        code, stdout, stderr = run(report_users_main)
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_users_report.calls[0]
+        assert_equal(set(args[0]), set(users))
+        assert_equal(kwargs['projects'], [])
+    
+    def test_other_users (self):
+        """admin can specify other users."""
+        code, stdout, stderr = run(
+            report_users_main, "-u user1 -u user2".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_users_report.calls[0]
+        users = [user_by_name(user) for user in ["user1", "user2"]]
+        assert_equal(set(args[0]), set(users))
+        assert_equal(kwargs['projects'], [])
+ 

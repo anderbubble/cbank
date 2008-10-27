@@ -26,7 +26,7 @@ from textwrap import dedent
 from sqlalchemy.orm import eagerload
 from sqlalchemy import cast, func
 from sqlalchemy.types import Integer
-import sqlalchemy.exceptions
+from sqlalchemy.exceptions import InvalidRequestError
 
 import clusterbank
 from clusterbank import config
@@ -34,12 +34,15 @@ from clusterbank.model import Session, User, Project, Resource, \
     Allocation, Hold, Charge, Refund, \
     user_by_name, project_by_name, resource_by_name, \
     project_members, user_projects, user_projects_owned
-import clusterbank.cbank.exceptions as exceptions
 from clusterbank.cbank.views import print_allocation, print_charges, \
     print_holds, print_refund, print_users_report, print_projects_report, \
     print_allocations_report, print_holds_report, print_charges_report, \
     print_allocations, print_refunds
 from clusterbank.cbank.common import get_unit_factor
+from clusterbank.exceptions import NotFound
+from clusterbank.cbank.exceptions import CbankException, NotPermitted, \
+    UnknownCommand, MissingArgument, UnexpectedArguments, MissingResource, \
+    UnknownCharge, UnknownProject, ValueError_, UnknownUser, MissingCommand
 
 __all__ = ["main", "new_main", "report_main",
     "new_allocation_main", "new_charge_main", "new_refund_main"
@@ -57,7 +60,7 @@ def handle_exceptions (func):
             return func(*args, **kwargs)
         except KeyboardInterrupt:
             sys.exit(1)
-        except exceptions.CbankException, ex:
+        except CbankException, ex:
             print >> sys.stderr, ex
             sys.exit(ex.exit_code)
     decorated_func.__name__ = func.__name__
@@ -70,7 +73,7 @@ def require_admin (func):
     def decorated_func (*args, **kwargs):
         user = get_current_user()
         if not user.is_admin:
-            raise exceptions.NotPermitted(user)
+            raise NotPermitted(user)
         else:
             return func(*args, **kwargs)
     decorated_func.__name__ = func.__name__
@@ -88,7 +91,7 @@ def help_requested ():
 def main ():
     try:
         command = normalize(sys.argv[1], ["new", "report", "detail"])
-    except (IndexError, exceptions.UnknownCommand):
+    except (IndexError, UnknownCommand):
         if help_requested():
             print_main_help()
             sys.exit()
@@ -127,7 +130,7 @@ def new_main ():
     commands = ["allocation", "hold", "charge", "refund"]
     try:
         command = normalize(sys.argv[1], commands)
-    except exceptions.UnknownCommand:
+    except UnknownCommand:
         if help_requested():
             print_new_main_help()
             sys.exit()
@@ -138,7 +141,7 @@ def new_main ():
             print_new_main_help()
             sys.exit()
         else:
-            raise exceptions.MissingCommand(", ".join(commands))
+            raise MissingCommand(", ".join(commands))
     replace_command()
     if command == "allocation":
         return new_allocation_main()
@@ -174,11 +177,11 @@ def new_allocation_main ():
     project = pop_project(args, 0)
     amount = pop_amount(args, 0)
     if args:
-        raise exceptions.UnexpectedArguments(args)
+        raise UnexpectedArguments(args)
     if options.deprecated_comment is not None:
         warn("use of -m is deprecated: use -c instead", DeprecationWarning)
     if not options.resource:
-        raise exceptions.MissingResource()
+        raise MissingResource()
     comment = options.comment or options.deprecated_comment
     allocation = Allocation(project, options.resource, amount,
         options.start, options.expiration)
@@ -189,7 +192,7 @@ def new_allocation_main ():
         try:
             s.commit()
         except ValueError, ex:
-            raise exceptions.ValueError_(ex)
+            raise ValueError_(ex)
     print_allocation(allocation)
 
 
@@ -201,11 +204,11 @@ def new_charge_main ():
     project = pop_project(args, 0)
     amount = pop_amount(args, 0)
     if args:
-        raise exceptions.UnexpectedArguments(args)
+        raise UnexpectedArguments(args)
     if options.deprecated_comment is not None:
         warn("use of -m is deprecated: use -c instead", DeprecationWarning)
     if not options.resource:
-        raise exceptions.MissingResource("resource")
+        raise MissingResource("resource")
     s = Session()
     allocations = s.query(Allocation).filter_by(
         project=project, resource=options.resource)
@@ -219,7 +222,7 @@ def new_charge_main ():
         try:
             s.commit()
         except ValueError, ex:
-            raise exceptions.ValueError_(ex)
+            raise ValueError_(ex)
     print_charges(charges)
 
 
@@ -231,11 +234,11 @@ def new_hold_main ():
     project = pop_project(args, 0)
     amount = pop_amount(args, 0)
     if args:
-        raise exceptions.UnexpectedArguments(args)
+        raise UnexpectedArguments(args)
     if options.deprecated_comment is not None:
         warn("use of -m is deprecated: use -c instead", DeprecationWarning)
     if not options.resource:
-        raise exceptions.MissingResource("resource")
+        raise MissingResource("resource")
     s = Session()
     allocations = s.query(Allocation).filter_by(
         project=project, resource=options.resource)
@@ -249,7 +252,7 @@ def new_hold_main ():
         try:
             s.commit()
         except ValueError, ex:
-            raise exceptions.ValueError_(ex)
+            raise ValueError_(ex)
     print_holds(holds)
 
 
@@ -257,11 +260,11 @@ def pop_project (args, index):
     try:
         project_name = args.pop(index)
     except IndexError:
-        raise exceptions.MissingArgument("project")
+        raise MissingArgument("project")
     try:
         project = project_by_name(project_name)
-    except clusterbank.exceptions.NotFound:
-        raise exceptions.UnknownProject(project_name)
+    except NotFound:
+        raise UnknownProject(project_name)
     return project
 
 
@@ -269,11 +272,11 @@ def pop_charge (args, index):
     try:
         charge_id = args.pop(index)
     except IndexError:
-        raise exceptions.MissingArgument("charge")
+        raise MissingArgument("charge")
     try:
         charge = Session().query(Charge).filter_by(id=charge_id).one()
-    except sqlalchemy.exceptions.InvalidRequestError:
-        raise exceptions.UnknownCharge(charge_id)
+    except InvalidRequestError:
+        raise UnknownCharge(charge_id)
     return charge
 
 
@@ -281,7 +284,7 @@ def pop_amount (args, index):
     try:
         amount = args.pop(index)
     except IndexError:
-        raise exceptions.MissingArgument("amount")
+        raise MissingArgument("amount")
     amount = parse_units(amount)
     return amount
 
@@ -294,10 +297,10 @@ def new_refund_main ():
     charge = pop_charge(args, 0)
     try:
         amount = pop_amount(args, 0)
-    except exceptions.MissingArgument:
+    except MissingArgument:
         amount = charge.effective_amount
     if args:
-        raise exceptions.UnexpectedArguments(args)
+        raise UnexpectedArguments(args)
     if options.deprecated_comment is not None:
         warn("use of -m is deprecated: use -c instead", DeprecationWarning)
     refund = Refund(charge, amount)
@@ -308,7 +311,7 @@ def new_refund_main ():
         try:
             s.commit()
         except ValueError, ex:
-            raise exceptions.ValueError_(ex)
+            raise ValueError_(ex)
     print_refund(refund)
 
 
@@ -317,7 +320,7 @@ def report_main ():
     commands = ["users", "projects", "allocations", "holds", "charges"]
     try:
         command = normalize(sys.argv[1], commands)
-    except (IndexError, exceptions.UnknownCommand):
+    except (IndexError, UnknownCommand):
         if help_requested():
             print_report_main_help()
             sys.exit()
@@ -362,20 +365,20 @@ def report_users_main ():
     parser = build_report_users_parser()
     options, args = parser.parse_args()
     if args:
-        raise exceptions.UnexpectedArguments(args)
+        raise UnexpectedArguments(args)
     user = get_current_user()
-    owned = set(user_projects_owned(user))
-    like_admin = user.is_admin \
-        or (options.projects and set(options.projects).issubset(owned))
-    if like_admin:
-        users = options.users or set(sum((project_members(project)
-            for project in options.projects), []))
-        projects = options.projects
+    users = options.users
+    projects = options.projects
+    if user.is_admin:
+        if not users:
+            users = Session().query(User).all()
     else:
-        if options.users and set(options.users) != set([user]):
-            raise exceptions.NotPermitted(user)
-        users = [user]
-        projects = options.projects or user_projects(user)
+        if not users:
+            users = [user]
+        elif set(users) != set([user]):
+            raise NotPermitted(user)
+        if not projects:
+            projects = user_projects(user)
     resources = options.resources or configured_resources()
     print_users_report(users, projects=projects,
         resources=resources, after=options.after, before=options.before)
@@ -386,7 +389,7 @@ def report_projects_main ():
     parser = build_report_projects_parser()
     options, args = parser.parse_args()
     if args:
-        raise exceptions.UnexpectedArguments(args)
+        raise UnexpectedArguments(args)
     user = get_current_user()
     member = set(user_projects(user))
     owned = set(user_projects_owned(user))
@@ -398,13 +401,13 @@ def report_projects_main ():
             for user in options.users), []))
     else:
         if options.users and set(options.users) != set([user]):
-            raise exceptions.NotPermitted(user)
+            raise NotPermitted(user)
         users = options.users
         if options.projects:
             if set(options.projects).issubset(member | owned):
                 projects = options.projects
             else:
-                raise exceptions.NotPermitted(user)
+                raise NotPermitted(user)
         else:
             projects = member
     resources = options.resources or configured_resources()
@@ -419,7 +422,7 @@ def report_allocations_main ():
     if options.extra_data is not None:
         warn("use of -e is deprecated: use -c instead", DeprecationWarning)
     if args:
-        raise exceptions.UnexpectedArguments(args)
+        raise UnexpectedArguments(args)
     user = get_current_user()
     member = set(user_projects(user))
     owned = set(user_projects_owned(user))
@@ -431,13 +434,13 @@ def report_allocations_main ():
             for user in options.users), []))
     else:
         if options.users and set(options.users) != set([user]):
-            raise exceptions.NotPermitted(user)
+            raise NotPermitted(user)
         users = options.users
         if options.projects:
             if set(options.projects).issubset(member | owned):
                 projects = options.projects
             else:
-                raise exceptions.NotPermitted(user)
+                raise NotPermitted(user)
         else:
             projects = member
     resources = options.resources or configured_resources()
@@ -458,7 +461,7 @@ def report_holds_main ():
     if options.extra_data is not None:
         warn("use of -e is deprecated: use -c instead", DeprecationWarning)
     if args:
-        raise exceptions.UnexpectedArguments(args)
+        raise UnexpectedArguments(args)
     user = get_current_user()
     member = set(user_projects(user))
     owned = set(user_projects_owned(user))
@@ -469,7 +472,7 @@ def report_holds_main ():
         projects = options.projects
     else:
         if options.users and set(options.users) != set([user]):
-            raise exceptions.NotPermitted(user)
+            raise NotPermitted(user)
         users = [user]
         projects = options.projects or member
     resources = options.resources or configured_resources()
@@ -500,7 +503,7 @@ def report_charges_main ():
     if options.extra_data is not None:
         warn("use of -e is deprecated: use -c instead", DeprecationWarning)
     if args:
-        raise exceptions.UnexpectedArguments(args)
+        raise UnexpectedArguments(args)
     user = get_current_user()
     member = set(user_projects(user))
     owned = set(user_projects_owned(user))
@@ -511,7 +514,7 @@ def report_charges_main ():
         projects = options.projects
     else:
         if options.users and set(options.users) != set([user]):
-            raise exceptions.NotPermitted(user)
+            raise NotPermitted(user)
         users = [user]
         projects = options.projects or member
     resources = options.resources or configured_resources()
@@ -543,7 +546,7 @@ def detail_main ():
     try:
         command = normalize(sys.argv[1], commands)
     except IndexError:
-        raise exceptions.MissingCommand(", ".join(commands))
+        raise MissingCommand(", ".join(commands))
     replace_command()
     if command == "allocations":
         return detail_allocations_main()
@@ -656,7 +659,7 @@ def replace_command ():
 def normalize (command, commands):
     possible_commands = [cmd for cmd in commands if cmd.startswith(command)]
     if not possible_commands or len(possible_commands) > 1:
-        raise exceptions.UnknownCommand(command)
+        raise UnknownCommand(command)
     else:
         return possible_commands[0]
 
@@ -710,12 +713,12 @@ def get_current_user ():
     try:
         passwd_entry = pwd.getpwuid(uid)
     except KeyError:
-        raise exceptions.UnknownUser("not in passwd")
+        raise UnknownUser("not in passwd")
     username = passwd_entry[0]
     try:
         user = user_by_name(username)
-    except clusterbank.exceptions.NotFound:
-        raise exceptions.UnknownUser(username)
+    except NotFound:
+        raise UnknownUser(username)
     return user
 
 
@@ -723,7 +726,7 @@ def parse_units (units):
     try:
         units = float(units)
     except ValueError:
-        raise exceptions.ValueError_(units)
+        raise ValueError_(units)
     mul, div = get_unit_factor()
     raw_units = units / mul * div
     raw_units = int(raw_units)
@@ -965,21 +968,21 @@ class Option (optparse.Option):
     def check_project (self, opt, value):
         try:
             return project_by_name(value)
-        except clusterbank.exceptions.NotFound:
+        except NotFound:
             raise optparse.OptionValueError(
                 "option %s: unknown project: %s" % (opt, value))
     
     def check_resource (self, opt, value):
         try:
             return resource_by_name(value)
-        except clusterbank.exceptions.NotFound:
+        except NotFound:
             raise optparse.OptionValueError(
                 "option %s: unknown resource: %s" % (opt, value))
     
     def check_user (self, opt, value):
         try:
             return user_by_name(value)
-        except clusterbank.exceptions.NotFound:
+        except NotFound:
             raise optparse.OptionValueError(
                 "option %s: unknown user: %s" % (opt, value))
     
@@ -991,7 +994,7 @@ class Option (optparse.Option):
                 "option %s: invalid charge id: %s" % (opt, value))
         try:
             return Session().query(Charge).filter_by(id=charge_id).one()
-        except sqlalchemy.exceptions.InvalidRequestError:
+        except InvalidRequestError:
             raise optparse.OptionValueError(
                 "option %s: unknown charge: %i" % (opt, value))
     
