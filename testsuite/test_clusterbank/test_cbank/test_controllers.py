@@ -1480,6 +1480,8 @@ class TestHoldsReport (CbankTester):
         for project in Session().query(Project):
             Allocation(project, resource_by_name("resource1"), 0,
                 datetime(2000, 1, 1), datetime(2001, 1, 1))
+            Allocation(project, resource_by_name("resource2"), 0,
+                datetime(2000, 1, 1), datetime(2001, 1, 1))
         for allocation in Session().query(Allocation):
             h1 = Hold(allocation, 0)
             h1.datetime = datetime(2000, 1, 1)
@@ -1555,6 +1557,17 @@ class TestHoldsReport (CbankTester):
             user=current_user(), active=True).filter(Hold.allocation.has(
             Allocation.project==project_by_name("project1")))
         code, stdout, stderr = run(report_holds_main, "-p project1".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
+    
+    def test_resources (self):
+        holds = Session().query(Hold).filter_by(
+            user=current_user(), active=True).filter(Hold.allocation.has(
+            Allocation.project.has(Project.id.in_(project.id for project in
+            user_projects(current_user()))))).filter(Hold.allocation.has(
+            Allocation.resource == resource_by_name("resource1")))
+        code, stdout, stderr = run(report_holds_main, "-r resource1".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_holds_report.calls[0]
         assert_equal(set(args[0]), set(holds))
