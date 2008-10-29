@@ -806,7 +806,7 @@ def report_allocations_parser ():
     parser.add_option(Option("-b", "--before", metavar="DATE",
         dest="before", type="date",
         help="charges before (and excluding) DATE"))
-    parser.add_option(Option("-c", "--with-comments",
+    parser.add_option(Option("-c", "--comments",
         dest="comments", action="store_true",
         help="include the comment line for each allocation"))
     parser.set_defaults(projects=[], users=[], resources=[], comments=False)
@@ -830,7 +830,7 @@ def report_holds_parser ():
     parser.add_option(Option("-b", "--before",
         dest="before", type="date",
         help="report holds before (and excluding) DATE", metavar="DATE"))
-    parser.add_option(Option("-c", "--with-comments",
+    parser.add_option(Option("-c", "--comments",
         dest="comments", action="store_true",
         help="include the comment line for each hold"))
     parser.set_defaults(projects=[], users=[], resources=[], comments=False)
@@ -854,7 +854,7 @@ def report_charges_parser ():
     parser.add_option(Option("-b", "--before",
         dest="before", type="date",
         help="report charges before (and excluding) DATE", metavar="DATE"))
-    parser.add_option(Option("-c", "--with-comments",
+    parser.add_option(Option("-c", "--comments",
         dest="comments", action="store_true",
         help="include the comment line for each charge"))
     parser.set_defaults(projects=[], users=[], resources=[], comments=False)
