@@ -286,7 +286,7 @@ class TestNewAllocationMain (CbankTester):
         query = Session.query(Allocation).filter_by(
             project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
+        args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
             controllers.new_allocation_main, args.split())
         Session.remove()
@@ -306,7 +306,7 @@ class TestNewAllocationMain (CbankTester):
             project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
         args = """project1 1000 -r resource1 -s 2008-01-01 \
-            -e 2009-01-01 -m test asdf"""
+            -e 2009-01-01 -c test asdf"""
         code, stdout, stderr = run(
             controllers.new_allocation_main, args.split())
         Session.remove()
@@ -320,7 +320,7 @@ class TestNewAllocationMain (CbankTester):
         query = Session.query(Allocation).filter_by(
             project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
+        args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
             controllers.new_allocation_main, args.split())
         Session.remove()
@@ -339,7 +339,7 @@ class TestNewAllocationMain (CbankTester):
         query = Session.query(Allocation).filter_by(
             project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "project1 1000 -r resource1 -s bad_start -e 2009-01-01 -m test"
+        args = "project1 1000 -r resource1 -s bad_start -e 2009-01-01 -c test"
         code, stdout, stderr = run(
             controllers.new_allocation_main, args.split())
         Session.remove()
@@ -352,7 +352,7 @@ class TestNewAllocationMain (CbankTester):
         query = Session.query(Allocation).filter_by(
             project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "project1 1000 -r resource1 -s 2008-01-01 -e bad_end -m test"
+        args = "project1 1000 -r resource1 -s 2008-01-01 -e bad_end -c test"
         code, stdout, stderr = run(
             controllers.new_allocation_main, args.split())
         Session.remove()
@@ -366,7 +366,7 @@ class TestNewAllocationMain (CbankTester):
             project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
         args = """project1 bad_amount -r resource1 -s 2008-01-01 \
-            -e 2009-01-01 -m test"""
+            -e 2009-01-01 -c test"""
         code, stdout, stderr = run(
             controllers.new_allocation_main, args.split())
         Session.remove()
@@ -394,7 +394,7 @@ class TestNewAllocationMain (CbankTester):
         query = Session.query(Allocation).filter_by(
             project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
+        args = "1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
             controllers.new_allocation_main, args.split())
         Session.remove()
@@ -408,7 +408,7 @@ class TestNewAllocationMain (CbankTester):
         query = Session.query(Allocation).filter_by(
             project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
+        args = "project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
             controllers.new_allocation_main, args.split())
         Session.remove()
@@ -421,7 +421,7 @@ class TestNewAllocationMain (CbankTester):
         query = Session.query(Allocation).filter_by(
             project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "project1 1000 -r resource1 -e 2009-01-01 -m test"
+        args = "project1 1000 -r resource1 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
             controllers.new_allocation_main, args.split())
         Session.remove()
@@ -436,7 +436,7 @@ class TestNewAllocationMain (CbankTester):
         query = Session.query(Allocation).filter_by(
             project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "project1 1000 -r resource1 -s 2000-01-01 -m test"
+        args = "project1 1000 -r resource1 -s 2000-01-01 -c test"
         code, stdout, stderr = run(
             controllers.new_allocation_main, args.split())
         Session.remove()
@@ -454,7 +454,7 @@ class TestNewAllocationMain (CbankTester):
         query = Session.query(Allocation).filter_by(
             project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "project1 1000 -s 2008-01-01 -e 2009-01-01 -m test"
+        args = "project1 1000 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
             controllers.new_allocation_main, args.split())
         Session.remove()
@@ -469,7 +469,7 @@ class TestNewAllocationMain (CbankTester):
         query = Session.query(Allocation).filter_by(
             project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "project1 1000 -s 2008-01-01 -e 2009-01-01 -m test"
+        args = "project1 1000 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
             controllers.new_allocation_main, args.split())
         assert query.count() == 1, "didn't create an allocation"
@@ -484,7 +484,7 @@ class TestNewAllocationMain (CbankTester):
         query = Session.query(Allocation).filter_by(
             project=project, resource=resource)
         assert not query.count(), "started with existing allocations"
-        args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -m test"
+        args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
             controllers.new_allocation_main, args.split())
         Session.remove()
@@ -517,7 +517,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 100 -r resource1 -m test -u user1"
+        args = "project1 100 -r resource1 -c test -u user1"
         code, stdout, stderr = run(new_charge_main, args.split())
         assert code == 0
         assert charges.count() == 1, "didn't create a charge"
@@ -543,7 +543,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 100 -r resource1 -m test -u user1 asdf"
+        args = "project1 100 -r resource1 -c test -u user1 asdf"
         code, stdout, stderr = run(new_charge_main, args.split())
         assert not charges.count()
         assert code == UnexpectedArguments.exit_code, code
@@ -561,7 +561,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 100 -r resource1 -m test -u user1"
+        args = "project1 100 -r resource1 -c test -u user1"
         code, stdout, stderr = run(new_charge_main, args.split())
         assert code == 0
         assert charges.count() == 1, "didn't create a charge"
@@ -587,7 +587,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 100 -m test -u user1"
+        args = "project1 100 -c test -u user1"
         code, stdout, stderr = run(new_charge_main, args.split())
         assert code == MissingResource.exit_code, code
         assert not charges.count(), "created a charge"
@@ -605,7 +605,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 100 -m test -u user1"
+        args = "project1 100 -c test -u user1"
         code, stdout, stderr = run(new_charge_main, args.split())
         assert code == 0, code
         assert charges.count(), "didn't create a charge"
@@ -624,7 +624,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "100 -r resource1 -m test -u user1"
+        args = "100 -r resource1 -c test -u user1"
         code, stdout, stderr = run(new_charge_main, args.split())
         assert code == UnknownProject.exit_code, code
         assert not charges.count(), "created a charge"
@@ -641,7 +641,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 -r resource1 -m test -u user1"
+        args = "project1 -r resource1 -c test -u user1"
         code, stdout, stderr = run(new_charge_main, args.split())
         assert code == MissingArgument.exit_code, code
         assert not charges.count(), "created a charge"
@@ -658,7 +658,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 '-100' -r resource1 -m test -u user1"
+        args = "project1 '-100' -r resource1 -c test -u user1"
         code, stdout, stderr = run(new_charge_main, args.split())
         Session.remove()
         assert not charges.count(), \
@@ -703,7 +703,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 100 -r resource1 -m test"
+        args = "project1 100 -r resource1 -c test"
         code, stdout, stderr = run(new_charge_main, args.split())
         assert code == 0, 0
         assert charges.count() == 1, "didn't create a charge"
@@ -729,7 +729,7 @@ class TestNewChargeMain (CbankTester):
             expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 100 -r resource1 -m test"
+        args = "project1 100 -r resource1 -c test"
         code, stdout, stderr = run(new_charge_main, args.split())
         Session.remove()
         assert not charges.count(), "created a charge without admin privileges"
@@ -761,7 +761,7 @@ class TestNewRefundMain (CbankTester):
         Session.add(allocation)
         Session.add(charge)
         Session.commit()
-        args = "%s 50 -m test" % charge.id
+        args = "%s 50 -c test" % charge.id
         code, stdout, stderr = run(new_refund_main, args.split())
         assert code == 0, code
         assert refunds.count() == 1, "didn't create a refund"
@@ -783,7 +783,7 @@ class TestNewRefundMain (CbankTester):
         Session.add(allocation)
         Session.add(charge)
         Session.commit()
-        args = "%s 50 -m test asdf" % charge.id
+        args = "%s 50 -c test asdf" % charge.id
         code, stdout, stderr = run(new_refund_main, args.split())
         assert not refunds.count()
         assert code == UnexpectedArguments.exit_code, code
@@ -802,7 +802,7 @@ class TestNewRefundMain (CbankTester):
         Session.add(allocation)
         Session.add(charge)
         Session.commit()
-        args = "%s 50 -m test" % charge.id
+        args = "%s 50 -c test" % charge.id
         code, stdout, stderr = run(new_refund_main, args.split())
         assert code == 0, code
         assert refunds.count() == 1, "didn't create a refund"
@@ -846,7 +846,7 @@ class TestNewRefundMain (CbankTester):
         Session.add(allocation)
         Session.add(charge)
         Session.commit()
-        args = "50 -m test"
+        args = "50 -c test"
         code, stdout, stderr = run(new_refund_main, args.split())
         Session.remove()
         assert not refunds.count(), "created refund without charge"
@@ -867,7 +867,7 @@ class TestNewRefundMain (CbankTester):
         Session.add(allocation)
         Session.add(charge)
         Session.commit()
-        args = "%s -m test" % charge.id
+        args = "%s -c test" % charge.id
         code, stdout, stderr = run(new_refund_main, args.split())
         Session.remove()
         assert refunds.count() == 1, "incorrect refund count: %r" %[
@@ -891,7 +891,7 @@ class TestNewRefundMain (CbankTester):
         Session.add(charge)
         Session.add(refund)
         Session.commit()
-        args = "%s -m test" % charge.id
+        args = "%s -c test" % charge.id
         code, stdout, stderr = run(new_refund_main, args.split())
         assert code == 0, code
         Session.remove()
@@ -913,7 +913,7 @@ class TestNewRefundMain (CbankTester):
         Session.add(allocation)
         Session.add(charge)
         Session.commit()
-        args = "%s 50 -m test" % charge.id
+        args = "%s 50 -c test" % charge.id
         code, stdout, stderr = run(new_refund_main, args.split())
         Session.remove()
         assert not refunds.count(), "created a refund when not an admin"

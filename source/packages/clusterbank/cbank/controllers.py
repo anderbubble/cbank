@@ -178,8 +178,6 @@ def new_allocation_main ():
     amount = pop_amount(args, 0)
     if args:
         raise UnexpectedArguments(args)
-    if options.deprecated_comment is not None:
-        warn("use of -m is deprecated: use -c instead", DeprecationWarning)
     if not options.resource:
         raise MissingResource()
     comment = options.comment or options.deprecated_comment
@@ -205,8 +203,6 @@ def new_charge_main ():
     amount = pop_amount(args, 0)
     if args:
         raise UnexpectedArguments(args)
-    if options.deprecated_comment is not None:
-        warn("use of -m is deprecated: use -c instead", DeprecationWarning)
     if not options.resource:
         raise MissingResource("resource")
     s = Session()
@@ -215,7 +211,7 @@ def new_charge_main ():
     charges = Charge.distributed(allocations, amount)
     for charge in charges:
         charge.user = options.user
-        charge.comment = options.comment or options.deprecated_comment
+        charge.comment = options.comment
     if options.commit:
         for charge in charges:
             s.add(charge)
@@ -235,8 +231,6 @@ def new_hold_main ():
     amount = pop_amount(args, 0)
     if args:
         raise UnexpectedArguments(args)
-    if options.deprecated_comment is not None:
-        warn("use of -m is deprecated: use -c instead", DeprecationWarning)
     if not options.resource:
         raise MissingResource("resource")
     s = Session()
@@ -245,7 +239,7 @@ def new_hold_main ():
     holds = Hold.distributed(allocations, amount)
     for hold in holds:
         hold.user = options.user
-        hold.comment = options.comment or options.deprecated_comment
+        hold.comment = options.comment
     if options.commit:
         for hold in holds:
             s.add(hold)
@@ -301,10 +295,8 @@ def new_refund_main ():
         amount = charge.effective_amount
     if args:
         raise UnexpectedArguments(args)
-    if options.deprecated_comment is not None:
-        warn("use of -m is deprecated: use -c instead", DeprecationWarning)
     refund = Refund(charge, amount)
-    refund.comment = options.comment or options.deprecated_comment
+    refund.comment = options.comment
     if options.commit:
         s = Session()
         s.add(refund)
@@ -437,8 +429,6 @@ def report_projects_main ():
 def report_allocations_main ():
     parser = build_report_allocations_parser()
     options, args = parser.parse_args()
-    if options.extra_data is not None:
-        warn("use of -e is deprecated: use -c instead", DeprecationWarning)
     if args:
         raise UnexpectedArguments(args)
     user = get_current_user()
@@ -460,7 +450,7 @@ def report_allocations_main ():
             if not set(users).issubset(set([user])):
                 raise NotPermitted(user)
     resources = options.resources or configured_resources()
-    comments = options.comments or options.extra_data
+    comments = options.comments
     allocations = Session().query(Allocation)
     if resources:
         allocations = allocations.filter(Allocation.resource.has(
@@ -488,8 +478,6 @@ def report_allocations_main ():
 def report_holds_main ():
     parser = build_report_holds_parser()
     options, args = parser.parse_args()
-    if options.extra_data is not None:
-        warn("use of -e is deprecated: use -c instead", DeprecationWarning)
     if args:
         raise UnexpectedArguments(args)
     user = get_current_user()
@@ -506,7 +494,7 @@ def report_holds_main ():
             elif set(users) != set([user]):
                 raise NotPermitted(user)
     resources = options.resources or configured_resources()
-    comments = options.comments or options.extra_data
+    comments = options.comments
     holds = Session().query(Hold)
     holds = holds.filter(Hold.active==True)
     if users:
@@ -529,8 +517,6 @@ def report_holds_main ():
 def report_charges_main ():
     parser = build_report_charges_parser()
     options, args = parser.parse_args()
-    if options.extra_data is not None:
-        warn("use of -e is deprecated: use -c instead", DeprecationWarning)
     if args:
         raise UnexpectedArguments(args)
     user = get_current_user()
@@ -547,7 +533,7 @@ def report_charges_main ():
             elif set(users) != set([user]):
                 raise NotPermitted(user)
     resources = options.resources or configured_resources()
-    comments = options.comments or options.extra_data
+    comments = options.comments
     charges = Session().query(Charge)
     if users:
         charges = charges.filter(Charge.user.has(User.id.in_(
@@ -827,9 +813,6 @@ def build_report_allocations_parser ():
     parser.add_option(Option("-c", "--with-comments",
         dest="comments", action="store_true",
         help="include the comment line for each allocation"))
-    parser.add_option(Option("-e", "--extra-data",
-        dest="extra_data", action="store_true",
-        help="deprecated: use '-c' instead"))
     parser.set_defaults(projects=[], users=[], resources=[], comments=False)
     return parser
 
@@ -854,9 +837,6 @@ def build_report_holds_parser ():
     parser.add_option(Option("-c", "--with-comments",
         dest="comments", action="store_true",
         help="include the comment line for each hold"))
-    parser.add_option(Option("-e", "--extra-data",
-        dest="extra_data", action="store_true",
-        help="deprecated: use '-c' instead"))
     parser.set_defaults(projects=[], users=[], resources=[], comments=False)
     return parser
 
@@ -881,9 +861,6 @@ def build_report_charges_parser ():
     parser.add_option(Option("-c", "--with-comments",
         dest="comments", action="store_true",
         help="include the comment line for each charge"))
-    parser.add_option(Option("-e", "--extra-data",
-        dest="extra_data", action="store_true",
-        help="deprecated: use '-c' instead"))
     parser.set_defaults(projects=[], users=[], resources=[], comments=False)
     return parser
 
