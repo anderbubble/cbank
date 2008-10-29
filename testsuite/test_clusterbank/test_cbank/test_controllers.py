@@ -1082,7 +1082,6 @@ class TestUsersReport (CbankTester):
     def test_owner_users (self):
         code, stdout, stderr = run(
             report_users_main, "-p project3 -u user1".split())
-        print stdout.getvalue()
         assert_equal(code, 0)
         args, kwargs = controllers.print_users_report.calls[0]
         assert_equal(set(args[0]), set([user_by_name("user1")]))
@@ -1528,8 +1527,6 @@ class TestHoldsReport (CbankTester):
             "-u user1 -p project4".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_holds_report.calls[0]
-        for hold in args[0]:
-            print hold, hold.allocation.project, hold.user
         assert_equal(set(args[0]), set(holds))
     
     def test_self_users (self):
@@ -1642,8 +1639,6 @@ class TestHoldsReport_Admin (TestHoldsReport):
             "-p project1 -u user1".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_holds_report.calls[0]
-        for hold in args[0]:
-            print hold, hold.allocation.project, hold.user
         assert_equal(set(args[0]), set(holds))
     
     def test_other_projects (self):
@@ -1756,8 +1751,6 @@ class TestChargesReport (CbankTester):
             "-u user1 -p project4".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_charges_report.calls[0]
-        for charge in args[0]:
-            print charge, charge.allocation.project, charge.user
         assert_equal(set(args[0]), set(charges))
     
     def test_self_users (self):
@@ -1881,8 +1874,6 @@ class TestChargesReport_Admin (TestChargesReport):
             "-p project1 -u user1".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_charges_report.calls[0]
-        for charge in args[0]:
-            print charge, charge.allocation.project, charge.user
         assert_equal(set(args[0]), set(charges))
     
     def test_other_projects (self):
