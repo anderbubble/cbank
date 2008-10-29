@@ -471,18 +471,18 @@ def report_allocations_main ():
     if projects:
         allocations = allocations.filter(Allocation.project.has(
             Project.id.in_(project.id for project in projects)))
-    now = datetime.now()
-    if options.after or options.before:
+    if not (options.after or options.before):
+        now = datetime.now()
+        allocations = allocations.filter(and_(
+            Allocation.expiration > now,
+            Allocation.start <= now))
+    else:
         if options.after:
             allocations = allocations.filter(
                 Allocation.expiration > options.after)
         if options.before:
             allocations = allocations.filter(
                 Allocation.start <= options.before)
-    else:
-        allocations = allocations.filter(and_(
-            Allocation.expiration > (options.after or now),
-            Allocation.start <= (options.before or now)))
     print_allocations_report(allocations.all(), users=users,
         after=options.after, before=options.before, comments=comments)
 
@@ -531,28 +531,26 @@ def report_holds_main ():
 @handle_exceptions
 def report_charges_main ():
     parser = build_report_charges_parser()
-    parser.set_defaults(after=datetime.now()-timedelta(days=7))
     options, args = parser.parse_args()
     if options.extra_data is not None:
         warn("use of -e is deprecated: use -c instead", DeprecationWarning)
     if args:
         raise UnexpectedArguments(args)
     user = get_current_user()
-    member = set(user_projects(user))
-    owned = set(user_projects_owned(user))
-    like_admin = user.is_admin \
-        or (options.projects and set(options.projects).issubset(owned))
-    if like_admin:
-        users = options.users
-        projects = options.projects
-    else:
-        if options.users and set(options.users) != set([user]):
-            raise NotPermitted(user)
-        users = [user]
-        projects = options.projects or member
+    users = options.users
+    projects = options.projects
+    if not user.is_admin:
+        if not projects:
+            projects = user_projects(user)
+        if projects and user_owns_all(user, projects):
+            pass
+        else:
+            if not users:
+                users = [user]
+            elif set(users) != set([user]):
+                raise NotPermitted(user)
     resources = options.resources or configured_resources()
     comments = options.comments or options.extra_data
-    
     charges = Session().query(Charge)
     if users:
         charges = charges.filter(Charge.user.has(User.id.in_(
@@ -563,10 +561,14 @@ def report_charges_main ():
     if resources:
         charges = charges.filter(Charge.allocation.has(Allocation.resource.has(
             Resource.id.in_(resource.id for resource in resources))))
-    if options.after:
-        charges = charges.filter(Charge.datetime >= options.after)
-    if options.before:
-        charges = charges.filter(Charge.datetime < options.before)
+    if not (options.after or options.before):
+        charges = charges.filter(
+            Charge.datetime >= (datetime.now() - timedelta(days=7)))
+    else:
+        if options.after:
+            charges = charges.filter(Charge.datetime >= options.after)
+        if options.before:
+            charges = charges.filter(Charge.datetime < options.before)
     print_charges_report(charges, comments=comments)
 
 
