@@ -498,13 +498,7 @@ def report_holds_main ():
     user = get_current_user()
     users = options.users
     projects = options.projects
-    if user.is_admin:
-        if not users:
-            if projects:
-                users = project_members_all(projects)
-            else:
-                users = Session().query(User).all()
-    else:
+    if not user.is_admin:
         if not projects:
             projects = user_projects(user)
         if projects and user_owns_all(user, projects):

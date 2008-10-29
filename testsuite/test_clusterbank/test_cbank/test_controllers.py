@@ -1532,6 +1532,17 @@ class TestHoldsReport (CbankTester):
             print hold, hold.allocation.project, hold.user
         assert_equal(set(args[0]), set(holds))
     
+    def test_self_users (self):
+        user = current_user()
+        holds = Session().query(Hold).filter_by(
+            user=user, active=True).filter(Hold.allocation.has(
+            Allocation.project.has(Project.id.in_(project.id for project in
+            user_projects(user)))))
+        code, stdout, stderr = run(report_holds_main, ("-u %s" % user).split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
+    
     def test_member_projects (self):
         holds = Session().query(Hold).filter_by(
             user=current_user(), active=True).filter(Hold.allocation.has(
@@ -1548,8 +1559,6 @@ class TestHoldsReport (CbankTester):
         code, stdout, stderr = run(report_holds_main, "-p project4".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_holds_report.calls[0]
-        for hold in args[0]:
-            print hold, hold.allocation.project, hold.user
         assert_equal(set(args[0]), set(holds))
     
     def test_other_projects (self):
@@ -1601,3 +1610,90 @@ class TestHoldsReport (CbankTester):
         args, kwargs = controllers.print_holds_report.calls[0]
         assert_true(kwargs['comments'])
 
+
+class TestHoldsReport_Admin (TestHoldsReport):
+    
+    def setup (self):
+        TestHoldsReport.setup(self)
+        be_admin()
+    
+    def test_self_users (self):
+        user = current_user()
+        holds = Session().query(Hold).filter_by(user=user, active=True)
+        code, stdout, stderr = run(report_holds_main, ("-u %s" % user).split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
+    
+    def test_resources (self):
+        holds = Session().query(Hold).filter_by(
+            active=True).filter(Hold.allocation.has(
+            Allocation.resource == resource_by_name("resource1")))
+        code, stdout, stderr = run(report_holds_main, "-r resource1".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
+    
+    def test_other_users (self):
+        holds = Session().query(Hold).filter_by(active=True,
+            user=user_by_name("user1")).filter(Hold.allocation.has(
+            Allocation.project == project_by_name("project1")))
+        code, stdout, stderr = run(report_holds_main,
+            "-p project1 -u user1".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        for hold in args[0]:
+            print hold, hold.allocation.project, hold.user
+        assert_equal(set(args[0]), set(holds))
+    
+    def test_other_projects (self):
+        holds = Session().query(Hold).filter_by(
+            active=True).filter(Hold.allocation.has(
+            Allocation.project==project_by_name("project1")))
+        code, stdout, stderr = run(report_holds_main, "-p project1".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
+    
+    def test_member_users (self):
+        holds = Session().query(Hold).filter_by(user=user_by_name("user1"),
+            active=True).filter(Hold.allocation.has(
+            Allocation.project==project_by_name("project2")))
+        code, stdout, stderr = run(report_holds_main,
+            "-p project2 -u user1".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
+     
+    def test_member_projects (self):
+        holds = Session().query(Hold).filter_by(
+            active=True).filter(Hold.allocation.has(
+            Allocation.project==project_by_name("project2")))
+        code, stdout, stderr = run(report_holds_main, "-p project2".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
+    
+    def test_default (self):
+        holds = Session().query(Hold).filter_by(active=True)
+        code, stdout, stderr = run(report_holds_main)
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
+    
+    def test_after (self):
+        holds = Session().query(Hold).filter_by(
+            active=True).filter(Hold.datetime >= datetime(2000, 1, 1))
+        code, stdout, stderr = run(report_holds_main, "-a 2000-01-01".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
+    
+    def test_before (self):
+        holds = Session().query(Hold).filter_by(
+            active=True).filter(Hold.datetime < datetime(2000, 1, 1))
+        code, stdout, stderr = run(report_holds_main, "-b 2000-01-01".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
+ 
