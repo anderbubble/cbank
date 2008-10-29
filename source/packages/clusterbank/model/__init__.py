@@ -42,8 +42,9 @@ __all__ = [
     "upstream", "Session",
     "User", "Project", "Resource",
     "Request", "Allocation", "CreditLimit", "Hold", "Job", "Charge", "Refund",
-    "user_by_id", "user_by_name", "project_by_id", "project_by_name",
-    "resource_by_id", "resource_by_name",
+    "user", "user_by_id", "user_by_name",
+    "project", "project_by_id", "project_by_name",
+    "resource", "resource_by_id", "resource_by_name",
     "user_projects", "user_projects_owned", "project_members",
     "project_owners",
 ]
@@ -201,30 +202,61 @@ mapper(Refund, refunds, properties={
     'amount':refunds.c.amount,
     'comment':refunds.c.comment})
 
-def _get_upstream_entity (cls, upstream_function, entity_name):
-    upstream_id = upstream_function(entity_name)
-    if upstream_id is None:
-        raise NotFound("%s '%s' not found" % (
-            cls.__name__.lower(), entity_name))
+def user (name_or_id):
+    return entity(User, name_or_id,
+        upstream.get_user_id, upstream.get_user_name)
+
+def user_by_id (id_):
+    return entity_by_id(User, id_, upstream.get_user_name)
+
+def user_by_name (name):
+    return entity_by_name(User, name, upstream.get_user_id)
+
+def project (name_or_id):
+    return entity(Project, name_or_id,
+        upstream.get_project_id, upstream.get_project_name)
+
+def project_by_id (id_):
+    return entity_by_id(Project, id_, upstream.get_project_name)
+
+def project_by_name (name):
+    return entity_by_name(Project, name, upstream.get_project_id)
+
+def resource (name_or_id):
+    return entity(Resource,
+        upstream.get_resource_id, upstream.get_resource_name)
+
+def resource_by_id (id_):
+    return entity_by_name(Resource, id_, upstream.get_resource_name)
+
+def resource_by_name (name):
+    return entity_by_name(Resource, name, upstream.get_resource_id)
+
+def entity (cls, name_or_id, get_id, get_name):
+    try:
+        return entity_by_name(cls, name_or_id, get_id)
+    except NotFound:
+        return entity_by_id(cls, name_or_id, get_name)
+
+def entity_by_name (cls, name, get_id):
+    id_ = get_id(name)
+    if id_ is None:
+        raise NotFound("%s %r not found" % (cls.__name__.lower(), name))
+    return _entity_by_id(cls, id_)
+
+def entity_by_id (cls, id_, get_name):
+    if get_name(id_) is None:
+        raise NotFound("%s %r not found" % (cls.__name__.lower(), id_))
+    return _entity_by_id(cls, id_)
+
+def _entity_by_id (cls, id_):
     s = Session()
     try:
-        return s.query(cls).filter_by(id=upstream_id).one()
+        return s.query(cls).filter_by(id=id_).one()
     except InvalidRequestError:
-        entity = cls(id=upstream_id)
+        entity = cls(id_)
         s.add(entity)
         return entity
-
-def user_by_id (user_id):
-    s = Session()
-    try:
-        return s.query(User).filter_by(id=user_id).one()
-    except InvalidRequestError:
-        user = User(user_id)
-        s.add(user)
-        return user
-
-def user_by_name (user_name):
-    return _get_upstream_entity(User, upstream.get_user_id, user_name)
 
 def user_projects (user):
     return [project_by_id(project_id) for project_id in user.projects]
@@ -232,37 +264,11 @@ def user_projects (user):
 def user_projects_owned (user):
     return [project_by_id(project_id) for project_id in user.projects_owned]
 
-def project_by_id (project_id):
-    s = Session()
-    try:
-        return s.query(Project).filter_by(id=project_id).one()
-    except InvalidRequestError:
-        project = Project(project_id)
-        s.add(project)
-        return project
-
-def project_by_name (project_name):
-    return _get_upstream_entity(
-        Project, upstream.get_project_id, project_name)
-
 def project_members (project):
     return [user_by_id(user_id) for user_id in project.members]
 
 def project_owners (project):
     return [user_by_id(user_id) for user_id in project.owners]
-
-def resource_by_id (resource_id):
-    s = Session()
-    try:
-        return s.query(Resource).filter_by(id=resource_id).one()
-    except InvalidRequestError:
-        resource = Resource(resource_id)
-        s.add(resource)
-        return resource
-
-def resource_by_name (resource_name):
-    return _get_upstream_entity(
-        Resource, upstream.get_resource_id, resource_name)
 
 metadata.bind = get_configured_engine()
 upstream.use = get_configured_upstream()
