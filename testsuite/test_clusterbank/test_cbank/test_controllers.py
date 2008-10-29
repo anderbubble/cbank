@@ -23,7 +23,7 @@ from clusterbank.cbank.exceptions import UnknownCommand, \
     UnexpectedArguments, UnknownProject, MissingArgument, MissingResource, \
     NotPermitted, ValueError_, UnknownCharge
 
-from nose.tools import assert_equal
+from nose.tools import assert_equal, assert_true
 
 
 def current_username ():
@@ -1399,6 +1399,13 @@ class TestAllocationsReport (CbankTester):
         args, kwargs = controllers.print_allocations_report.calls[0]
         assert_equal(set(args[0]), set(allocations_))
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
+    
+    def test_comments (self):
+        code, stdout, stderr = run(
+            report_allocations_main, ["-c"])
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_allocations_report.calls[0]
+        assert_true(kwargs['comments'])
 
 
 class TestAllocationsReport_Admin (TestAllocationsReport):
