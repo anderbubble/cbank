@@ -31,8 +31,7 @@ from sqlalchemy.exceptions import InvalidRequestError
 import clusterbank
 from clusterbank import config
 from clusterbank.model import Session, User, Project, Resource, \
-    Allocation, Hold, Charge, Refund, \
-    user_by_name, project_by_name, resource_by_name, \
+    Allocation, Hold, Charge, Refund, user, project, resource, \
     project_members, user_projects, user_projects_owned
 from clusterbank.cbank.views import print_allocation, print_charges, \
     print_holds, print_refund, print_users_report, print_projects_report, \
@@ -256,10 +255,9 @@ def pop_project (args, index):
     except IndexError:
         raise MissingArgument("project")
     try:
-        project = project_by_name(project_name)
+        return project(project_name)
     except NotFound:
         raise UnknownProject(project_name)
-    return project
 
 
 def pop_charge (args, index):
@@ -718,12 +716,11 @@ def configured_resources ():
 
 def configured_resource ():
     try:
-        resource = config.get("cbank", "resource")
+        name = config.get("cbank", "resource")
     except ConfigParser.Error:
-        resource = None
+        return None
     else:
-        resource = resource_by_name(resource)
-    return resource
+        return resource(name)
 
 
 def get_current_user ():
@@ -734,10 +731,9 @@ def get_current_user ():
         raise UnknownUser("not in passwd")
     username = passwd_entry[0]
     try:
-        user = user_by_name(username)
+        return user(username)
     except NotFound:
         raise UnknownUser(username)
-    return user
 
 
 def parse_units (units):
@@ -976,44 +972,31 @@ class Option (optparse.Option):
     
     def check_project (self, opt, value):
         try:
-            return project_by_name(value)
+            return project(value)
         except NotFound:
             raise optparse.OptionValueError(
                 "option %s: unknown project: %s" % (opt, value))
     
     def check_resource (self, opt, value):
         try:
-            return resource_by_name(value)
+            return resource(value)
         except NotFound:
             raise optparse.OptionValueError(
                 "option %s: unknown resource: %s" % (opt, value))
     
     def check_user (self, opt, value):
         try:
-            return user_by_name(value)
+            return user(value)
         except NotFound:
             raise optparse.OptionValueError(
                 "option %s: unknown user: %s" % (opt, value))
     
-    def check_charge (self, opt, value):
-        try:
-            charge_id = int(value)
-        except ValueError:
-            raise optparse.OptionValueError(
-                "option %s: invalid charge id: %s" % (opt, value))
-        try:
-            return Session().query(Charge).filter_by(id=charge_id).one()
-        except InvalidRequestError:
-            raise optparse.OptionValueError(
-                "option %s: unknown charge: %i" % (opt, value))
-    
     TYPES = optparse.Option.TYPES + (
-        "date", "project", "resource", "user", "charge")
+        "date", "project", "resource", "user")
     
     TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
     TYPE_CHECKER['date'] = check_date
     TYPE_CHECKER['project'] = check_project
     TYPE_CHECKER['resource'] = check_resource
     TYPE_CHECKER['user'] = check_user
-    TYPE_CHECKER['charge'] = check_charge
 

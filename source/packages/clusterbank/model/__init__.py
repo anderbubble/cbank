@@ -223,7 +223,7 @@ def project_by_name (name):
     return entity_by_name(Project, name, upstream.get_project_id)
 
 def resource (name_or_id):
-    return entity(Resource,
+    return entity(Resource, name_or_id,
         upstream.get_resource_id, upstream.get_resource_name)
 
 def resource_by_id (id_):
