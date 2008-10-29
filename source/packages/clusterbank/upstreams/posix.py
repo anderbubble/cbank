@@ -12,53 +12,64 @@ __all__ = [
 ]
 
 def get_project_id (name):
+    """Given a group name, return the gid, or None."""
     try:
         return getgrnam(name)[2]
     except KeyError:
         return None
 
-def get_project_name (id):
+def get_project_name (gid):
+    """Given a gid, return the group name, or None."""
     try:
-        return getgrgid(id)[0]
+        return getgrgid(gid)[0]
     except KeyError:
         return None
 
-def get_project_members (id):
+def get_project_members (gid):
+    """Given a gid, return the group member uids."""
     try:
-        return [getpwnam(name)[2] for name in getgrgid(id)[3]]
+        return [getpwnam(name)[2] for name in getgrgid(gid)[3]]
     except KeyError:
         return []
 
-def get_project_owners (id):
+def get_project_owners (gid):
+    """Given a gid, return the uids of users with that default group."""
     try:
-        return [user[2] for user in getpwall() if user[3] == getgrgid(id)[0]]
+        return [user[2] for user in getpwall() if user[3] == getgrgid(gid)[0]]
     except KeyError:
         return []
 
-def get_member_projects (id):
+def get_member_projects (uid):
+    """Given a uid, return the gids of that user's projects."""
     try:
-        return [group[2] for group in getgrall() if getpwuid(id)[0] in group[3]]
+        return [group[2] for group in getgrall()
+            if getpwuid(uid)[0] in group[3]]
     except KeyError:
         return []
 
-def get_owner_projects (id):
-    return [getgrgid(getpwuid(id)[3])[2]]
+def get_owner_projects (uid):
+    """Given a uid, return a list containing that user's default group."""
+    return [getgrgid(getpwuid(uid)[3])[2]]
 
 def get_resource_id (name):
+    """Given a group name, return the gid, or None."""
     return get_project_id(name)
 
-def get_resource_name (id):
-    return get_project_name(id)
+def get_resource_name (gid):
+    """Given a gid, return the group name, or None."""
+    return get_project_name(gid)
 
-def get_user_id (name):
+def get_user_id (username):
+    """Given a username, return the uid, or None."""
     try:
-        return getpwnam(name)[2]
+        return getpwnam(username)[2]
     except KeyError:
         return None
 
-def get_user_name (id):
+def get_user_name (uid):
+    """Given a uid, return the username, or None."""
     try:
-        return getpwuid(id)[0]
+        return getpwuid(uid)[0]
     except KeyError:
         return None
 
