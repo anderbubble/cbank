@@ -1593,4 +1593,11 @@ class TestHoldsReport (CbankTester):
         assert_equal(code, 0)
         args, kwargs = controllers.print_holds_report.calls[0]
         assert_equal(set(args[0]), set(holds))
+    
+    def test_comments (self):
+        code, stdout, stderr = run(
+            report_holds_main, ["-c"])
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_true(kwargs['comments'])
 
