@@ -1505,9 +1505,57 @@ class TestHoldsReport (CbankTester):
         assert_equal(code, 0)
         args, kwargs = controllers.print_holds_report.calls[0]
         assert_equal(set(args[0]), set(holds))
-
-    def test_users (self):
-        code, stdout, stderr = run(report_holds_main, "-u user1".split())
+    
+    def test_other_users (self):
+        code, stdout, stderr = run(report_holds_main,
+            "-p project1 -u user1".split())
         assert_equal(code, NotPermitted.exit_code)
         assert not controllers.print_holds_report.calls
+
+    def test_member_users (self):
+        code, stdout, stderr = run(report_holds_main,
+            "-p project2 -u user1".split())
+        assert_equal(code, NotPermitted.exit_code)
+        assert not controllers.print_holds_report.calls
+    
+    def test_owner_users (self):
+        holds = Session().query(Hold).filter_by(active=True,
+            user=user_by_name("user1")).filter(Hold.allocation.has(
+            Allocation.project == project_by_name("project4")))
+        code, stdout, stderr = run(report_holds_main,
+            "-u user1 -p project4".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        for hold in args[0]:
+            print hold, hold.allocation.project, hold.user
+        assert_equal(set(args[0]), set(holds))
+    
+    def test_member_projects (self):
+        holds = Session().query(Hold).filter_by(
+            user=current_user(), active=True).filter(Hold.allocation.has(
+            Allocation.project==project_by_name("project2")))
+        code, stdout, stderr = run(report_holds_main, "-p project2".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
+    
+    def test_owner_projects (self):
+        holds = Session().query(Hold).filter_by(active=True).filter(
+            Hold.allocation.has(
+            Allocation.project == project_by_name("project4")))
+        code, stdout, stderr = run(report_holds_main, "-p project4".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        for hold in args[0]:
+            print hold, hold.allocation.project, hold.user
+        assert_equal(set(args[0]), set(holds))
+    
+    def test_other_projects (self):
+        holds = Session().query(Hold).filter_by(
+            user=current_user(), active=True).filter(Hold.allocation.has(
+            Allocation.project==project_by_name("project1")))
+        code, stdout, stderr = run(report_holds_main, "-p project1".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
 

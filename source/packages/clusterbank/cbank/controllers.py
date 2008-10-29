@@ -508,8 +508,7 @@ def report_holds_main ():
         if not projects:
             projects = user_projects(user)
         if projects and user_owns_all(user, projects):
-            if not users:
-                users = project_members_all(projects)
+            pass
         else:
             if not users:
                 users = [user]
