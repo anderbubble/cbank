@@ -1277,6 +1277,10 @@ class TestProjectsReport_Admin (TestProjectsReport):
         assert_equal(set(args[0]), set(user_projects(user)))
 
 
+def projects (users):
+    return sum((user_projects(user) for user in users), [])
+
+
 def allocations (projects):
     return sum((project.allocations for project in projects), [])
 
@@ -1457,4 +1461,46 @@ class TestAllocationsReport_Admin (TestAllocationsReport):
         args, kwargs = controllers.print_allocations_report.calls[0]
         assert_equal(set(args[0]), set(allocations_))
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
+
+
+class TestHoldsReport (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        self._print_holds_report = controllers.print_holds_report
+        controllers.print_holds_report = FakeFunc()
+        user1, user2 = [user_by_name(user) for user in ["user1", "user2"]]
+        for project in Session().query(Project):
+            Allocation(project, resource_by_name("resource1"), 0,
+                datetime(2000, 1, 1), datetime(2001, 1, 1))
+        for allocation in Session().query(Allocation):
+            h1 = Hold(allocation, 0)
+            h1.datetime = datetime(2000, 1, 1)
+            h1.user = user1
+            h2 = Hold(allocation, 0)
+            h2.datetime = datetime(1999, 1, 1)
+            h2.user = user2
+            h3 = Hold(allocation, 0)
+            h3.datetime = datetime(1999, 1, 1)
+            h3.active = False
+            h2.user = current_user()
+            h4 = Hold(allocation, 0)
+            h4.datetime = datetime(2001, 1, 1)
+            h2.user = current_user()
+        Session.flush()
+    
+    def test_default (self):
+        holds = Session().query(Hold).filter_by(
+            user=current_user(), active=True).filter(Hold.allocation.has(
+            Allocation.project.has(Project.id.in_(project.id for project in
+            user_projects(current_user())))))
+        code, stdout, stderr = run(report_holds_main)
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
+
+    def test_users (self):
+        code, stdout, stderr = run(report_holds_main, "-u user1".split())
+        assert_equal(code, NotPermitted.exit_code)
+        assert not controllers.print_holds_report.calls
 

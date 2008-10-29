@@ -496,18 +496,25 @@ def report_holds_main ():
     if args:
         raise UnexpectedArguments(args)
     user = get_current_user()
-    member = set(user_projects(user))
-    owned = set(user_projects_owned(user))
-    like_admin = user.is_admin \
-        or (options.projects and set(options.projects).issubset(owned))
-    if like_admin:
-        users = options.users
-        projects = options.projects
+    users = options.users
+    projects = options.projects
+    if user.is_admin:
+        if not users:
+            if projects:
+                users = project_members_all(projects)
+            else:
+                users = Session().query(User).all()
     else:
-        if options.users and set(options.users) != set([user]):
-            raise NotPermitted(user)
-        users = [user]
-        projects = options.projects or member
+        if not projects:
+            projects = user_projects(user)
+        if projects and user_owns_all(user, projects):
+            if not users:
+                users = project_members_all(projects)
+        else:
+            if not users:
+                users = [user]
+            elif set(users) != set([user]):
+                raise NotPermitted(user)
     resources = options.resources or configured_resources()
     comments = options.comments or options.extra_data
     holds = Session().query(Hold)
