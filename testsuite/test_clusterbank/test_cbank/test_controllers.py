@@ -1571,4 +1571,26 @@ class TestHoldsReport (CbankTester):
         assert_equal(code, 0)
         args, kwargs = controllers.print_holds_report.calls[0]
         assert_equal(set(args[0]), set(holds))
+    
+    def test_after (self):
+        holds = Session().query(Hold).filter_by(
+            user=current_user(), active=True).filter(Hold.allocation.has(
+            Allocation.project.has(Project.id.in_(project.id for project in
+            user_projects(current_user()))))).filter(
+            Hold.datetime >= datetime(2000, 1, 1))
+        code, stdout, stderr = run(report_holds_main, "-a 2000-01-01".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
+    
+    def test_before (self):
+        holds = Session().query(Hold).filter_by(
+            user=current_user(), active=True).filter(Hold.allocation.has(
+            Allocation.project.has(Project.id.in_(project.id for project in
+            user_projects(current_user()))))).filter(
+            Hold.datetime < datetime(2000, 1, 1))
+        code, stdout, stderr = run(report_holds_main, "-b 2000-01-01".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
 
