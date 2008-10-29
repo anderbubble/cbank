@@ -172,7 +172,7 @@ def print_new_main_help ():
 @handle_exceptions
 @require_admin
 def new_allocation_main ():
-    parser = build_new_allocation_parser()
+    parser = new_allocation_parser()
     options, args = parser.parse_args()
     project = pop_project(args, 0)
     amount = pop_amount(args, 0)
@@ -197,7 +197,7 @@ def new_allocation_main ():
 @handle_exceptions
 @require_admin
 def new_charge_main ():
-    parser = build_new_charge_parser()
+    parser = new_charge_parser()
     options, args = parser.parse_args()
     project = pop_project(args, 0)
     amount = pop_amount(args, 0)
@@ -225,7 +225,7 @@ def new_charge_main ():
 @handle_exceptions
 @require_admin
 def new_hold_main ():
-    parser = build_new_hold_parser()
+    parser = new_hold_parser()
     options, args = parser.parse_args()
     project = pop_project(args, 0)
     amount = pop_amount(args, 0)
@@ -286,7 +286,7 @@ def pop_amount (args, index):
 @handle_exceptions
 @require_admin
 def new_refund_main ():
-    parser = build_new_refund_parser()
+    parser = new_refund_parser()
     options, args = parser.parse_args()
     charge = pop_charge(args, 0)
     try:
@@ -363,7 +363,7 @@ def project_members_all (projects):
 
 @handle_exceptions
 def report_users_main ():
-    parser = build_report_users_parser()
+    parser = report_users_parser()
     options, args = parser.parse_args()
     if args:
         raise UnexpectedArguments(args)
@@ -398,7 +398,7 @@ def user_projects_all (users):
 
 @handle_exceptions
 def report_projects_main ():
-    parser = build_report_projects_parser()
+    parser = report_projects_parser()
     options, args = parser.parse_args()
     if args:
         raise UnexpectedArguments(args)
@@ -427,7 +427,7 @@ def report_projects_main ():
 
 @handle_exceptions
 def report_allocations_main ():
-    parser = build_report_allocations_parser()
+    parser = report_allocations_parser()
     options, args = parser.parse_args()
     if args:
         raise UnexpectedArguments(args)
@@ -476,7 +476,7 @@ def report_allocations_main ():
 
 @handle_exceptions
 def report_holds_main ():
-    parser = build_report_holds_parser()
+    parser = report_holds_parser()
     options, args = parser.parse_args()
     if args:
         raise UnexpectedArguments(args)
@@ -515,7 +515,7 @@ def report_holds_main ():
 
 @handle_exceptions
 def report_charges_main ():
-    parser = build_report_charges_parser()
+    parser = report_charges_parser()
     options, args = parser.parse_args()
     if args:
         raise UnexpectedArguments(args)
@@ -751,7 +751,7 @@ def parse_units (units):
     return raw_units
 
 
-def build_report_users_parser ():
+def report_users_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
@@ -772,7 +772,7 @@ def build_report_users_parser ():
     return parser
 
 
-def build_report_projects_parser ():
+def report_projects_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
@@ -793,7 +793,7 @@ def build_report_projects_parser ():
     return parser
 
 
-def build_report_allocations_parser ():
+def report_allocations_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
@@ -817,7 +817,7 @@ def build_report_allocations_parser ():
     return parser
 
 
-def build_report_holds_parser ():
+def report_holds_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
@@ -841,7 +841,7 @@ def build_report_holds_parser ():
     return parser
 
 
-def build_report_charges_parser ():
+def report_charges_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
@@ -865,7 +865,7 @@ def build_report_charges_parser ():
     return parser
 
 
-def build_new_allocation_parser ():
+def new_allocation_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-r", "--resource",
         type="resource", dest="resource",
@@ -888,7 +888,7 @@ def build_new_allocation_parser ():
     return parser
 
 
-def build_new_charge_parser ():
+def new_charge_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         type="user", dest="user",
@@ -907,7 +907,7 @@ def build_new_charge_parser ():
     return parser
 
 
-def build_new_hold_parser ():
+def new_hold_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         type="user", dest="user",
@@ -926,7 +926,7 @@ def build_new_hold_parser ():
     return parser
 
 
-def build_new_refund_parser ():
+def new_refund_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save the refund"))
