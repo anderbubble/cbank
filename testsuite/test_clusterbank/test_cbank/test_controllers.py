@@ -1396,3 +1396,65 @@ class TestAllocationsReport (CbankTester):
         assert_equal(set(args[0]), set(allocations_))
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
 
+
+class TestAllocationsReport_Admin (TestAllocationsReport):
+    
+    def setup (self):
+        TestAllocationsReport.setup(self)
+        be_admin()
+    
+    def test_default (self):
+        """all active allocations"""
+        allocations = active(Session.query(Allocation))
+        code, stdout, stderr = run(report_allocations_main)
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_allocations_report.calls[0]
+        assert_equal(set(args[0]), set(allocations))
+
+    def test_other_projects (self):
+        code, stdout, stderr = run(
+            report_allocations_main, "-p project3".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_allocations_report.calls[0]
+        assert_equal(set(args[0]),
+            set(active(project_by_name("project3").allocations)))
+    
+    def test_other_users (self):
+        user = user_by_name("user1")
+        code, stdout, stderr = run(report_allocations_main, "-u user1".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_allocations_report.calls[0]
+        assert_equal(set(kwargs['users']), set([user_by_name("user1")]))
+        assert_equal(set(args[0]),
+            set(active(allocations(user_projects(user)))))
+    
+    def test_resources (self):
+        allocations_ = active([allocation
+            for allocation in Session.query(Allocation).all()
+            if allocation.resource == resource_by_name("resource1")])
+        code, stdout, stderr = run(
+            report_allocations_main, "-r resource1".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_allocations_report.calls[0]
+        assert_equal(set(args[0]), set(allocations_))
+
+    def test_after (self):
+        allocations_ = [a for a in Session.query(Allocation)
+            if a.expiration > datetime(2001, 1, 1)]
+        code, stdout, stderr = run(
+            report_allocations_main, "-a 2001-01-01".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_allocations_report.calls[0]
+        assert_equal(set(args[0]), set(allocations_))
+        assert_equal(kwargs['after'], datetime(2001, 1, 1))
+    
+    def test_before (self):
+        allocations_ = [a for a in Session.query(Allocation)
+            if a.start <= datetime(2000, 1, 1)]
+        code, stdout, stderr = run(
+            report_allocations_main, "-b 2000-01-01".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_allocations_report.calls[0]
+        assert_equal(set(args[0]), set(allocations_))
+        assert_equal(kwargs['before'], datetime(2000, 1, 1))
+
