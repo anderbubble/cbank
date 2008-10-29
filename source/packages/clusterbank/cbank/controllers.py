@@ -387,6 +387,9 @@ def report_users_main ():
     else:
         if not projects:
             projects = user_projects(user)
+        print user
+        print projects
+        print user_owns_all(user, projects)
         if projects and user_owns_all(user, projects):
             if not users:
                 users = project_members_all(projects)
