@@ -1,8 +1,9 @@
 """model entities
 
 Classes:
-Resource -- resource that can be allocated
+User -- user that can use resources
 Project -- project to which resources can be allocated
+Resource -- resource that can be allocated
 Request -- request for amount on a resource
 Allocation -- record of amount allocated to a project
 CreditLimit -- a maximum negative value for a project on a resource
@@ -16,6 +17,7 @@ import ConfigParser
 
 from clusterbank import config
 
+
 __all__ = [
     "upstream", "User", "Project", "Resource",
     "Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund"
@@ -23,17 +25,40 @@ __all__ = [
 
 
 class UpstreamProxy (object):
+    
+    """A proxy for upstream modules.
+    
+    An upstream proxy provides a mechanism for  generic coupling with
+    upstream modules.
+    
+    Attributes:
+    use -- the upstream module to proxy to
+    """
 
     def __init__ (self, use=None):
+        """Initialize an UpstreamProxy.
+        
+        Arguments:
+        use -- the upstream module to proxy to
+        """
         self.use = use
 
     def __getattr__ (self, name):
         return getattr(self.use, name)
 
+
 upstream = UpstreamProxy()
 
 
 class Entity (object):
+    
+    """A generic accounting entity.
+    
+    Subclasses of this class represent the elements of accounting.
+    
+    Attributes:
+    id -- the entity id
+    """
     
     def __init__ (self):
         self.id = None
@@ -51,9 +76,26 @@ class Entity (object):
 
 class UpstreamEntity (Entity):
     
-    name = None
+    """A generic upstream entity.
+    
+    Subclasses of this class represent the organizational entities
+    defined elsewhere.
+    
+    Attributes:
+    id -- the entity id (used to locate the entity in the upstream module)
+    
+    Properties:
+    name -- override in a subclass
+    """
+    
+    name = property(lambda:None)
     
     def __init__ (self, id_):
+        """Initialize an UpstreamEntity.
+        
+        Arguments:
+        id_ -- the id of the upstream entity
+        """
         Entity.__init__(self)
         self.id = id_
     
@@ -73,32 +115,42 @@ class User (UpstreamEntity):
     """User associated with a hold or charge.
     
     Properties:
-    id -- unique integer identifier
-    name -- canonical name of the user (from upstream)
+    name -- upstream name of the user
+    projects -- upstream project ids the user is a member of
+    projects_owned -- upstream project ids the user owns
     is_admin -- whether the user has admin privileges
     """
     
     def __init__ (self, id_):
+        """Initialize an upstream-backed user.
+        
+        Arguments:
+        id_ -- the user's upstream id
+        """
         UpstreamEntity.__init__(self, id_)
         self.holds = []
         self.charges = []
     
     def _get_name (self):
+        """Retrieve the user's name from upstream."""
         return upstream.get_user_name(self.id)
     
     name = property(_get_name)
     
     def _get_projects (self):
+        """Retrieve the ids of the user's projects from upstream."""
         return upstream.get_member_projects(self.id)
     
     projects = property(_get_projects)
     
     def _get_projects_owned (self):
+        """Retrieve the ids of the projects owned by the user from upstream."""
         return upstream.get_owner_projects(self.id)
     
     projects_owned = property(_get_projects_owned)
     
     def _get_is_admin (self):
+        """Whether or not the user is configured as an admin."""
         try:
             admins = config.get("cbank", "admins")
         except ConfigParser.Error:
@@ -114,32 +166,46 @@ class Project (UpstreamEntity):
     
     """Project to which resources can be allocated.
     
-    Properties:
-    id -- unique integer identifier
-    name -- canonical name of the project (from upstream)
+    Attributes:
     requests -- request from the project
     allocations -- allocations to the project
     credit_limits -- credit limits for the project
     credit_limit -- credit limit for a resource at a given datetime
+    
+    Properties:
+    name -- upstream name of the project
+    members -- upstream user ids of the project's members
+    owners -- upstream user ids of the project's owners
+    
+    Methods:
+    charge -- charge the project's active allocations
     """
     
     def __init__ (self, id_):
+        """Initialize an upstream-backed project.
+        
+        Arguments:
+        id_ -- the id of the project
+        """
         UpstreamEntity.__init__(self, id_)
         self.requests = []
         self.allocations = []
         self.credit_limits = []
     
     def _get_name (self):
+        """Retrieve the project's name from upstream."""
         return upstream.get_project_name(self.id)
     
     name = property(_get_name)
 
     def _get_members (self):
+        """Retrieve the ids of the project's users from upstream."""
         return upstream.get_project_members(self.id)
     
     members = property(_get_members)
     
     def _get_owners (self):
+        """Retrieve the ids of the project's owners from upstream."""
         return upstream.get_project_owners(self.id)
     
     owners = property(_get_owners)
@@ -157,6 +223,13 @@ class Project (UpstreamEntity):
             return None
     
     def charge (self, resource, amount):
+        """Charge any available allocation to the project for a given amount
+        of a resource.
+        
+        Arguments:
+        resource -- the resource the charge is for
+        amount -- how much to charge
+        """
         now = datetime.now()
         allocations = [allocation for allocation in self.allocations
             if allocation.start <= now and allocation.expiration > now
@@ -169,21 +242,28 @@ class Resource (UpstreamEntity):
     
     """Resource that can be allocated to a project.
     
-    Properties:
-    id -- canonical id of the resource
-    name -- canonical name of the resource (from upstream)
+    Attributes:
     requests -- requests for the resource
     allocations -- allocations of the resource
     credit_limits -- credit limits on the resource
+    
+    Properties:
+    name -- upstream name of the resource
     """
     
     def __init__ (self, id_):
+        """Initialize an upstream-backed resource.
+        
+        Arguments:
+        id_ -- the id of the resource
+        """
         UpstreamEntity.__init__(self, id_)
         self.requests = []
         self.allocations = []
         self.credit_limits = []
     
     def _get_name (self):
+        """Retrieve the resource's name from upstream."""
         return upstream.get_resource_name(self.id)
     
     name = property(_get_name)
@@ -219,8 +299,7 @@ class Allocation (Entity):
     
     """An amount of a resource allocated to a project.
     
-    Properties:
-    id -- unique integer identifier
+    Attributes:
     project -- project to which the resource has been allocated
     resource -- resource allocated
     datetime -- when the allocation was entered
@@ -231,9 +310,23 @@ class Allocation (Entity):
     requests -- requests answered by this allocation
     holds -- holds on this allocation
     charges -- charges against this allocation
+    
+    Properties:
+    amount_charged -- the sum of effective charges
+    amount_held -- the sum of active holds
+    amount_available -- the amount available to be charged
     """
     
     def __init__ (self, project, resource, amount, start, expiration):
+        """Initialize a new resource allocation.
+        
+        Arguments:
+        project -- the project to allocate to
+        resource -- the resource allocated
+        amount -- how much of the resource to allocate
+        start -- when the allocation becomes active
+        expiration -- when the allocation is no longer active
+        """
         Entity.__init__(self)
         self.datetime = datetime.now()
         self.project = project
@@ -247,21 +340,25 @@ class Allocation (Entity):
         self.charges = []
     
     def _get_amount_charged (self):
+        """Compute the sum of effective charges (after refunds)."""
         return sum(charge.effective_amount for charge in self.charges)
     
     amount_charged = property(_get_amount_charged)
     
     def _get_amount_held (self):
+        """Compute the sum of the effective amount currently on hold."""
         return sum(hold.amount or 0 for hold in self.holds if hold.active)
     
     amount_held = property(_get_amount_held)
     
     def _get_amount_available (self):
+        """Compute the amount available for charges."""
         return self.amount - (self.amount_charged + self.amount_held)
     
     amount_available = property(_get_amount_available)
     
     def _get_active (self):
+        """Determine whether or not this allocation is still active."""
         return self.start <= datetime.now() < self.expiration
     
     active = property(_get_active)
@@ -301,8 +398,7 @@ class Hold (Entity):
     A hold may be placed on an account when a job starts, and may be replaced
     with a charge when the job finishes.
     
-    Properties:
-    id -- unique integer identifier
+    Attributes:
     allocation -- allocation to which the hold applies
     datetime -- when the hold was entered
     amount -- amount held
@@ -314,6 +410,12 @@ class Hold (Entity):
     """
     
     def __init__ (self, allocation, amount):
+        """Initialize a new hold.
+        
+        Arguments:
+        allocation -- the allocation to hold an amount of
+        amount -- how much to hold
+        """
         Entity.__init__(self)
         self.datetime = datetime.now()
         self.allocation = allocation
@@ -332,7 +434,6 @@ class Hold (Entity):
         
         Keyword arguments:
         amount -- total amount to be held (required)
-        *additional keyword arguments are used to construct each hold
         
         Example:
         A project has multiple allocations on a single resource. Use a
@@ -372,7 +473,22 @@ class Hold (Entity):
 
 class Job (Entity):
     
+    """A job run on a computational resource.
+    
+    Attributes:
+    resource -- the resource the job ran on
+    start -- when the job started
+    end -- when the job ended
+    charges -- charges associated with the job
+    """
+    
     def __init__ (self, resource, id_):
+        """Initialize a new job.
+        
+        Arguments:
+        resource -- the resource the job ran on
+        id -- the job id
+        """
         Entity.__init__(self)
         self.id = id_
         self.resource = resource
@@ -385,19 +501,31 @@ class Charge (Entity):
     
     """A charge against an allocation.
     
-    Properties:
-    id -- unique integer identifier
+    Attributes:
     allocation -- allocation to which the charge applies
     amount -- amount charged
     datetime -- when the chage was entered
     comment -- misc. comments
     refunds -- refunds from the charge
     
+    Properties:
+    amount_refunded -- the sum of refunds of this charge
+    effective_amount -- the effective amount of the charge (after refunds)
+    
     Classmethods:
     distributed -- construct multiple charges across multiple allocations
+    
+    Methods:
+    transfer -- 
     """
     
     def __init__ (self, allocation, amount):
+        """Initialize a new charge.
+        
+        Arguments:
+        allocation -- the allocation to charge
+        amount -- the amount to charge
+        """
         Entity.__init__(self)
         self.datetime = datetime.now()
         self.allocation = allocation
@@ -452,16 +580,24 @@ class Charge (Entity):
         return charges
     
     def _get_amount_refunded (self):
+        """Compute the sum of refunds of the charge."""
         return sum(refund.amount or 0 for refund in self.refunds)
     
     amount_refunded = property(_get_amount_refunded)
     
     def _get_effective_amount (self):
+        """Compute the difference between the charge and refunds."""
         return self.amount - self.amount_refunded
     
     effective_amount = property(_get_effective_amount)
     
     def transfer (self, project, amount=None):
+        """Transfer a charge to allocations of another project.
+        
+        Arguments:
+        project -- the project to transfer the charge to
+        amount -- the amount to tranfer (default all)
+        """
         if amount is None:
             amount = self.effective_amount
         charges = project.charge(self.allocation.resource, amount)
@@ -473,15 +609,19 @@ class Charge (Entity):
         return refund, charges
     
     def refund (self, amount=None):
+        """Refund an amount of a charge.
+        
+        Arguments:
+        amount (default all of effective charge)
+        """
         return Refund(self, amount)
 
 
 class Refund (Entity):
     
-    """A refund against a charge.
+    """A refund of a charge.
     
-    Properties:
-    id -- unique integer identifier
+    Attributes:
     charge -- charge being refunded
     datetime -- when the charge was entered
     amount -- amount refunded
@@ -489,12 +629,18 @@ class Refund (Entity):
     """
     
     def __init__ (self, charge, amount=None):
+        """Initialize a new refund.
+        
+        Attributes:
+        charge -- the charge refunded
+        amount -- the amount refunded
+        """
         Entity.__init__(self)
         self.datetime = datetime.now()
         self.charge = charge
         if amount is not None:
             self.amount = amount
         else:
-            self.amount = self.charge.effective_amount
+            self.amount = charge.effective_amount
         self.comment = None
 
