@@ -262,6 +262,9 @@ class Allocation (Entity):
     charges -- charges against this allocation
     
     Properties:
+    active -- if the allocation is currently active
+    
+    Methods:
     amount_charged -- the sum of effective charges
     amount_held -- the sum of active holds
     amount_available -- the amount available to be charged
@@ -288,23 +291,17 @@ class Allocation (Entity):
         self.holds = []
         self.charges = []
     
-    def _get_amount_charged (self):
+    def amount_charged (self):
         """Compute the sum of effective charges (after refunds)."""
-        return sum(charge.effective_amount for charge in self.charges)
+        return sum(charge.effective_amount() for charge in self.charges)
     
-    amount_charged = property(_get_amount_charged)
-    
-    def _get_amount_held (self):
+    def amount_held (self):
         """Compute the sum of the effective amount currently on hold."""
         return sum(hold.amount or 0 for hold in self.holds if hold.active)
     
-    amount_held = property(_get_amount_held)
-    
-    def _get_amount_available (self):
+    def amount_available (self):
         """Compute the amount available for charges."""
-        return self.amount - (self.amount_charged + self.amount_held)
-    
-    amount_available = property(_get_amount_available)
+        return self.amount - (self.amount_charged() + self.amount_held())
     
     def _get_active (self):
         """Determine whether or not this allocation is still active."""
@@ -366,12 +363,13 @@ class Hold (Entity):
         
         holds = list()
         for allocation in allocations:
-            if allocation.amount_available <= 0:
+            amount_available = allocation.amount_available()
+            if amount_available <= 0:
                 continue
-            if allocation.amount_available >= amount:
+            if amount_available >= amount:
                 hold = cls(allocation, amount)
             else:
-                hold = cls(allocation, allocation.amount_available)
+                hold = cls(allocation, amount_available)
             holds.append(hold)
             amount -= hold.amount
             if amount <= 0:
@@ -431,15 +429,13 @@ class Charge (Entity):
     comment -- misc. comments
     refunds -- refunds from the charge
     
-    Properties:
-    amount_refunded -- the sum of refunds of this charge
-    effective_amount -- the effective amount of the charge (after refunds)
-    
     Classmethods:
     distributed -- construct multiple charges across multiple allocations
     
     Methods:
-    transfer -- 
+    transfer -- transfer a charged amount to allocations of another project
+    amount_refunded -- the sum of refunds of this charge
+    effective_amount -- the effective amount of the charge (after refunds)
     """
     
     def __init__ (self, allocation, amount):
@@ -474,12 +470,13 @@ class Charge (Entity):
         
         charges = []
         for allocation in allocations:
-            if allocation.amount_available <= 0:
+            amount_available = allocation.amount_available()
+            if amount_available <= 0:
                 continue
-            if allocation.amount_available >= amount:
+            if amount_available >= amount:
                 charge = cls(allocation, amount)
             else:
-                charge = cls(allocation, allocation.amount_available)
+                charge = cls(allocation, amount_available)
             amount -= charge.amount
             charges.append(charge)
             if amount <= 0:
@@ -502,17 +499,13 @@ class Charge (Entity):
         
         return charges
     
-    def _get_amount_refunded (self):
+    def amount_refunded (self):
         """Compute the sum of refunds of the charge."""
         return sum(refund.amount or 0 for refund in self.refunds)
     
-    amount_refunded = property(_get_amount_refunded)
-    
-    def _get_effective_amount (self):
+    def effective_amount (self):
         """Compute the difference between the charge and refunds."""
-        return self.amount - self.amount_refunded
-    
-    effective_amount = property(_get_effective_amount)
+        return self.amount - self.amount_refunded()
     
     def transfer (self, project, amount=None):
         """Transfer a charge to allocations of another project.
@@ -522,7 +515,7 @@ class Charge (Entity):
         amount -- the amount to tranfer (default all)
         """
         if amount is None:
-            amount = self.effective_amount
+            amount = self.effective_amount()
         charges = project.charge(self.allocation.resource, amount)
         for charge in charges:
             charge.user = self.user
@@ -564,6 +557,6 @@ class Refund (Entity):
         if amount is not None:
             self.amount = amount
         else:
-            self.amount = charge.effective_amount
+            self.amount = charge.effective_amount()
         self.comment = None
 

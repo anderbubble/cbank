@@ -109,7 +109,7 @@ class SessionConstraints (SessionExtension):
             if isinstance(instance, Refund)]
         charges = set([refund.charge for refund in refunds])
         for charge in charges:
-            if charge.effective_amount < 0:
+            if charge.effective_amount() < 0:
                 raise InsufficientFunds("not enough funds available")
     
     def before_commit (self, session):

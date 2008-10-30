@@ -79,60 +79,61 @@ class TestAllocation (object):
     def test_amount_with_active_hold (self):
         allocation = Allocation(None, None, 1200, None, None)
         hold = Hold(allocation, 900)
-        assert allocation.amount_available == 300
+        assert allocation.amount_available() == 300
     
     def test_amount_with_inactive_hold (self):
         allocation = Allocation(None, None, 1200, None, None)
         hold = Hold(allocation, allocation.amount)
         hold.active = False
-        assert allocation.amount_available == 1200
+        assert allocation.amount_available() == 1200
     
     def test_amount_with_other_charge (self):
         allocation = Allocation(None, None, 1200, None, None)
         Charge(allocation, 600)
         Charge(allocation, 601)
-        assert allocation.amount_available == -1
+        assert allocation.amount_available() == -1
     
     def test_amount_with_refunded_charge (self):
         allocation = Allocation(None, None, 1200, None, None)
         charge = Charge(allocation, 600)
         Refund(charge, 600)
         Charge(allocation, 300)
-        assert allocation.amount_available == 900, allocation.amount_available
+        assert allocation.amount_available() == 900, \
+            allocation.amount_available()
     
     def test_amount_with_partially_refunded_charge (self):
         allocation = Allocation(None, None, 1200, None, None)
         charge = Charge(allocation, 600)
         Refund(charge, 400)
         Charge(allocation, 300)
-        assert allocation.amount_available == 700
+        assert allocation.amount_available() == 700
     
     def test_greater_amount_with_partially_refunded_charge (self):
         allocation = Allocation(None, None, 1200, None, None)
         charge = Charge(allocation, 1200)
         refund = Refund(charge, 600)
         Charge(allocation, 601)
-        assert allocation.amount_available == -1
+        assert allocation.amount_available() == -1
     
     def test_amount_available (self):
         allocation = Allocation(None, None, 1500, None, None)
-        assert allocation.amount_available == 1500
+        assert allocation.amount_available() == 1500
         hold1 = Hold(allocation, 100)
-        assert allocation.amount_available == 1400
+        assert allocation.amount_available() == 1400
         hold2 = Hold(allocation, 200)
-        assert allocation.amount_available == 1200
+        assert allocation.amount_available() == 1200
         charge1 = Charge(allocation, 100)
-        assert allocation.amount_available == 1100
+        assert allocation.amount_available() == 1100
         charge2 = Charge(allocation, 200)
-        assert allocation.amount_available == 900
+        assert allocation.amount_available() == 900
         hold1.active = False
-        assert allocation.amount_available == 1000
+        assert allocation.amount_available() == 1000
         hold2.active = False
-        assert allocation.amount_available == 1200
+        assert allocation.amount_available() == 1200
         refund1 = Refund(charge1, 50)
-        assert allocation.amount_available == 1250
+        assert allocation.amount_available() == 1250
         refund2 = Refund(charge2, 100)
-        assert allocation.amount_available == 1350
+        assert allocation.amount_available() == 1350
 
 
 class TestHold (object):
@@ -237,11 +238,11 @@ class TestCharge (object):
     
     def test_effective_amount (self):
         charge = Charge(None, 100)
-        assert charge.effective_amount == 100
+        assert charge.effective_amount() == 100
         Refund(charge, 10)
-        assert charge.effective_amount == 90
+        assert charge.effective_amount() == 90
         Refund(charge, 20)
-        assert charge.effective_amount == 70
+        assert charge.effective_amount() == 70
 
 
 class TestRefund (object):

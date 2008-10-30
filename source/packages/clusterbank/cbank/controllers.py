@@ -290,7 +290,7 @@ def new_refund_main ():
     try:
         amount = pop_amount(args, 0)
     except MissingArgument:
-        amount = charge.effective_amount
+        amount = charge.effective_amount()
     if args:
         raise UnexpectedArguments(args)
     refund = Refund(charge, amount)

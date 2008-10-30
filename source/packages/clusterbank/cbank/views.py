@@ -461,8 +461,8 @@ def print_charges (charges):
 
 def print_charge (charge):
     charge_str = "Charge %s -- %s" % (
-        charge, display_units(charge.effective_amount))
-    if charge.amount != charge.effective_amount:
+        charge, display_units(charge.effective_amount()))
+    if charge.amount != charge.effective_amount():
         addendum = "(originally %s)" % display_units(charge.amount)
         charge_str = " ".join([charge_str, addendum])
     print charge_str
