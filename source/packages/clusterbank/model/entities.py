@@ -6,7 +6,6 @@ Project -- project to which resources can be allocated
 Resource -- resource that can be allocated
 Request -- request for amount on a resource
 Allocation -- record of amount allocated to a project
-CreditLimit -- a maximum negative value for a project on a resource
 Hold -- a potential charge against a allocation
 Charge -- charge against a allocation
 Refund -- refund of a charge
@@ -20,7 +19,7 @@ from clusterbank import config
 
 __all__ = [
     "upstream", "User", "Project", "Resource",
-    "Request", "Allocation", "CreditLimit", "Hold", "Charge", "Refund"
+    "Request", "Allocation", "Hold", "Charge", "Refund"
 ]
 
 
@@ -169,8 +168,6 @@ class Project (UpstreamEntity):
     Attributes:
     requests -- request from the project
     allocations -- allocations to the project
-    credit_limits -- credit limits for the project
-    credit_limit -- credit limit for a resource at a given datetime
     
     Properties:
     name -- upstream name of the project
@@ -190,7 +187,6 @@ class Project (UpstreamEntity):
         UpstreamEntity.__init__(self, id_)
         self.requests = []
         self.allocations = []
-        self.credit_limits = []
     
     def _get_name (self):
         """Retrieve the project's name from upstream."""
@@ -209,18 +205,6 @@ class Project (UpstreamEntity):
         return upstream.get_project_owners(self.id)
     
     owners = property(_get_owners)
-    
-    def credit_limit (self, resource, dt=None):
-        if dt is None:
-            dt = datetime.now()
-        credit_limits = [limit for limit in self.credit_limits
-            if limit.resource == resource and limit.start <= dt]
-        credit_limits = sorted(credit_limits,
-            key=lambda credit_limit:credit_limit.start)
-        try:
-            return credit_limits[0]
-        except IndexError:
-            return None
     
     def charge (self, resource, amount):
         """Charge any available allocation to the project for a given amount
@@ -245,7 +229,6 @@ class Resource (UpstreamEntity):
     Attributes:
     requests -- requests for the resource
     allocations -- allocations of the resource
-    credit_limits -- credit limits on the resource
     
     Properties:
     name -- upstream name of the resource
@@ -260,8 +243,7 @@ class Resource (UpstreamEntity):
         UpstreamEntity.__init__(self, id_)
         self.requests = []
         self.allocations = []
-        self.credit_limits = []
-    
+
     def _get_name (self):
         """Retrieve the resource's name from upstream."""
         return upstream.get_resource_name(self.id)
@@ -362,32 +344,6 @@ class Allocation (Entity):
         return self.start <= datetime.now() < self.expiration
     
     active = property(_get_active)
-
-
-class CreditLimit (Entity):
-    
-    """A credit limit for charges by a project on a resource.
-    
-    Properties:
-    id -- unique integer identifier
-    project -- project to which the credit limit applies
-    resource -- resource to which the credit limit applies
-    datetime -- when the credit limit was entered
-    start -- when the credit limit goes into effect
-    amount -- amount available through credit
-    comment -- misc. comments
-    
-    Constraints:
-    unique by project, resource, and start
-    """
-    
-    def __init__ (self, project, resource, amount):
-        Entity.__init__(self)
-        self.datetime = self.start = datetime.now()
-        self.project = project
-        self.resource = resource
-        self.amount = amount
-        self.comment = None
 
 
 class Hold (Entity):

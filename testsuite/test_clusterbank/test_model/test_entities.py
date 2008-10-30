@@ -5,12 +5,11 @@ from datetime import datetime, timedelta
 import clusterbank.model
 import clusterbank.exceptions as exceptions
 from clusterbank.model.entities import User, Project, Resource, \
-    Request, Allocation, Hold, Charge, Refund, CreditLimit
+    Request, Allocation, Hold, Charge, Refund
 
 __all__ = [
     "TestUser", "TestProject", "TestResource",
     "TestRequest", "TestAllocation",
-    "TestCreditLimit",
     "TestHold", "TestCharge", "TestRefund",
 ]
 
@@ -157,22 +156,6 @@ class TestAllocation (object):
         assert allocation.amount_available == 1250
         refund2 = Refund(charge2, 100)
         assert allocation.amount_available == 1350
-
-
-class TestCreditLimit (object):
-    
-    def test_init (self):
-        now = datetime.now()
-        project = Project(1)
-        resource = Resource(1)
-        credit_limit = CreditLimit(project, resource, 100)
-        assert credit_limit.id == None
-        assert datetime.now() - credit_limit.datetime < timedelta(minutes=1)
-        assert credit_limit.project is project
-        assert credit_limit.resource is resource
-        assert credit_limit.start == credit_limit.datetime
-        assert credit_limit.amount == 100
-        assert credit_limit.comment is None
 
 
 class TestHold (object):

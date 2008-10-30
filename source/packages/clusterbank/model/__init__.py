@@ -31,17 +31,17 @@ from sqlalchemy.orm.session import SessionExtension
 
 from clusterbank import config
 from clusterbank.model.entities import upstream, User, Project, \
-    Resource, Request, Allocation, CreditLimit, Hold, Job, Charge, Refund
+    Resource, Request, Allocation, Hold, Job, Charge, Refund
 from clusterbank.model.database import metadata, \
     users, projects, resources, requests, \
-    requests_allocations, allocations, credit_limits, \
+    requests_allocations, allocations, \
     holds, jobs, charges, jobs_charges, refunds
 from clusterbank.exceptions import InsufficientFunds, NotFound
 
 __all__ = [
     "upstream", "Session",
     "User", "Project", "Resource",
-    "Request", "Allocation", "CreditLimit", "Hold", "Job", "Charge", "Refund",
+    "Request", "Allocation", "Hold", "Job", "Charge", "Refund",
     "user", "user_by_id", "user_by_name",
     "project", "project_by_id", "project_by_name",
     "resource", "resource_by_id", "resource_by_name",
@@ -90,10 +90,6 @@ class SessionConstraints (SessionExtension):
                 if entity.amount < 0:
                     raise ValueError(
                         "invalid amount for allocation: %r" % entity.amount)
-            elif isinstance(entity, CreditLimit):
-                if entity.amount < 0:
-                    raise ValueError(
-                        "invalid amount for credit limit: %r" % entity.amount)
             elif isinstance(entity, Hold):
                 if entity.amount < 0:
                     raise ValueError(
@@ -111,12 +107,7 @@ class SessionConstraints (SessionExtension):
         holds = [instance for instance in (session.new | session.dirty)
             if isinstance(instance, Hold)]
         for allocation in set([hold.allocation for hold in holds]):
-            credit_limit = allocation.project.credit_limit(allocation.resource)
-            if credit_limit:
-                credit_limit = credit_limit.amount
-            else:
-                credit_limit = 0
-            if allocation.amount_available < -credit_limit:
+            if allocation.amount_available < 0:
                 raise InsufficientFunds("not enough funds available")
     
     def forbid_refunds_greater_than_charge (self, session):
@@ -163,15 +154,6 @@ mapper(Allocation, allocations, properties={
     'comment':allocations.c.comment,
     'requests':relation(Request, backref="allocations",
         secondary=requests_allocations)})
-
-mapper(CreditLimit, credit_limits, properties={
-    'id':credit_limits.c.id,
-    'project':relation(Project, backref="credit_limits"),
-    'resource':relation(Resource, backref="credit_limits"),
-    'start':credit_limits.c.start,
-    'datetime':credit_limits.c.datetime,
-    'amount':credit_limits.c.amount,
-    'comment':credit_limits.c.comment})
 
 mapper(Hold, holds, properties={
     'id':holds.c.id,

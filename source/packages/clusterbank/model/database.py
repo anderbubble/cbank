@@ -9,7 +9,6 @@ projects -- projects
 resources -- resources
 requests -- requests
 allocations -- allocations
-credit_limits -- credit limits
 holds -- holds
 jobs -- jobs run on a resource
 charges -- charges
@@ -24,7 +23,7 @@ from sqlalchemy import MetaData, Table, Column, ForeignKey, \
 __all__ = [
     "metadata",
     "users", "projects", "resources",
-    "requests", "allocations", "credit_limits",
+    "requests", "allocations",
     "holds", "jobs", "charges", "jobs_charges", "refunds",
 ]
 
@@ -67,17 +66,6 @@ requests_allocations = Table("requests_allocations", metadata,
     Column("request_id", None, ForeignKey("requests.id"), primary_key=True),
     Column("allocation_id", None, ForeignKey("allocations.id"),
         primary_key=True),
-    mysql_engine="InnoDB")
-
-credit_limits = Table("credit_limits", metadata,
-    Column("id", types.Integer, primary_key=True),
-    Column("project_id", None, ForeignKey("projects.id"), nullable=False),
-    Column("resource_id", None, ForeignKey("resources.id"), nullable=False),
-    Column("datetime", types.DateTime, nullable=False, default=datetime.now),
-    Column("start", types.DateTime, nullable=False),
-    Column("amount", types.Integer, nullable=False),
-    Column("comment", types.Text),
-    UniqueConstraint("project_id", "resource_id", "start"),
     mysql_engine="InnoDB")
 
 holds = Table("holds", metadata,
