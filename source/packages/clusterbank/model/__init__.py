@@ -1,13 +1,12 @@
 """The clusterbank model.
 
 This package contains the local data model, including reflected projects
-and resources from upstream, along with requests, allocations, charges, etc.
+and resources from upstream, along with allocations, charges, etc.
 
 Classes:
 User -- a user that can charge
 Project -- a project that can use a resource
 Resource -- a resource that can be allocated
-Request -- request for an allocation
 Allocation -- allocation of a resource to a project
 Hold -- hold of funds from an account
 Job -- job run on a resource
@@ -31,17 +30,16 @@ from sqlalchemy.orm.session import SessionExtension
 
 from clusterbank import config
 from clusterbank.model.entities import upstream, User, Project, \
-    Resource, Request, Allocation, Hold, Job, Charge, Refund
+    Resource, Allocation, Hold, Job, Charge, Refund
 from clusterbank.model.database import metadata, \
-    users, projects, resources, requests, \
-    requests_allocations, allocations, \
-    holds, jobs, charges, jobs_charges, refunds
+    users, projects, resources, \
+    allocations, holds, jobs, charges, jobs_charges, refunds
 from clusterbank.exceptions import InsufficientFunds, NotFound
 
 __all__ = [
     "upstream", "Session",
     "User", "Project", "Resource",
-    "Request", "Allocation", "Hold", "Job", "Charge", "Refund",
+    "Allocation", "Hold", "Job", "Charge", "Refund",
     "user", "user_by_id", "user_by_name",
     "project", "project_by_id", "project_by_name",
     "resource", "resource_by_id", "resource_by_name",
@@ -82,11 +80,7 @@ class SessionConstraints (SessionExtension):
     
     def forbid_negative_amounts (self, session):
         for entity in (session.new | session.dirty):
-            if isinstance(entity, Request):
-                if entity.amount < 0:
-                    raise ValueError(
-                        "invalid amount for request: %r" % entity.amount)
-            elif isinstance(entity, Allocation):
+            if isinstance(entity, Allocation):
                 if entity.amount < 0:
                     raise ValueError(
                         "invalid amount for allocation: %r" % entity.amount)
@@ -134,15 +128,6 @@ mapper(Project, projects, properties={
 mapper(Resource, resources, properties={
     'id':resources.c.id})
 
-mapper(Request, requests, properties={
-    'id':requests.c.id,
-    'project':relation(Project, backref="requests"),
-    'resource':relation(Resource, backref="requests"),
-    'datetime':requests.c.datetime,
-    'amount':requests.c.amount,
-    'comment':requests.c.comment,
-    'start':requests.c.start})
-
 mapper(Allocation, allocations, properties={
     'id':allocations.c.id,
     'project':relation(Project, backref="allocations"),
@@ -151,9 +136,7 @@ mapper(Allocation, allocations, properties={
     'amount':allocations.c.amount,
     'start':allocations.c.start,
     'expiration':allocations.c.expiration,
-    'comment':allocations.c.comment,
-    'requests':relation(Request, backref="allocations",
-        secondary=requests_allocations)})
+    'comment':allocations.c.comment})
 
 mapper(Hold, holds, properties={
     'id':holds.c.id,

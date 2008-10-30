@@ -4,7 +4,6 @@ Classes:
 User -- user that can use resources
 Project -- project to which resources can be allocated
 Resource -- resource that can be allocated
-Request -- request for amount on a resource
 Allocation -- record of amount allocated to a project
 Hold -- a potential charge against a allocation
 Charge -- charge against a allocation
@@ -19,7 +18,7 @@ from clusterbank import config
 
 __all__ = [
     "upstream", "User", "Project", "Resource",
-    "Request", "Allocation", "Hold", "Charge", "Refund"
+    "Allocation", "Hold", "Charge", "Refund"
 ]
 
 
@@ -166,7 +165,6 @@ class Project (UpstreamEntity):
     """Project to which resources can be allocated.
     
     Attributes:
-    requests -- request from the project
     allocations -- allocations to the project
     
     Properties:
@@ -185,7 +183,6 @@ class Project (UpstreamEntity):
         id_ -- the id of the project
         """
         UpstreamEntity.__init__(self, id_)
-        self.requests = []
         self.allocations = []
     
     def _get_name (self):
@@ -227,7 +224,6 @@ class Resource (UpstreamEntity):
     """Resource that can be allocated to a project.
     
     Attributes:
-    requests -- requests for the resource
     allocations -- allocations of the resource
     
     Properties:
@@ -241,7 +237,6 @@ class Resource (UpstreamEntity):
         id_ -- the id of the resource
         """
         UpstreamEntity.__init__(self, id_)
-        self.requests = []
         self.allocations = []
 
     def _get_name (self):
@@ -249,32 +244,6 @@ class Resource (UpstreamEntity):
         return upstream.get_resource_name(self.id)
     
     name = property(_get_name)
-
-
-class Request (Entity):
-    
-    """A request for amount on a resource.
-    
-    Properties:
-    id -- unique integer identifier
-    project -- project making the request
-    resource -- resource for which an allocation is request
-    datetime -- timestamp for when this request was entered
-    amount -- amount requested
-    start -- date when the allocation is needed
-    comment -- misc. comments
-    allocations -- allocations that was made in response to the request
-    """
-    
-    def __init__ (self, project, resource, amount, start=None):
-        Entity.__init__(self)
-        self.datetime = datetime.now()
-        self.project = project
-        self.resource = resource
-        self.amount = amount
-        self.start = start
-        self.comment = None
-        self.allocations = []
 
 
 class Allocation (Entity):
@@ -289,7 +258,6 @@ class Allocation (Entity):
     start -- when the allocation becomes active
     expiration -- when the allocation expires
     comment -- misc. comments
-    requests -- requests answered by this allocation
     holds -- holds on this allocation
     charges -- charges against this allocation
     
@@ -317,7 +285,6 @@ class Allocation (Entity):
         self.start = start
         self.expiration = expiration
         self.comment = None
-        self.requests = []
         self.holds = []
         self.charges = []
     

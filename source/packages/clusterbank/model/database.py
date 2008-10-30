@@ -7,7 +7,6 @@ Objects:
 metadata -- master metadata object
 projects -- projects
 resources -- resources
-requests -- requests
 allocations -- allocations
 holds -- holds
 jobs -- jobs run on a resource
@@ -23,8 +22,7 @@ from sqlalchemy import MetaData, Table, Column, ForeignKey, \
 __all__ = [
     "metadata",
     "users", "projects", "resources",
-    "requests", "allocations",
-    "holds", "jobs", "charges", "jobs_charges", "refunds",
+    "allocations", "holds", "jobs", "charges", "jobs_charges", "refunds",
 ]
 
 metadata = MetaData()
@@ -41,16 +39,6 @@ resources = Table("resources", metadata,
     Column("id", types.Integer, primary_key=True),
     mysql_engine="InnoDB")
 
-requests = Table("requests", metadata,
-    Column("id", types.Integer, primary_key=True),
-    Column("project_id", None, ForeignKey("projects.id"), nullable=False),
-    Column("resource_id", None, ForeignKey("resources.id"), nullable=False),
-    Column("datetime", types.DateTime, nullable=False, default=datetime.now),
-    Column("start", types.DateTime, nullable=True),
-    Column("amount", types.Integer, nullable=False),
-    Column("comment", types.Text, nullable=True),
-    mysql_engine="InnoDB")
-
 allocations = Table("allocations", metadata,
     Column("id", types.Integer, primary_key=True),
     Column("project_id", None, ForeignKey("projects.id"), nullable=False),
@@ -60,12 +48,6 @@ allocations = Table("allocations", metadata,
     Column("start", types.DateTime, nullable=False),
     Column("expiration", types.DateTime, nullable=False),
     Column("comment", types.Text),
-    mysql_engine="InnoDB")
-
-requests_allocations = Table("requests_allocations", metadata,
-    Column("request_id", None, ForeignKey("requests.id"), primary_key=True),
-    Column("allocation_id", None, ForeignKey("allocations.id"),
-        primary_key=True),
     mysql_engine="InnoDB")
 
 holds = Table("holds", metadata,
