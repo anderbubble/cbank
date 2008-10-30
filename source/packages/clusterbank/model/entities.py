@@ -53,9 +53,9 @@ class UpstreamEntity (Entity):
     
     name = None
     
-    def __init__ (self, id):
+    def __init__ (self, id_):
         Entity.__init__(self)
-        self.id = id
+        self.id = id_
     
     def __repr__ (self):
         return "<%s name=%r id=%r>" % (
@@ -78,8 +78,8 @@ class User (UpstreamEntity):
     is_admin -- whether the user has admin privileges
     """
     
-    def __init__ (self, id):
-        UpstreamEntity.__init__(self, id)
+    def __init__ (self, id_):
+        UpstreamEntity.__init__(self, id_)
         self.holds = []
         self.charges = []
     
@@ -123,8 +123,8 @@ class Project (UpstreamEntity):
     credit_limit -- credit limit for a resource at a given datetime
     """
     
-    def __init__ (self, id):
-        UpstreamEntity.__init__(self, id)
+    def __init__ (self, id_):
+        UpstreamEntity.__init__(self, id_)
         self.requests = []
         self.allocations = []
         self.credit_limits = []
@@ -177,8 +177,8 @@ class Resource (UpstreamEntity):
     credit_limits -- credit limits on the resource
     """
     
-    def __init__ (self, id):
-        UpstreamEntity.__init__(self, id)
+    def __init__ (self, id_):
+        UpstreamEntity.__init__(self, id_)
         self.requests = []
         self.allocations = []
         self.credit_limits = []
@@ -372,9 +372,9 @@ class Hold (Entity):
 
 class Job (Entity):
     
-    def __init__ (self, resource, id):
+    def __init__ (self, resource, id_):
         Entity.__init__(self)
-        self.id = id
+        self.id = id_
         self.resource = resource
         self.start = None
         self.end = None
