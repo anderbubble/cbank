@@ -18,7 +18,7 @@ import clusterbank.cbank.controllers as controllers
 from clusterbank.cbank.controllers import main, report_main, new_main, \
     report_users_main, report_projects_main, report_allocations_main, \
     report_holds_main, report_charges_main, new_allocation_main, \
-    new_charge_main, new_hold_main, new_refund_main
+    new_charge_main, new_hold_main, new_refund_main, handle_exceptions
 from clusterbank.cbank.exceptions import UnknownCommand, \
     UnexpectedArguments, UnknownProject, MissingArgument, MissingResource, \
     NotPermitted, ValueError_, UnknownCharge
@@ -127,6 +127,20 @@ def teardown ():
     clusterbank.model.upstream.use = None
     Session.bind = None
     clusterbank.cbank.controllers.datetime = datetime
+
+
+class TestHandleExceptionsDecorator (object):
+    
+    def test_cbank_exception (self):
+        exceptions = [UnknownCommand, UnexpectedArguments, UnknownProject,
+            MissingArgument, MissingResource, NotPermitted, ValueError_,
+            UnknownCharge]
+        for Ex in exceptions:
+            @handle_exceptions
+            def func ():
+                raise Ex()
+            code, stdout, stderr = run(func)
+            assert_equal(code, Ex.exit_code)
 
 
 class CbankTester (object):
