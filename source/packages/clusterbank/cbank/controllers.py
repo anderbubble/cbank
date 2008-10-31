@@ -20,12 +20,9 @@ import pwd
 import time
 import ConfigParser
 from datetime import datetime, timedelta
-from warnings import warn
 from textwrap import dedent
 
-from sqlalchemy.orm import eagerload
-from sqlalchemy import cast, func, and_
-from sqlalchemy.types import Integer
+from sqlalchemy import and_
 from sqlalchemy.exceptions import InvalidRequestError
 
 import clusterbank
@@ -49,11 +46,13 @@ __all__ = ["main", "new_main", "report_main",
     "report_holds_main", "report_charges_main"]
 
 
-def dt_strptime (value, format):
+def datetime_strptime (value, format):
+    """Parse a datetime like datetime.strptime in Python >= 2.5"""
     return datetime(*time.strptime(value, format)[0:6])
 
 
 def handle_exceptions (func):
+    """Decorate a function to intercept exceptions and exit appropriately."""
     def decorated_func (*args, **kwargs):
         try:
             return func(*args, **kwargs)
@@ -69,10 +68,11 @@ def handle_exceptions (func):
 
 
 def require_admin (func):
+    """Decorate a function to require administrator rights."""
     def decorated_func (*args, **kwargs):
-        user = get_current_user()
-        if not user.is_admin:
-            raise NotPermitted(user)
+        current_user = get_current_user()
+        if not current_user.is_admin:
+            raise NotPermitted(current_user)
         else:
             return func(*args, **kwargs)
     decorated_func.__name__ = func.__name__
@@ -82,12 +82,20 @@ def require_admin (func):
 
 
 def help_requested ():
+    """Detect if help was requested on argv."""
     args = sys.argv[1:]
     return "-h" in args or "--help" in args
 
 
 @handle_exceptions
 def main ():
+    """Primary cbank metacommand.
+    
+    Commands:
+    new -- new_main
+    report -- report_main (default)
+    detail -- detail_main
+    """
     try:
         command = normalize(sys.argv[1], ["new", "report", "detail"])
     except (IndexError, UnknownCommand):
@@ -106,6 +114,7 @@ def main ():
 
 
 def print_main_help ():
+    """Print help for the primary cbank metacommand."""
     command = os.path.basename(sys.argv[0])
     message = """\
         usage: %(command)s <subcommand>
@@ -126,6 +135,14 @@ def print_main_help ():
 @handle_exceptions
 @require_admin
 def new_main ():
+    """Secondary cbank metacommand for creating new entities.
+    
+    Commands:
+    allocation -- new_allocation_main
+    hold -- new_hold_main
+    charge -- new_charge_main
+    refund -- new_refund_main
+    """
     commands = ["allocation", "hold", "charge", "refund"]
     try:
         command = normalize(sys.argv[1], commands)
@@ -153,6 +170,7 @@ def new_main ():
 
 
 def print_new_main_help ():
+    """Print help for the 'cbank new' metacommand."""
     command = os.path.basename(sys.argv[0])
     message = """\
         usage: %(command)s <entity>
@@ -171,16 +189,17 @@ def print_new_main_help ():
 @handle_exceptions
 @require_admin
 def new_allocation_main ():
+    """Create a new allocation."""
     parser = new_allocation_parser()
     options, args = parser.parse_args()
-    project = pop_project(args, 0)
+    project_ = pop_project(args, 0)
     amount = pop_amount(args, 0)
     if args:
         raise UnexpectedArguments(args)
     if not options.resource:
         raise MissingResource()
     comment = options.comment or options.deprecated_comment
-    allocation = Allocation(project, options.resource, amount,
+    allocation = Allocation(project_, options.resource, amount,
         options.start, options.expiration)
     allocation.comment = comment
     if options.commit:
@@ -196,9 +215,10 @@ def new_allocation_main ():
 @handle_exceptions
 @require_admin
 def new_charge_main ():
+    """Create a new charge."""
     parser = new_charge_parser()
     options, args = parser.parse_args()
-    project = pop_project(args, 0)
+    project_ = pop_project(args, 0)
     amount = pop_amount(args, 0)
     if args:
         raise UnexpectedArguments(args)
@@ -206,7 +226,7 @@ def new_charge_main ():
         raise MissingResource("resource")
     s = Session()
     allocations = s.query(Allocation).filter_by(
-        project=project, resource=options.resource)
+        project=project_, resource=options.resource)
     charges = Charge.distributed(allocations, amount)
     for charge in charges:
         charge.user = options.user
@@ -224,9 +244,10 @@ def new_charge_main ():
 @handle_exceptions
 @require_admin
 def new_hold_main ():
+    """Create a new hold."""
     parser = new_hold_parser()
     options, args = parser.parse_args()
-    project = pop_project(args, 0)
+    project_ = pop_project(args, 0)
     amount = pop_amount(args, 0)
     if args:
         raise UnexpectedArguments(args)
@@ -234,7 +255,7 @@ def new_hold_main ():
         raise MissingResource("resource")
     s = Session()
     allocations = s.query(Allocation).filter_by(
-        project=project, resource=options.resource)
+        project=project_, resource=options.resource)
     holds = Hold.distributed(allocations, amount)
     for hold in holds:
         hold.user = options.user
@@ -250,6 +271,7 @@ def new_hold_main ():
 
 
 def pop_project (args, index):
+    """Pop a project from the front of args."""
     try:
         project_name = args.pop(index)
     except IndexError:
@@ -261,6 +283,7 @@ def pop_project (args, index):
 
 
 def pop_charge (args, index):
+    """Pop a charge from the front of args."""
     try:
         charge_id = args.pop(index)
     except IndexError:
@@ -273,6 +296,7 @@ def pop_charge (args, index):
 
 
 def pop_amount (args, index):
+    """Pop an amount from the front of args."""
     try:
         amount = args.pop(index)
     except IndexError:
@@ -284,6 +308,7 @@ def pop_amount (args, index):
 @handle_exceptions
 @require_admin
 def new_refund_main ():
+    """Create a new refund."""
     parser = new_refund_parser()
     options, args = parser.parse_args()
     charge = pop_charge(args, 0)
@@ -307,6 +332,15 @@ def new_refund_main ():
 
 @handle_exceptions
 def report_main ():
+    """Secondary cbank metacommand for reports.
+    
+    Commands:
+    users -- report_users_main
+    projects -- report_projects_main
+    allocations -- report_allocations_main
+    holds -- report_holds_main
+    charges -- report_charges_main
+    """
     commands = ["users", "projects", "allocations", "holds", "charges"]
     try:
         command = normalize(sys.argv[1], commands)
@@ -330,6 +364,7 @@ def report_main ():
 
 
 def print_report_main_help ():
+    """Print help for the report metacommand."""
     command = os.path.basename(sys.argv[0])
     message = """\
         usage: %(command)s <report>
@@ -350,25 +385,33 @@ def print_report_main_help ():
     print dedent(message % {'command':command})
 
 
-def user_owns_all (user, projects):
-    projects_owned = set(user_projects_owned(user))
+def user_owns_all (user_, projects):
+    """Check that the user is an owner of all of a list of projects."""
+    projects_owned = set(user_projects_owned(user_))
     return set(projects).issubset(projects_owned)
 
 
 def project_members_all (projects):
-    return set(sum([project_members(project) for project in projects], []))
+    """Get a list of all the members of all of a list of projects."""
+    return set(sum([project_members(project_) for project_ in projects], []))
+
+
+def user_projects_all (users):
+    """Get a list of all projects that have users in a list of users."""
+    return set(sum([user_projects(user_) for user_ in users], []))
 
 
 @handle_exceptions
 def report_users_main ():
+    """Report charges for users."""
     parser = report_users_parser()
     options, args = parser.parse_args()
     if args:
         raise UnexpectedArguments(args)
-    user = get_current_user()
+    current_user = get_current_user()
     users = options.users
     projects = options.projects
-    if user.is_admin:
+    if current_user.is_admin:
         if not users:
             if projects:
                 users = project_members_all(projects)
@@ -376,34 +419,31 @@ def report_users_main ():
                 users = Session().query(User).all()
     else:
         if not projects:
-            projects = user_projects(user)
-        if projects and user_owns_all(user, projects):
+            projects = user_projects(current_user)
+        if projects and user_owns_all(current_user, projects):
             if not users:
                 users = project_members_all(projects)
         else:
             if not users:
-                users = [user]
-            elif set(users) != set([user]):
-                raise NotPermitted(user)
+                users = [current_user]
+            elif set(users) != set([current_user]):
+                raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
     print_users_report(users, projects=projects,
         resources=resources, after=options.after, before=options.before)
 
 
-def user_projects_all (users):
-    return set(sum([user_projects(user) for user in users], []))
-
-
 @handle_exceptions
 def report_projects_main ():
+    """Report charges and allocations for projects."""
     parser = report_projects_parser()
     options, args = parser.parse_args()
     if args:
         raise UnexpectedArguments(args)
-    user = get_current_user()
+    current_user = get_current_user()
     projects = options.projects
     users = options.users
-    if user.is_admin:
+    if current_user.is_admin:
         if not projects:
             if users:
                 projects = user_projects_all(users)
@@ -411,13 +451,14 @@ def report_projects_main ():
                 projects = Session().query(Project).all()
     else:
         if not projects:
-            projects = user_projects(user)
-        allowed_projects = set(user_projects(user) + user_projects_owned(user))
+            projects = user_projects(current_user)
+        allowed_projects = set(user_projects(current_user) + \
+            user_projects_owned(current_user))
         if not set(projects).issubset(allowed_projects):
-            raise NotPermitted(user)
-        if not (projects and user_owns_all(user, projects)):
-            if not set(users).issubset(set([user])):
-                raise NotPermitted(user)
+            raise NotPermitted(current_user)
+        if not (projects and user_owns_all(current_user, projects)):
+            if not set(users).issubset(set([current_user])):
+                raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
     print_projects_report(projects, users=users, resources=resources,
         after=options.after, before=options.before)
@@ -425,14 +466,15 @@ def report_projects_main ():
 
 @handle_exceptions
 def report_allocations_main ():
+    """Report charges and allocation for allocations."""
     parser = report_allocations_parser()
     options, args = parser.parse_args()
     if args:
         raise UnexpectedArguments(args)
-    user = get_current_user()
+    current_user = get_current_user()
     projects = options.projects
     users = options.users
-    if user.is_admin:
+    if current_user.is_admin:
         if not projects:
             if users:
                 projects = user_projects_all(users)
@@ -440,13 +482,14 @@ def report_allocations_main ():
                 projects = Session().query(Project).all()
     else:
         if not projects:
-            projects = user_projects(user)
-        allowed_projects = set(user_projects(user) + user_projects_owned(user))
+            projects = user_projects(current_user)
+        allowed_projects = set(
+            user_projects(current_user) + user_projects_owned(current_user))
         if not set(projects).issubset(allowed_projects):
-            raise NotPermitted(user)
-        if not (projects and user_owns_all(user, projects)):
-            if not set(users).issubset(set([user])):
-                raise NotPermitted(user)
+            raise NotPermitted(current_user)
+        if not (projects and user_owns_all(current_user, projects)):
+            if not set(users).issubset(set([current_user])):
+                raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
     comments = options.comments
     allocations = Session().query(Allocation)
@@ -474,30 +517,31 @@ def report_allocations_main ():
 
 @handle_exceptions
 def report_holds_main ():
+    """Report active holds."""
     parser = report_holds_parser()
     options, args = parser.parse_args()
     if args:
         raise UnexpectedArguments(args)
-    user = get_current_user()
+    current_user = get_current_user()
     users = options.users
     projects = options.projects
-    if not user.is_admin:
+    if not current_user.is_admin:
         if not projects:
-            projects = user_projects(user)
-        if projects and user_owns_all(user, projects):
+            projects = user_projects(current_user)
+        if projects and user_owns_all(current_user, projects):
             pass
         else:
             if not users:
-                users = [user]
-            elif set(users) != set([user]):
-                raise NotPermitted(user)
+                users = [current_user]
+            elif set(users) != set([current_user]):
+                raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
     comments = options.comments
     holds = Session().query(Hold)
     holds = holds.filter(Hold.active==True)
     if users:
         holds = holds.filter(Hold.user.has(User.id.in_(
-            user.id for user in users)))
+            user_.id for user_ in users)))
     if projects:
         holds = holds.filter(Hold.allocation.has(Allocation.project.has(
             Project.id.in_(project.id for project in projects))))
@@ -513,29 +557,30 @@ def report_holds_main ():
 
 @handle_exceptions
 def report_charges_main ():
+    """Report charges."""
     parser = report_charges_parser()
     options, args = parser.parse_args()
     if args:
         raise UnexpectedArguments(args)
-    user = get_current_user()
+    current_user = get_current_user()
     users = options.users
     projects = options.projects
-    if not user.is_admin:
+    if not current_user.is_admin:
         if not projects:
-            projects = user_projects(user)
-        if projects and user_owns_all(user, projects):
+            projects = user_projects(current_user)
+        if projects and user_owns_all(current_user, projects):
             pass
         else:
             if not users:
-                users = [user]
-            elif set(users) != set([user]):
-                raise NotPermitted(user)
+                users = [current_user]
+            elif set(users) != set([current_user]):
+                raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
     comments = options.comments
     charges = Session().query(Charge)
     if users:
         charges = charges.filter(Charge.user.has(User.id.in_(
-            user.id for user in users)))
+            user_.id for user_ in users)))
     if projects:
         charges = charges.filter(Charge.allocation.has(Allocation.project.has(
             Project.id.in_(project.id for project in projects))))
@@ -555,6 +600,14 @@ def report_charges_main ():
 
 @handle_exceptions
 def detail_main ():
+    """A metacommand that dispatches to detail functions.
+    
+    Commands:
+    allocations -- detail_allocations_main
+    holds -- detail_holds_main
+    charges -- detail_charges_main
+    refunds -- detail_refunds_main
+    """
     if help_requested():
         print_detail_main_help()
         sys.exit()
@@ -575,6 +628,7 @@ def detail_main ():
 
 
 def print_detail_main_help ():
+    """Print help for the detail metacommand."""
     command = os.path.basename(sys.argv[0])
     message = """\
         usage: %(command)s <entity> <id> ...
@@ -591,17 +645,19 @@ def print_detail_main_help ():
 
 @handle_exceptions
 def detail_allocations_main ():
-    user = get_current_user()
+    """Get a detailed view of specific allocations."""
+    current_user = get_current_user()
     s = Session()
     allocations = \
         s.query(Allocation).filter(Allocation.id.in_(sys.argv[1:]))
-    if not user.is_admin:
-        projects = user_projects(user) + user_projects_owned(user)
+    if not current_user.is_admin:
+        projects = user_projects(current_user) + \
+            user_projects_owned(current_user)
         permitted_allocations = []
         for allocation in allocations:
             if not allocation.project in projects:
                 print >> sys.stderr, "%s: not permitted: %s" % (
-                    allocation.id, user)
+                    allocation.id, current_user)
             else:
                 permitted_allocations.append(allocation)
         allocations = permitted_allocations
@@ -610,17 +666,19 @@ def detail_allocations_main ():
 
 @handle_exceptions
 def detail_holds_main ():
-    user = get_current_user()
+    """Get a detailed view of specific holds."""
+    current_user = get_current_user()
     s = Session()
     holds = s.query(Hold).filter(Hold.id.in_(sys.argv[1:]))
-    if not user.is_admin:
-        owned_projects = user_projects_owned(user)
+    if not current_user.is_admin:
+        owned_projects = user_projects_owned(current_user)
         permitted_holds = []
         for hold in holds:
-            allowed = hold.user is user \
+            allowed = hold.user is current_user \
                 or hold.allocation.project in owned_projects
             if not allowed:
-                print >> sys.stderr, "%s: not permitted: %s" % (hold.id, user)
+                print >> sys.stderr, "%s: not permitted: %s" % (
+                    hold.id, current_user)
             else:
                 permitted_holds.append(hold)
         holds = permitted_holds
@@ -629,18 +687,19 @@ def detail_holds_main ():
 
 @handle_exceptions
 def detail_charges_main ():
-    user = get_current_user()
+    """Get a detailed view of specific charges."""
+    current_user = get_current_user()
     s = Session()
     charges = s.query(Charge).filter(Charge.id.in_(sys.argv[1:]))
-    if not user.is_admin:
-        owned_projects = user_projects_owned(user)
+    if not current_user.is_admin:
+        owned_projects = user_projects_owned(current_user)
         permitted_charges = []
         for charge in charges:
-            allowed = charge.user is user \
+            allowed = charge.user is current_user \
                 or charge.allocation.project in owned_projects
             if not allowed:
                 print >> sys.stderr, "%s: not permitted: %s" % (
-                    charge.id, user)
+                    charge.id, current_user)
             else:
                 permitted_charges.append(charge)
         charges = permitted_charges
@@ -649,18 +708,19 @@ def detail_charges_main ():
 
 @handle_exceptions
 def detail_refunds_main ():
-    user = get_current_user()
+    """Get a detailed view of specific refunds."""
+    current_user = get_current_user()
     s = Session()
     refunds = s.query(Refund).filter(Refund.id.in_(sys.argv[1:]))
-    if not user.is_admin:
-        owned_projects = user_projects_owned(user)
+    if not current_user.is_admin:
+        owned_projects = user_projects_owned(current_user)
         permitted_refunds = []
         for refund in refunds:
-            allowed = refund.charge.user is user \
+            allowed = refund.charge.user is current_user \
                 or refund.charge.allocation.project in owned_projects
             if not allowed:
                 print >> sys.stderr, "%s: not permitted: %s" % (
-                    refund.id, user)
+                    refund.id, current_user)
             else:
                 permitted_refunds.append(refund)
         refunds = permitted_refunds
@@ -668,11 +728,18 @@ def detail_refunds_main ():
 
 
 def replace_command ():
+    """Consolidate argv[0] and argv[1] into a single argument."""
     arg0 = " ".join([sys.argv[0], sys.argv[1]])
     sys.argv = [arg0] + sys.argv[2:]
 
 
 def normalize (command, commands):
+    """Determine which of a set of commands is intended.
+    
+    Arguments:
+    command -- the command specified
+    commands -- the list of possible commands
+    """
     possible_commands = [cmd for cmd in commands if cmd.startswith(command)]
     if not possible_commands or len(possible_commands) > 1:
         raise UnknownCommand(command)
@@ -680,41 +747,8 @@ def normalize (command, commands):
         return possible_commands[0]
 
 
-def check_users (users, projects=None):
-    if users:
-        users = users
-    elif projects:
-        users = set(sum([project_members(project)
-            for project in projects], []))
-    else:
-        current_user = get_current_user()
-        users = [current_user]
-    return users
-
-
-def check_projects (projects, users=None):
-    if projects:
-        projects = projects
-    elif users:
-        projects = set(sum([user_projects(user) for user in users], []))
-    else:
-        user = get_current_user()
-        member_projects = set(user_projects(user))
-        managed_projects = set(user_projects_owned(user))
-        projects = member_projects | managed_projects
-    return projects
-
-
-def configured_resources ():
-    resource = configured_resource()
-    if resource:
-        resources = [resource]
-    else:
-        resources = []
-    return resources
-
-
 def configured_resource ():
+    """Return the configured resource."""
     try:
         name = config.get("cbank", "resource")
     except ConfigParser.Error:
@@ -723,7 +757,18 @@ def configured_resource ():
         return resource(name)
 
 
+def configured_resources ():
+    """A list of the configures resources."""
+    resource_ = configured_resource()
+    if resource_:
+        resources = [resource_]
+    else:
+        resources = []
+    return resources
+
+
 def get_current_user ():
+    """Return the user for the running user."""
     uid = os.getuid()
     try:
         passwd_entry = pwd.getpwuid(uid)
@@ -737,6 +782,7 @@ def get_current_user ():
 
 
 def parse_units (units):
+    """Convert configured units into the storage unit."""
     try:
         units = float(units)
     except ValueError:
@@ -748,6 +794,7 @@ def parse_units (units):
 
 
 def report_users_parser ():
+    """An optparse parser for the users report."""
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
@@ -769,6 +816,7 @@ def report_users_parser ():
 
 
 def report_projects_parser ():
+    """An optparse parser for the projects report."""
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
@@ -790,6 +838,7 @@ def report_projects_parser ():
 
 
 def report_allocations_parser ():
+    """An optparse parser for the allocations report."""
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
@@ -814,6 +863,7 @@ def report_allocations_parser ():
 
 
 def report_holds_parser ():
+    """An optparse parser for the holds report."""
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
@@ -838,6 +888,7 @@ def report_holds_parser ():
 
 
 def report_charges_parser ():
+    """An optparse parser for the charges report."""
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
@@ -862,6 +913,7 @@ def report_charges_parser ():
 
 
 def new_allocation_parser ():
+    """An optparse parser for creating new allocations."""
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-r", "--resource",
         type="resource", dest="resource",
@@ -885,6 +937,7 @@ def new_allocation_parser ():
 
 
 def new_charge_parser ():
+    """An optparse parser for creating new charges."""
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         type="user", dest="user",
@@ -904,6 +957,7 @@ def new_charge_parser ():
 
 
 def new_hold_parser ():
+    """An optparse parser for creating new holds."""
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         type="user", dest="user",
@@ -923,6 +977,7 @@ def new_hold_parser ():
 
 
 def new_refund_parser ():
+    """An optparse parser for creating new refunds."""
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save the refund"))
@@ -935,6 +990,15 @@ def new_refund_parser ():
 
 
 class Option (optparse.Option):
+    
+    """An extended optparse option with cbank-specific types.
+    
+    Types:
+    date -- parse a datetime from a variety of string formats
+    user -- parse a user from its name or id
+    project -- parse a project from its name or id
+    resource -- parse a resource from its name or id
+    """
     
     DATE_FORMATS = [
         "%Y-%m-%d",
@@ -953,10 +1017,10 @@ class Option (optparse.Option):
     ]
     
     def check_date (self, opt, value):
-        """Return a datetime from YYYY-MM-DD."""
+        """Parse a datetime from a variety of string formats."""
         for format in self.DATE_FORMATS:
             try:
-                dt = dt_strptime(value, format)
+                dt = datetime_strptime(value, format)
             except ValueError:
                 continue
             else:
@@ -971,6 +1035,7 @@ class Option (optparse.Option):
             "option %s: invalid date: %s" % (opt, value))
     
     def check_project (self, opt, value):
+        """Parse a project from its name or id."""
         try:
             return project(value)
         except NotFound:
@@ -978,6 +1043,7 @@ class Option (optparse.Option):
                 "option %s: unknown project: %s" % (opt, value))
     
     def check_resource (self, opt, value):
+        """Parse a resource from its name or id."""
         try:
             return resource(value)
         except NotFound:
@@ -985,6 +1051,7 @@ class Option (optparse.Option):
                 "option %s: unknown resource: %s" % (opt, value))
     
     def check_user (self, opt, value):
+        """Parse a user from its name or id."""
         try:
             return user(value)
         except NotFound:
