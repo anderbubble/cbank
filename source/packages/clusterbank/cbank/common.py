@@ -1,11 +1,19 @@
+"""Common utilities for cbank.
+
+get_unit_factor -- get the configured unit factor
+"""
+
 import ConfigParser
 import warnings
 
 from clusterbank import config
 
+
 __all__ = ["get_unit_factor"]
 
+
 def get_unit_factor ():
+    """Get the configured unit factor as a (multiplier, divisor) tuple."""
     try:
         factor = config.get("cbank", "unit_factor")
     except ConfigParser.Error:
