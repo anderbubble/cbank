@@ -1,9 +1,27 @@
-"""Exceptional cases and errors in the cbank interface."""
+"""Exceptional cases and errors in the cbank interface.
 
-__all__ = ["CbankException", "CbankError", "UnknownUser", "UnknownProject",
-    "UnknownCharge", "MissingArgument", "UnexpectedArguments",
-    "UnknownCommand", "NotPermitted", "MissingResource", "ValueError_",
-    "MissingCommand"]
+Each cbank exception has an associated exit_code class attribute.
+
+Exceptions:
+CbankException -- a generic exception (0)
+CbankError -- a generic error (-1)
+UnknownEntity -- an entity could not be found (-2)
+UnknownUser -- a user could not be found (-2)
+UnknownProject -- a project could not be found (-2)
+UnknownCharge -- a charge could not be found (-2)
+MissingArgument -- a required argument is missing (-3)
+UnexpectedArguments -- unexpected arguments were found (-8)
+UnknownCommand -- an unknown dispatch command was specified (-7)
+NotPermitted -- the specified action is not permitted (-6)
+MissingResource -- no resource was specified (-7)
+ValueError_ (-8) -- wrapper for the ValueError builtin (-8)
+MissingCommand -- a required dispatch command was not specified (-9)
+"""
+
+__all__ = ["CbankException", "CbankError", "UnknownEntity", "UnknownUser",
+    "UnknownProject", "UnknownCharge", "MissingArgument",
+    "UnexpectedArguments", "UnknownCommand", "NotPermitted",
+    "MissingResource", "ValueError_", "MissingCommand"]
 
 
 class CbankException (Exception):
@@ -30,13 +48,18 @@ class CbankError (CbankException):
             return "cbank: unknown error"
         else:
             return "cbank: error: %s" % self.args[0]
-        
 
-class UnknownUser (CbankError):
+
+class UnknownEntity (CbankError):
     
-    """The specified user is not present in the system."""
+    """The specified entity is not present in the system."""
     
     exit_code = -2
+        
+
+class UnknownUser (UnknownEntity):
+    
+    """The specified user is not present in the system."""
     
     def __str__ (self):
         if not self.args:
@@ -45,11 +68,9 @@ class UnknownUser (CbankError):
             return "cbank: unknown user: %s" % self.args[0]
 
 
-class UnknownProject (CbankError):
+class UnknownProject (UnknownEntity):
     
     """The specified project is not present in the system."""
-    
-    exit_code = -2
     
     def __str__ (self):
         if not self.args:
@@ -58,11 +79,9 @@ class UnknownProject (CbankError):
             return "cbank: unknown project: %s" % self.args[0]
 
 
-class UnknownCharge (CbankError):
+class UnknownCharge (UnknownEntity):
     
     """The specified charge is not present in the system."""
-    
-    exit_code = -2
     
     def __str__ (self):
         if not self.args:
@@ -129,6 +148,8 @@ class NotPermitted (CbankError):
 
 class MissingResource (CbankError):
     
+    """No resource could be determined where one was required."""
+    
     exit_code = -7
     
     def __str__ (self):
@@ -136,6 +157,11 @@ class MissingResource (CbankError):
 
 
 class ValueError_ (CbankError):
+    
+    """A specified value is invalid.
+    
+    This exception is a wrapper for the ValueError builtin, with an exit_code.
+    """
     
     exit_code = -8
     
@@ -147,6 +173,8 @@ class ValueError_ (CbankError):
 
 
 class MissingCommand (CbankError):
+    
+    """No dispatch command was specified where one was required."""
     
     exit_code = -9
     
