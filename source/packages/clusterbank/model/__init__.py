@@ -18,21 +18,21 @@ metadata -- metadata collection
 Session -- sessionmaker (and default session)
 
 Functions:
-configured_engine
-configured_upstream
-user
-project
-resource
-user_by_name
-user_by_id
-project_by_name
-project_by_id
-resource_by_name
-resource_by_id
-user_projects
-user_projects_owned
-project_members
-project_owners
+configured_engine -- build a configured SA engine
+configured_upstream -- import the configured upstream module
+user -- retrieve an upstream user by name or id
+project -- retrieve an upstream project by name or id
+resource -- retrieve an upstream resource by name or id
+user_by_name -- retrieve an upstream user by name
+user_by_id -- retrieve an upstream user by id
+project_by_name -- retrieve an upstream project by name
+project_by_id -- retrieve an upstream project by id
+resource_by_name -- retrieve an upstream resource by name
+resource_by_id -- retrieve an upstream resource by id
+user_projects -- retrieve a users projects
+user_projects_owned -- retrieve the projects a user owns
+project_members -- retrieve the members of a project
+project_owners -- retrieve the owners of a project
 """
 
 import warnings
