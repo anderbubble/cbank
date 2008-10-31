@@ -167,13 +167,16 @@ class TestMain (CbankTester):
         CbankTester.setup(self)
         self._report_main = controllers.report_main
         self._new_main = controllers.new_main
+        self._detail_main = controllers.detail_main
         controllers.report_main = FakeFunc()
         controllers.new_main = FakeFunc()
+        controllers.detail_main = FakeFunc()
     
     def teardown (self):
         CbankTester.teardown(self)
         controllers.report_main = self._report_main
         controllers.new_main = self._new_main
+        controllers.detail_main = self._detail_main
     
     def test_callable (self):
         assert callable(main), "main is not callable"
@@ -195,6 +198,15 @@ class TestMain (CbankTester):
         args = "new 1 2 3"
         run(main, args.split())
         assert controllers.new_main.calls
+    
+    def test_detail (self):
+        def test_ ():
+            assert sys.argv[0] == "main detail", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.new_main.func = test_
+        args = "detail 1 2 3"
+        run(main, args.split())
+        assert controllers.detail_main.calls
     
     def test_default (self):
         def test_ ():
