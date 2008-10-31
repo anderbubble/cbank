@@ -1,3 +1,28 @@
+"""Views of the model provided by cbank.
+
+Classes:
+Formatter -- a tabular formatter for reports
+
+Functions:
+print_users_report -- charges for users
+print_projects_report -- allocations and charges for projects
+print_allocations_report -- allocation and charges for allocations
+print_holds_report -- a table of holds
+print_charges_report -- a table of charges
+print_allocations -- print multiple allocations
+print_allocation -- print a single allocation
+print_holds -- print multiple holds
+print_hold -- print a single hold
+print_charges -- print multiple charges
+print_charge -- print a single charge
+print_refunds -- print multiple refunds
+print_refund -- print a single refund
+unit_definition -- a configured unit description
+display_units -- print units in a locale-specific format
+convert_units -- convert an amount to the specified units
+format_datetime -- convert a datetime to a string
+"""
+
 import locale
 import ConfigParser
 from datetime import datetime
@@ -14,6 +39,7 @@ from clusterbank.model import Session, User, Project, Resource, \
 __all__ = ["unit_definition", "convert_units", "display_units",
     "print_users_report", "print_projects_report", "print_allocations_report",
     "print_holds_report", "print_charges_report"]
+
 
 locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 
@@ -40,7 +66,7 @@ def print_users_report (users, projects=None, resources=None,
     format.widths = {'Name':10, 'Charges':8, 'Charged':15}
     format.aligns = {'Charges':"right", 'Charged':"right"}
     print format.header()
-    print format.bar()
+    print format.separator()
     
     s = Session()
     charges_q = s.query(
@@ -93,7 +119,7 @@ def print_users_report (users, projects=None, resources=None,
         charge_sum_total += charge_sum
         print format({'Name':user.name, 'Charges':charge_count,
             'Charged':display_units(charge_sum)})
-    print format.bar(["Charges", "Charged"])
+    print format.separator(["Charges", "Charged"])
     print format({'Charges':charge_count_total,
         'Charged':display_units(charge_sum_total)})
     print unit_definition()
@@ -123,7 +149,7 @@ def print_projects_report (projects, users=None, resources=None,
     format.aligns = {'Charges':"right",
         'Charged':"right", "Available":"right"}
     print format.header()
-    print format.bar()
+    print format.separator()
     
     s = Session()
     allocations_q = s.query(
@@ -208,7 +234,7 @@ def print_projects_report (projects, users=None, resources=None,
             'Charges':charge_count,
             'Charged':display_units(charge_sum),
             'Available':display_units(allocation_sum)})
-    print format.bar(["Charges", "Charged", "Available"])
+    print format.separator(["Charges", "Charged", "Available"])
     print format({'Charges':charge_count_total,
         'Charged':display_units(charge_sum_total),
         'Available':display_units(allocation_sum_total)})
@@ -243,7 +269,7 @@ def print_allocations_report (allocations, users=None,
         'Charges':7, 'Charged':13, 'Expiration':10}
     format.aligns = {'Available':"right", 'Charges':"right", 'Charged':"right"}
     print format.header()
-    print format.bar()
+    print format.separator()
     
     s = Session()
     holds_q = s.query(
@@ -317,7 +343,7 @@ def print_allocations_report (allocations, users=None,
             'Charged':display_units(charge_sum),
             'Available':display_units(allocation_sum),
             'Comment':allocation.comment})
-    print format.bar(["Available", "Charges", "Charged"])
+    print format.separator(["Available", "Charges", "Charged"])
     print format({
         'Charges':charge_count_total,
         'Charged':display_units(charge_sum_total),
@@ -340,14 +366,14 @@ def print_holds_report (holds, comments=None):
     
     fields = ["Hold", "Datetime", "Resource", "Project", "User", "Held"]
     if comments:
-        fields.allend("Comment")
+        fields.append("Comment")
     format = Formatter(fields)
     format.headers = {'Hold':"#", 'Datetime':"Date"}
     format.widths = {
         'Hold':6, 'User':8, 'Project':15, 'Held':13, 'Datetime':10}
     format.aligns = {'Held':"right"}
     print format.header()
-    print format.bar()
+    print format.separator()
     
     query = Session().query(Hold)
     query = query.options(eagerload(
@@ -366,7 +392,7 @@ def print_holds_report (holds, comments=None):
             'Datetime':format_datetime(hold.datetime),
             'Held':display_units(hold.amount),
             'Comment':hold.comment})
-    print format.bar(["Held"])
+    print format.separator(["Held"])
     print format({'Held':display_units(hold_sum)})
     print unit_definition()
 
@@ -393,7 +419,7 @@ def print_charges_report (charges, comments=False):
         'Charge':6, 'User':8, 'Project':15, 'Charged':13, 'Datetime':10}
     format.aligns = {'Charged':"right"}
     print format.header()
-    print format.bar()
+    print format.separator()
     
     s = Session()
     query = s.query(Charge,
@@ -417,17 +443,19 @@ def print_charges_report (charges, comments=False):
             'Datetime':format_datetime(charge.datetime),
             'Charged':display_units(charge_amount),
             'Comment':charge.comment})
-    print format.bar(["Charged"])
+    print format.separator(["Charged"])
     print format({'Charged':display_units(total_charged)})
     print unit_definition()
 
 
 def print_allocations (allocations):
+    """Print multiple allocations with print_allocation."""
     for allocation in allocations:
         print_allocation(allocation)
 
 
 def print_allocation (allocation):
+    """Print an allocation in user-friendly detail."""
     amount = display_units(allocation.amount)
     allocation_str = "Allocation %s -- %s" % (allocation, amount)
     print allocation_str
@@ -440,11 +468,13 @@ def print_allocation (allocation):
 
 
 def print_holds (holds):
+    """Print multiple holds with print_hold."""
     for hold in holds:
         print_hold(hold)
 
 
 def print_hold (hold):
+    """Print a hold in user-friendly detail."""
     print "Hold %s -- %s" % (hold, display_units(hold.amount))
     print " * Datetime: %s" % hold.datetime
     print " * Active: %s" % hold.active
@@ -455,11 +485,13 @@ def print_hold (hold):
 
 
 def print_charges (charges):
+    """Print multiple charges with print_charge."""
     for charge in charges:
         print_charge(charge)
 
 
 def print_charge (charge):
+    """Print a charge in user-friendly detail."""
     charge_str = "Charge %s -- %s" % (
         charge, display_units(charge.effective_amount()))
     if charge.amount != charge.effective_amount():
@@ -474,11 +506,13 @@ def print_charge (charge):
 
 
 def print_refunds (refunds):
+    """Print multiple refunds with print_refund."""
     for refund in refunds:
         print_refund(refund)
 
 
 def print_refund (refund):
+    """Print a refund in user-friendly detail."""
     print "Refund %s -- %s" % (refund, display_units(refund.amount))
     print " * Datetime: %s" % refund.datetime
     print " * Charge: %s" % refund.charge
@@ -489,6 +523,7 @@ def print_refund (refund):
 
 
 def unit_definition ():
+    """A configured unit description."""
     try:
         unit_label = config.get("cbank", "unit_label")
     except ConfigParser.Error:
@@ -496,33 +531,55 @@ def unit_definition ():
     else:
         return "Units are in %s." % unit_label
 
+
 def display_units (amount):
+    """A locale-specific view of units."""
     converted_amount = convert_units(amount)
     if 0 < converted_amount < 0.1:
         return "< 0.1"
     else:
         return locale.format("%.1f", converted_amount, True)
 
+
 def convert_units (amount):
+    """Convert an amount to the configured units."""
     mul, div = get_unit_factor()
     return amount * mul / div
 
-def format_datetime (dt):
-    return dt.strftime("%Y-%m-%d")
+
+def format_datetime (datetime_):
+    """Convert a datetime to a string using a default format."""
+    return datetime_.strftime("%Y-%m-%d")
 
 
 class Formatter (object):
+    """A tabular formatter for reports.
     
-    def __init__ (self, fields, **kwargs):
+    Attributes:
+    fields -- the fields (columns) in the table
+    headers -- a field-->header dict
+    widths -- a field-->column width dict
+    aligns -- a field-->alignment (left, right, center) dict
+    
+    Methods:
+    format -- format a dictionary as a line in the table
+    separator -- a separator line
+    header -- a header line
+    """
+    
+    def __init__ (self, fields):
+        """Initialize a new formatter from a list of fields."""
         self.fields = fields
-        self.headers = kwargs.get("headers", {})
-        self.widths = kwargs.get("widths", {})
-        self.aligns = kwargs.get("aligns", {})
+        self.headers = {}
+        self.widths = {}
+        self.aligns = {}
     
     def __call__ (self, *args, **kwargs):
+        """Convenience access to format()."""
         return self.format(*args, **kwargs)
     
     def format (self, data):
+        """Format a dict as a line in a table."""
         formatted_data = []
         for field in self.fields:
             datum = data.get(field, "")
@@ -549,15 +606,31 @@ class Formatter (object):
     def _get_header (self, field):
         return self.headers.get(field, field)
     
-    def bar (self, fields=None):
+    def separator (self, fields=None):
+        """A separator line.
+        
+        Arguments:
+        fields -- a list of the fields to include a separator for
+        
+        Notes:
+        By default, fields includes all defined fields.
+        """
         if fields is None:
             fields = self.fields
-        bars = {}
+        separators = {}
         for field in fields:
-            bars[field] = "-" * (self._get_width(field))
-        return self.format(bars)
+            separators[field] = "-" * (self._get_width(field))
+        return self.format(separators)
     
     def header (self, fields=None):
+        """A header line.
+        
+        Arguments:
+        fields -- a list of the fields to include a header for
+        
+        Notes:
+        By default, fields, includes all defined fields.
+        """
         if fields is None:
             fields = self.fields
         headers = {}
