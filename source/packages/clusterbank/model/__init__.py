@@ -16,6 +16,23 @@ Refund -- refund of a charge
 Objects:
 metadata -- metadata collection
 Session -- sessionmaker (and default session)
+
+Functions:
+configured_engine
+configured_upstream
+user
+project
+resource
+user_by_name
+user_by_id
+project_by_name
+project_by_id
+resource_by_name
+resource_by_id
+user_projects
+user_projects_owned
+project_members
+project_owners
 """
 
 import warnings
@@ -24,8 +41,7 @@ import ConfigParser
 from sqlalchemy import create_engine
 from sqlalchemy.sql import and_
 from sqlalchemy.exceptions import InvalidRequestError, ArgumentError
-from sqlalchemy.orm import scoped_session, sessionmaker, mapper, \
-    relation
+from sqlalchemy.orm import scoped_session, sessionmaker, mapper, relation
 from sqlalchemy.orm.session import SessionExtension
 
 from clusterbank import config
@@ -35,6 +51,7 @@ from clusterbank.model.database import metadata, \
     users, projects, resources, \
     allocations, holds, jobs, charges, jobs_charges, refunds
 from clusterbank.exceptions import InsufficientFunds, NotFound
+
 
 __all__ = [
     "upstream", "Session",
@@ -47,7 +64,9 @@ __all__ = [
     "project_owners",
 ]
 
-def get_configured_engine ():
+
+def configured_engine ():
+    """Build a configured SQLAlchemy engine."""
     try:
         uri = config.get("main", "database")
     except ConfigParser.Error:
@@ -57,76 +76,97 @@ def get_configured_engine ():
         try:
             engine = create_engine(uri)
         except (ImportError, ArgumentError), ex:
-            warnings.warn("invalid database: %s (%s)" % (uri, ex), UserWarning)
+            warnings.warn(
+                "invalid database: %s (%s)" % (uri, ex), UserWarning)
             engine = None
     return engine
 
-def get_configured_upstream ():
+
+def configured_upstream ():
+    """Import the configured upstream module."""
     try:
-        upstream_module_name = config.get("upstream", "module")
+        module_name = config.get("upstream", "module")
     except ConfigParser.Error:
-        upstream_module_name = "clusterbank.upstreams.default"
+        module_name = "clusterbank.upstreams.default"
     try:
-        module = __import__(upstream_module_name, locals(), globals(), [
-            "get_project_name", "get_project_id", "get_resource_name",
-            "get_resource_id"])
+        module = __import__(module_name, locals(), globals(), [
+            "get_user_name", "get_user_id",
+            "get_project_name", "get_project_id",
+            "get_resource_name", "get_resource_id",
+            "get_project_members", "get_project_owners",
+            "get_member_projects", "get_owner_projects"])
     except ImportError:
-        warnings.warn("invalid upstream module: %s" % (upstream_module_name),
-            UserWarning)
+        warnings.warn(
+            "invalid upstream module: %s" % (module_name), UserWarning)
         module = None
     return module
 
-class SessionConstraints (SessionExtension):
+
+class EntityConstraints (SessionExtension):
     
-    def forbid_negative_amounts (self, session):
-        for entity in (session.new | session.dirty):
-            if isinstance(entity, Allocation):
-                if entity.amount < 0:
-                    raise ValueError(
-                        "invalid amount for allocation: %r" % entity.amount)
-            elif isinstance(entity, Hold):
-                if entity.amount < 0:
-                    raise ValueError(
-                        "invalid amount for hold: %r" % entity.amount)
-            elif isinstance(entity, Charge):
-                if entity.amount < 0:
-                    raise ValueError(
-                        "invalid amount for charge: %r" % entity.amount)
-            elif isinstance(entity, Refund):
-                if entity.amount < 0:
-                    raise ValueError(
-                        "invalid amount for refund: %r" % entity.amount)
+    """SQLAlchemy SessionExtension containing entity constraints.
     
-    def forbid_holds_greater_than_allocation (self, session):
-        holds = [instance for instance in (session.new | session.dirty)
-            if isinstance(instance, Hold)]
-        for allocation in set([hold.allocation for hold in holds]):
-            if allocation.amount_available < 0:
+    Methods (constraints):
+    check_amounts -- require entity amounts to be positive
+    check_holds -- require new holds to fit in their allocations
+    check_refunds -- require new refunds to fit in their charges
+    """
+    
+    def check_amounts (self, session):
+        """Require new entities to have positive amounts."""
+        for entity_ in (session.new | session.dirty):
+            if isinstance(entity_, Allocation):
+                if entity_.amount < 0:
+                    raise ValueError(
+                        "invalid amount for allocation: %r" % entity_.amount)
+            elif isinstance(entity_, Hold):
+                if entity_.amount < 0:
+                    raise ValueError(
+                        "invalid amount for hold: %r" % entity_.amount)
+            elif isinstance(entity_, Charge):
+                if entity_.amount < 0:
+                    raise ValueError(
+                        "invalid amount for charge: %r" % entity_.amount)
+            elif isinstance(entity_, Refund):
+                if entity_.amount < 0:
+                    raise ValueError(
+                        "invalid amount for refund: %r" % entity_.amount)
+    
+    def check_holds (self, session):
+        """Require new holds to fit in their allocations."""
+        holds_ = (instance for instance in (session.new | session.dirty)
+            if isinstance(instance, Hold))
+        for allocation in set(hold.allocation for hold in holds_):
+            if allocation.amount_available() < 0:
                 raise InsufficientFunds("not enough funds available")
     
-    def forbid_refunds_greater_than_charge (self, session):
-        refunds = [instance for instance in (session.new | session.dirty)
-            if isinstance(instance, Refund)]
-        charges = set([refund.charge for refund in refunds])
-        for charge in charges:
+    def check_refunds (self, session):
+        """Require new refunds to fit in their allocations."""
+        refunds_ = (instance for instance in (session.new | session.dirty)
+            if isinstance(instance, Refund))
+        charges_ = set(refund.charge for refund in refunds_)
+        for charge in charges_:
             if charge.effective_amount() < 0:
                 raise InsufficientFunds("not enough funds available")
     
     def before_commit (self, session):
-        self.forbid_negative_amounts(session)
-        self.forbid_holds_greater_than_allocation(session)
-        self.forbid_refunds_greater_than_charge(session)
+        """Check constraints before committing."""
+        self.check_amounts(session)
+        self.check_holds(session)
+        self.check_refunds(session)
 
-Session = scoped_session(sessionmaker(extension=SessionConstraints()))
 
 mapper(User, users, properties={
     'id':users.c.id})
 
+
 mapper(Project, projects, properties={
     'id':projects.c.id})
 
+
 mapper(Resource, resources, properties={
     'id':resources.c.id})
+
 
 mapper(Allocation, allocations, properties={
     'id':allocations.c.id,
@@ -138,6 +178,7 @@ mapper(Allocation, allocations, properties={
     'expiration':allocations.c.expiration,
     'comment':allocations.c.comment})
 
+
 mapper(Hold, holds, properties={
     'id':holds.c.id,
     'allocation':relation(Allocation, backref="holds"),
@@ -147,10 +188,12 @@ mapper(Hold, holds, properties={
     'comment':holds.c.comment,
     'active':holds.c.active})
 
+
 mapper(Job, jobs, properties={
     'id':jobs.c.id,
     'resource':relation(Resource, backref="jobs"),
     'charges':relation(Charge, backref="jobs", secondary=jobs_charges)})
+
 
 mapper(Charge, charges, properties={
     'id':charges.c.id,
@@ -160,6 +203,7 @@ mapper(Charge, charges, properties={
     'amount':charges.c.amount,
     'comment':charges.c.comment})
 
+
 mapper(Refund, refunds, properties={
     'id':refunds.c.id,
     'charge':relation(Charge, backref="refunds"),
@@ -167,74 +211,139 @@ mapper(Refund, refunds, properties={
     'amount':refunds.c.amount,
     'comment':refunds.c.comment})
 
+
 def user (name_or_id):
+    """Construct a user from its name or id."""
     return entity(User, name_or_id,
         upstream.get_user_id, upstream.get_user_name)
 
+
 def user_by_id (id_):
+    """Construct a user from its id."""
     return entity_by_id(User, id_, upstream.get_user_name)
 
+
 def user_by_name (name):
+    """Construct a user from its name."""
     return entity_by_name(User, name, upstream.get_user_id)
 
+
 def project (name_or_id):
+    """Construct a project from its name or id."""
     return entity(Project, name_or_id,
         upstream.get_project_id, upstream.get_project_name)
 
+
 def project_by_id (id_):
+    """Construct a project from its id."""
     return entity_by_id(Project, id_, upstream.get_project_name)
 
+
 def project_by_name (name):
+    """Construct a project from its name."""
     return entity_by_name(Project, name, upstream.get_project_id)
 
+
 def resource (name_or_id):
+    """Construct a resource from its name or id."""
     return entity(Resource, name_or_id,
         upstream.get_resource_id, upstream.get_resource_name)
 
+
 def resource_by_id (id_):
+    """Construct a resource from its id."""
     return entity_by_name(Resource, id_, upstream.get_resource_name)
 
+
 def resource_by_name (name):
+    """Construct a resource from its name."""
     return entity_by_name(Resource, name, upstream.get_resource_id)
 
+
 def entity (cls, name_or_id, get_id, get_name):
+    """Construct an entity of type cls from its name or id.
+    
+    Arguments:
+    cls -- the UpstreamEntity subclass to construct
+    name_or_id -- the name or id to use to look up the entity
+    get_id -- upstream function to retrieve the entity id from its name
+    get_name -- upstream function to retrieve the entity name from its id
+    """
     try:
         return entity_by_name(cls, name_or_id, get_id)
     except NotFound:
         return entity_by_id(cls, name_or_id, get_name)
 
+
 def entity_by_name (cls, name, get_id):
+    """Construct an entity of type cls from its name.
+    
+    Arguments:
+    cls -- the UpstreamEntity subclass to construct
+    name -- the name to use to look up the entity
+    get_id -- upstream function to retrieve the entity id from its name
+    """
     id_ = get_id(name)
     if id_ is None:
         raise NotFound("%s %r not found" % (cls.__name__.lower(), name))
     return _entity_by_id(cls, id_)
 
+
 def entity_by_id (cls, id_, get_name):
+    """Construct an entity of type cls from its id.
+    
+    Arguments:
+    cls -- the UpstreamEntity subclass to construct
+    id_ -- the id to use to look up the entity
+    get_name -- upstream function to retrieve the entity name from its id
+    """
     if get_name(id_) is None:
         raise NotFound("%s %r not found" % (cls.__name__.lower(), id_))
     return _entity_by_id(cls, id_)
 
+
 def _entity_by_id (cls, id_):
+    """Construct an entity of type cls from its id.
+    
+    Arguments:
+    cls -- the UpstreamEntity subclass to construct
+    id_ -- the id to use to look up the entity
+    get_name -- upstream function to retrieve the entity name from its id
+    
+    Note:
+    This function does not check with upstream to guarantee that an entity
+    with the id exists. For most cases, use entity_by_id in stead.
+    """
     s = Session()
     try:
         return s.query(cls).filter_by(id=id_).one()
     except InvalidRequestError:
-        entity = cls(id_)
-        s.add(entity)
-        return entity
+        entity_ = cls(id_)
+        s.add(entity_)
+        return entity_
 
-def user_projects (user):
-    return [project_by_id(project_id) for project_id in user.projects]
 
-def user_projects_owned (user):
-    return [project_by_id(project_id) for project_id in user.projects_owned]
+def user_projects (user_):
+    """Get the projects that the given user is a member of."""
+    return [project_by_id(project_id) for project_id in user_.projects]
 
-def project_members (project):
-    return [user_by_id(user_id) for user_id in project.members]
 
-def project_owners (project):
-    return [user_by_id(user_id) for user_id in project.owners]
+def user_projects_owned (user_):
+    """Get the projects that the given user owns."""
+    return [project_by_id(project_id) for project_id in user_.projects_owned]
 
-metadata.bind = get_configured_engine()
-upstream.use = get_configured_upstream()
+
+def project_members (project_):
+    """Get the users the are a member of the given project."""
+    return [user_by_id(user_id) for user_id in project_.members]
+
+
+def project_owners (project_):
+    """Get the users that own the given project."""
+    return [user_by_id(user_id) for user_id in project_.owners]
+
+
+Session = scoped_session(sessionmaker(extension=EntityConstraints()))
+metadata.bind = configured_engine()
+upstream.use = configured_upstream()
 
