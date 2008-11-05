@@ -5,7 +5,7 @@ from clusterbank.model import Session, user, project, user_by_name, \
 from clusterbank.exceptions import NotFound
 from clusterbank.model.database import metadata
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def assert_ident (obj1, obj2):
@@ -81,7 +81,7 @@ class TestJobFunctions (object):
         assert_equal(job_.exec_host,
             "j340/0+j341/0+j342/0+j343/0+j344/0+j345/0+j346/0+j347/0")
         assert_equal(job_.resource_list, {'ncpus':8, 'neednodes':8,
-            'nodect':8, 'nodes':8, 'walltime':"05:00:00"})
+            'nodect':8, 'nodes':8, 'walltime':timedelta(hours=5)})
     
     def test_job_e (self):
         entry = "04/18/2008 03:35:28;E;691908.jmayor5.lcrc.anl.gov;user=monty group=agroup account=grail jobname=myjob queue=pri4 ctime=1208378066 qtime=1208378066 etime=1208378066 start=1208378066 exec_host=j75/0+j76/0+j77/0+j78/0+j79/0+j86/0+j87/0+j88/0+j89/0+j90/0+j91/0+j93/0+j94/0+j100/0+j101/0+j102/0+j103/0+j104/0+j105/0+j106/0+j107/0+j108/0+j109/0+j110/0 Resource_List.ncpus=24 Resource_List.neednodes=24 Resource_List.nodect=24 Resource_List.nodes=24 Resource_List.walltime=36:00:00 session=23061 end=1208507728 Exit_status=265 resources_used.cpupercent=0 resources_used.cput=00:00:08 resources_used.mem=41684kb resources_used.ncpus=24 resources_used.vmem=95988kb resources_used.walltime=36:00:47"
@@ -98,10 +98,11 @@ class TestJobFunctions (object):
         assert_equal(job_.start, datetime(2008, 4, 16, 15, 34, 26))
         assert_equal(job_.exec_host, "j75/0+j76/0+j77/0+j78/0+j79/0+j86/0+j87/0+j88/0+j89/0+j90/0+j91/0+j93/0+j94/0+j100/0+j101/0+j102/0+j103/0+j104/0+j105/0+j106/0+j107/0+j108/0+j109/0+j110/0")
         assert_equal(job_.resource_list, {'ncpus':24, 'neednodes':24,
-            'nodect':24, 'nodes':24, 'walltime':"36:00:00"})
-        assert_equal(job_.resources_used, {'walltime':"36:00:47",
-            'cput':"00:00:08", 'cpupercent':0, 'vmem':"95988kb", 'ncpus':24,
-            'mem':"41684kb"})
+            'nodect':24, 'nodes':24, 'walltime':timedelta(hours=36)})
+        assert_equal(job_.resources_used, {
+            'walltime':timedelta(hours=36, seconds=47),
+            'cput':timedelta(seconds=8), 'cpupercent':0, 'vmem':"95988kb",
+            'ncpus':24, 'mem':"41684kb"})
         assert_equal(job_.session, 23061)
         assert_equal(job_.end, datetime(2008, 4, 18, 3, 35, 28))
         assert_equal(job_.exit_status, 265)
