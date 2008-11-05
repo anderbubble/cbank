@@ -450,6 +450,9 @@ class Job (Entity):
         self.accounting_id = None
         self.charges = []
     
+    def __str__ (self):
+        return str(self.id)
+    
     @classmethod
     def from_pbs (cls, entry):
         record_type, id_string, message_text = entry.split(";", 3)[1:]
