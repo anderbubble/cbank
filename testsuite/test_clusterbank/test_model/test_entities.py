@@ -186,10 +186,8 @@ class TestHold (object):
 class TestJob (object):
     
     def test_init (self):
-        resource = Resource(None)
-        job = Job(resource, 123)
-        assert job.resource is resource # cbank specific
-        assert job.id == 123
+        job = Job("www.example.com.123")
+        assert job.id == "www.example.com.123"
         assert job.user is None
         assert job.group is None
         assert job.account is None
@@ -210,7 +208,7 @@ class TestJob (object):
         assert job.resources_used == {}
         assert job.accounting_id is None
         assert job.charges == [] # cbank specific
-
+    
 
 class TestCharge (object):
     

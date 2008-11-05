@@ -397,13 +397,30 @@ class Job (Entity):
     """A job run on a computational resource.
     
     Attributes:
-    resource -- the resource the job ran on
+    id -- the canonical job id
+    user -- the user under which the job executed
+    group -- the group under which the job executed
+    account -- 
+    name -- 
+    queue -- 
+    reservation_name -- 
+    reservation_id -- 
+    ctime -- 
+    qtime -- 
+    etime -- 
     start -- when the job started
+    exec_host -- 
+    resource_list -- 
+    session -- 
+    alternate_id -- 
     end -- when the job ended
+    exit_status -- 
+    resources_used -- 
+    accounting_id -- 
     charges -- charges associated with the job
     """
     
-    def __init__ (self, resource, id_):
+    def __init__ (self, id_):
         """Initialize a new job.
         
         Arguments:
@@ -411,7 +428,6 @@ class Job (Entity):
         id -- the job id
         """
         Entity.__init__(self)
-        self.resource = resource
         self.id = id_
         self.user = None
         self.group = None
