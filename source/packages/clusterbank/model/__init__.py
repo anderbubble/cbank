@@ -53,6 +53,8 @@ from clusterbank.model.database import metadata, \
     allocations, holds, jobs, charges, jobs_charges, refunds
 from clusterbank.exceptions import InsufficientFunds, NotFound
 
+from datetime import datetime
+
 
 __all__ = [
     "upstream", "Session",
@@ -343,13 +345,70 @@ def project_owners (project_):
     """Get the users that own the given project."""
     return [user_by_id(user_id) for user_id in project_.owners]
 
+
 def job (entry):
-    record_type, id_string, message_text = entry.split(";", 3)[1:]
+    id_string, message_text = entry.split(";", 3)[2:]
     job_ = Job(id_string)
     messages = dict(message.split("=", 1)
         for message in message_text.split(" "))
-    job_.queue = messages['queue']
+    job_.queue = messages.get("queue", None)
+    try:
+        user_name = messages['user']
+    except KeyError:
+        pass
+    else:
+        job_.user = user(user_name)
+    job_.group = messages.get("group", None)
+    try:
+        account_name = messages['account']
+    except KeyError:
+        pass
+    else:
+        job_.account = project(account_name)
+    job_.name = messages.get("jobname")
+    try:
+        ctime = float(messages['ctime'])
+    except (KeyError, ValueError):
+        pass
+    else:
+        job_.ctime = datetime.fromtimestamp(ctime)
+    try:
+        qtime = float(messages['qtime'])
+    except (KeyError, ValueError):
+        pass
+    else:
+        job_.qtime = datetime.fromtimestamp(qtime)
+    try:
+        etime = float(messages['etime'])
+    except (KeyError, ValueError):
+        pass
+    else:
+        job_.etime = datetime.fromtimestamp(etime)
+    try:
+        start = float(messages['start'])
+    except (KeyError, ValueError):
+        pass
+    else:
+        job_.start = datetime.fromtimestamp(start)
+    job_.exec_host = messages.get("exec_host")
+    job_.resource_list = intval(subdict(messages, "Resource_List."))
     return job_
+
+
+def intval (dict_):
+    newdict = {}
+    for (key, value) in dict_.iteritems():
+        try:
+            value = int(value)
+        except ValueError:
+            pass
+        newdict[key] = value
+    return newdict
+
+
+def subdict (superdict, keyroot):
+    return dict((key[len(keyroot):], value)
+        for (key, value) in superdict.iteritems() if key.startswith(keyroot))
 
 
 Session = scoped_session(sessionmaker(extension=EntityConstraints()))
