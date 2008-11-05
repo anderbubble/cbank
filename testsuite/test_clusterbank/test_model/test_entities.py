@@ -213,12 +213,6 @@ class TestJob (object):
         job = Job("www.example.com.123")
         assert str(job) == "www.example.com.123"
     
-    def test_from_pbs_q (self):
-        entry = "04/18/2008 02:10:12;Q;692009.jmayor5.lcrc.anl.gov;queue=shared"
-        job = Job.from_pbs(entry)
-        assert job.id == "692009.jmayor5.lcrc.anl.gov"
-        assert job.queue == "shared"
- 
 
 class TestCharge (object):
     

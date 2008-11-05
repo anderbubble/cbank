@@ -33,6 +33,7 @@ user_projects -- retrieve a users projects
 user_projects_owned -- retrieve the projects a user owns
 project_members -- retrieve the members of a project
 project_owners -- retrieve the owners of a project
+job -- create a job from a pbs entry
 """
 
 import warnings
@@ -341,6 +342,14 @@ def project_members (project_):
 def project_owners (project_):
     """Get the users that own the given project."""
     return [user_by_id(user_id) for user_id in project_.owners]
+
+def job (entry):
+    record_type, id_string, message_text = entry.split(";", 3)[1:]
+    job_ = Job(id_string)
+    messages = dict(message.split("=", 1)
+        for message in message_text.split(" "))
+    job_.queue = messages['queue']
+    return job_
 
 
 Session = scoped_session(sessionmaker(extension=EntityConstraints()))
