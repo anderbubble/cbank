@@ -400,23 +400,23 @@ class Job (Entity):
     id -- the canonical job id
     user -- the user under which the job executed
     group -- the group under which the job executed
-    account -- 
-    name -- 
-    queue -- 
-    reservation_name -- 
-    reservation_id -- 
-    ctime -- 
-    qtime -- 
-    etime -- 
-    start -- when the job started
-    exec_host -- 
-    resource_list -- 
-    session -- 
-    alternate_id -- 
-    end -- when the job ended
-    exit_status -- 
-    resources_used -- 
-    accounting_id -- 
+    account -- if the job has an account name string
+    name -- the name of the job
+    queue -- the name of the queue in which the job executed
+    reservation_name -- the name of the resource reservation
+    reservation_id -- the id of the resource reservation
+    ctime -- when job was created (first submitted)
+    qtime -- when job was queued into current queue
+    etime -- when job became eligible to run
+    start -- when job execution started
+    exec_host -- name of host on which the job is being executed
+    resource_list -- the specified resource limits
+    session -- session number of job
+    alternate_id -- optional alternate job identifier
+    end -- when job execution ended
+    exit_status -- the exit status of the job
+    resources_used -- aggregate amount of specified resources used
+    accounting_id -- CSA JID, job ID
     charges -- charges associated with the job
     """
     
