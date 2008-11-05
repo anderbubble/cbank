@@ -353,45 +353,46 @@ def job (entry):
         for message in message_text.split(" "))
     job_.queue = messages.get("queue", None)
     try:
-        user_name = messages['user']
+        job_.user = user(messages['user'])
     except KeyError:
         pass
-    else:
-        job_.user = user(user_name)
     job_.group = messages.get("group", None)
     try:
-        account_name = messages['account']
+        job_.account = project(messages['account'])
     except KeyError:
         pass
-    else:
-        job_.account = project(account_name)
     job_.name = messages.get("jobname")
     try:
-        ctime = float(messages['ctime'])
+        job_.ctime = datetime.fromtimestamp(float(messages['ctime']))
     except (KeyError, ValueError):
         pass
-    else:
-        job_.ctime = datetime.fromtimestamp(ctime)
     try:
-        qtime = float(messages['qtime'])
+        job_.qtime = datetime.fromtimestamp(float(messages['qtime']))
     except (KeyError, ValueError):
         pass
-    else:
-        job_.qtime = datetime.fromtimestamp(qtime)
     try:
-        etime = float(messages['etime'])
+        job_.etime = datetime.fromtimestamp(float(messages['etime']))
     except (KeyError, ValueError):
         pass
-    else:
-        job_.etime = datetime.fromtimestamp(etime)
     try:
-        start = float(messages['start'])
+        job_.start = datetime.fromtimestamp(float(messages['start']))
     except (KeyError, ValueError):
         pass
-    else:
-        job_.start = datetime.fromtimestamp(start)
+    try:
+        job_.end = datetime.fromtimestamp(float(messages['end']))
+    except (KeyError, ValueError):
+        pass
+    try:
+        job_.exit_status = int(messages['Exit_status'])
+    except (KeyError, ValueError):
+        pass
     job_.exec_host = messages.get("exec_host")
     job_.resource_list = intval(subdict(messages, "Resource_List."))
+    job_.resources_used = intval(subdict(messages, "resources_used."))
+    try:
+        job_.session = int(messages['session'])
+    except (KeyError, ValueError):
+        pass
     return job_
 
 
