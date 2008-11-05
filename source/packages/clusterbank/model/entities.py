@@ -411,10 +411,27 @@ class Job (Entity):
         id -- the job id
         """
         Entity.__init__(self)
-        self.id = id_
         self.resource = resource
+        self.id = id_
+        self.user = None
+        self.group = None
+        self.account = None
+        self.name = None
+        self.queue = None
+        self.reservation_name = None
+        self.reservation_id = None
+        self.ctime = None
+        self.qtime = None
+        self.etime = None
         self.start = None
+        self.exec_host = None
+        self.resource_list = {}
+        self.session = None
+        self.alternate_id = None
         self.end = None
+        self.exit_status = None
+        self.resources_used = {}
+        self.accounting_id = None
         self.charges = []
 
 

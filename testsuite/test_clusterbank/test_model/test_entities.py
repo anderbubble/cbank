@@ -5,12 +5,16 @@ from datetime import datetime, timedelta
 import clusterbank.model
 import clusterbank.exceptions as exceptions
 from clusterbank.model.entities import User, Project, Resource, \
-    Allocation, Hold, Charge, Refund
+    Allocation, Hold, Job, Charge, Refund
 
 __all__ = [
     "TestUser", "TestProject", "TestResource",
     "TestAllocation", "TestHold", "TestCharge", "TestRefund",
 ]
+
+
+def assert_in (item, container):
+    assert item in container, "%s not in %s" % (item, container)
 
 
 class TestUser (object):
@@ -176,7 +180,36 @@ class TestHold (object):
         assert len(holds) == 1, "holds: %i" % len(holds)
         hold = holds[0]
         assert hold.amount == 0, "hold: %i" % hold.amount
-        assert hold.allocation in allocations, "allocation: %s" % hold.allocation
+        assert_in(hold.allocation, allocations)
+
+
+class TestJob (object):
+    
+    def test_init (self):
+        resource = Resource(None)
+        job = Job(resource, 123)
+        assert job.resource is resource # cbank specific
+        assert job.id == 123
+        assert job.user is None
+        assert job.group is None
+        assert job.account is None
+        assert job.name is None
+        assert job.queue is None
+        assert job.reservation_name is None
+        assert job.reservation_id is None
+        assert job.ctime is None
+        assert job.qtime is None
+        assert job.etime is None
+        assert job.start is None
+        assert job.exec_host is None
+        assert job.resource_list == {}
+        assert job.session is None
+        assert job.alternate_id is None
+        assert job.end is None
+        assert job.exit_status is None
+        assert job.resources_used == {}
+        assert job.accounting_id is None
+        assert job.charges == [] # cbank specific
 
 
 class TestCharge (object):
