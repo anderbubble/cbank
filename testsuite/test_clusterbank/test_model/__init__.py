@@ -4,7 +4,7 @@ import clusterbank.model.database
 from clusterbank.upstreams import default as upstream
 from clusterbank.upstreams.default import User, Project, Resource
 
-__all__ = ["test_base", "test_entities", "test_accounting"]
+__all__ = ["test_entities", "test_accounting"]
 
 def setup ():
     clusterbank.model.database.metadata.bind = \

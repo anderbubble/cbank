@@ -2,7 +2,7 @@ import ConfigParser
 
 import clusterbank
 
-__all__ = ["test_model", "test_cbank", "test_upstreams"]
+__all__ = ["test_model", "test_controllers", "test_cbank", "test_upstreams"]
 
 _config = None
 

@@ -8,12 +8,11 @@ from textwrap import dedent
 from sqlalchemy import create_engine
 
 import clusterbank
-import clusterbank.model
-from clusterbank.model import user_by_name, project_by_name, \
-    resource_by_name, user_projects, project_members, Session, User, \
-    Project, Allocation, Hold, Charge, Refund
-from clusterbank.model.database import metadata
-import clusterbank.upstreams.default as upstream
+from clusterbank.model import upstream, metadata, User, Project, Allocation, \
+    Hold, Charge, Refund
+from clusterbank.controllers import user_by_name, project_by_name, \
+    resource_by_name, user_projects, project_members, Session
+import clusterbank.upstreams.default as upstream_
 import clusterbank.cbank.controllers as controllers
 from clusterbank.cbank.controllers import main, report_main, new_main, \
     report_users_main, report_projects_main, report_allocations_main, \
@@ -98,33 +97,33 @@ def not_admin ():
 def setup ():
     metadata.bind = create_engine("sqlite:///:memory:")
     current_user = current_username()
-    upstream.users = [
-        upstream.User(1, "user1"),
-        upstream.User(2, "user2"),
-        upstream.User(3, current_user)]
-    upstream.projects = [
-        upstream.Project(1, "project1"), upstream.Project(2, "project2"),
-        upstream.Project(3, "project3"), upstream.Project(4, "project4")]
-    upstream.projects[0].members.append(upstream.users[0])
-    upstream.projects[1].members.append(upstream.users[1])
-    upstream.projects[1].members.append(upstream.users[2])
-    upstream.projects[2].members.append(upstream.users[1])
-    upstream.projects[2].members.append(upstream.users[2])
-    upstream.projects[2].owners.append(upstream.users[2])
-    upstream.projects[3].members.append(upstream.users[0])
-    upstream.projects[3].owners.append(upstream.users[2])
-    upstream.resources = [
-        upstream.Resource(1, "resource1"), upstream.Resource(2, "resource2")]
-    clusterbank.model.upstream.use = upstream
+    upstream_.users = [
+        upstream_.User(1, "user1"),
+        upstream_.User(2, "user2"),
+        upstream_.User(3, current_user)]
+    upstream_.projects = [
+        upstream_.Project(1, "project1"), upstream_.Project(2, "project2"),
+        upstream_.Project(3, "project3"), upstream_.Project(4, "project4")]
+    upstream_.projects[0].members.append(upstream_.users[0])
+    upstream_.projects[1].members.append(upstream_.users[1])
+    upstream_.projects[1].members.append(upstream_.users[2])
+    upstream_.projects[2].members.append(upstream_.users[1])
+    upstream_.projects[2].members.append(upstream_.users[2])
+    upstream_.projects[2].owners.append(upstream_.users[2])
+    upstream_.projects[3].members.append(upstream_.users[0])
+    upstream_.projects[3].owners.append(upstream_.users[2])
+    upstream_.resources = [
+        upstream_.Resource(1, "resource1"), upstream_.Resource(2, "resource2")]
+    upstream.use = upstream_
     fake_dt = FakeDateTime(datetime(2000, 1, 1))
     clusterbank.cbank.controllers.datetime = fake_dt
 
 
 def teardown ():
-    upstream.users = []
-    upstream.projects = []
-    upstream.resources = []
-    clusterbank.model.upstream.use = None
+    upstream_.users = []
+    upstream_.projects = []
+    upstream_.resources = []
+    upstream.use = None
     Session.bind = None
     clusterbank.cbank.controllers.datetime = datetime
 
@@ -148,11 +147,11 @@ class CbankTester (object):
     def setup (self):
         metadata.create_all()
         clusterbank.config.add_section("cbank")
-        for user in upstream.users:
+        for user in upstream_.users:
             user_by_name(user.name)
-        for project in upstream.projects:
+        for project in upstream_.projects:
             project_by_name(project.name)
-        for resource in upstream.resources:
+        for resource in upstream_.resources:
             resource_by_name(resource.name)
     
     def teardown (self):

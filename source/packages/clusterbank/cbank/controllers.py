@@ -27,8 +27,9 @@ from sqlalchemy.exceptions import InvalidRequestError
 
 import clusterbank
 from clusterbank import config
-from clusterbank.model import Session, User, Project, Resource, \
-    Allocation, Hold, Charge, Refund, user, project, resource, \
+from clusterbank.model import User, Project, Resource, Allocation, Hold, \
+    Charge, Refund
+from clusterbank.controllers import Session, user, project, resource, \
     project_members, user_projects, user_projects_owned
 from clusterbank.cbank.views import print_allocation, print_charges, \
     print_holds, print_refund, print_users_report, print_projects_report, \

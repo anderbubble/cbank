@@ -6,7 +6,7 @@ A library for managing and accounting for the use of resources.
 import ConfigParser
 
 __all__ = ["config", "__version__"
-    "exceptions", "model", "cbank", "upstreams"]
+    "exceptions", "model", "controllers", "cbank", "upstreams"]
 
 __version__ = "trunk"
 

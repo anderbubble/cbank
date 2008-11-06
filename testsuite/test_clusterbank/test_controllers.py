@@ -1,11 +1,32 @@
 from nose.tools import raises, assert_equal
 
-from clusterbank.model import Session, user, project, user_by_name, \
+from sqlalchemy import create_engine
+
+from clusterbank.model import metadata, upstream
+from clusterbank.upstreams import default as upstream_
+from clusterbank.upstreams.default import User, Project, Resource
+from clusterbank.controllers import Session, user, project, user_by_name, \
     project_by_name, resource_by_name, job
 from clusterbank.exceptions import NotFound
 from clusterbank.model.database import metadata
 
 from datetime import datetime, timedelta
+
+
+def setup ():
+    metadata.bind = create_engine("sqlite:///:memory:")
+    upstream.use = upstream_
+    upstream_.users = [User(1, "monty")]
+    upstream_.projects = [Project(1, "grail")]
+    upstream_.resources = [Resource(1, "spam")]
+
+
+def teardown ():
+    upstream_.users = []
+    upstream_.projects = []
+    upstream_.resources = []
+    upstream.use = None
+    metadata.bind = None
 
 
 def assert_ident (obj1, obj2):

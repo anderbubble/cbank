@@ -8,8 +8,9 @@ from sqlalchemy import create_engine
 
 import clusterbank
 import clusterbank.model
-from clusterbank.model import user_by_name, project_by_name, \
-    resource_by_name, Session, Allocation, Hold, Charge, Refund
+from clusterbank.model import Allocation, Hold, Charge, Refund
+from clusterbank.controllers import user_by_name, project_by_name, \
+    resource_by_name, Session
 from clusterbank.model.database import metadata
 import clusterbank.upstreams.default as upstream
 from clusterbank.cbank.views import print_users_report, \
