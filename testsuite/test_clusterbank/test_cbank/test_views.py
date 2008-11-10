@@ -835,11 +835,11 @@ class TestChargesReport (CbankViewTester):
         correct = dedent("""\
             #      Date       Resource Project         User           Charged
             ------ ---------- -------- --------------- -------- -------------
-            #1     2000-01-01 resource1 project1        user1             10.0
-            #2     2000-01-01 resource1 project1        user1             15.0
-            #3     2000-01-01 resource1 project1        user1              5.0
-            #4     2000-01-01 resource2 project2        user2              9.0
-            #5     2000-01-01 resource2 project2        user2              8.0
+            1      2000-01-01 resource1 project1        user1             10.0
+            2      2000-01-01 resource1 project1        user1             15.0
+            3      2000-01-01 resource1 project1        user1              5.0
+            4      2000-01-01 resource2 project2        user2              9.0
+            5      2000-01-01 resource2 project2        user2              8.0
                                                                 -------------
                                                                          47.0
             Units are undefined.
@@ -879,11 +879,11 @@ class TestChargesReport (CbankViewTester):
         correct = dedent("""\
             #      Date       Resource Project         User           Charged
             ------ ---------- -------- --------------- -------- -------------
-            #1     2000-01-01 resource1 project1        user1              6.0
-            #2     2000-01-01 resource1 project1        user1              7.0
-            #3     2000-01-01 resource1 project1        user1              5.0
-            #4     2000-01-01 resource2 project2        user2              9.0
-            #5     2000-01-01 resource2 project2        user2              0.0
+            1      2000-01-01 resource1 project1        user1              6.0
+            2      2000-01-01 resource1 project1        user1              7.0
+            3      2000-01-01 resource1 project1        user1              5.0
+            4      2000-01-01 resource2 project2        user2              9.0
+            5      2000-01-01 resource2 project2        user2              0.0
                                                                 -------------
                                                                          27.0
             Units are undefined.

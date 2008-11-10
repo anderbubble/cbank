@@ -437,7 +437,7 @@ def print_charges_report (charges, comments=False):
     for charge, charge_amount in query:
         total_charged += charge_amount
         print format({
-            'Charge':charge,
+            'Charge':charge.id,
             'User':charge.user,
             'Project':charge.allocation.project,
             'Resource':charge.allocation.resource,
