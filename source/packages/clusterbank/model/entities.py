@@ -546,6 +546,8 @@ class Charge (Entity):
     def transfer (self, project, amount=None):
         """Transfer a charge to allocations of another project.
         
+        Returns a tuple containing the refund and a list of new charges.
+        
         Arguments:
         project -- the project to transfer the charge to
         amount -- the amount to tranfer (default all)
