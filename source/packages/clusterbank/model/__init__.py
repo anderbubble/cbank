@@ -109,8 +109,26 @@ mapper(Hold, holds, properties={
 
 mapper(Job, jobs, properties={
     'id':jobs.c.id,
-    'resource':relation(Resource, backref="jobs"),
-    'charges':relation(Charge, backref="jobs", secondary=jobs_charges)})
+    'user':relation(User),
+    'group':jobs.c.group,
+    'account':relation(Project),
+    'name':jobs.c.name,
+    'queue':jobs.c.queue,
+    'reservation_name':jobs.c.reservation_name,
+    'reservation_id':jobs.c.reservation_id,
+    'ctime':jobs.c.ctime,
+    'qtime':jobs.c.qtime,
+    'etime':jobs.c.etime,
+    'start':jobs.c.start,
+    'exec_host':jobs.c.exec_host,
+    'resource_list':jobs.c.resource_list,
+    'session':jobs.c.session,
+    'alternate_id':jobs.c.alternate_id,
+    'end':jobs.c.end,
+    'exit_status':jobs.c.exit_status,
+    'resources_used':jobs.c.resources_used,
+    'accounting_id':jobs.c.accounting_id,
+    'charges':relation(Charge, secondary=jobs_charges, backref="jobs")})
 
 
 mapper(Charge, charges, properties={
@@ -129,5 +147,7 @@ mapper(Refund, refunds, properties={
     'amount':refunds.c.amount,
     'comment':refunds.c.comment})
 
+
 metadata.bind = configured_engine()
 upstream.use = configured_upstream()
+

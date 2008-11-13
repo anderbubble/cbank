@@ -1,10 +1,10 @@
-from nose.tools import raises
+from nose.tools import raises, assert_equal
 
 from datetime import datetime, timedelta
 
-import clusterbank.model
-import clusterbank.exceptions as exceptions
-from clusterbank.model.entities import User, Project, Resource, \
+from clusterbank import config
+from clusterbank.controllers import Session
+from clusterbank.model import metadata, User, Project, Resource, \
     Allocation, Hold, Job, Charge, Refund
 
 __all__ = [
@@ -17,7 +17,21 @@ def assert_in (item, container):
     assert item in container, "%s not in %s" % (item, container)
 
 
-class TestUser (object):
+def assert_ident (item1, item2):
+    assert item1 is item2, "%r is not %r" % (item1, item2)
+
+
+class EntityTester (object):
+    
+    def setup (self):
+        metadata.create_all()
+    
+    def teardown (self):
+        Session.close()
+        metadata.drop_all()
+
+
+class TestUser (EntityTester):
     
     def test_id (self):
         user = User(1)
@@ -28,7 +42,7 @@ class TestUser (object):
         assert user.name == "monty"
 
 
-class TestProject (object):
+class TestProject (EntityTester):
     
     def test_id (self):
         project = Project(1)
@@ -39,7 +53,7 @@ class TestProject (object):
         assert project.name == "grail"
 
 
-class TestResource (object):
+class TestResource (EntityTester):
     
     def test_id (self):
         resource = Resource(1)
@@ -50,7 +64,7 @@ class TestResource (object):
         assert resource.name == "spam"
 
 
-class TestAllocation (object):
+class TestAllocation (EntityTester):
     
     def test_init (self):
         start = datetime.now()
@@ -140,7 +154,7 @@ class TestAllocation (object):
         assert allocation.amount_available() == 1350
 
 
-class TestHold (object):
+class TestHold (EntityTester):
     
     def test_init (self):
         allocation = Allocation(None, None, 0, None, None)
@@ -183,7 +197,16 @@ class TestHold (object):
         assert_in(hold.allocation, allocations)
 
 
-class TestJob (object):
+class TestJob (EntityTester):
+    
+    def setup (self):
+        EntityTester.setup(self)
+        config.add_section("resources")
+        config.set("resources", "spam", r"spam\..*")
+    
+    def teardown (self):
+        EntityTester.teardown(self)
+        config.remove_section("resources")
     
     def test_init (self):
         job = Job("www.example.com.123")
@@ -213,8 +236,121 @@ class TestJob (object):
         job = Job("www.example.com.123")
         assert str(job) == "www.example.com.123"
     
+    def test_persistence (self):
+        # create an example job
+        user1 = User(1)
+        project1 = Project(1)
+        resource1 = Resource(1)
+        allocation1 = Allocation(project1, resource1, 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        charges = [Charge(allocation1, 0), Charge(allocation1, 0)]
+        job = Job("www.example.com.123")
+        job.user = user1
+        job.group = "agroup"
+        job.account = project1
+        job.name = "myjob"
+        job.queue = "aqueue"
+        job.reservation_name = "areservation"
+        job.reservation_id = "www.example.com.1"
+        job.ctime = datetime(2000, 1, 1)
+        job.qtime = datetime(2001, 1, 1)
+        job.etime = datetime(2001, 1, 2)
+        job.start = datetime(2001, 2, 2)
+        job.exec_host = "ANL-R00-M1-512"
+        job.resource_list = {'nodes':64, 'walltime':timedelta(minutes=10),
+            'otherresource':"stringvalue"}
+        job.session = 123
+        job.alternate_id = "anotherid"
+        job.end = datetime(2001, 2, 3)
+        job.exit_status = 128
+        job.resources_used = {'nodes':64, 'walltime':timedelta(minutes=10),
+            'otherresource':"stringvalue"}
+        job.accounting_id = "someaccountingid"
+        job.charges = charges
+        # run the job through the database
+        s = Session()
+        s.add(job)
+        s.flush()
+        charge_ids = [charge.id for charge in charges]
+        s.clear()
+        job = s.query(Job).filter_by(id="www.example.com.123").one()
+        # check the job's attributes for persistence
+        assert_equal(job.id, "www.example.com.123")
+        assert_ident(job.user, s.query(User).filter_by(id=1).one())
+        assert_equal(job.group, "agroup")
+        assert_equal(job.account, s.query(Project).filter_by(id=1).one())
+        assert_equal(job.name, "myjob")
+        assert_equal(job.queue, "aqueue")
+        assert_equal(job.reservation_name, "areservation")
+        assert_equal(job.reservation_id, "www.example.com.1")
+        assert_equal(job.ctime, datetime(2000, 1, 1))
+        assert_equal(job.qtime, datetime(2001, 1, 1))
+        assert_equal(job.etime, datetime(2001, 1, 2))
+        assert_equal(job.start, datetime(2001, 2, 2))
+        assert_equal(job.exec_host, "ANL-R00-M1-512")
+        assert_equal(job.resource_list, {'nodes':64,
+            'walltime':timedelta(minutes=10), 'otherresource':"stringvalue"})
+        assert_equal(job.session, 123)
+        assert_equal(job.alternate_id, "anotherid")
+        assert_equal(job.end, datetime(2001, 2, 3))
+        assert_equal(job.exit_status, 128)
+        assert_equal(job.resources_used, {'nodes':64,
+            'walltime':timedelta(minutes=10), 'otherresource':"stringvalue"})
+        assert_equal(job.accounting_id, "someaccountingid")
+        assert_equal(set(job.charges),
+            set(s.query(Charge).filter(Charge.id.in_(charge_ids))))
+    
+    def test_dict_float (self):
+        # create an example job
+        job = Job("www.example.com.123")
+        job.resource_list = {'afloat':1.1}
+        job.resources_used = {'afloat':1.2}
+        # run the job through the database
+        s = Session()
+        s.add(job)
+        s.flush()
+        s.clear()
+        job = s.query(Job).filter_by(id="www.example.com.123").one()
+        # check the job's attributes for persistence
+        assert_equal(job.resource_list, {'afloat':1.1})
+        assert_equal(job.resources_used, {'afloat':1.2})
+    
+    def test_timedelta_days (self):
+        # create an example job
+        job = Job("www.example.com.123")
+        job.resource_list = {'walltime':timedelta(days=1)}
+        job.resources_used = {'walltime':timedelta(days=1)}
+        # run the job through the database
+        s = Session()
+        s.add(job)
+        s.flush()
+        s.clear()
+        job = s.query(Job).filter_by(id="www.example.com.123").one()
+        # check the job's attributes for persistence
+        assert_equal(job.resource_list, {'walltime':timedelta(days=1)})
+        assert_equal(job.resources_used, {'walltime':timedelta(days=1)})
+    
+    def test_timedelta_microseconds (self):
+        # create an example job
+        job = Job("www.example.com.123")
+        job.resource_list = {'walltime':timedelta(microseconds=1)}
+        job.resources_used = {'walltime':timedelta(microseconds=1)}
+        # run the job through the database
+        s = Session()
+        s.add(job)
+        s.flush()
+        s.clear()
+        job = s.query(Job).filter_by(id="www.example.com.123").one()
+        # check the job's attributes for persistence
+        assert_equal(job.resource_list, {'walltime':timedelta(microseconds=1)})
+        assert_equal(job.resources_used, {'walltime':timedelta(microseconds=1)})
+    
+    def test_resource (self):
+        assert_equal(Job("spam.1234")._get_resource(), "spam")
+        assert_ident(Job("unknown.1234")._get_resource(), None)
 
-class TestCharge (object):
+
+class TestCharge (EntityTester):
     
     def test_init (self):
         now = datetime.now()
@@ -280,7 +416,7 @@ class TestCharge (object):
         assert charge.effective_amount() == 70
 
 
-class TestRefund (object):
+class TestRefund (EntityTester):
     
     def test_init (self):
         now = datetime.now()

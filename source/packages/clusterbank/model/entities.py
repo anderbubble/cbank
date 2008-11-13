@@ -6,10 +6,13 @@ Project -- project to which resources can be allocated
 Resource -- resource that can be allocated
 Allocation -- record of amount allocated to a project
 Hold -- a potential charge against a allocation
+Job -- a job run on a resource
 Charge -- charge against a allocation
 Refund -- refund of a charge
 """
 
+
+import re
 from datetime import datetime
 import ConfigParser
 
@@ -452,6 +455,19 @@ class Job (Entity):
     
     def __str__ (self):
         return str(self.id)
+    
+    def _get_resource (self):
+        try:
+            resources_defined = config.options("resources")
+        except ConfigParser.NoSectionError:
+            return None
+        for resource in resources_defined:
+            if resource == "__default__":
+                return config.get("resources", "__default__")
+            pattern = config.get("resources", resource)
+            if re.match(pattern, self.id):
+                return resource
+        return None
 
 
 class Charge (Entity):
@@ -488,6 +504,7 @@ class Charge (Entity):
         self.comment = None
         self.refunds = []
         self.amount = amount
+        self.jobs = []
     
     @classmethod
     def distributed (cls, allocations, amount):

@@ -8,11 +8,14 @@ print_users_report -- charges for users
 print_projects_report -- allocations and charges for projects
 print_allocations_report -- allocation and charges for allocations
 print_holds_report -- a table of holds
+print_jobs_report -- a table of jobs
 print_charges_report -- a table of charges
 print_allocations -- print multiple allocations
 print_allocation -- print a single allocation
 print_holds -- print multiple holds
 print_hold -- print a single hold
+print_jobs -- print multiple jobs
+print_job -- print a single job
 print_charges -- print multiple charges
 print_charge -- print a single charge
 print_refunds -- print multiple refunds
@@ -25,7 +28,7 @@ format_datetime -- convert a datetime to a string
 
 import locale
 import ConfigParser
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy.sql import and_, cast, func
 from sqlalchemy.types import Integer
@@ -35,11 +38,11 @@ from clusterbank import config
 from clusterbank.cbank.common import get_unit_factor
 from clusterbank.model import User, Project, Resource, Allocation, Hold, \
     Charge, Refund
-from clusterbank.controllers import Session
+from clusterbank.controllers import Session, job_resource
 
 __all__ = ["unit_definition", "convert_units", "display_units",
     "print_users_report", "print_projects_report", "print_allocations_report",
-    "print_holds_report", "print_charges_report"]
+    "print_holds_report", "print_jobs_report", "print_charges_report"]
 
 
 locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
@@ -398,6 +401,59 @@ def print_holds_report (holds, comments=None):
     print unit_definition()
 
 
+def print_jobs_report (jobs):
+    
+    """Jobs report.
+    
+    The jobs report displays individual jobs.
+    
+    Arguments:
+    jobs -- jobs to report
+    """
+    
+    format = Formatter(["ID", "Name", "User", "Account", "Duration",
+        "Charged"])
+    format.aligns = {'Duration':"right", 'Charged':"right"}
+    format.widths = {'ID':19, 'Name': 10, 'User':8, 'Account':15,
+        'Duration':9, 'Charged':13}
+    print format.header()
+    print format.separator()
+    duration_sum = timedelta()
+    charge_sum = 0
+    for job in jobs:
+        try:
+            duration_td = job.end - job.start
+        except TypeError:
+            duration = None
+        else:
+            duration_sum += duration_td
+            duration = format_timedelta(duration_td)
+        charged = sum(charge.effective_amount() for charge in job.charges)
+        charge_sum += charged
+        if job.start is not None:
+            start = format_datetime(job.start)
+        else:
+            start = ""
+        print format({
+            'ID':job.id,
+            'Name':job.name or "",
+            'User':job.user or "",
+            'Account':job.account or "",
+            'Duration':duration or "",
+            'Charged':display_units(charged)})
+    print format.separator(["Duration", "Charged"])
+    print format({'Duration':format_timedelta(duration_sum),
+        'Charged':display_units(charge_sum)})
+    print unit_definition()
+
+
+def format_timedelta (td):
+    hours = (td.days * 24) + (td.seconds // (60 * 60))
+    minutes = (td.seconds % (60 * 60)) / 60
+    seconds = td.seconds % 60
+    return "%i:%.2i:%.2i" % (hours, minutes, seconds)
+
+
 def print_charges_report (charges, comments=False):
     
     """Charges report.
@@ -483,6 +539,39 @@ def print_hold (hold):
     print " * Project: %s" % hold.allocation.project
     print " * Resource: %s" % hold.allocation.resource
     print " * Comment: %s" % hold.comment
+
+
+def print_jobs (jobs):
+    """Print multiple jobs with print_job."""
+    for job in jobs:
+        print_job(job)
+
+
+def print_job (job):
+    print "Job %s" % job
+    print " * User: %s" % job.user
+    print " * Group: %s" % job.group
+    print " * Account: %s" % job.account
+    print " * Name: %s" % job.name
+    print " * Queue: %s" % job.queue
+    print " * Reservation name: %s" % job.reservation_name
+    print " * Reservation id: %s" % job.reservation_id
+    print " * Creation time: %s" % job.ctime
+    print " * Queue time: %s" % job.qtime
+    print " * Eligible time: %s" % job.etime
+    print " * Start: %s" % job.start
+    print " * Execution host: %s" % job.exec_host
+    print " * Resource list:"
+    for key, value in job.resource_list.iteritems():
+        print "    * %s: %s" % (key, value)
+    print " * Session: %s" % job.session
+    print " * Alternate id: %s" % job.alternate_id
+    print " * End: %s" % job.end
+    print " * Exit status: %s" % job.exit_status
+    print " * Resources used:"
+    for key, value in job.resources_used.iteritems():
+        print "    * %s: %s" % (key, value)
+    print " * Accounting id: %s" % job.accounting_id
 
 
 def print_charges (charges):

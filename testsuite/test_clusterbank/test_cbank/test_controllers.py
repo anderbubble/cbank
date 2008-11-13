@@ -9,15 +9,16 @@ from sqlalchemy import create_engine
 
 import clusterbank
 from clusterbank.model import upstream, metadata, User, Project, Allocation, \
-    Hold, Charge, Refund
-from clusterbank.controllers import user_by_name, project_by_name, \
-    resource_by_name, user_projects, project_members, Session
+    Hold, Job, Charge, Refund
+from clusterbank.controllers import user, project, user_by_name, \
+    project_by_name, resource_by_name, user_projects, project_members, Session
 import clusterbank.upstreams.default as upstream_
 import clusterbank.cbank.controllers as controllers
 from clusterbank.cbank.controllers import main, report_main, new_main, \
     report_users_main, report_projects_main, report_allocations_main, \
-    report_holds_main, report_charges_main, new_allocation_main, \
-    new_charge_main, new_hold_main, new_refund_main, handle_exceptions
+    report_holds_main, report_jobs_main, report_charges_main, \
+    new_allocation_main, new_charge_main, new_hold_main, new_refund_main, \
+    handle_exceptions, detail_jobs_main, import_main, import_jobs_main
 from clusterbank.cbank.exceptions import UnknownCommand, \
     UnexpectedArguments, UnknownProject, MissingArgument, MissingResource, \
     NotPermitted, ValueError_, UnknownCharge
@@ -45,6 +46,10 @@ class FakeDateTime (object):
         return self._now
 
 
+def assert_ident (obj1, obj2):
+    assert obj1 is obj2, "%r is not %r" % (obj1, obj2)
+
+
 class FakeFunc (object):
     
     def __init__ (self, func=lambda:None):
@@ -56,14 +61,18 @@ class FakeFunc (object):
         return self.func()
 
 
-def run (func, args=None):
+def run (func, args=None, stdin=None):
     if args is None:
         args = []
+    if stdin is None:
+        stdin = sys.stdin
     real_argv = sys.argv
+    real_stdin = sys.stdin
     real_stdout = sys.stdout
     real_stderr = sys.stderr
     try:
         sys.argv = [func.__name__] + args
+        sys.stdin = stdin
         sys.stdout = StringIO()
         sys.stderr = StringIO()
         try:
@@ -78,6 +87,7 @@ def run (func, args=None):
         return code, sys.stdout, sys.stderr
     finally:
         sys.argv = real_argv
+        sys.stdin = real_stdin
         sys.stdout = real_stdout
         sys.stderr = real_stderr
 
@@ -945,38 +955,139 @@ class TestNewRefundMain (CbankTester):
         assert code == NotPermitted.exit_code, code
 
 
+class TestImportJobs (CbankTester):
+
+    def setup (self):
+        CbankTester.setup(self)
+        be_admin()
+    
+    def test_empty (self):
+        stdin = StringIO()
+        stdin.write("   \n  ")
+        stdin.seek(0)
+        code, stdout, stderr = run(import_jobs_main, [], stdin)
+        assert_equal(code, 0)
+        jobs = Session.query(Job)
+        assert_equal(jobs.count(), 0)
+    
+    def test_comment (self):
+        stdin = StringIO()
+        stdin.write("# a comment\n# another comment")
+        stdin.seek(0)
+        code, stdout, stderr = run(import_jobs_main, [], stdin)
+        assert_equal(code, 0)
+        jobs = Session.query(Job)
+        assert_equal(jobs.count(), 0)
+    
+    def test_job_from_pbs_q (self):
+        entry = "04/18/2008 02:10:12;Q;692009.jmayor5.lcrc.anl.gov;queue=shared\n"
+        stdin = StringIO()
+        stdin.write(entry)
+        stdin.seek(0)
+        code, stdout, stderr = run(import_jobs_main, [], stdin)
+        assert_equal(code, 0)
+        jobs = Session.query(Job)
+        assert_equal(jobs.count(), 1)
+        job_ = jobs.one()
+        assert_equal(job_.id, "692009.jmayor5.lcrc.anl.gov")
+        assert_equal(job_.queue, "shared")
+    
+    def test_job_from_pbs_s (self):
+        entry = "04/18/2008 02:10:12;S;692009.jmayor5.lcrc.anl.gov;user=user1 group=agroup account=project1 jobname=myjob queue=shared ctime=1208502612 qtime=1208502612 etime=1208502612 start=1208502612 exec_host=j340/0+j341/0+j342/0+j343/0+j344/0+j345/0+j346/0+j347/0 Resource_List.ncpus=8 Resource_List.neednodes=8 Resource_List.nodect=8 Resource_List.nodes=8 Resource_List.walltime=05:00:00"
+        stdin = StringIO()
+        stdin.write(entry)
+        stdin.seek(0)
+        code, stdout, stderr = run(import_jobs_main, [], stdin)
+        assert_equal(code, 0)
+        jobs = Session.query(Job)
+        assert_equal(jobs.count(), 1)
+        job_ = jobs.one()
+        assert_equal(job_.id, "692009.jmayor5.lcrc.anl.gov")
+        assert_ident(job_.user, user("user1"))
+        assert_equal(job_.group, "agroup")
+        assert_ident(job_.account, project("project1"))
+        assert_equal(job_.name, "myjob")
+        assert_equal(job_.queue, "shared")
+        assert_equal(job_.ctime, datetime(2008, 4, 18, 2, 10, 12))
+        assert_equal(job_.qtime, datetime(2008, 4, 18, 2, 10, 12))
+        assert_equal(job_.etime, datetime(2008, 4, 18, 2, 10, 12))
+        assert_equal(job_.start, datetime(2008, 4, 18, 2, 10, 12))
+        assert_equal(job_.exec_host,
+            "j340/0+j341/0+j342/0+j343/0+j344/0+j345/0+j346/0+j347/0")
+        assert_equal(job_.resource_list, {'ncpus':8, 'neednodes':8,
+            'nodect':8, 'nodes':8, 'walltime':timedelta(hours=5)})
+    
+    def test_job_from_pbs_e (self):
+        entry = "04/18/2008 03:35:28;E;691908.jmayor5.lcrc.anl.gov;user=user1 group=agroup account=project1 jobname=myjob queue=pri4 ctime=1208378066 qtime=1208378066 etime=1208378066 start=1208378066 exec_host=j75/0+j76/0+j77/0+j78/0+j79/0+j86/0+j87/0+j88/0+j89/0+j90/0+j91/0+j93/0+j94/0+j100/0+j101/0+j102/0+j103/0+j104/0+j105/0+j106/0+j107/0+j108/0+j109/0+j110/0 Resource_List.ncpus=24 Resource_List.neednodes=24 Resource_List.nodect=24 Resource_List.nodes=24 Resource_List.walltime=36:00:00 session=23061 end=1208507728 Exit_status=265 resources_used.cpupercent=0 resources_used.cput=00:00:08 resources_used.mem=41684kb resources_used.ncpus=24 resources_used.vmem=95988kb resources_used.walltime=36:00:47"
+        stdin = StringIO()
+        stdin.write(entry)
+        stdin.seek(0)
+        code, stdout, stderr = run(import_jobs_main, [], stdin)
+        assert_equal(code, 0)
+        jobs = Session.query(Job)
+        assert_equal(jobs.count(), 1)
+        job_ = jobs.one()
+        assert_equal(job_.id, "691908.jmayor5.lcrc.anl.gov")
+        assert_ident(job_.user, user("user1"))
+        assert_equal(job_.group, "agroup")
+        assert_ident(job_.account, project("project1"))
+        assert_equal(job_.name, "myjob")
+        assert_equal(job_.queue, "pri4")
+        assert_equal(job_.ctime, datetime(2008, 4, 16, 15, 34, 26))
+        assert_equal(job_.qtime, datetime(2008, 4, 16, 15, 34, 26))
+        assert_equal(job_.etime, datetime(2008, 4, 16, 15, 34, 26))
+        assert_equal(job_.start, datetime(2008, 4, 16, 15, 34, 26))
+        assert_equal(job_.exec_host, "j75/0+j76/0+j77/0+j78/0+j79/0+j86/0+j87/0+j88/0+j89/0+j90/0+j91/0+j93/0+j94/0+j100/0+j101/0+j102/0+j103/0+j104/0+j105/0+j106/0+j107/0+j108/0+j109/0+j110/0")
+        assert_equal(job_.resource_list, {'ncpus':24, 'neednodes':24,
+            'nodect':24, 'nodes':24, 'walltime':timedelta(hours=36)})
+        assert_equal(job_.resources_used, {
+            'walltime':timedelta(hours=36, seconds=47),
+            'cput':timedelta(seconds=8), 'cpupercent':0, 'vmem':"95988kb",
+            'ncpus':24, 'mem':"41684kb"})
+        assert_equal(job_.session, 23061)
+        assert_equal(job_.end, datetime(2008, 4, 18, 3, 35, 28))
+        assert_equal(job_.exit_status, 265)
+    
+    def test_job_from_pbs_q_duplicate (self):
+        entry1 = "04/18/2008 02:10:12;Q;692009.jmayor5.lcrc.anl.gov;queue=shared\n"
+        entry2 = "04/18/2008 02:10:12;Q;692009.jmayor5.lcrc.anl.gov;queue=exclusive\n"
+        stdin = StringIO()
+        stdin.write(entry1 + entry2)
+        stdin.seek(0)
+        code, stdout, stderr = run(import_jobs_main, [], stdin)
+        assert_equal(code, 0)
+        jobs = Session.query(Job)
+        assert_equal(jobs.count(), 1)
+        job_ = jobs.one()
+        assert_equal(job_.id, "692009.jmayor5.lcrc.anl.gov")
+        assert_equal(job_.queue, "exclusive")
+
+
 class TestReportMain (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._report_users_main = \
-            controllers.report_users_main
-        self._report_projects_main = \
-            controllers.report_projects_main
-        self._report_allocations_main = \
-            controllers.report_allocations_main
-        self._report_holds_main = \
-            controllers.report_holds_main
-        self._report_charges_main = \
-            controllers.report_charges_main
+        self._report_users_main = controllers.report_users_main
+        self._report_projects_main = controllers.report_projects_main
+        self._report_allocations_main = controllers.report_allocations_main
+        self._report_holds_main = controllers.report_holds_main
+        self._report_jobs_main = controllers.report_jobs_main
+        self._report_charges_main = controllers.report_charges_main
         controllers.report_users_main = FakeFunc()
         controllers.report_projects_main = FakeFunc()
         controllers.report_allocations_main = FakeFunc()
         controllers.report_holds_main = FakeFunc()
+        controllers.report_jobs_main = FakeFunc()
         controllers.report_charges_main = FakeFunc()
     
     def teardown (self):
         CbankTester.teardown(self)
-        controllers.report_users_main = \
-            self._report_users_main
-        controllers.report_projects_main = \
-            self._report_projects_main
-        controllers.report_allocations_main = \
-            self._report_allocations_main
-        controllers.report_holds_main = \
-            self._report_holds_main
-        controllers.report_charges_main = \
-            self._report_charges_main
+        controllers.report_users_main = self._report_users_main
+        controllers.report_projects_main = self._report_projects_main
+        controllers.report_allocations_main = self._report_allocations_main
+        controllers.report_holds_main = self._report_holds_main
+        controllers.report_jobs_main = self._report_jobs_main
+        controllers.report_charges_main = self._report_charges_main
     
     def test_exists_and_callable (self):
         assert hasattr(controllers, "report_main"), \
@@ -1019,6 +1130,15 @@ class TestReportMain (CbankTester):
         args = "holds 1 2 3"
         run(report_main, args.split())
         assert controllers.report_holds_main.calls
+    
+    def test_holds (self):
+        def test_ ():
+            assert sys.argv[0] == "report_main jobs", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.report_jobs_main.func = test_
+        args = "jobs 1 2 3"
+        run(report_main, args.split())
+        assert controllers.report_jobs_main.calls
     
     def test_charges (self):
         def test_ ():
@@ -1522,6 +1642,10 @@ class TestHoldsReport (CbankTester):
             h2.user = current_user()
         Session.flush()
     
+    def teardown (self):
+        CbankTester.teardown(self)
+        controllers.print_holds_report = self._print_holds_report
+    
     def test_default (self):
         holds = Session().query(Hold).filter_by(
             user=current_user(), active=True).filter(Hold.allocation.has(
@@ -1718,6 +1842,236 @@ class TestHoldsReport_Admin (TestHoldsReport):
         assert_equal(set(args[0]), set(holds))
 
 
+class TestJobsReport (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        self._print_jobs_report = controllers.print_jobs_report
+        controllers.print_jobs_report = FakeFunc()
+        current_user_ = current_user()
+        clusterbank.config.add_section("resources")
+        clusterbank.config.set("resources", "resource1", r"resource1\..*")
+        clusterbank.config.set("resources", "resource2", r"resource2\..*")
+        j1 = Job("resource1.1")
+        j1.user = current_user_
+        j1.start = datetime(2000, 1, 1)
+        j1.end = datetime(2000, 1, 2)
+        j1.account = project_by_name("project2")
+        j2 = Job("resource1.2")
+        j2.user = current_user_
+        j2.start = datetime(2000, 1, 30)
+        j2.end = datetime(2000, 2, 2)
+        j2.account = project_by_name("project2")
+        j3 = Job("resource1.3")
+        j3.user = current_user_
+        j3.start = datetime(2000, 2, 1)
+        j3.account = project_by_name("project2")
+        j4 = Job("resource1.4")
+        j4.user = current_user_
+        j5 = Job("resource1.5")
+        j5.user = user_by_name("user1")
+        j5.start = datetime(2000, 1, 30)
+        j5.end = datetime(2000, 2, 2)
+        j5.account = project_by_name("project4")
+        j6 = Job("resource1.6")
+        j6.start = datetime(2000, 2, 1)
+        j7 = Job("resource1.7")
+        j7.account = project_by_name("project2")
+        j7.user = current_user_
+        j8 = Job("resource1.8")
+        j8.account = project_by_name("project2")
+        j8.user = user_by_name("user2")
+        j9 = Job("resource1.9")
+        j9.account = project_by_name("project2")
+        j10 = Job("resource1.10")
+        j10.account = project_by_name("project4")
+        j10.user = current_user_
+        j11 = Job("resource1.11")
+        j11.account = project_by_name("project4")
+        j11.user = user_by_name("user1")
+        j12 = Job("resource1.12")
+        j12.account = project_by_name("project4")
+        j13 = Job("resource1.13")
+        j13.account = project_by_name("project1")
+        j13.user = current_user_
+        j14 = Job("resource1.14")
+        j14.user = user_by_name("user1")
+        j14.account = project_by_name("project1")
+        j15 = Job("resource1.15")
+        j15.user = user_by_name("user1")
+        j15.account = project_by_name("project2")
+        j1_2 = Job("resource2.1")
+        j1_2.user = current_user_
+        j1_2.account = project_by_name("project2")
+        jobs = [j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14,
+            j15, j1_2]
+        for job_ in jobs:
+            Session.add(job_)
+        Session.flush()
+    
+    def teardown (self):
+        CbankTester.teardown(self)
+        controllers.print_jobs_report = self._print_jobs_report
+        clusterbank.config.remove_section("resources")
+    
+    def test_default (self):
+        code, stdout, stderr = run(report_jobs_main)
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
+            "resource1.2", "resource1.3", "resource1.7", "resource2.1"]))
+        assert_equal(set(args[0]), set(jobs))
+    
+    def test_after (self):
+        code, stdout, stderr = run(report_jobs_main, "-a 2000-02-01".split())
+        assert_equal(code, 0)
+        jobs = Session().query(Job).filter(Job.id.in_([
+            "resource1.2", "resource1.3"]))
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        assert_equal(set(args[0]), set(jobs))
+    
+    def test_before (self):
+        code, stdout, stderr = run(report_jobs_main, "-b 2000-02-01".split())
+        assert_equal(code, 0)
+        jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
+            "resource1.2"]))
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        assert_equal(set(args[0]), set(jobs))
+    
+    def test_other_users (self):
+        code, stdout, stderr = run(report_jobs_main,
+            "-p project1 -u user1".split())
+        assert_equal(code, NotPermitted.exit_code)
+        assert not controllers.print_jobs_report.calls
+
+    def test_member_users (self):
+        code, stdout, stderr = run(report_jobs_main,
+            "-p project2 -u user1".split())
+        assert_equal(code, NotPermitted.exit_code)
+        assert not controllers.print_jobs_report.calls
+    
+    def test_owner_users (self):
+        code, stdout, stderr = run(report_jobs_main,
+            "-u user1 -p project4".split())
+        assert_equal(code, 0)
+        jobs = Session().query(Job).filter(Job.id.in_([
+            "resource1.5", "resource1.11"]))
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        assert_equal(set(args[0]), set(jobs))
+     
+    def test_self_users (self):
+        user = current_user()
+        code, stdout, stderr = run(report_jobs_main, ("-u %s" % user).split())
+        assert_equal(code, 0)
+        jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
+            "resource1.2", "resource1.3", "resource1.7", "resource2.1"]))
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        assert_equal(set(args[0]), set(jobs))
+    
+    def test_member_projects (self):
+        code, stdout, stderr = run(report_jobs_main, "-p project2".split())
+        assert_equal(code, 0)
+        jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
+            "resource1.2", "resource1.3", "resource1.7", "resource2.1"]))
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        assert_equal(set(args[0]), set(jobs))
+    
+    def test_owner_projects (self):
+        code, stdout, stderr = run(report_jobs_main, "-p project4".split())
+        assert_equal(code, 0)
+        jobs = Session().query(Job).filter(Job.id.in_(["resource1.5",
+            "resource1.10", "resource1.11", "resource1.12"]))
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        assert_equal(set(args[0]), set(jobs))
+    
+    def test_other_projects (self):
+        code, stdout, stderr = run(report_jobs_main, "-p project1".split())
+        assert_equal(code, 0)
+        jobs = Session().query(Job).filter(Job.id.in_(["resource1.13"]))
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        assert_equal(set(args[0]), set(jobs))
+    
+    def test_resources (self):
+        code, stdout, stderr = run(report_jobs_main, "-r resource2".split())
+        assert_equal(code, 0)
+        jobs = Session().query(Job).filter(Job.id.in_(["resource2.1"]))
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        assert_equal(set(args[0]), set(jobs))
+
+
+class TestJobsReport_Admin (TestJobsReport):
+    
+    def setup (self):
+        TestJobsReport.setup(self)
+        be_admin()
+
+    def test_default (self):
+        code, stdout, stderr = run(report_jobs_main)
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        jobs = Session().query(Job)
+        assert_equal(set(args[0]), set(jobs))
+    
+    def test_self_users (self):
+        user = current_user()
+        code, stdout, stderr = run(report_jobs_main, ("-u %s" % user).split())
+        assert_equal(code, 0)
+        jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
+            "resource1.2", "resource1.3", "resource1.4", "resource1.7",
+            "resource1.10", "resource1.13", "resource2.1"]))
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        assert_equal(set(args[0]), set(jobs))
+    
+    def test_member_projects (self):
+        code, stdout, stderr = run(report_jobs_main, "-p project2".split())
+        assert_equal(code, 0)
+        jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
+            "resource1.2", "resource1.3", "resource1.7", "resource1.8",
+            "resource1.9", "resource1.15", "resource2.1"]))
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        assert_equal(set(args[0]), set(jobs))
+    
+    def test_after (self):
+        code, stdout, stderr = run(report_jobs_main, "-a 2000-02-01".split())
+        assert_equal(code, 0)
+        jobs = Session().query(Job).filter(Job.id.in_(["resource1.2",
+            "resource1.3", "resource1.5", "resource1.6"]))
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        assert_equal(set(args[0]), set(jobs))
+    
+    def test_before (self):
+        code, stdout, stderr = run(report_jobs_main, "-b 2000-02-01".split())
+        assert_equal(code, 0)
+        jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
+            "resource1.2", "resource1.5"]))
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        assert_equal(set(args[0]), set(jobs))
+
+    def test_member_users (self):
+        code, stdout, stderr = run(report_jobs_main,
+            "-p project2 -u user1".split())
+        assert_equal(code, 0)
+        jobs = Session().query(Job).filter(Job.id.in_(["resource1.15"]))
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        assert_equal(set(args[0]), set(jobs))
+    
+    def test_other_users (self):
+        code, stdout, stderr = run(report_jobs_main,
+            "-p project1 -u user1".split())
+        assert_equal(code, 0)
+        jobs = Session().query(Job).filter(Job.id.in_(["resource1.14"]))
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        assert_equal(set(args[0]), set(jobs))
+    
+    def test_other_projects (self):
+        code, stdout, stderr = run(report_jobs_main, "-p project1".split())
+        assert_equal(code, 0)
+        jobs = Session().query(Job).filter(Job.id.in_(["resource1.13",
+            "resource1.14"]))
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        assert_equal(set(args[0]), set(jobs))
+
+
 class TestChargesReport (CbankTester):
     
     def setup (self):
@@ -1744,6 +2098,10 @@ class TestChargesReport (CbankTester):
             c4.datetime = datetime(2001, 1, 1)
             c2.user = current_user()
         Session.flush()
+    
+    def teardown (self):
+        CbankTester.teardown(self)
+        controllers.print_charges_report = self._print_charges_report
     
     def test_default (self):
         charges = Session().query(Charge).filter_by(
@@ -1954,4 +2312,27 @@ class TestChargesReport_Admin (TestChargesReport):
         assert_equal(code, 0)
         args, kwargs = controllers.print_charges_report.calls[0]
         assert_equal(set(args[0]), set(charges))
+
+
+class TestDetailJobs (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        be_admin()
+        job_ = Job("resource1.1")
+        Session.add(job_)
+        self._print_jobs = controllers.print_jobs
+        controllers.print_jobs = FakeFunc()
+    
+    def teardown (self):
+        CbankTester.teardown(self)
+        controllers.print_jobs = self._print_jobs
+    
+    def test_jobs_report (self):
+        code, stdout, stderr = run(
+            detail_jobs_main, "resource1.1".split())
+        assert_equal(code, 0)
+        jobs = Session.query(Job).filter(Job.id.in_(["resource1.1"]))
+        args, kwargs = controllers.print_jobs.calls[0]
+        assert_equal(set(args[0]), set(jobs))
  

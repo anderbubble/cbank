@@ -3,15 +3,19 @@
 main -- metacontroller that dispatches to report_main and new_main
 new_main -- metacontroller that dispatches to creation controllers
 report_main -- metacontroller that dispatches to report controllers
+import_main -- metacontroller that dispatches to import controllers
 new_allocation_main -- creates new allocations
 new_charge_main -- creates new charges
 new_refund_main -- creates new refunds
+import_jobs_main -- imports pbs jobs
 report_users_main -- users report
 report_projects_main -- projects report
 report_allocations_main -- allocations report
 report_holds_main -- holds report
+report_jobs_main -- jobs report
 report_charges_main -- charges report
 """
+
 
 import optparse
 import os
@@ -22,29 +26,32 @@ import ConfigParser
 from datetime import datetime, timedelta
 from textwrap import dedent
 
-from sqlalchemy import and_
-from sqlalchemy.exceptions import InvalidRequestError
+from sqlalchemy import and_, or_
+from sqlalchemy.exceptions import InvalidRequestError, IntegrityError
+from sqlalchemy.orm import eagerload
 
 import clusterbank
 from clusterbank import config
 from clusterbank.model import User, Project, Resource, Allocation, Hold, \
-    Charge, Refund
+    Job, Charge, Refund
 from clusterbank.controllers import Session, user, project, resource, \
-    project_members, user_projects, user_projects_owned
+    project_members, user_projects, user_projects_owned, job_from_pbs, \
+    job_resource
 from clusterbank.cbank.views import print_allocation, print_charges, \
     print_holds, print_refund, print_users_report, print_projects_report, \
-    print_allocations_report, print_holds_report, print_charges_report, \
-    print_allocations, print_refunds
+    print_allocations_report, print_holds_report, print_jobs_report, \
+    print_charges_report, print_allocations, print_refunds, print_jobs
 from clusterbank.cbank.common import get_unit_factor
 from clusterbank.exceptions import NotFound
 from clusterbank.cbank.exceptions import CbankException, NotPermitted, \
     UnknownCommand, MissingArgument, UnexpectedArguments, MissingResource, \
     UnknownCharge, UnknownProject, ValueError_, UnknownUser, MissingCommand
 
-__all__ = ["main", "new_main", "report_main",
-    "new_allocation_main", "new_charge_main", "new_refund_main"
-    "report_users_main", "report_projects_main", "report_allocations_main",
-    "report_holds_main", "report_charges_main"]
+
+__all__ = ["main", "new_main", "import_main", "report_main",
+    "new_allocation_main", "new_charge_main", "new_refund_main",
+    "import_jobs_main", "report_users_main", "report_projects_main",
+    "report_allocations_main", "report_holds_main", "report_charges_main"]
 
 
 def datetime_strptime (value, format):
@@ -98,7 +105,7 @@ def main ():
     detail -- detail_main
     """
     try:
-        command = normalize(sys.argv[1], ["new", "report", "detail"])
+        command = normalize(sys.argv[1], ["new", "import", "report", "detail"])
     except (IndexError, UnknownCommand):
         if help_requested():
             print_main_help()
@@ -108,6 +115,8 @@ def main ():
         replace_command()
     if command == "new":
         return new_main()
+    elif command == "import":
+        return import_main()
     elif command == "report":
         return report_main()
     elif command == "detail":
@@ -271,6 +280,77 @@ def new_hold_main ():
     print_holds(holds)
 
 
+@handle_exceptions
+@require_admin
+def import_main ():
+    """Secondary cbank metacommand for importing entities.
+    
+    Commands:
+    jobs -- import_jobs_main
+    """
+    commands = ["jobs"]
+    try:
+        command = normalize(sys.argv[1], commands)
+    except UnknownCommand:
+        if help_requested():
+            print_import_main_help()
+            sys.exit()
+        else:
+            raise
+    except IndexError:
+        if help_requested():
+            print_new_main_help()
+            sys.exit()
+        else:
+            raise MissingCommand(", ".join(commands))
+    replace_command()
+    if command == "jobs":
+        return import_jobs_main()
+
+
+def print_import_main_help ():
+    """Print help for the 'cbank import' metacommand."""
+    command = os.path.basename(sys.argv[0])
+    message = """\
+        usage: %(command)s <entity>
+        
+        Import clusterbank entities:
+          jobs
+        
+        Each entity has its own set of options. For help with a specific
+        entity, run
+          %(command)s <entity> -h"""
+    print dedent(message % {'command':command})
+
+
+
+@handle_exceptions
+@require_admin
+def import_jobs_main ():
+    """Import jobs from pbs accounting logs."""
+    if sys.argv[1:]:
+        raise UnexpectedArguments(args)
+    s = Session()
+    counter = 0
+    for line in read(sys.stdin):
+        job = job_from_pbs(line)
+        job = s.merge(job)
+        counter += 1
+        if counter >= 100:
+            s.commit()
+            counter = 0
+    if counter != 0:
+        s.commit()
+
+
+def read (f):
+    for line in f:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        yield line
+
+
 def pop_project (args, index):
     """Pop a project from the front of args."""
     try:
@@ -342,7 +422,7 @@ def report_main ():
     holds -- report_holds_main
     charges -- report_charges_main
     """
-    commands = ["users", "projects", "allocations", "holds", "charges"]
+    commands = ["users", "projects", "allocations", "holds", "jobs", "charges"]
     try:
         command = normalize(sys.argv[1], commands)
     except (IndexError, UnknownCommand):
@@ -360,6 +440,8 @@ def report_main ():
         return report_allocations_main()
     elif command == "holds":
         return report_holds_main()
+    elif command == "jobs":
+        return report_jobs_main()
     elif command == "charges":
         return report_charges_main()
 
@@ -557,6 +639,44 @@ def report_holds_main ():
 
 
 @handle_exceptions
+def report_jobs_main ():
+    """Report jobs."""
+    options, args = report_jobs_parser().parse_args()
+    if args:
+        raise UnexpectedArguments(args)
+    current_user = get_current_user()
+    users = options.users
+    projects = options.projects
+    if not current_user.is_admin:
+        if not projects:
+            projects = user_projects(current_user)
+        if projects and user_owns_all(current_user, projects):
+            pass
+        else:
+            if not users:
+                users = [current_user]
+            elif set(users) != set([current_user]):
+                raise NotPermitted(current_user)
+    resources = options.resources or configured_resources()
+    jobs = Session().query(Job).options(eagerload(Job.charges, Charge.refunds))
+    if users:
+        jobs = jobs.filter(Job.user.has(User.id.in_(
+            user_.id for user_ in users)))
+    if projects:
+        jobs = jobs.filter(Job.account.has(Project.id.in_(
+            project_.id for project_ in projects)))
+    if options.after:
+        jobs = jobs.filter(or_(Job.start >= options.after,
+            Job.end > options.after))
+    if options.before:
+        jobs = jobs.filter(or_(Job.start < options.before,
+            Job.end <= options.before))
+    if resources:
+        jobs = (job_ for job_ in jobs if job_resource(job_) in resources)
+    print_jobs_report(jobs)
+
+
+@handle_exceptions
 def report_charges_main ():
     """Report charges."""
     parser = report_charges_parser()
@@ -606,13 +726,14 @@ def detail_main ():
     Commands:
     allocations -- detail_allocations_main
     holds -- detail_holds_main
+    jobs -- detail_jobs_main
     charges -- detail_charges_main
     refunds -- detail_refunds_main
     """
     if help_requested():
         print_detail_main_help()
         sys.exit()
-    commands = ["allocations", "holds", "charges", "refunds"]
+    commands = ["allocations", "holds", "jobs", "charges", "refunds"]
     try:
         command = normalize(sys.argv[1], commands)
     except IndexError:
@@ -622,6 +743,8 @@ def detail_main ():
         return detail_allocations_main()
     elif command == "holds":
         return detail_holds_main()
+    elif command == "jobs":
+        return detail_jobs_main()
     elif command == "charges":
         return detail_charges_main()
     elif command == "refunds":
@@ -637,6 +760,7 @@ def print_detail_main_help ():
         Retrieve details of clusterbank entities:
           allocations
           holds
+          jobs
           charges
           refunds
         
@@ -684,6 +808,27 @@ def detail_holds_main ():
                 permitted_holds.append(hold)
         holds = permitted_holds
     print_holds(holds)
+
+
+@handle_exceptions
+def detail_jobs_main ():
+    """Get a detailed view of specific jobs."""
+    current_user = get_current_user()
+    s = Session()
+    jobs = s.query(Job).filter(Job.id.in_(sys.argv[1:]))
+    if not current_user.is_admin:
+        owned_projects = user_projects_owned(current_user)
+        permitted_jobs = []
+        for job in jobs:
+            allowed = (job.user is current_user
+                or job.account in owned_projects)
+            if not allowed:
+                print >> sys.stderr, "%s: not permitted: %s" % (
+                    job.id, current_user)
+            else:
+                permitted_jobs.append(job)
+        jobs = permitted_jobs
+    print_jobs(jobs)
 
 
 @handle_exceptions
@@ -885,6 +1030,27 @@ def report_holds_parser ():
         dest="comments", action="store_true",
         help="include the comment line for each hold"))
     parser.set_defaults(projects=[], users=[], resources=[], comments=False)
+    return parser
+
+
+def report_jobs_parser ():
+    """An optparse parser for the jobs report."""
+    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser.add_option(Option("-u", "--user",
+        dest="users", type="user", action="append",
+        help="report jobs by USER", metavar="USER"))
+    parser.add_option(Option("-p", "--project",
+        dest="projects", type="project", action="append",
+        help="report jobs by PROJECT", metavar="PROJECT"))
+    parser.add_option(Option("-r", "--resource",
+        dest="resources", type="resource", action="append",
+        help="report charges for RESOURCE", metavar="RESOURCE"))
+    parser.add_option(Option("-a", "--after",
+        dest="after", type="date",
+        help="report jobs after (and including) DATE", metavar="DATE"))
+    parser.add_option(Option("-b", "--before",
+        dest="before", type="date",
+        help="report jobs before (and excluding) DATE", metavar="DATE"))
     return parser
 
 

@@ -7,15 +7,17 @@ from textwrap import dedent
 from sqlalchemy import create_engine
 
 import clusterbank
+from clusterbank import config
 import clusterbank.model
-from clusterbank.model import Allocation, Hold, Charge, Refund
+from clusterbank.model import User, Resource, Project, Allocation, Hold, \
+    Job, Charge, Refund
 from clusterbank.controllers import user_by_name, project_by_name, \
     resource_by_name, Session
 from clusterbank.model.database import metadata
 import clusterbank.upstreams.default as upstream
 from clusterbank.cbank.views import print_users_report, \
     print_projects_report, print_allocations_report, print_holds_report, \
-    print_charges_report
+    print_jobs_report, print_charges_report, print_jobs
 
 
 class FakeDateTime (object):
@@ -793,6 +795,102 @@ class TestHoldsReport (CbankViewTester):
         assert_eq_output(stdout.getvalue(), correct)
 
 
+class TestJobsReport (CbankViewTester):
+    
+    def setup (self):
+        CbankViewTester.setup(self)
+        config.add_section("resources")
+        config.set("resources", "resource1", r"resource1\..*")
+    
+    def teardown (self):
+        CbankViewTester.teardown(self)
+        config.remove_section("resources")
+    
+    def test_blank (self):
+        stdout, stderr = capture(lambda: print_jobs_report([]))
+        correct = dedent("""\
+            ID                  Name       User     Account          Duration       Charged
+            ------------------- ---------- -------- --------------- --------- -------------
+                                                                    --------- -------------
+                                                                      0:00:00           0.0
+            Units are undefined.
+            """)
+        assert_eq_output(stdout.getvalue(), correct)
+    
+    def test_bare_jobs (self):
+        s = Session()
+        jobs = [Job("resource1.1"), Job("resource1.2"), Job("resource1.3")]
+        for job in jobs:
+            s.add(job)
+        stdout, stderr = capture(lambda: print_jobs_report(jobs))
+        correct = dedent("""\
+            ID                  Name       User     Account          Duration       Charged
+            ------------------- ---------- -------- --------------- --------- -------------
+            resource1.1                                                                 0.0
+            resource1.2                                                                 0.0
+            resource1.3                                                                 0.0
+                                                                    --------- -------------
+                                                                      0:00:00           0.0
+            Units are undefined.
+            """)
+        assert_eq_output(stdout.getvalue(), correct)
+    
+    def test_long_job (self):
+        s = Session()
+        job = Job("resource1.1")
+        job.start = datetime(2000, 1, 1)
+        job.end = datetime(2000, 2, 1)
+        s.add(job)
+        stdout, stderr = capture(lambda: print_jobs_report([job]))
+        correct = dedent("""\
+            ID                  Name       User     Account          Duration       Charged
+            ------------------- ---------- -------- --------------- --------- -------------
+            resource1.1                                             744:00:00           0.0
+                                                                    --------- -------------
+                                                                    744:00:00           0.0
+            Units are undefined.
+            """)
+        assert_eq_output(stdout.getvalue(), correct)
+    
+    def test_full_jobs (self):
+        s = Session()
+        project1 = Project(1)
+        project2 = Project(2)
+        user1 = User(1)
+        user2 = User(2)
+        resource1 = Resource(1)
+        a = Allocation(project1, resource1, 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        j1 = Job("resource1.1")
+        j1.account = project1
+        j1.name = "somename"
+        j1.start = datetime(2000, 1, 1)
+        j1.end = j1.start + timedelta(minutes=30)
+        j1.charges = [Charge(a, 10), Charge(a, 20)]
+        j1.charges[1].refund(5)
+        j2 = Job("resource1.2")
+        j2.user = user1
+        j2.start = datetime(2000, 1, 2)
+        j3 = Job("resource1.3")
+        j3.account = project2
+        j3.user = user2
+        for job in [j1, j2, j3]:
+            s.add(job)
+        s.flush() # give charges ids
+        stdout, stderr = capture(lambda: print_jobs_report([j1, j2, j3]))
+        correct = dedent("""\
+            ID                  Name       User     Account          Duration       Charged
+            ------------------- ---------- -------- --------------- --------- -------------
+            resource1.1         somename            project1          0:30:00          25.0
+            resource1.2                    user1                                        0.0
+            resource1.3                    user2    project2                            0.0
+                                                                    --------- -------------
+                                                                      0:30:00          25.0
+            Units are undefined.
+            """)
+        assert_eq_output(stdout.getvalue(), correct)
+
+
 class TestChargesReport (CbankViewTester):
     
     def test_blank (self):
@@ -887,6 +985,73 @@ class TestChargesReport (CbankViewTester):
                                                                 -------------
                                                                          27.0
             Units are undefined.
+            """)
+        assert_eq_output(stdout.getvalue(), correct)
+
+
+class TestPrintJobs (CbankViewTester):
+    
+    def test_job (self):
+        user1 = user_by_name("user1")
+        project1 = project_by_name("project1")
+        resource1 = resource_by_name("resource1")
+        allocation1 = Allocation(project1, resource1, 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        charges = [Charge(allocation1, 0), Charge(allocation1, 0)]
+        job = Job("www.example.com.123")
+        job.user = user1
+        job.group = "agroup"
+        job.account = project1
+        job.name = "myjob"
+        job.queue = "aqueue"
+        job.reservation_name = "areservation"
+        job.reservation_id = "www.example.com.1"
+        job.ctime = datetime(2000, 1, 1)
+        job.qtime = datetime(2001, 1, 1)
+        job.etime = datetime(2001, 1, 2)
+        job.start = datetime(2001, 2, 2)
+        job.exec_host = "ANL-R00-M1-512"
+        job.resource_list = {'nodes':64, 'walltime':timedelta(minutes=10),
+            'otherresource':"stringvalue"}
+        job.session = 123
+        job.alternate_id = "anotherid"
+        job.end = datetime(2001, 2, 3)
+        job.exit_status = 128
+        job.resources_used = {'nodes':64, 'walltime':timedelta(minutes=10),
+            'otherresource':"stringvalue"}
+        job.accounting_id = "someaccountingid"
+        job.charges = charges
+        Session.add(job)
+        Session.flush()
+        stdout, stderr = capture(lambda:
+            print_jobs([job]))
+        correct = dedent("""\
+            Job www.example.com.123
+             * User: user1
+             * Group: agroup
+             * Account: project1
+             * Name: myjob
+             * Queue: aqueue
+             * Reservation name: areservation
+             * Reservation id: www.example.com.1
+             * Creation time: 2000-01-01 00:00:00
+             * Queue time: 2001-01-01 00:00:00
+             * Eligible time: 2001-01-02 00:00:00
+             * Start: 2001-02-02 00:00:00
+             * Execution host: ANL-R00-M1-512
+             * Resource list:
+                * nodes: 64
+                * otherresource: stringvalue
+                * walltime: 0:10:00
+             * Session: 123
+             * Alternate id: anotherid
+             * End: 2001-02-03 00:00:00
+             * Exit status: 128
+             * Resources used:
+                * nodes: 64
+                * otherresource: stringvalue
+                * walltime: 0:10:00
+             * Accounting id: someaccountingid
             """)
         assert_eq_output(stdout.getvalue(), correct)
 

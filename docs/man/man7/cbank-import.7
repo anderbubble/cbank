@@ -2,50 +2,38 @@
 .Os Python 2.x
 .Dt CBANK 7 USD
 .Sh NAME
-.Nm cbank-report
+.Nm cbank-import
 .Nd clusterbank command-line interface
 .Sh SYNOPSIS
 .Nm
-.Op Ar report
+.Ar entities
 .Sh DESCRIPTION
-Generate a clusterbank
-.Ar report :
+Import
+.Ar entities
+into clusterbank:
 .Bl -tag
-.It users
-Report aggregate data by user.
-.It projects (default)
-Report aggregate data by project.
-.It allocations
-Report aggregate data by allocation.
-.It holds
-Report active holds.
 .It jobs
-Report recorded jobs.
-.It charges
-Report individual charges.
+Import jobs from PBS accounting logs.
 .El
 .Pp
 Additional arguments are passed to the specific
-.Ar report .
+.Ar entity
+command.
 .Sh EXAMPLES
 Any non-ambiguous value for
-.Ar report
+.Ar entity
 is valid. Therefore, the following commands are equivalent:
 .Bd -filled -offset indent
 .Nm
-allocations
+jobs
 .Ed
 .Bd -filled -offset indent -compact
 .Nm
-allocation
+job
 .Ed
 .Bd -filled -offset indent -compact
 .Nm
-all
-.Ed
-.Bd -filled -offset indent -compact
-.Nm
-a
+j
 .Ed
 .Sh FILES
 .Bl -item
@@ -55,12 +43,7 @@ Global configuration and defaults.
 .El
 .Sh SEE ALSO
 .Xr cbank 7 ,
-.Xr cbank-report-users 7 ,
-.Xr cbank-report-projects 7 ,
-.Xr cbank-report-allocations 7 ,
-.Xr cbank-report-holds 7 ,
-.Xr cbank-report-jobs 7 ,
-.Xr cbank-report-charges 7
+.Xr cbank-import-jobs 7
 .Sh AUTHORS
 .An Jonathon Anderson
 .Ad janderso@alcf.anl.gov

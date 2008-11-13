@@ -15,11 +15,13 @@ project_by_name -- retrieve an upstream project by name
 project_by_id -- retrieve an upstream project by id
 resource_by_name -- retrieve an upstream resource by name
 resource_by_id -- retrieve an upstream resource by id
-user_projects -- retrieve a users projects
+user_projects -- retrieve a user's projects
 user_projects_owned -- retrieve the projects a user owns
 project_members -- retrieve the members of a project
 project_owners -- retrieve the owners of a project
-job -- create a job from a pbs entry
+job_from_pbs -- create a job from a pbs entry
+job_resource -- retrieve a job's resource
+job_charge -- create charges for a job
 """
 
 
@@ -38,7 +40,7 @@ __all__ = ["Session", "user", "user_by_id", "user_by_name",
     "project", "project_by_id", "project_by_name",
     "resource", "resource_by_id", "resource_by_name",
     "user_projects", "user_projects_owned", "project_members",
-    "project_owners", "job"]
+    "project_owners", "job_from_pbs", "job_resource", "job_charge"]
 
 
 class EntityConstraints (SessionExtension):
@@ -229,7 +231,7 @@ def project_owners (project_):
     return [user_by_id(user_id) for user_id in project_.owners]
 
 
-def job (entry):
+def job_from_pbs (entry):
     """Construct a job given a PBS accounting log entry.
     
     Supports Q, S, and E entries.
@@ -237,16 +239,16 @@ def job (entry):
     id_string, message_text = entry.split(";", 3)[2:]
     job_ = Job(id_string)
     messages = dict(message.split("=", 1)
-        for message in message_text.split(" "))
+        for message in message_text.split(" ") if "=" in message)
     job_.queue = messages.get("queue", None)
     try:
         job_.user = user(messages['user'])
-    except KeyError:
+    except (KeyError, NotFound):
         pass
     job_.group = messages.get("group", None)
     try:
         job_.account = project(messages['account'])
-    except KeyError:
+    except (KeyError, NotFound):
         pass
     job_.name = messages.get("jobname")
     try:
@@ -287,6 +289,34 @@ def job (entry):
     return job_
 
 
+def parse_timedelta (timedelta_string):
+    """Parse a HH:MM:SS as a timedelta object."""
+    try:
+        hours, minutes, seconds = timedelta_string.split(":")
+    except AttributeError:
+        raise ValueError(timedelta_string)
+    hours, minutes, seconds = [int(each) for each in (hours, minutes, seconds)]
+    return timedelta(hours=hours, minutes=minutes, seconds=seconds)
+
+
+def job_resource (job_):
+    """Retrieve a resource for a job.
+    
+    Resources can be determined based on the job id (as defined by
+    clusterbank.conf) or on the charges associated with the job.
+    """
+    resource_name = job_._get_resource()
+    if resource_name is None:
+        resources = set([charge.allocation.resource
+            for charge in job_.charges])
+        if len(resources) == 1:
+            return list(resources)[0]
+        else:
+            return None
+    else:
+        return resource(job_._get_resource())
+
+
 def dict_parser (dict_, func):
     """Parse values of a dict using a parsing function.
     
@@ -321,14 +351,12 @@ def subdict (dict_, keyroot):
         for (key, value) in dict_.iteritems() if key.startswith(keyroot))
 
 
-def parse_timedelta (timedelta_string):
-    """Parse a HH:MM:SS as a timedelta object."""
-    try:
-        hours, minutes, seconds = timedelta_string.split(":")
-    except AttributeError:
-        raise ValueError(timedelta_string)
-    hours = int(hours)
-    minutes = int(minutes)
-    seconds = int(seconds)
-    return timedelta(hours=hours, minutes=minutes, seconds=seconds)
+def job_charge (job_, amount):
+    """Charge an amount against a job's account for the job's resource.
+    
+    Arguments:
+    job_ -- the job to use to determine what to charge
+    amount -- the amount to charge
+    """
+    return job_.account.charge(job_resource(job_), amount)
 
