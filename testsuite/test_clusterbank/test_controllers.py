@@ -94,7 +94,7 @@ class TestJobFunctions (object):
         metadata.create_all()
         config.add_section("resources")
         config.set("resources", "spam", r"spam\..*")
-        self._datetime = clusterbank.model.entities
+        self._datetime = clusterbank.model.entities.datetime
         clusterbank.model.entities.datetime = \
             FakeDateTime(datetime(2000, 1, 1))
     
