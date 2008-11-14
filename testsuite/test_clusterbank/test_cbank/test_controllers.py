@@ -1857,52 +1857,68 @@ class TestJobsReport (CbankTester):
         j1.start = datetime(2000, 1, 1)
         j1.end = datetime(2000, 1, 2)
         j1.account = project_by_name("project2")
+        j1.ctime = datetime(2000, 1, 1)
         j2 = Job("resource1.2")
         j2.user = current_user_
         j2.start = datetime(2000, 1, 30)
         j2.end = datetime(2000, 2, 2)
+        j2.ctime = datetime(2000, 1, 2)
         j2.account = project_by_name("project2")
         j3 = Job("resource1.3")
         j3.user = current_user_
         j3.start = datetime(2000, 2, 1)
         j3.account = project_by_name("project2")
+        j3.ctime = datetime(2000, 1, 4)
         j4 = Job("resource1.4")
         j4.user = current_user_
+        j4.ctime = datetime(2000, 1, 5)
         j5 = Job("resource1.5")
         j5.user = user_by_name("user1")
         j5.start = datetime(2000, 1, 30)
         j5.end = datetime(2000, 2, 2)
         j5.account = project_by_name("project4")
+        j5.ctime = datetime(2000, 1, 6)
         j6 = Job("resource1.6")
         j6.start = datetime(2000, 2, 1)
+        j6.ctime = datetime(2000, 1, 7)
         j7 = Job("resource1.7")
         j7.account = project_by_name("project2")
         j7.user = current_user_
+        j7.ctime = datetime(2000, 1, 8)
         j8 = Job("resource1.8")
         j8.account = project_by_name("project2")
         j8.user = user_by_name("user2")
+        j8.ctime = datetime(2000, 1, 9)
         j9 = Job("resource1.9")
         j9.account = project_by_name("project2")
+        j9.ctime = datetime(2000, 1, 10)
         j10 = Job("resource1.10")
         j10.account = project_by_name("project4")
         j10.user = current_user_
+        j10.ctime = datetime(2000, 1, 11)
         j11 = Job("resource1.11")
         j11.account = project_by_name("project4")
         j11.user = user_by_name("user1")
+        j11.ctime = datetime(2000, 1, 12)
         j12 = Job("resource1.12")
         j12.account = project_by_name("project4")
+        j12.ctime = datetime(2000, 1, 13)
         j13 = Job("resource1.13")
         j13.account = project_by_name("project1")
         j13.user = current_user_
+        j13.ctime = datetime(2000, 1, 14)
         j14 = Job("resource1.14")
         j14.user = user_by_name("user1")
         j14.account = project_by_name("project1")
+        j14.ctime = datetime(2000, 1, 15)
         j15 = Job("resource1.15")
         j15.user = user_by_name("user1")
         j15.account = project_by_name("project2")
+        j15.ctime = datetime(2000, 1, 16)
         j1_2 = Job("resource2.1")
         j1_2.user = current_user_
         j1_2.account = project_by_name("project2")
+        j1_2.ctime = datetime(2000, 1, 3)
         jobs = [j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14,
             j15, j1_2]
         for job_ in jobs:
@@ -1921,6 +1937,18 @@ class TestJobsReport (CbankTester):
         jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.3", "resource1.7", "resource2.1"]))
         assert_equal(set(args[0]), set(jobs))
+    
+    def test_default_order (self):
+        code, stdout, stderr = run(report_jobs_main)
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        s = Session()
+        jobs = [s.query(Job).filter_by(id="resource1.1").one(),
+            s.query(Job).filter_by(id="resource1.2").one(),
+            s.query(Job).filter_by(id="resource2.1").one(),
+            s.query(Job).filter_by(id="resource1.3").one(),
+            s.query(Job).filter_by(id="resource1.7").one()]
+        assert_equal(list(args[0]), jobs)
     
     def test_after (self):
         code, stdout, stderr = run(report_jobs_main, "-a 2000-02-01".split())
@@ -2011,6 +2039,29 @@ class TestJobsReport_Admin (TestJobsReport):
         args, kwargs = controllers.print_jobs_report.calls[0]
         jobs = Session().query(Job)
         assert_equal(set(args[0]), set(jobs))
+    
+    def test_default_order (self):
+        code, stdout, stderr = run(report_jobs_main)
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        s = Session()
+        jobs = [s.query(Job).filter_by(id="resource1.1").one(),
+            s.query(Job).filter_by(id="resource1.2").one(),
+            s.query(Job).filter_by(id="resource2.1").one(),
+            s.query(Job).filter_by(id="resource1.3").one(),
+            s.query(Job).filter_by(id="resource1.4").one(),
+            s.query(Job).filter_by(id="resource1.5").one(),
+            s.query(Job).filter_by(id="resource1.6").one(),
+            s.query(Job).filter_by(id="resource1.7").one(),
+            s.query(Job).filter_by(id="resource1.8").one(),
+            s.query(Job).filter_by(id="resource1.9").one(),
+            s.query(Job).filter_by(id="resource1.10").one(),
+            s.query(Job).filter_by(id="resource1.11").one(),
+            s.query(Job).filter_by(id="resource1.12").one(),
+            s.query(Job).filter_by(id="resource1.13").one(),
+            s.query(Job).filter_by(id="resource1.14").one(),
+            s.query(Job).filter_by(id="resource1.15").one()]
+        assert_equal(list(args[0]), jobs)
     
     def test_self_users (self):
         user = current_user()

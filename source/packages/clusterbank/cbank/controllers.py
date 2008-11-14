@@ -658,7 +658,8 @@ def report_jobs_main ():
             elif set(users) != set([current_user]):
                 raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
-    jobs = Session().query(Job).options(eagerload(Job.charges, Charge.refunds))
+    jobs = Session().query(Job).order_by(Job.ctime).options(
+        eagerload(Job.charges, Charge.refunds))
     if users:
         jobs = jobs.filter(Job.user.has(User.id.in_(
             user_.id for user_ in users)))
