@@ -475,7 +475,13 @@ class Job (Entity):
             pattern = config.get("resources", resource)
             if re.match(pattern, self.id):
                 return resource
-        return None
+        else:
+            resources = set([charge.allocation.resource
+                for charge in self.charges])
+            if len(resources) == 1:
+                return list(resources)[0].name
+            else:
+                return None
     
     resource = property(_get_resource)
 

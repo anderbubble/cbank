@@ -8,8 +8,7 @@ from clusterbank.upstreams import default as upstream_
 from clusterbank.upstreams.default import User, Project, Resource
 import clusterbank.controllers
 from clusterbank.controllers import (Session, user, project, user_by_name,
-    project_by_name, resource, resource_by_name, job_from_pbs, job_resource,
-    job_charge)
+    project_by_name, resource, resource_by_name, job_from_pbs, job_charge)
 from clusterbank.exceptions import NotFound
 from clusterbank.model import metadata, Allocation, Charge
 
@@ -189,7 +188,11 @@ class TestJobFunctions (object):
     
     def test_job_resource (self):
         job = Job("spam.1234")
-        assert_ident(job_resource(job), resource("spam"))
+        assert_ident(job.resource, resource("spam"))
+    
+    def test_job_resource_unknown (self):
+        job = Job("unknown.1234")
+        assert_ident(job.resource, None)
     
     def test_job_resource_from_charges (self):
         p = project_by_name("grail")
@@ -197,7 +200,7 @@ class TestJobFunctions (object):
         a = Allocation(p, r, 0, datetime(2000, 1, 1), datetime(2001, 1, 1))
         job = Job("1234")
         job.charges = [Charge(a, 0)]
-        assert_ident(job_resource(job), resource("spam"))
+        assert_ident(job.resource, resource("spam"))
     
     def test_job_charge (self):
         project_ = project("grail")

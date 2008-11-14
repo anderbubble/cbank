@@ -39,7 +39,7 @@ from clusterbank import config
 from clusterbank.cbank.common import get_unit_factor
 from clusterbank.model import User, Project, Resource, Allocation, Hold, \
     Charge, Refund
-from clusterbank.controllers import Session, job_resource
+from clusterbank.controllers import Session
 
 __all__ = ["unit_definition", "convert_units", "display_units",
     "print_users_report", "print_projects_report", "print_allocations_report",

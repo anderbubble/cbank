@@ -34,8 +34,8 @@ import clusterbank
 from clusterbank import config
 from clusterbank.model import User, Project, Resource, Allocation, Hold, \
     Job, Charge, Refund
-from clusterbank.controllers import Session, user, project, resource, \
-    job_from_pbs, job_resource
+from clusterbank.controllers import (Session, user, project, resource,
+    job_from_pbs)
 from clusterbank.cbank.views import print_allocation, print_charges, \
     print_holds, print_refund, print_users_report, print_projects_report, \
     print_allocations_report, print_holds_report, print_jobs_report, \
@@ -672,7 +672,7 @@ def report_jobs_main ():
         jobs = jobs.filter(or_(Job.start < options.before,
             Job.end <= options.before))
     if resources:
-        jobs = (job_ for job_ in jobs if job_resource(job_) in resources)
+        jobs = (job_ for job_ in jobs if job_.resource in resources)
     print_jobs_report(jobs)
 
 

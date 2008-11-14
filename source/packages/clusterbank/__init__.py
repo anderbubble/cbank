@@ -30,4 +30,5 @@ User.projects = projects_property(User.projects)
 User.projects_owned = projects_property(User.projects_owned)
 Project.members = users_property(Project.members)
 Project.owners = users_property(Project.owners)
+Job.resource = resource_property(Job.resource)
 

@@ -17,8 +17,8 @@ resource_by_name -- retrieve an upstream resource by name
 resource_by_id -- retrieve an upstream resource by id
 users_property -- property decorator that produces user objects
 projects_property -- property decorator that produces project objects
+resource_property -- property decorator that produces a resource object
 job_from_pbs -- create a job from a pbs entry
-job_resource -- retrieve a job's resource
 job_charge -- create charges for a job
 """
 
@@ -37,8 +37,8 @@ from sqlalchemy.orm.session import SessionExtension
 __all__ = ["Session", "user", "user_by_id", "user_by_name",
     "project", "project_by_id", "project_by_name",
     "resource", "resource_by_id", "resource_by_name",
-    "users_property", "projects_property",
-    "job_from_pbs", "job_resource", "job_charge"]
+    "users_property", "projects_property", "resource_property",
+    "job_from_pbs", "job_charge"]
 
 
 class EntityConstraints (SessionExtension):
@@ -231,6 +231,21 @@ def users_property (property_):
     return property(fget)
 
 
+def resource_property (property_):
+    """Decorate a property with a resource translator.
+    
+    Given that property_ generates a resource id or name,
+    generate the equivalent resource.
+    """
+    def fget (self):
+        resource_ = property_.fget(self)
+        if resource_ is None:
+            return None
+        else:
+            return resource(resource_)
+    return property(fget)
+
+
 def job_from_pbs (entry):
     """Construct a job given a PBS accounting log entry.
     
@@ -299,24 +314,6 @@ def parse_timedelta (timedelta_string):
     return timedelta(hours=hours, minutes=minutes, seconds=seconds)
 
 
-def job_resource (job_):
-    """Retrieve a resource for a job.
-    
-    Resources can be determined based on the job id (as defined by
-    clusterbank.conf) or on the charges associated with the job.
-    """
-    resource_name = job_._get_resource()
-    if resource_name is None:
-        resources = set([charge.allocation.resource
-            for charge in job_.charges])
-        if len(resources) == 1:
-            return list(resources)[0]
-        else:
-            return None
-    else:
-        return resource(job_._get_resource())
-
-
 def dict_parser (dict_, func):
     """Parse values of a dict using a parsing function.
     
@@ -358,5 +355,5 @@ def job_charge (job_, amount):
     job_ -- the job to use to determine what to charge
     amount -- the amount to charge
     """
-    return job_.account.charge(job_resource(job_), amount)
+    return job_.account.charge(job_.resource, amount)
 
