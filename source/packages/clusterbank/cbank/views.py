@@ -26,6 +26,7 @@ convert_units -- convert an amount to the specified units
 format_datetime -- convert a datetime to a string
 """
 
+import sys
 import locale
 import ConfigParser
 from datetime import datetime, timedelta
@@ -69,8 +70,8 @@ def print_users_report (users, projects=None, resources=None,
     format = Formatter(["Name", "Charges", "Charged"])
     format.widths = {'Name':10, 'Charges':8, 'Charged':15}
     format.aligns = {'Charges':"right", 'Charged':"right"}
-    print format.header()
-    print format.separator()
+    print >> sys.stderr, format.header()
+    print >> sys.stderr, format.separator()
     
     s = Session()
     charges_q = s.query(
@@ -123,10 +124,10 @@ def print_users_report (users, projects=None, resources=None,
         charge_sum_total += charge_sum
         print format({'Name':user.name, 'Charges':charge_count,
             'Charged':display_units(charge_sum)})
-    print format.separator(["Charges", "Charged"])
-    print format({'Charges':charge_count_total,
+    print >> sys.stderr, format.separator(["Charges", "Charged"])
+    print >> sys.stderr, format({'Charges':charge_count_total,
         'Charged':display_units(charge_sum_total)})
-    print unit_definition()
+    print >> sys.stderr, unit_definition()
 
 
 def print_projects_report (projects, users=None, resources=None,
@@ -152,8 +153,8 @@ def print_projects_report (projects, users=None, resources=None,
     format.widths = {'Name':15, 'Charges':7, 'Charged':15, 'Available':15}
     format.aligns = {'Charges':"right",
         'Charged':"right", "Available":"right"}
-    print format.header()
-    print format.separator()
+    print >> sys.stderr, format.header()
+    print >> sys.stderr, format.separator()
     
     s = Session()
     allocations_q = s.query(
@@ -238,11 +239,11 @@ def print_projects_report (projects, users=None, resources=None,
             'Charges':charge_count,
             'Charged':display_units(charge_sum),
             'Available':display_units(allocation_sum)})
-    print format.separator(["Charges", "Charged", "Available"])
-    print format({'Charges':charge_count_total,
+    print >> sys.stderr, format.separator(["Charges", "Charged", "Available"])
+    print >> sys.stderr, format({'Charges':charge_count_total,
         'Charged':display_units(charge_sum_total),
         'Available':display_units(allocation_sum_total)})
-    print unit_definition()
+    print >> sys.stderr, unit_definition()
 
 
 def print_allocations_report (allocations, users=None,
@@ -272,8 +273,8 @@ def print_allocations_report (allocations, users=None,
     format.widths = {'Allocation':4, 'Project':15, 'Available':13,
         'Charges':7, 'Charged':13, 'Expiration':10}
     format.aligns = {'Available':"right", 'Charges':"right", 'Charged':"right"}
-    print format.header()
-    print format.separator()
+    print >> sys.stderr, format.header()
+    print >> sys.stderr, format.separator()
     
     s = Session()
     holds_q = s.query(
@@ -347,12 +348,12 @@ def print_allocations_report (allocations, users=None,
             'Charged':display_units(charge_sum),
             'Available':display_units(allocation_sum),
             'Comment':allocation.comment})
-    print format.separator(["Available", "Charges", "Charged"])
-    print format({
+    print >> sys.stderr, format.separator(["Available", "Charges", "Charged"])
+    print >> sys.stderr, format({
         'Charges':charge_count_total,
         'Charged':display_units(charge_sum_total),
         'Available':display_units(allocation_sum_total)})
-    print unit_definition()
+    print >> sys.stderr, unit_definition()
 
 
 def print_holds_report (holds, comments=None):
@@ -376,8 +377,8 @@ def print_holds_report (holds, comments=None):
     format.widths = {
         'Hold':6, 'User':8, 'Project':15, 'Held':13, 'Datetime':10}
     format.aligns = {'Held':"right"}
-    print format.header()
-    print format.separator()
+    print >> sys.stderr, format.header()
+    print >> sys.stderr, format.separator()
     
     query = Session().query(Hold)
     query = query.options(eagerload(
@@ -396,9 +397,9 @@ def print_holds_report (holds, comments=None):
             'Datetime':format_datetime(hold.datetime),
             'Held':display_units(hold.amount),
             'Comment':hold.comment})
-    print format.separator(["Held"])
-    print format({'Held':display_units(hold_sum)})
-    print unit_definition()
+    print >> sys.stderr, format.separator(["Held"])
+    print >> sys.stderr, format({'Held':display_units(hold_sum)})
+    print >> sys.stderr, unit_definition()
 
 
 def print_jobs_report (jobs):
@@ -416,8 +417,8 @@ def print_jobs_report (jobs):
     format.aligns = {'Duration':"right", 'Charged':"right"}
     format.widths = {'ID':19, 'Name': 10, 'User':8, 'Account':15,
         'Duration':9, 'Charged':13}
-    print format.header()
-    print format.separator()
+    print >> sys.stderr, format.header()
+    print >> sys.stderr, format.separator()
     duration_sum = timedelta()
     charge_sum = 0
     for job in jobs:
@@ -441,10 +442,10 @@ def print_jobs_report (jobs):
             'Account':job.account or "",
             'Duration':duration or "",
             'Charged':display_units(charged)})
-    print format.separator(["Duration", "Charged"])
-    print format({'Duration':format_timedelta(duration_sum),
+    print >> sys.stderr, format.separator(["Duration", "Charged"])
+    print >> sys.stderr, format({'Duration':format_timedelta(duration_sum),
         'Charged':display_units(charge_sum)})
-    print unit_definition()
+    print >> sys.stderr, unit_definition()
 
 
 def format_timedelta (td):
@@ -475,8 +476,8 @@ def print_charges_report (charges, comments=False):
     format.widths = {
         'Charge':6, 'User':8, 'Project':15, 'Charged':13, 'Datetime':10}
     format.aligns = {'Charged':"right"}
-    print format.header()
-    print format.separator()
+    print >> sys.stderr, format.header()
+    print >> sys.stderr, format.separator()
     
     s = Session()
     query = s.query(Charge,
@@ -500,9 +501,9 @@ def print_charges_report (charges, comments=False):
             'Datetime':format_datetime(charge.datetime),
             'Charged':display_units(charge_amount),
             'Comment':charge.comment})
-    print format.separator(["Charged"])
-    print format({'Charged':display_units(total_charged)})
-    print unit_definition()
+    print >> sys.stderr, format.separator(["Charged"])
+    print >> sys.stderr, format({'Charged':display_units(total_charged)})
+    print >> sys.stderr, unit_definition()
 
 
 def print_allocations (allocations):

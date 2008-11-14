@@ -89,16 +89,19 @@ class TestUsersReport (CbankViewTester):
     def test_blank (self):
         users = [user_by_name(user) for user in ["user1", "user2"]]
         stdout, stderr = capture(lambda: print_users_report(users))
-        correct = dedent("""\
-            Name        Charges         Charged
-            ---------- -------- ---------------
+        stdout_ = dedent("""\
             user1             0             0.0
             user2             0             0.0
+            """)
+        stderr_ = dedent("""\
+            Name        Charges         Charged
+            ---------- -------- ---------------
                        -------- ---------------
                               0             0.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
     
     def test_charges (self):
         start = datetime(2000, 1, 1)
@@ -114,16 +117,19 @@ class TestUsersReport (CbankViewTester):
         Charge(a2, 3).user = user2
         Charge(a2, 5).user = user2
         stdout, stderr = capture(lambda: print_users_report([user1, user2]))
-        correct = dedent("""\
-            Name        Charges         Charged
-            ---------- -------- ---------------
+        stdout_ = dedent("""\
             user1             1            10.0
             user2             3            15.0
+            """)
+        stderr_ = dedent("""\
+            Name        Charges         Charged
+            ---------- -------- ---------------
                        -------- ---------------
                               4            25.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
     
     def test_refunds (self):
         start = datetime(2000, 1, 1)
@@ -145,17 +151,20 @@ class TestUsersReport (CbankViewTester):
         c4 = Charge(a2, 5)
         c4.user = user2
         Refund(c4, 3)
-        stdout, sterr = capture(lambda: print_users_report([user1, user2]))
-        correct = dedent("""\
-            Name        Charges         Charged
-            ---------- -------- ---------------
+        stdout, stderr = capture(lambda: print_users_report([user1, user2]))
+        stdout_ = dedent("""\
             user1             1             1.0
             user2             3             5.0
+            """)
+        stderr_ = dedent("""\
+            Name        Charges         Charged
+            ---------- -------- ---------------
                        -------- ---------------
                               4             6.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
     def test_projects_filter (self):
         start = datetime(2000, 1, 1)
@@ -177,18 +186,21 @@ class TestUsersReport (CbankViewTester):
         c4 = Charge(a2, 5)
         c4.user = user2
         Refund(c4, 3)
-        stdout, sterr = capture(lambda:
+        stdout, stderr = capture(lambda:
             print_users_report([user1, user2], projects=[project1]))
-        correct = dedent("""\
-            Name        Charges         Charged
-            ---------- -------- ---------------
+        stdout_ = dedent("""\
             user1             1             1.0
             user2             1             0.0
+            """)
+        stderr_ = dedent("""\
+            Name        Charges         Charged
+            ---------- -------- ---------------
                        -------- ---------------
                               2             1.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
     def test_resources_filter (self):
         start = datetime(2000, 1, 1)
@@ -211,18 +223,21 @@ class TestUsersReport (CbankViewTester):
         c4 = Charge(a2, 5)
         c4.user = user2
         Refund(c4, 3)
-        stdout, sterr = capture(lambda:
+        stdout, stderr = capture(lambda:
             print_users_report([user1, user2], resources=[resource2]))
-        correct = dedent("""\
-            Name        Charges         Charged
-            ---------- -------- ---------------
+        stdout_ = dedent("""\
             user1             0             0.0
             user2             2             5.0
+            """)
+        stderr_ = dedent("""\
+            Name        Charges         Charged
+            ---------- -------- ---------------
                        -------- ---------------
                               2             5.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
     
     def test_after_filter (self):
         start = datetime(2000, 1, 1)
@@ -250,18 +265,21 @@ class TestUsersReport (CbankViewTester):
         c4.datetime = datetime(2000, 1, 5)
         c4.user = user2
         Refund(c4, 3)
-        stdout, sterr = capture(lambda:
+        stdout, stderr = capture(lambda:
             print_users_report([user1, user2], after=datetime(2000, 1, 3)))
-        correct = dedent("""\
-            Name        Charges         Charged
-            ---------- -------- ---------------
+        stdout_ = dedent("""\
             user1             0             0.0
             user2             3             5.0
+            """)
+        stderr_ = dedent("""\
+            Name        Charges         Charged
+            ---------- -------- ---------------
                        -------- ---------------
                               3             5.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
     def test_before_filter (self):
         start = datetime(2000, 1, 1)
@@ -289,48 +307,57 @@ class TestUsersReport (CbankViewTester):
         c4.datetime = datetime(2000, 1, 5)
         c4.user = user2
         Refund(c4, 3)
-        stdout, sterr = capture(lambda:
+        stdout, stderr = capture(lambda:
             print_users_report([user1, user2], before=datetime(2000, 1, 4)))
-        correct = dedent("""\
-            Name        Charges         Charged
-            ---------- -------- ---------------
+        stdout_ = dedent("""\
             user1             1             1.0
             user2             1             0.0
+            """)
+        stderr_ = dedent("""\
+            Name        Charges         Charged
+            ---------- -------- ---------------
                        -------- ---------------
                               2             1.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
 
 class TestProjectsReport (CbankViewTester):
     
     def test_blank (self):
         stdout, stderr = capture(lambda: print_projects_report([]))
-        correct = dedent("""\
+        stdout_ = dedent("""\
+            """)
+        stderr_ = dedent("""\
             Name            Charges         Charged       Available
             --------------- ------- --------------- ---------------
                             ------- --------------- ---------------
                                   0             0.0             0.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
     
     def test_projects (self):
         project1, project2 = [project_by_name(project)
             for project in ["project1", "project2"]]
         stdout, stderr = capture(lambda:
             print_projects_report([project1, project2]))
-        correct = dedent("""\
-            Name            Charges         Charged       Available
-            --------------- ------- --------------- ---------------
+        stdout_ = dedent("""\
             project1              0             0.0             0.0
             project2              0             0.0             0.0
+            """)
+        stderr_ = dedent("""\
+            Name            Charges         Charged       Available
+            --------------- ------- --------------- ---------------
                             ------- --------------- ---------------
                                   0             0.0             0.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
     def test_allocations (self):
         project1, project2 = [project_by_name(project)
@@ -345,16 +372,19 @@ class TestProjectsReport (CbankViewTester):
         Allocation(project2, resource2, 35, start, end)
         stdout, stderr = capture(lambda:
             print_projects_report([project1, project2]))
-        correct = dedent("""\
-            Name            Charges         Charged       Available
-            --------------- ------- --------------- ---------------
+        stdout_ = dedent("""\
             project1              0             0.0            30.0
             project2              0             0.0            65.0
+            """)
+        stderr_ = dedent("""\
+            Name            Charges         Charged       Available
+            --------------- ------- --------------- ---------------
                             ------- --------------- ---------------
                                   0             0.0            95.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
     
     def test_holds (self):
         project1, project2 = [project_by_name(project)
@@ -374,16 +404,19 @@ class TestProjectsReport (CbankViewTester):
         Hold(a4, 8)
         stdout, stderr = capture(lambda:
             print_projects_report([project1, project2]))
-        correct = dedent("""\
-            Name            Charges         Charged       Available
-            --------------- ------- --------------- ---------------
+        stdout_ = dedent("""\
             project1              0             0.0             5.0
             project2              0             0.0            57.0
+            """)
+        stderr_ = dedent("""\
+            Name            Charges         Charged       Available
+            --------------- ------- --------------- ---------------
                             ------- --------------- ---------------
                                   0             0.0            62.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
     def test_charges (self):
         user1 = user_by_name("user1")
@@ -404,16 +437,19 @@ class TestProjectsReport (CbankViewTester):
         Charge(a4, 8).user = user1
         stdout, stderr = capture(lambda:
             print_projects_report([project1, project2]))
-        correct = dedent("""\
-            Name            Charges         Charged       Available
-            --------------- ------- --------------- ---------------
+        stdout_ = dedent("""\
             project1              3            30.0             0.0
             project2              2            17.0            48.0
+            """)
+        stderr_ = dedent("""\
+            Name            Charges         Charged       Available
+            --------------- ------- --------------- ---------------
                             ------- --------------- ---------------
                                   5            47.0            48.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
     def test_refunds (self):
         user1 = user_by_name("user1")
@@ -441,29 +477,35 @@ class TestProjectsReport (CbankViewTester):
         Refund(c5, 8)
         stdout, stderr = capture(lambda:
             print_projects_report([project1, project2]))
-        correct = dedent("""\
-            Name            Charges         Charged       Available
-            --------------- ------- --------------- ---------------
+        stdout_ = dedent("""\
             project1              3            18.0            12.0
             project2              2             9.0            56.0
+            """)
+        stderr_ = dedent("""\
+            Name            Charges         Charged       Available
+            --------------- ------- --------------- ---------------
                             ------- --------------- ---------------
                                   5            27.0            68.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
 class TestAllocationsReport (CbankViewTester):
     
     def test_blank (self):
         stdout, stderr = capture(lambda: print_allocations_report([]))
-        correct = dedent("""\
+        stdout_ = dedent("""\
+            """)
+        stderr_ = dedent("""\
             #    Expiration Resource Project         Charges       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            0           0.0           0.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
     
     def test_allocations (self):
         project1, project2 = [project_by_name(project)
@@ -479,18 +521,21 @@ class TestAllocationsReport (CbankViewTester):
         Session.flush() # give the allocations ids
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4]))
-        correct = dedent("""\
-            #    Expiration Resource Project         Charges       Charged     Available
-            ---- ---------- -------- --------------- ------- ------------- -------------
+        stdout_ = dedent("""\
             1    2000-01-08 resource1 project1              0           0.0          10.0
             2    2000-01-08 resource1 project1              0           0.0          20.0
             3    2000-01-08 resource1 project2              0           0.0          30.0
             4    2000-01-08 resource2 project2              0           0.0          35.0
+            """)
+        stderr_ = dedent("""\
+            #    Expiration Resource Project         Charges       Charged     Available
+            ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            0           0.0          95.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
     
     def test_holds (self):
         project1, project2 = [project_by_name(project)
@@ -511,18 +556,21 @@ class TestAllocationsReport (CbankViewTester):
         Session.flush() # give the allocations ids
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4]))
-        correct = dedent("""\
-            #    Expiration Resource Project         Charges       Charged     Available
-            ---- ---------- -------- --------------- ------- ------------- -------------
+        stdout_ = dedent("""\
             1    2000-01-08 resource1 project1              0           0.0           0.0
             2    2000-01-08 resource1 project1              0           0.0          15.0
             3    2000-01-08 resource1 project2              0           0.0          30.0
             4    2000-01-08 resource2 project2              0           0.0          26.0
+            """)
+        stderr_ = dedent("""\
+            #    Expiration Resource Project         Charges       Charged     Available
+            ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            0           0.0          71.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
     def test_charges (self):
         project1, project2 = [project_by_name(project)
@@ -543,18 +591,21 @@ class TestAllocationsReport (CbankViewTester):
         Session.flush() # give the allocations ids
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4]))
-        correct = dedent("""\
-            #    Expiration Resource Project         Charges       Charged     Available
-            ---- ---------- -------- --------------- ------- ------------- -------------
+        stdout_ = dedent("""\
             1    2000-01-08 resource1 project1              1          10.0           0.0
             2    2000-01-08 resource1 project1              2          20.0           0.0
             3    2000-01-08 resource1 project2              0           0.0          30.0
             4    2000-01-08 resource2 project2              2          17.0          18.0
+            """)
+        stderr_ = dedent("""\
+            #    Expiration Resource Project         Charges       Charged     Available
+            ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            5          47.0          48.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
     
     def test_refunds (self):
         project1, project2 = [project_by_name(project)
@@ -579,18 +630,21 @@ class TestAllocationsReport (CbankViewTester):
         Session.flush() # give the allocations ids
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4]))
-        correct = dedent("""\
-            #    Expiration Resource Project         Charges       Charged     Available
-            ---- ---------- -------- --------------- ------- ------------- -------------
+        stdout_ = dedent("""\
             1    2000-01-08 resource1 project1              1           6.0           4.0
             2    2000-01-08 resource1 project1              2          12.0           8.0
             3    2000-01-08 resource1 project2              0           0.0          30.0
             4    2000-01-08 resource2 project2              2           9.0          26.0
+            """)
+        stderr_ = dedent("""\
+            #    Expiration Resource Project         Charges       Charged     Available
+            ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            5          27.0          68.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
     def test_users_filter (self):
         user1, user2 = [user_by_name(user)
@@ -624,18 +678,21 @@ class TestAllocationsReport (CbankViewTester):
         Session.flush() # give the allocations ids
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4], users=[user1]))
-        correct = dedent("""\
-            #    Expiration Resource Project         Charges       Charged     Available
-            ---- ---------- -------- --------------- ------- ------------- -------------
+        stdout_ = dedent("""\
             1    2000-01-08 resource1 project1              1           6.0           4.0
             2    2000-01-08 resource1 project1              1           5.0           8.0
             3    2000-01-08 resource1 project2              0           0.0          30.0
             4    2000-01-08 resource2 project2              1           9.0          17.0
+            """)
+        stderr_ = dedent("""\
+            #    Expiration Resource Project         Charges       Charged     Available
+            ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            3          20.0          59.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
     def test_after_filter (self):
         user1, user2 = [user_by_name(user)
@@ -675,18 +732,21 @@ class TestAllocationsReport (CbankViewTester):
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4],
                                      after=datetime(2000, 1, 3)))
-        correct = dedent("""\
-            #    Expiration Resource Project         Charges       Charged     Available
-            ---- ---------- -------- --------------- ------- ------------- -------------
+        stdout_ = dedent("""\
             1    2000-01-08 resource1 project1              0           0.0           4.0
             2    2000-01-08 resource1 project1              1           5.0           8.0
             3    2000-01-08 resource1 project2              0           0.0          30.0
             4    2000-01-08 resource2 project2              2           9.0          17.0
+            """)
+        stderr_ = dedent("""\
+            #    Expiration Resource Project         Charges       Charged     Available
+            ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            3          14.0          59.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
     def test_before_filter (self):
         user1, user2 = [user_by_name(user)
@@ -726,32 +786,38 @@ class TestAllocationsReport (CbankViewTester):
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4],
                                      before=datetime(2000, 1, 4)))
-        correct = dedent("""\
-            #    Expiration Resource Project         Charges       Charged     Available
-            ---- ---------- -------- --------------- ------- ------------- -------------
+        stdout_ = dedent("""\
             1    2000-01-08 resource1 project1              1           6.0           4.0
             2    2000-01-08 resource1 project1              2          12.0           8.0
             3    2000-01-08 resource1 project2              0           0.0          30.0
             4    2000-01-08 resource2 project2              0           0.0          17.0
+            """)
+        stderr_ = dedent("""\
+            #    Expiration Resource Project         Charges       Charged     Available
+            ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            3          18.0          59.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
 
 class TestHoldsReport (CbankViewTester):
     
     def test_blank (self):
         stdout, stderr = capture(lambda: print_holds_report([]))
-        correct = dedent("""\
+        stdout_ = dedent("""\
+            """)
+        stderr_ = dedent("""\
             #      Date       Resource Project         User              Held
             ------ ---------- -------- --------------- -------- -------------
                                                                 -------------
                                                                           0.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
     def test_holds (self):
         user1, user2 = [user_by_name(user)
@@ -780,19 +846,22 @@ class TestHoldsReport (CbankViewTester):
         Session.flush() # give holds ids
         stdout, stderr = capture(lambda:
             print_holds_report([h1, h2, h3, h4, h5]))
-        correct = dedent("""\
-            #      Date       Resource Project         User              Held
-            ------ ---------- -------- --------------- -------- -------------
+        stdout_ = dedent("""\
             1      2000-01-01 resource1 project1        user1             10.0
             2      2000-01-01 resource1 project1        user1             15.0
             3      2000-01-01 resource1 project1        user1              5.0
             4      2000-01-01 resource2 project2        user2              9.0
             5      2000-01-01 resource2 project2        user2              8.0
+            """)
+        stderr_ = dedent("""\
+            #      Date       Resource Project         User              Held
+            ------ ---------- -------- --------------- -------- -------------
                                                                 -------------
                                                                          47.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
 
 class TestJobsReport (CbankViewTester):
@@ -808,14 +877,17 @@ class TestJobsReport (CbankViewTester):
     
     def test_blank (self):
         stdout, stderr = capture(lambda: print_jobs_report([]))
-        correct = dedent("""\
+        stdout_ = dedent("""\
+            """)
+        stderr_ = dedent("""\
             ID                  Name       User     Account          Duration       Charged
             ------------------- ---------- -------- --------------- --------- -------------
                                                                     --------- -------------
                                                                       0:00:00           0.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
     
     def test_bare_jobs (self):
         s = Session()
@@ -823,17 +895,20 @@ class TestJobsReport (CbankViewTester):
         for job in jobs:
             s.add(job)
         stdout, stderr = capture(lambda: print_jobs_report(jobs))
-        correct = dedent("""\
-            ID                  Name       User     Account          Duration       Charged
-            ------------------- ---------- -------- --------------- --------- -------------
+        stdout_ = dedent("""\
             resource1.1                                                                 0.0
             resource1.2                                                                 0.0
             resource1.3                                                                 0.0
+            """)
+        stderr_ = dedent("""\
+            ID                  Name       User     Account          Duration       Charged
+            ------------------- ---------- -------- --------------- --------- -------------
                                                                     --------- -------------
                                                                       0:00:00           0.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
     
     def test_long_job (self):
         s = Session()
@@ -842,15 +917,18 @@ class TestJobsReport (CbankViewTester):
         job.end = datetime(2000, 2, 1)
         s.add(job)
         stdout, stderr = capture(lambda: print_jobs_report([job]))
-        correct = dedent("""\
+        stdout_ = dedent("""\
+            resource1.1                                             744:00:00           0.0
+            """)
+        stderr_ = dedent("""\
             ID                  Name       User     Account          Duration       Charged
             ------------------- ---------- -------- --------------- --------- -------------
-            resource1.1                                             744:00:00           0.0
                                                                     --------- -------------
                                                                     744:00:00           0.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
     
     def test_full_jobs (self):
         s = Session()
@@ -878,31 +956,37 @@ class TestJobsReport (CbankViewTester):
             s.add(job)
         s.flush() # give charges ids
         stdout, stderr = capture(lambda: print_jobs_report([j1, j2, j3]))
-        correct = dedent("""\
-            ID                  Name       User     Account          Duration       Charged
-            ------------------- ---------- -------- --------------- --------- -------------
+        stdout_ = dedent("""\
             resource1.1         somename            project1          0:30:00          25.0
             resource1.2                    user1                                        0.0
             resource1.3                    user2    project2                            0.0
+            """)
+        stderr_ = dedent("""\
+            ID                  Name       User     Account          Duration       Charged
+            ------------------- ---------- -------- --------------- --------- -------------
                                                                     --------- -------------
                                                                       0:30:00          25.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
 
 class TestChargesReport (CbankViewTester):
     
     def test_blank (self):
         stdout, stderr = capture(lambda: print_charges_report([]))
-        correct = dedent("""\
+        stdout_ = dedent("""\
+            """)
+        stderr_ = dedent("""\
             #      Date       Resource Project         User           Charged
             ------ ---------- -------- --------------- -------- -------------
                                                                 -------------
                                                                           0.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
     def test_charges (self):
         user1, user2 = [user_by_name(user) for user in ["user1", "user2"]]
@@ -930,19 +1014,22 @@ class TestChargesReport (CbankViewTester):
         Session.flush() # give charges ids
         stdout, stderr = capture(lambda:
             print_charges_report([c1, c2, c3, c4, c5]))
-        correct = dedent("""\
-            #      Date       Resource Project         User           Charged
-            ------ ---------- -------- --------------- -------- -------------
+        stdout_ = dedent("""\
             1      2000-01-01 resource1 project1        user1             10.0
             2      2000-01-01 resource1 project1        user1             15.0
             3      2000-01-01 resource1 project1        user1              5.0
             4      2000-01-01 resource2 project2        user2              9.0
             5      2000-01-01 resource2 project2        user2              8.0
+            """)
+        stderr_ = dedent("""\
+            #      Date       Resource Project         User           Charged
+            ------ ---------- -------- --------------- -------- -------------
                                                                 -------------
                                                                          47.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
     
     def test_refunds (self):
         user1, user2 = [user_by_name(user) for user in ["user1", "user2"]]
@@ -974,19 +1061,22 @@ class TestChargesReport (CbankViewTester):
         Session.flush() # give charges ids
         stdout, stderr = capture(lambda:
             print_charges_report([c1, c2, c3, c4, c5]))
-        correct = dedent("""\
-            #      Date       Resource Project         User           Charged
-            ------ ---------- -------- --------------- -------- -------------
+        stdout_ = dedent("""\
             1      2000-01-01 resource1 project1        user1              6.0
             2      2000-01-01 resource1 project1        user1              7.0
             3      2000-01-01 resource1 project1        user1              5.0
             4      2000-01-01 resource2 project2        user2              9.0
             5      2000-01-01 resource2 project2        user2              0.0
+            """)
+        stderr_ = dedent("""\
+            #      Date       Resource Project         User           Charged
+            ------ ---------- -------- --------------- -------- -------------
                                                                 -------------
                                                                          27.0
             Units are undefined.
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
 
 
 class TestPrintJobs (CbankViewTester):
@@ -1025,7 +1115,7 @@ class TestPrintJobs (CbankViewTester):
         Session.flush()
         stdout, stderr = capture(lambda:
             print_jobs([job]))
-        correct = dedent("""\
+        stdout_ = dedent("""\
             Job www.example.com.123
              * User: user1
              * Group: agroup
@@ -1053,5 +1143,5 @@ class TestPrintJobs (CbankViewTester):
                 * walltime: 0:10:00
              * Accounting id: someaccountingid
             """)
-        assert_eq_output(stdout.getvalue(), correct)
+        assert_eq_output(stdout.getvalue(), stdout_)
 

@@ -92,17 +92,14 @@ def run (func, args=None, stdin=None):
         sys.stderr = real_stderr
 
 
-def assert_eq_output (output, correct):
-    assert output == correct, os.linesep.join([
-        "incorrect output", output, "expected", correct])
-
-
 def be_admin ():
     current_user = current_username()
     clusterbank.config.set("cbank", "admins", current_user)
 
+
 def not_admin ():
     clusterbank.config.remove_option("cbank", "admins")
+
 
 def setup ():
     metadata.bind = create_engine("sqlite:///:memory:")
