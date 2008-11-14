@@ -709,14 +709,10 @@ def report_charges_main ():
     if resources:
         charges = charges.filter(Charge.allocation.has(Allocation.resource.has(
             Resource.id.in_(resource.id for resource in resources))))
-    if not (options.after or options.before):
-        charges = charges.filter(
-            Charge.datetime >= (datetime.now() - timedelta(days=7)))
-    else:
-        if options.after:
-            charges = charges.filter(Charge.datetime >= options.after)
-        if options.before:
-            charges = charges.filter(Charge.datetime < options.before)
+    if options.after:
+        charges = charges.filter(Charge.datetime >= options.after)
+    if options.before:
+        charges = charges.filter(Charge.datetime < options.before)
     print_charges_report(charges, comments=comments)
 
 
