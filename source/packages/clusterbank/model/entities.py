@@ -115,6 +115,11 @@ class User (UpstreamEntity):
     
     """User associated with a hold or charge.
     
+    Attributes:
+    holds -- holds associated with the user
+    jobs -- jobs the user has run
+    charges -- charges associated with the user
+    
     Properties:
     name -- upstream name of the user
     projects -- upstream projects the user is a member of
@@ -130,6 +135,7 @@ class User (UpstreamEntity):
         """
         UpstreamEntity.__init__(self, id_)
         self.holds = []
+        self.jobs = []
         self.charges = []
     
     def _get_name (self):
@@ -169,6 +175,7 @@ class Project (UpstreamEntity):
     
     Attributes:
     allocations -- allocations to the project
+    jobs -- jobs run for the project
     
     Properties:
     name -- upstream name of the project
@@ -187,6 +194,7 @@ class Project (UpstreamEntity):
         """
         UpstreamEntity.__init__(self, id_)
         self.allocations = []
+        self.jobs = []
     
     def _get_name (self):
         """Retrieve the project's name from upstream."""
