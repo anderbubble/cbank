@@ -35,8 +35,7 @@ from clusterbank import config
 from clusterbank.model import User, Project, Resource, Allocation, Hold, \
     Job, Charge, Refund
 from clusterbank.controllers import Session, user, project, resource, \
-    project_members, user_projects, user_projects_owned, job_from_pbs, \
-    job_resource
+    job_from_pbs, job_resource
 from clusterbank.cbank.views import print_allocation, print_charges, \
     print_holds, print_refund, print_users_report, print_projects_report, \
     print_allocations_report, print_holds_report, print_jobs_report, \
@@ -470,18 +469,18 @@ def print_report_main_help ():
 
 def user_owns_all (user_, projects):
     """Check that the user is an owner of all of a list of projects."""
-    projects_owned = set(user_projects_owned(user_))
+    projects_owned = set(user_.projects_owned)
     return set(projects).issubset(projects_owned)
 
 
 def project_members_all (projects):
     """Get a list of all the members of all of a list of projects."""
-    return set(sum([project_members(project_) for project_ in projects], []))
+    return set(sum([project_.members for project_ in projects], []))
 
 
 def user_projects_all (users):
     """Get a list of all projects that have users in a list of users."""
-    return set(sum([user_projects(user_) for user_ in users], []))
+    return set(sum([user_.projects for user_ in users], []))
 
 
 @handle_exceptions
@@ -502,7 +501,7 @@ def report_users_main ():
                 users = Session().query(User).all()
     else:
         if not projects:
-            projects = user_projects(current_user)
+            projects = current_user.projects
         if projects and user_owns_all(current_user, projects):
             if not users:
                 users = project_members_all(projects)
@@ -534,9 +533,9 @@ def report_projects_main ():
                 projects = Session().query(Project).all()
     else:
         if not projects:
-            projects = user_projects(current_user)
-        allowed_projects = set(user_projects(current_user) + \
-            user_projects_owned(current_user))
+            projects = current_user.projects
+        allowed_projects = set(current_user.projects
+            + current_user.projects_owned)
         if not set(projects).issubset(allowed_projects):
             raise NotPermitted(current_user)
         if not (projects and user_owns_all(current_user, projects)):
@@ -565,9 +564,9 @@ def report_allocations_main ():
                 projects = Session().query(Project).all()
     else:
         if not projects:
-            projects = user_projects(current_user)
+            projects = current_user.projects
         allowed_projects = set(
-            user_projects(current_user) + user_projects_owned(current_user))
+            current_user.projects + current_user.projects_owned)
         if not set(projects).issubset(allowed_projects):
             raise NotPermitted(current_user)
         if not (projects and user_owns_all(current_user, projects)):
@@ -610,7 +609,7 @@ def report_holds_main ():
     projects = options.projects
     if not current_user.is_admin:
         if not projects:
-            projects = user_projects(current_user)
+            projects = current_user.projects
         if projects and user_owns_all(current_user, projects):
             pass
         else:
@@ -649,7 +648,7 @@ def report_jobs_main ():
     projects = options.projects
     if not current_user.is_admin:
         if not projects:
-            projects = user_projects(current_user)
+            projects = current_user.projects
         if projects and user_owns_all(current_user, projects):
             pass
         else:
@@ -689,7 +688,7 @@ def report_charges_main ():
     projects = options.projects
     if not current_user.is_admin:
         if not projects:
-            projects = user_projects(current_user)
+            projects = current_user.projects
         if projects and user_owns_all(current_user, projects):
             pass
         else:
@@ -773,8 +772,7 @@ def detail_allocations_main ():
     allocations = \
         s.query(Allocation).filter(Allocation.id.in_(sys.argv[1:]))
     if not current_user.is_admin:
-        projects = user_projects(current_user) + \
-            user_projects_owned(current_user)
+        projects = current_user.projects + current_user.projects_owned
         permitted_allocations = []
         for allocation in allocations:
             if not allocation.project in projects:
@@ -793,7 +791,7 @@ def detail_holds_main ():
     s = Session()
     holds = s.query(Hold).filter(Hold.id.in_(sys.argv[1:]))
     if not current_user.is_admin:
-        owned_projects = user_projects_owned(current_user)
+        owned_projects = current_user.projects_owned
         permitted_holds = []
         for hold in holds:
             allowed = hold.user is current_user \
@@ -814,7 +812,7 @@ def detail_jobs_main ():
     s = Session()
     jobs = s.query(Job).filter(Job.id.in_(sys.argv[1:]))
     if not current_user.is_admin:
-        owned_projects = user_projects_owned(current_user)
+        owned_projects = current_user.projects_owned
         permitted_jobs = []
         for job in jobs:
             allowed = (job.user is current_user
@@ -835,7 +833,7 @@ def detail_charges_main ():
     s = Session()
     charges = s.query(Charge).filter(Charge.id.in_(sys.argv[1:]))
     if not current_user.is_admin:
-        owned_projects = user_projects_owned(current_user)
+        owned_projects = current_user.projects_owned
         permitted_charges = []
         for charge in charges:
             allowed = charge.user is current_user \
@@ -856,7 +854,7 @@ def detail_refunds_main ():
     s = Session()
     refunds = s.query(Refund).filter(Refund.id.in_(sys.argv[1:]))
     if not current_user.is_admin:
-        owned_projects = user_projects_owned(current_user)
+        owned_projects = current_user.projects_owned
         permitted_refunds = []
         for refund in refunds:
             allowed = refund.charge.user is current_user \

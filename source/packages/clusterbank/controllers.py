@@ -15,32 +15,30 @@ project_by_name -- retrieve an upstream project by name
 project_by_id -- retrieve an upstream project by id
 resource_by_name -- retrieve an upstream resource by name
 resource_by_id -- retrieve an upstream resource by id
-user_projects -- retrieve a user's projects
-user_projects_owned -- retrieve the projects a user owns
-project_members -- retrieve the members of a project
-project_owners -- retrieve the owners of a project
+users_property -- property decorator that produces user objects
+projects_property -- property decorator that produces project objects
 job_from_pbs -- create a job from a pbs entry
 job_resource -- retrieve a job's resource
 job_charge -- create charges for a job
 """
 
 
-from clusterbank.model import upstream, User, Project, Resource, Allocation, \
-    Hold, Job, Charge, Refund
+from datetime import datetime, timedelta
+
+from clusterbank.model import (upstream, User, Project, Resource,
+    Allocation, Hold, Job, Charge, Refund)
 from clusterbank.exceptions import InsufficientFunds, NotFound
 
 from sqlalchemy.exceptions import InvalidRequestError
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.orm.session import SessionExtension
 
-from datetime import datetime, timedelta
-
 
 __all__ = ["Session", "user", "user_by_id", "user_by_name",
     "project", "project_by_id", "project_by_name",
     "resource", "resource_by_id", "resource_by_name",
-    "user_projects", "user_projects_owned", "project_members",
-    "project_owners", "job_from_pbs", "job_resource", "job_charge"]
+    "users_property", "projects_property",
+    "job_from_pbs", "job_resource", "job_charge"]
 
 
 class EntityConstraints (SessionExtension):
@@ -211,24 +209,26 @@ def _entity_by_id (cls, id_):
         return entity_
 
 
-def user_projects (user_):
-    """Get the projects that the given user is a member of."""
-    return [project_by_id(project_id) for project_id in user_.projects]
+def projects_property (property_):
+    """Decorate a property with a project translator.
+    
+    Given that property_ generates a list of project ids or names,
+    generate a list of the equivalent projects.
+    """
+    def fget (self):
+        return [project(project_) for project_ in property_.fget(self)]
+    return property(fget)
 
 
-def user_projects_owned (user_):
-    """Get the projects that the given user owns."""
-    return [project_by_id(project_id) for project_id in user_.projects_owned]
-
-
-def project_members (project_):
-    """Get the users the are a member of the given project."""
-    return [user_by_id(user_id) for user_id in project_.members]
-
-
-def project_owners (project_):
-    """Get the users that own the given project."""
-    return [user_by_id(user_id) for user_id in project_.owners]
+def users_property (property_):
+    """Decorate a property with a user translator.
+    
+    Given that property_ generates a list of user ids or names,
+    generate a list of the equivalent users.
+    """
+    def fget (self):
+        return [user(user_) for user_ in property_.fget(self)]
+    return property(fget)
 
 
 def job_from_pbs (entry):

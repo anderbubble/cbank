@@ -11,7 +11,7 @@ import clusterbank
 from clusterbank.model import upstream, metadata, User, Project, Allocation, \
     Hold, Job, Charge, Refund
 from clusterbank.controllers import user, project, user_by_name, \
-    project_by_name, resource_by_name, user_projects, project_members, Session
+    project_by_name, resource_by_name, Session
 import clusterbank.upstreams.default as upstream_
 import clusterbank.cbank.controllers as controllers
 from clusterbank.cbank.controllers import main, report_main, new_main, \
@@ -1179,7 +1179,7 @@ class TestUsersReport (CbankTester):
     def test_default (self):
         """Current user's charges filtered by user's projects."""
         user = current_user()
-        projects = user_projects(user)
+        projects = user.projects
         code, stdout, stderr = run(report_users_main)
         assert_equal(code, 0)
         args, kwargs = controllers.print_users_report.calls[0]
@@ -1188,7 +1188,7 @@ class TestUsersReport (CbankTester):
     
     def test_self_users (self):
         user = current_user()
-        projects = user_projects(user)
+        projects = user.projects
         code, stdout, stderr = run(report_users_main,
             ("-u %s" % user.name).split())
         assert_equal(code, 0)
@@ -1214,7 +1214,7 @@ class TestUsersReport (CbankTester):
     
     def test_owner_projects (self):
         project = project_by_name("project3")
-        users = project_members(project)
+        users = project.members
         code, stdout, stderr = run(report_users_main, "-p project3".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_users_report.calls[0]
@@ -1277,7 +1277,7 @@ class TestUsersReport_Admin (TestUsersReport):
     
     def test_self_users (self):
         user = current_user()
-        projects = user_projects(user)
+        projects = user.projects
         code, stdout, stderr = run(report_users_main,
             ("-u %s" % user.name).split())
         assert_equal(code, 0)
@@ -1299,7 +1299,7 @@ class TestProjectsReport (CbankTester):
     
     def test_default (self):
         """Current user's projects"""
-        projects = user_projects(current_user())
+        projects = current_user().projects
         code, stdout, stderr = run(report_projects_main)
         assert_equal(code, 0)
         args, kwargs = controllers.print_projects_report.calls[0]
@@ -1340,7 +1340,7 @@ class TestProjectsReport (CbankTester):
     
     def test_self_users (self):
         user = current_user()
-        projects = user_projects(user)
+        projects = user.projects
         code, stdout, stderr = run(
             report_projects_main, ("-u %s" % user.name).split())
         assert_equal(code, 0)
@@ -1415,11 +1415,11 @@ class TestProjectsReport_Admin (TestProjectsReport):
         assert_equal(code, 0)
         args, kwargs = controllers.print_projects_report.calls[0]
         assert_equal(set(kwargs['users']), set([user_by_name("user1")]))
-        assert_equal(set(args[0]), set(user_projects(user)))
+        assert_equal(set(args[0]), set(user.projects))
 
 
 def projects (users):
-    return sum((user_projects(user) for user in users), [])
+    return sum((user.projects for user in users), [])
 
 
 def allocations (projects):
@@ -1455,7 +1455,7 @@ class TestAllocationsReport (CbankTester):
     
     def test_default (self):
         """Current user's allocations"""
-        projects = user_projects(current_user())
+        projects = current_user().projects
         code, stdout, stderr = run(report_allocations_main)
         assert_equal(code, 0)
         args, kwargs = controllers.print_allocations_report.calls[0]
@@ -1502,7 +1502,7 @@ class TestAllocationsReport (CbankTester):
     
     def test_self_users (self):
         user = current_user()
-        projects = user_projects(user)
+        projects = user.projects
         code, stdout, stderr = run(
             report_allocations_main, ("-u %s" % user.name).split())
         assert_equal(code, 0)
@@ -1511,7 +1511,7 @@ class TestAllocationsReport (CbankTester):
     
     def test_resources (self):
         allocations_ = active([allocation
-            for allocation in allocations(user_projects(current_user()))
+            for allocation in allocations(current_user().projects)
             if allocation.resource == resource_by_name("resource1")])
         code, stdout, stderr = run(
             report_allocations_main, "-r resource1".split())
@@ -1520,7 +1520,7 @@ class TestAllocationsReport (CbankTester):
         assert_equal(set(args[0]), set(allocations_))
         
     def test_after (self):
-        allocations_ = allocations(user_projects(current_user()))
+        allocations_ = allocations(current_user().projects)
         allocations_ = [a for a in allocations_
             if a.expiration > datetime(2001, 1, 1)]
         code, stdout, stderr = run(
@@ -1531,7 +1531,7 @@ class TestAllocationsReport (CbankTester):
         assert_equal(kwargs['after'], datetime(2001, 1, 1))
     
     def test_before (self):
-        allocations_ = allocations(user_projects(current_user()))
+        allocations_ = allocations(current_user().projects)
         allocations_ = [a for a in allocations_
             if a.start <= datetime(2000, 1, 1)]
         code, stdout, stderr = run(
@@ -1578,7 +1578,7 @@ class TestAllocationsReport_Admin (TestAllocationsReport):
         args, kwargs = controllers.print_allocations_report.calls[0]
         assert_equal(set(kwargs['users']), set([user_by_name("user1")]))
         assert_equal(set(args[0]),
-            set(active(allocations(user_projects(user)))))
+            set(active(allocations(user.projects))))
     
     def test_resources (self):
         allocations_ = active([allocation
@@ -1647,7 +1647,7 @@ class TestHoldsReport (CbankTester):
         holds = Session().query(Hold).filter_by(
             user=current_user(), active=True).filter(Hold.allocation.has(
             Allocation.project.has(Project.id.in_(project.id for project in
-            user_projects(current_user())))))
+            current_user().projects))))
         code, stdout, stderr = run(report_holds_main)
         assert_equal(code, 0)
         args, kwargs = controllers.print_holds_report.calls[0]
@@ -1679,8 +1679,8 @@ class TestHoldsReport (CbankTester):
         user = current_user()
         holds = Session().query(Hold).filter_by(
             user=user, active=True).filter(Hold.allocation.has(
-            Allocation.project.has(Project.id.in_(project.id for project in
-            user_projects(user)))))
+            Allocation.project.has(Project.id.in_(project.id
+                for project in user.projects))))
         code, stdout, stderr = run(report_holds_main, ("-u %s" % user).split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_holds_report.calls[0]
@@ -1717,7 +1717,7 @@ class TestHoldsReport (CbankTester):
         holds = Session().query(Hold).filter_by(
             user=current_user(), active=True).filter(Hold.allocation.has(
             Allocation.project.has(Project.id.in_(project.id for project in
-            user_projects(current_user()))))).filter(Hold.allocation.has(
+            current_user().projects)))).filter(Hold.allocation.has(
             Allocation.resource == resource_by_name("resource1")))
         code, stdout, stderr = run(report_holds_main, "-r resource1".split())
         assert_equal(code, 0)
@@ -1728,7 +1728,7 @@ class TestHoldsReport (CbankTester):
         holds = Session().query(Hold).filter_by(
             user=current_user(), active=True).filter(Hold.allocation.has(
             Allocation.project.has(Project.id.in_(project.id for project in
-            user_projects(current_user()))))).filter(
+            current_user().projects)))).filter(
             Hold.datetime >= datetime(2000, 1, 1))
         code, stdout, stderr = run(report_holds_main, "-a 2000-01-01".split())
         assert_equal(code, 0)
@@ -1739,7 +1739,7 @@ class TestHoldsReport (CbankTester):
         holds = Session().query(Hold).filter_by(
             user=current_user(), active=True).filter(Hold.allocation.has(
             Allocation.project.has(Project.id.in_(project.id for project in
-            user_projects(current_user()))))).filter(
+            current_user().projects)))).filter(
             Hold.datetime < datetime(2000, 1, 1))
         code, stdout, stderr = run(report_holds_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
@@ -2155,7 +2155,7 @@ class TestChargesReport (CbankTester):
         charges = Session().query(Charge).filter_by(
             user=current_user()).filter(Charge.allocation.has(
             Allocation.project.has(Project.id.in_(project.id for project in
-            user_projects(current_user())))))
+            current_user().projects))))
         code, stdout, stderr = run(report_charges_main)
         assert_equal(code, 0)
         args, kwargs = controllers.print_charges_report.calls[0]
@@ -2188,7 +2188,7 @@ class TestChargesReport (CbankTester):
         charges = Session().query(Charge).filter_by(
             user=user).filter(Charge.allocation.has(
             Allocation.project.has(Project.id.in_(project.id for project in
-            user_projects(user)))))
+            user.projects))))
         code, stdout, stderr = run(report_charges_main,
             ("-u %s" % user).split())
         assert_equal(code, 0)
@@ -2226,7 +2226,7 @@ class TestChargesReport (CbankTester):
         charges = Session().query(Charge).filter_by(
             user=current_user()).filter(Charge.allocation.has(
             Allocation.project.has(Project.id.in_(project.id for project in
-            user_projects(current_user()))))).filter(Charge.allocation.has(
+            current_user().projects)))).filter(Charge.allocation.has(
             Allocation.resource == resource_by_name("resource1")))
         code, stdout, stderr = run(report_charges_main, "-r resource1".split())
         assert_equal(code, 0)
@@ -2237,7 +2237,7 @@ class TestChargesReport (CbankTester):
         charges = Session().query(Charge).filter_by(
             user=current_user()).filter(Charge.allocation.has(
             Allocation.project.has(Project.id.in_(project.id for project in
-            user_projects(current_user()))))).filter(
+            current_user().projects)))).filter(
                 Charge.datetime>=datetime(2000, 1, 1))
         code, stdout, stderr = run(report_charges_main,
             "-a 2000-01-01".split())
@@ -2249,7 +2249,7 @@ class TestChargesReport (CbankTester):
         charges = Session().query(Charge).filter_by(
             user=current_user()).filter(Charge.allocation.has(
             Allocation.project.has(Project.id.in_(project.id for project in
-            user_projects(current_user()))))).filter(
+            current_user().projects)))).filter(
                 Charge.datetime<datetime(2000, 1, 1))
         code, stdout, stderr = run(
             report_charges_main, "-b 2000-01-01".split())

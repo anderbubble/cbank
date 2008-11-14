@@ -25,3 +25,9 @@ import clusterbank.exceptions
 __all__ = (__all__ + clusterbank.model.__all__ +
     clusterbank.controllers.__all__ + clusterbank.exceptions.__all__)
 
+# monkeypatch entity properties that require access to the session
+User.projects = projects_property(User.projects)
+User.projects_owned = projects_property(User.projects_owned)
+Project.members = users_property(Project.members)
+Project.owners = users_property(Project.owners)
+
