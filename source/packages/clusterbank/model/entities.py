@@ -117,8 +117,8 @@ class User (UpstreamEntity):
     
     Properties:
     name -- upstream name of the user
-    projects -- upstream project ids the user is a member of
-    projects_owned -- upstream project ids the user owns
+    projects -- upstream projects the user is a member of
+    projects_owned -- upstream projects the user owns
     is_admin -- whether the user has admin privileges
     """
     
@@ -172,8 +172,8 @@ class Project (UpstreamEntity):
     
     Properties:
     name -- upstream name of the project
-    members -- upstream user ids of the project's members
-    owners -- upstream user ids of the project's owners
+    members -- upstream members of the project
+    owners -- upstream owners of the project
     
     Methods:
     charge -- charge the project's active allocations
@@ -421,6 +421,9 @@ class Job (Entity):
     resources_used -- aggregate amount of specified resources used
     accounting_id -- CSA JID, job ID
     charges -- charges associated with the job
+    
+    Properties:
+    resource -- the resource used by the job
     """
     
     def __init__ (self, id_):
@@ -457,6 +460,11 @@ class Job (Entity):
         return str(self.id)
     
     def _get_resource (self):
+        """Determine the resource used by a job.
+        
+        clusterbank.conf can specify patterns for job ids.
+        Alternatively, the resource can be determined based on charges applied.
+        """
         try:
             resources_defined = config.options("resources")
         except ConfigParser.NoSectionError:
@@ -468,6 +476,8 @@ class Job (Entity):
             if re.match(pattern, self.id):
                 return resource
         return None
+    
+    resource = property(_get_resource)
 
 
 class Charge (Entity):

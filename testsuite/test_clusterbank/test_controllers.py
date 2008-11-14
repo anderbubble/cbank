@@ -206,7 +206,6 @@ class TestJobFunctions (object):
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         job_ = Job("spam.1234")
         job_.account = project_
-        job_.resource = resource_
         charges = job_charge(job_, 10)
         assert_equal(set(charge.allocation for charge in charges),
             set([allocation]))
