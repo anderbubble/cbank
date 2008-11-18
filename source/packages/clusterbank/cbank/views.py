@@ -369,13 +369,13 @@ def print_holds_report (holds, comments=None):
     comments -- report hold comments
     """
     
-    fields = ["Hold", "Datetime", "Resource", "Project", "User", "Held"]
+    fields = ["Hold", "Date", "Resource", "Project", "User", "Held"]
     if comments:
         fields.append("Comment")
     format = Formatter(fields)
-    format.headers = {'Hold':"#", 'Datetime':"Date"}
+    format.headers = {'Hold':"#"}
     format.widths = {
-        'Hold':6, 'User':8, 'Project':15, 'Held':13, 'Datetime':10}
+        'Hold':6, 'User':8, 'Project':15, 'Held':13, 'Date':10}
     format.aligns = {'Held':"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
@@ -394,7 +394,7 @@ def print_holds_report (holds, comments=None):
             'User':hold.user,
             'Project':hold.allocation.project,
             'Resource':hold.allocation.resource,
-            'Datetime':format_datetime(hold.datetime),
+            'Date':format_datetime(hold.datetime),
             'Held':display_units(hold.amount),
             'Comment':hold.comment})
     print >> sys.stderr, format.separator(["Held"])
@@ -468,13 +468,13 @@ def print_charges_report (charges, comments=False):
     comments -- report charge comments
     """
     
-    fields = ["Charge", "Datetime", "Resource", "Project", "User", "Charged"]
+    fields = ["Charge", "Date", "Resource", "Project", "User", "Charged"]
     if comments:
         fields.append("Comment")
     format = Formatter(fields)
-    format.headers = {'Charge':"#", 'Datetime':"Date"}
+    format.headers = {'Charge':"#"}
     format.widths = {
-        'Charge':6, 'User':8, 'Project':15, 'Charged':13, 'Datetime':10}
+        'Charge':6, 'User':8, 'Project':15, 'Charged':13, 'Date':10}
     format.aligns = {'Charged':"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
@@ -498,7 +498,7 @@ def print_charges_report (charges, comments=False):
             'User':charge.user,
             'Project':charge.allocation.project,
             'Resource':charge.allocation.resource,
-            'Datetime':format_datetime(charge.datetime),
+            'Date':format_datetime(charge.datetime),
             'Charged':display_units(charge_amount),
             'Comment':charge.comment})
     print >> sys.stderr, format.separator(["Charged"])
