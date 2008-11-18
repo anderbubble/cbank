@@ -17,9 +17,8 @@ refunds -- refunds
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import MetaData, Table, Column, ForeignKey, \
-    ForeignKeyConstraint
-from sqlalchemy.types import TypeDecorator, Integer, DateTime, Interval, \
+from sqlalchemy import MetaData, Table, Column, ForeignKey
+from sqlalchemy.types import TypeDecorator, Integer, DateTime, \
     Text, Boolean, String
 
 
