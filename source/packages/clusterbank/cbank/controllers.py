@@ -467,10 +467,10 @@ def print_report_main_help ():
     print dedent(message % {'command':command})
 
 
-def user_owns_all (user_, projects):
-    """Check that the user is an owner of all of a list of projects."""
-    projects_owned = set(user_.projects_owned)
-    return set(projects).issubset(projects_owned)
+def user_admins_all (user_, projects):
+    """Check that the user is an admin of all of a list of projects."""
+    admin_projects = set(user_.admin_projects)
+    return set(projects).issubset(admin_projects)
 
 
 def project_members_all (projects):
@@ -502,7 +502,7 @@ def report_users_main ():
     else:
         if not projects:
             projects = current_user.projects
-        if projects and user_owns_all(current_user, projects):
+        if projects and user_admins_all(current_user, projects):
             if not users:
                 users = project_members_all(projects)
         else:
@@ -535,10 +535,10 @@ def report_projects_main ():
         if not projects:
             projects = current_user.projects
         allowed_projects = set(current_user.projects
-            + current_user.projects_owned)
+            + current_user.admin_projects)
         if not set(projects).issubset(allowed_projects):
             raise NotPermitted(current_user)
-        if not (projects and user_owns_all(current_user, projects)):
+        if not (projects and user_admins_all(current_user, projects)):
             if not set(users).issubset(set([current_user])):
                 raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
@@ -566,10 +566,10 @@ def report_allocations_main ():
         if not projects:
             projects = current_user.projects
         allowed_projects = set(
-            current_user.projects + current_user.projects_owned)
+            current_user.projects + current_user.admin_projects)
         if not set(projects).issubset(allowed_projects):
             raise NotPermitted(current_user)
-        if not (projects and user_owns_all(current_user, projects)):
+        if not (projects and user_admins_all(current_user, projects)):
             if not set(users).issubset(set([current_user])):
                 raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
@@ -610,7 +610,7 @@ def report_holds_main ():
     if not current_user.is_admin:
         if not projects:
             projects = current_user.projects
-        if projects and user_owns_all(current_user, projects):
+        if projects and user_admins_all(current_user, projects):
             pass
         else:
             if not users:
@@ -649,7 +649,7 @@ def report_jobs_main ():
     if not current_user.is_admin:
         if not projects:
             projects = current_user.projects
-        if projects and user_owns_all(current_user, projects):
+        if projects and user_admins_all(current_user, projects):
             pass
         else:
             if not users:
@@ -689,7 +689,7 @@ def report_charges_main ():
     if not current_user.is_admin:
         if not projects:
             projects = current_user.projects
-        if projects and user_owns_all(current_user, projects):
+        if projects and user_admins_all(current_user, projects):
             pass
         else:
             if not users:
@@ -772,7 +772,7 @@ def detail_allocations_main ():
     allocations = \
         s.query(Allocation).filter(Allocation.id.in_(sys.argv[1:]))
     if not current_user.is_admin:
-        projects = current_user.projects + current_user.projects_owned
+        projects = current_user.projects + current_user.admin_projects
         permitted_allocations = []
         for allocation in allocations:
             if not allocation.project in projects:
@@ -791,11 +791,11 @@ def detail_holds_main ():
     s = Session()
     holds = s.query(Hold).filter(Hold.id.in_(sys.argv[1:]))
     if not current_user.is_admin:
-        owned_projects = current_user.projects_owned
+        admin_projects = current_user.admin_projects
         permitted_holds = []
         for hold in holds:
             allowed = hold.user is current_user \
-                or hold.allocation.project in owned_projects
+                or hold.allocation.project in admin_projects
             if not allowed:
                 print >> sys.stderr, "%s: not permitted: %s" % (
                     hold.id, current_user)
@@ -812,11 +812,11 @@ def detail_jobs_main ():
     s = Session()
     jobs = s.query(Job).filter(Job.id.in_(sys.argv[1:]))
     if not current_user.is_admin:
-        owned_projects = current_user.projects_owned
+        admin_projects = current_user.admin_projects
         permitted_jobs = []
         for job in jobs:
             allowed = (job.user is current_user
-                or job.account in owned_projects)
+                or job.account in admin_projects)
             if not allowed:
                 print >> sys.stderr, "%s: not permitted: %s" % (
                     job.id, current_user)
@@ -833,11 +833,11 @@ def detail_charges_main ():
     s = Session()
     charges = s.query(Charge).filter(Charge.id.in_(sys.argv[1:]))
     if not current_user.is_admin:
-        owned_projects = current_user.projects_owned
+        admin_projects = current_user.admin_projects
         permitted_charges = []
         for charge in charges:
             allowed = charge.user is current_user \
-                or charge.allocation.project in owned_projects
+                or charge.allocation.project in admin_projects
             if not allowed:
                 print >> sys.stderr, "%s: not permitted: %s" % (
                     charge.id, current_user)
@@ -854,11 +854,11 @@ def detail_refunds_main ():
     s = Session()
     refunds = s.query(Refund).filter(Refund.id.in_(sys.argv[1:]))
     if not current_user.is_admin:
-        owned_projects = current_user.projects_owned
+        admin_projects = current_user.admin_projects
         permitted_refunds = []
         for refund in refunds:
             allowed = refund.charge.user is current_user \
-                or refund.charge.allocation.project in owned_projects
+                or refund.charge.allocation.project in admin_projects
             if not allowed:
                 print >> sys.stderr, "%s: not permitted: %s" % (
                     refund.id, current_user)

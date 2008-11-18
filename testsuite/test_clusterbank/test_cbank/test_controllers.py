@@ -116,9 +116,9 @@ def setup ():
     upstream_.projects[1].members.append(upstream_.users[2])
     upstream_.projects[2].members.append(upstream_.users[1])
     upstream_.projects[2].members.append(upstream_.users[2])
-    upstream_.projects[2].owners.append(upstream_.users[2])
+    upstream_.projects[2].admins.append(upstream_.users[2])
     upstream_.projects[3].members.append(upstream_.users[0])
-    upstream_.projects[3].owners.append(upstream_.users[2])
+    upstream_.projects[3].admins.append(upstream_.users[2])
     upstream_.resources = [
         upstream_.Resource(1, "resource1"), upstream_.Resource(2, "resource2")]
     upstream.use = upstream_
@@ -1212,7 +1212,7 @@ class TestUsersReport (CbankTester):
             for project in ["project1", "project2"]]
         assert_equal(set(kwargs['projects']), set(projects))
     
-    def test_owner_projects (self):
+    def test_project_admin_projects (self):
         project = project_by_name("project3")
         users = project.members
         code, stdout, stderr = run(report_users_main, "-p project3".split())
@@ -1221,7 +1221,7 @@ class TestUsersReport (CbankTester):
         assert_equal(set(args[0]), set(users))
         assert_equal(set(kwargs['projects']), set([project]))
     
-    def test_owner_users (self):
+    def test_project_admin_users (self):
         code, stdout, stderr = run(
             report_users_main, "-p project3 -u user1".split())
         assert_equal(code, 0)
@@ -1312,15 +1312,15 @@ class TestProjectsReport (CbankTester):
         args, kwargs = controllers.print_projects_report.calls[0]
         assert_equal(set(args[0]), set([project_by_name("project2")]))
         
-    def test_owner_projects (self):
-        """a specific project the user owns"""
+    def test_project_admin_projects (self):
+        """a specific project the user admins"""
         code, stdout, stderr = run(report_projects_main, "-p project3".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_projects_report.calls[0]
         assert_equal(set(args[0]), set([project_by_name("project3")]))
     
     def test_other_projects (self):
-        """cannot see other projects (not member, not owner)"""
+        """cannot see other projects (not member, not admin)"""
         code, stdout, stderr = run(report_projects_main, "-p project1".split())
         assert_equal(code, NotPermitted.exit_code)
         assert not controllers.print_projects_report.calls
@@ -1330,7 +1330,7 @@ class TestProjectsReport (CbankTester):
         assert_equal(code, NotPermitted.exit_code)
         assert not controllers.print_projects_report.calls
 
-    def test_owner_users (self):
+    def test_project_admin_users (self):
         code, stdout, stderr = run(
             report_projects_main, "-p project3 -u user1".split())
         assert_equal(code, 0)
@@ -1470,8 +1470,8 @@ class TestAllocationsReport (CbankTester):
         assert_equal(set(args[0]),
             set(active(project_by_name("project2").allocations)))
         
-    def test_owner_projects (self):
-        """a specific project the user owns"""
+    def test_project_admin_projects (self):
+        """a specific project the user admins"""
         code, stdout, stderr = run(
             report_allocations_main, "-p project3".split())
         assert_equal(code, 0)
@@ -1480,7 +1480,7 @@ class TestAllocationsReport (CbankTester):
             set(active(project_by_name("project3").allocations)))
     
     def test_other_projects (self):
-        """cannot see other projects (not member, not owner)"""
+        """cannot see other projects (not member, not admin)"""
         code, stdout, stderr = run(
             report_allocations_main, "-p project1".split())
         assert_equal(code, NotPermitted.exit_code)
@@ -1491,7 +1491,7 @@ class TestAllocationsReport (CbankTester):
         assert_equal(code, NotPermitted.exit_code)
         assert not controllers.print_allocations_report.calls
 
-    def test_owner_users (self):
+    def test_project_admin_users (self):
         code, stdout, stderr = run(
             report_allocations_main, "-p project3 -u user1".split())
         assert_equal(code, 0)
@@ -1665,7 +1665,7 @@ class TestHoldsReport (CbankTester):
         assert_equal(code, NotPermitted.exit_code)
         assert not controllers.print_holds_report.calls
     
-    def test_owner_users (self):
+    def test_project_admin_users (self):
         holds = Session().query(Hold).filter_by(active=True,
             user=user_by_name("user1")).filter(Hold.allocation.has(
             Allocation.project == project_by_name("project4")))
@@ -1695,7 +1695,7 @@ class TestHoldsReport (CbankTester):
         args, kwargs = controllers.print_holds_report.calls[0]
         assert_equal(set(args[0]), set(holds))
     
-    def test_owner_projects (self):
+    def test_project_admin_projects (self):
         holds = Session().query(Hold).filter_by(active=True).filter(
             Hold.allocation.has(
             Allocation.project == project_by_name("project4")))
@@ -1975,7 +1975,7 @@ class TestJobsReport (CbankTester):
         assert_equal(code, NotPermitted.exit_code)
         assert not controllers.print_jobs_report.calls
     
-    def test_owner_users (self):
+    def test_project_admin_users (self):
         code, stdout, stderr = run(report_jobs_main,
             "-u user1 -p project4".split())
         assert_equal(code, 0)
@@ -2001,7 +2001,7 @@ class TestJobsReport (CbankTester):
         args, kwargs = controllers.print_jobs_report.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
-    def test_owner_projects (self):
+    def test_project_admin_projects (self):
         code, stdout, stderr = run(report_jobs_main, "-p project4".split())
         assert_equal(code, 0)
         jobs = Session().query(Job).filter(Job.id.in_(["resource1.5",
@@ -2173,7 +2173,7 @@ class TestChargesReport (CbankTester):
         assert_equal(code, NotPermitted.exit_code)
         assert not controllers.print_charges_report.calls
     
-    def test_owner_users (self):
+    def test_project_admin_users (self):
         charges = Session().query(Charge).filter_by(
             user=user_by_name("user1")).filter(Charge.allocation.has(
             Allocation.project == project_by_name("project4")))
@@ -2204,7 +2204,7 @@ class TestChargesReport (CbankTester):
         args, kwargs = controllers.print_charges_report.calls[0]
         assert_equal(set(args[0]), set(charges))
     
-    def test_owner_projects (self):
+    def test_project_admin_projects (self):
         charges = Session().query(Charge).filter(
             Charge.allocation.has(
             Allocation.project == project_by_name("project4")))

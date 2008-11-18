@@ -9,10 +9,10 @@ User -- upstream user
 
 __all__ = [
     "get_project_id", "get_project_name",
-    "get_project_members", "get_project_owners",
+    "get_project_members", "get_project_admins",
     "get_resource_id", "get_resource_name",
     "get_user_id", "get_user_name",
-    "get_member_projects", "get_owner_projects",
+    "get_member_projects", "get_admin_projects",
 ]
 
 
@@ -54,7 +54,7 @@ class Project (Entity):
         """
         Entity.__init__(self, id_, name)
         self.members = []
-        self.owners = []
+        self.admins = []
 
 
 class Resource (Entity):
@@ -118,11 +118,11 @@ def get_project_members (id_):
     return []
 
 
-def get_project_owners (id_):
-    """Given a project id, return the ids of the project's owners."""
+def get_project_admins (id_):
+    """Given a project id, return the ids of the project's admins."""
     for project in projects:
         if project.id == id_:
-            return [user.id for user in project.owners]
+            return [user.id for user in project.admins]
     return []
 
 
@@ -133,10 +133,10 @@ def get_member_projects (id_):
             if user.id == id_]]
 
 
-def get_owner_projects (id_):
-    """Given a user id, return the ids of the user's owned projects."""
+def get_admin_projects (id_):
+    """Given a user id, return the ids of the projects the user admins."""
     return [project.id for project in projects
-        if [user for user in project.owners
+        if [user for user in project.admins
             if user.id == id_]]
 
 

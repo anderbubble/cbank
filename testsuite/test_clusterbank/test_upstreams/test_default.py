@@ -2,9 +2,9 @@ from nose.tools import raises
 
 import clusterbank.upstreams.default
 from clusterbank.upstreams.default import \
-    get_owner_projects, get_member_projects, get_user_name, \
+    get_admin_projects, get_member_projects, get_user_name, \
     get_user_id, get_resource_name, get_resource_id, \
-    get_project_owners, get_project_name, \
+    get_project_admins, get_project_name, \
     get_project_members, get_project_id, \
     User, Project, Resource
 
@@ -22,9 +22,9 @@ class TestProject (UpstreamTester):
     def setup (self):
         project = Project(1, "Shrubbery")
         project.members = [User(1, "Monty")]
-        project.owners = [User(2, "Python")]
+        project.admins = [User(2, "Python")]
         clusterbank.upstreams.default.projects = [project]
-        clusterbank.upstreams.default.users = project.members + project.owners
+        clusterbank.upstreams.default.users = project.members + project.admins
     
     def test_name (self):
         assert get_project_name(1) == "Shrubbery"
@@ -38,9 +38,9 @@ class TestProject (UpstreamTester):
         assert get_project_members(2) == []
         assert get_project_members(1) == [1], get_project_members(1)
     
-    def test_owners (self):
-        assert get_project_owners(2) == []
-        assert get_project_owners(1) == [2], get_project_owners(1)
+    def test_admins (self):
+        assert get_project_admins(2) == []
+        assert get_project_admins(1) == [2], get_project_admins(1)
 
 
 class TestResource (UpstreamTester):
@@ -68,7 +68,7 @@ class TestUser (UpstreamTester):
         shrubbery = Project(1, "Shrubbery")
         shrubbery.members = [user]
         spam = Project(2, "Spam")
-        spam.owners = [user]
+        spam.admins = [user]
         clusterbank.upstreams.default.projects = [shrubbery, spam]
         clusterbank.upstreams.default.users = [user]
     
@@ -84,7 +84,7 @@ class TestUser (UpstreamTester):
         assert get_member_projects(2) == []
         assert get_member_projects(1) == [1]
     
-    def test_projects_owned (self):
-        assert get_owner_projects(2) == []
-        assert get_owner_projects(1) == [2]
+    def test_admin_projects (self):
+        assert get_admin_projects(2) == []
+        assert get_admin_projects(1) == [2]
 

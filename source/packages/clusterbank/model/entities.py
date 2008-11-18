@@ -123,7 +123,7 @@ class User (UpstreamEntity):
     Properties:
     name -- upstream name of the user
     projects -- upstream projects the user is a member of
-    projects_owned -- upstream projects the user owns
+    admin_projects -- upstream projects the user admins
     is_admin -- whether the user has admin privileges
     """
     
@@ -150,11 +150,11 @@ class User (UpstreamEntity):
     
     projects = property(_get_projects)
     
-    def _get_projects_owned (self):
-        """Retrieve the ids of the projects owned by the user from upstream."""
-        return upstream.get_owner_projects(self.id)
+    def _get_admin_projects (self):
+        """Retrieve the ids of the projects admined by the upstream user."""
+        return upstream.get_admin_projects(self.id)
     
-    projects_owned = property(_get_projects_owned)
+    admin_projects = property(_get_admin_projects)
     
     def _get_is_admin (self):
         """Whether or not the user is configured as an admin."""
@@ -180,7 +180,7 @@ class Project (UpstreamEntity):
     Properties:
     name -- upstream name of the project
     members -- upstream members of the project
-    owners -- upstream owners of the project
+    admins -- upstream admins of the project
     
     Methods:
     charge -- charge the project's active allocations
@@ -208,11 +208,11 @@ class Project (UpstreamEntity):
     
     members = property(_get_members)
     
-    def _get_owners (self):
-        """Retrieve the ids of the project's owners from upstream."""
-        return upstream.get_project_owners(self.id)
+    def _get_admins (self):
+        """Retrieve the ids of the project's admins from upstream."""
+        return upstream.get_project_admins(self.id)
     
-    owners = property(_get_owners)
+    admins = property(_get_admins)
     
     def charge (self, resource, amount):
         """Charge any available allocation to the project for a given amount

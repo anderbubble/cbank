@@ -65,8 +65,8 @@ def configured_upstream ():
             "get_user_name", "get_user_id",
             "get_project_name", "get_project_id",
             "get_resource_name", "get_resource_id",
-            "get_project_members", "get_project_owners",
-            "get_member_projects", "get_owner_projects"])
+            "get_project_members", "get_project_admins",
+            "get_member_projects", "get_admin_projects"])
     except ImportError:
         warnings.warn(
             "invalid upstream module: %s" % (module_name), UserWarning)

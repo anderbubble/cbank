@@ -5,10 +5,10 @@ from grp import getgrnam, getgrgid, getgrall
 
 __all__ = [
     "get_project_id", "get_project_name",
-    "get_project_members", "get_project_owners",
+    "get_project_members", "get_project_admins",
     "get_resource_id", "get_resource_name",
     "get_user_id", "get_user_name",
-    "get_member_projects", "get_owner_projects",
+    "get_member_projects", "get_admin_projects",
 ]
 
 def get_project_id (name):
@@ -32,7 +32,7 @@ def get_project_members (gid):
     except KeyError:
         return []
 
-def get_project_owners (gid):
+def get_project_admins (gid):
     """Given a gid, return the uids of users with that default group."""
     try:
         return [user[2] for user in getpwall() if user[3] == getgrgid(gid)[0]]
@@ -47,7 +47,7 @@ def get_member_projects (uid):
     except KeyError:
         return []
 
-def get_owner_projects (uid):
+def get_admin_projects (uid):
     """Given a uid, return a list containing that user's default group."""
     return [getgrgid(getpwuid(uid)[3])[2]]
 
