@@ -857,8 +857,10 @@ def detail_refunds_main ():
         admin_projects = current_user.admin_projects
         permitted_refunds = []
         for refund in refunds:
-            allowed = refund.charge.user is current_user \
-                or refund.charge.allocation.project in admin_projects
+            users = [job.user for job in refund.charge.jobs
+                if job.user is not None]
+            allowed = (current_user in users
+                or refund.charge.allocation.project in admin_projects)
             if not allowed:
                 print >> sys.stderr, "%s: not permitted: %s" % (
                     refund.id, current_user)

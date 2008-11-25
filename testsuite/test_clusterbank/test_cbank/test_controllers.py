@@ -19,7 +19,7 @@ from clusterbank.cbank.controllers import main, report_main, new_main, \
     report_holds_main, report_jobs_main, report_charges_main, \
     new_allocation_main, new_charge_main, new_hold_main, new_refund_main, \
     handle_exceptions, detail_jobs_main, import_main, import_jobs_main, \
-    detail_charges_main
+    detail_charges_main, detail_refunds_main
 from clusterbank.cbank.exceptions import UnknownCommand, \
     UnexpectedArguments, UnknownProject, MissingArgument, MissingResource, \
     NotPermitted, ValueError_, UnknownCharge
@@ -179,7 +179,7 @@ class TestDetailCharges (CbankTester):
         CbankTester.teardown(self)
         controllers.print_charges = self._print_charges
     
-    def test_charge_user (self):
+    def test_user (self):
         a = Allocation(project("project1"), resource("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
@@ -191,7 +191,7 @@ class TestDetailCharges (CbankTester):
         args, kwargs = controllers.print_charges.calls[0]
         assert_equal(list(args[0]), [c])
     
-    def test_charge_non_user (self):
+    def test_non_user (self):
         a = Allocation(project("project1"), resource("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
@@ -201,7 +201,7 @@ class TestDetailCharges (CbankTester):
         args, kwargs = controllers.print_charges.calls[0]
         assert_equal(list(args[0]), [])
     
-    def test_charge_project_admin (self):
+    def test_project_admin (self):
         a = Allocation(project("project3"), resource("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
@@ -218,7 +218,7 @@ class TestAdminDetailCharges (TestDetailCharges):
         TestDetailCharges.setup(self)
         be_admin()
     
-    def test_charge_non_user (self):
+    def test_non_user (self):
         a = Allocation(project("project1"), resource("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
@@ -227,6 +227,71 @@ class TestAdminDetailCharges (TestDetailCharges):
         run(detail_charges_main, ["%i" % c.id])
         args, kwargs = controllers.print_charges.calls[0]
         assert_equal(list(args[0]), [c])
+
+
+class TestDetailRefunds (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        self._print_refunds = controllers.print_refunds
+        controllers.print_refunds = FakeFunc()
+    
+    def teardown (self):
+        CbankTester.teardown(self)
+        controllers.print_refunds = self._print_refunds
+    
+    def test_user (self):
+        a = Allocation(project("project1"), resource("resource1"), 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        c = Charge(a, 0)
+        c.jobs = [Job("resource1.1")]
+        c.jobs[0].user = current_user()
+        r = Refund(c)
+        Session.add(r)
+        Session.flush()
+        run(detail_refunds_main, ["%i" % r.id])
+        args, kwargs = controllers.print_refunds.calls[0]
+        assert_equal(list(args[0]), [r])
+    
+    def test_non_user (self):
+        a = Allocation(project("project1"), resource("resource1"), 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        c = Charge(a, 0)
+        r = Refund(c)
+        Session.add(r)
+        Session.flush()
+        run(detail_refunds_main, ["%i" % r.id])
+        args, kwargs = controllers.print_refunds.calls[0]
+        assert_equal(list(args[0]), [])
+    
+    def test_project_admin (self):
+        a = Allocation(project("project3"), resource("resource1"), 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        c = Charge(a, 0)
+        r = Refund(c)
+        Session.add(r)
+        Session.flush()
+        run(detail_refunds_main, ["%i" % r.id])
+        args, kwargs = controllers.print_refunds.calls[0]
+        assert_equal(list(args[0]), [r])
+
+
+class TestAdminDetailRefunds (TestDetailRefunds):
+    
+    def setup (self):
+        TestDetailRefunds.setup(self)
+        be_admin()
+    
+    def test_non_user (self):
+        a = Allocation(project("project1"), resource("resource1"), 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        c = Charge(a, 0)
+        r = Refund(c)
+        Session.add(r)
+        Session.flush()
+        run(detail_refunds_main, ["%i" % r.id])
+        args, kwargs = controllers.print_refunds.calls[0]
+        assert_equal(list(args[0]), [r])
 
 
 class TestMain (CbankTester):
