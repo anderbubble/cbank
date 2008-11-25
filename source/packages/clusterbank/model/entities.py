@@ -597,8 +597,8 @@ class Charge (Entity):
             amount = self.effective_amount()
         charges = project.charge(self.allocation.resource, amount)
         for charge in charges:
-            charge.user = self.user
             charge.comment = self.comment
+            charge.jobs = self.jobs
         refund = self.refund(amount)
         refund.comment = "transferred to %s" % project
         return refund, charges
