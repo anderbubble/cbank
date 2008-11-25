@@ -37,8 +37,8 @@ from sqlalchemy.orm import eagerload
 
 from clusterbank import config
 from clusterbank.cbank.common import get_unit_factor
-from clusterbank.model import User, Project, Resource, Allocation, Hold, \
-    Charge, Refund
+from clusterbank.model import (User, Project, Resource, Allocation, Hold,
+    Job, Charge, Refund)
 from clusterbank.controllers import Session
 
 __all__ = ["unit_definition", "convert_units", "display_units",
@@ -78,11 +78,11 @@ def print_users_report (users, projects=None, resources=None,
         User.id.label("user_id"),
         func.count(Charge.id).label("charge_count"),
         func.sum(Charge.amount).label("charge_sum")).group_by(User.id)
-    charges_q = charges_q.join(Charge.user)
+    charges_q = charges_q.join(Charge.jobs, Job.user)
     refunds_q = s.query(
         User.id.label("user_id"),
         func.sum(Refund.amount).label("refund_sum")).group_by(User.id)
-    refunds_q = refunds_q.join(Refund.charge, Charge.user)
+    refunds_q = refunds_q.join(Refund.charge, Charge.jobs, Job.user)
     
     if projects:
         projects_ = Charge.allocation.has(Allocation.project.has(
@@ -191,7 +191,8 @@ def print_projects_report (projects, users=None, resources=None,
     spec_charges_q = charges_q
     spec_refunds_q = refunds_q
     if users:
-        users_ = Charge.user.has(User.id.in_(user.id for user in users))
+        users_ = Charge.jobs.any(Job.user.has(User.id.in_(
+            user.id for user in users)))
         spec_charges_q = spec_charges_q.filter(users_)
         spec_refunds_q = spec_refunds_q.filter(users_)
     if after:
@@ -296,7 +297,8 @@ def print_allocations_report (allocations, users=None,
     spec_refunds_q = refunds_q
     
     if users:
-        users_ = Charge.user.has(User.id.in_(user.id for user in users))
+        users_ = Charge.jobs.any(Job.user.has(User.id.in_(
+            user.id for user in users)))
         spec_charges_q = spec_charges_q.filter(users_)
         spec_refunds_q = spec_refunds_q.filter(users_)
     if after:
@@ -468,13 +470,13 @@ def print_charges_report (charges, comments=False):
     comments -- report charge comments
     """
     
-    fields = ["Charge", "Date", "Resource", "Project", "User", "Charged"]
+    fields = ["Charge", "Date", "Resource", "Project", "Charged"]
     if comments:
         fields.append("Comment")
     format = Formatter(fields)
     format.headers = {'Charge':"#"}
     format.widths = {
-        'Charge':6, 'User':8, 'Project':15, 'Charged':13, 'Date':10}
+        'Charge':6, 'Project':15, 'Charged':13, 'Date':10}
     format.aligns = {'Charged':"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
@@ -485,7 +487,7 @@ def print_charges_report (charges, comments=False):
             - func.coalesce(func.sum(Refund.amount), 0), Integer)
         ).group_by(Charge.id)
     query = query.outerjoin(Charge.refunds)
-    query = query.options(eagerload(Charge.user, Charge.allocation,
+    query = query.options(eagerload(Charge.allocation,
         Allocation.project, Allocation.resource))
     query = query.filter(Charge.id.in_(charge.id for charge in charges))
     query = query.order_by(Charge.datetime, Charge.id)
@@ -495,7 +497,6 @@ def print_charges_report (charges, comments=False):
         total_charged += charge_amount
         print format({
             'Charge':charge.id,
-            'User':charge.user,
             'Project':charge.allocation.project,
             'Resource':charge.allocation.resource,
             'Date':format_datetime(charge.datetime),

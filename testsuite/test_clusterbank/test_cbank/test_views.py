@@ -112,10 +112,18 @@ class TestUsersReport (CbankViewTester):
         resource1 = resource_by_name("resource1")
         a1 = Allocation(project1, resource1, 100, start, end)
         a2 = Allocation(project2, resource1, 100, start, end)
-        Charge(a1, 10).user = user1
-        Charge(a1, 7).user = user2
-        Charge(a2, 3).user = user2
-        Charge(a2, 5).user = user2
+        c1 = Charge(a1, 10)
+        c1.jobs = [Job("resource1.1")]
+        c1.jobs[0].user = user1
+        c2 = Charge(a1, 7)
+        c2.jobs = [Job("resource1.2")]
+        c2.jobs[0].user = user2
+        c3 = Charge(a2, 3)
+        c3.jobs = [Job("resource1.3")]
+        c3.jobs[0].user = user2
+        c4 = Charge(a2, 5)
+        c4.jobs = [Job("resource1.4")]
+        c4.jobs[0].user = user2
         stdout, stderr = capture(lambda: print_users_report([user1, user2]))
         stdout_ = dedent("""\
             user1             1            10.0
@@ -141,15 +149,20 @@ class TestUsersReport (CbankViewTester):
         a1 = Allocation(project1, resource1, 100, start, end)
         a2 = Allocation(project2, resource1, 100, start, end)
         c1 = Charge(a1, 10)
-        c1.user = user1
+        c1.jobs = [Job("resource1.1")]
+        c1.jobs[0].user = user1
         Refund(c1, 9)
         c2 = Charge(a1, 7)
-        c2.user = user2
+        c2.jobs = [Job("resource1.2")]
+        c2.jobs[0].user = user2
         Refund(c2, 3)
         Refund(c2, 4)
-        Charge(a2, 3).user = user2
+        c3 = Charge(a2, 3)
+        c3.jobs = [Job("resource1.3")]
+        c3.jobs[0].user = user2
         c4 = Charge(a2, 5)
-        c4.user = user2
+        c4.jobs = [Job("resource1.4")]
+        c4.jobs[0].user = user2
         Refund(c4, 3)
         stdout, stderr = capture(lambda: print_users_report([user1, user2]))
         stdout_ = dedent("""\
@@ -176,15 +189,20 @@ class TestUsersReport (CbankViewTester):
         a1 = Allocation(project1, resource1, 100, start, end)
         a2 = Allocation(project2, resource1, 100, start, end)
         c1 = Charge(a1, 10)
-        c1.user = user1
+        c1.jobs = [Job("resource1.1")]
+        c1.jobs[0].user = user1
         Refund(c1, 9)
         c2 = Charge(a1, 7)
-        c2.user = user2
+        c2.jobs = [Job("resource1.2")]
+        c2.jobs[0].user = user2
         Refund(c2, 3)
         Refund(c2, 4)
-        Charge(a2, 3).user = user2
+        c3 = Charge(a2, 3)
+        c3.jobs = [Job("resource1.3")]
+        c3.jobs[0].user = user2
         c4 = Charge(a2, 5)
-        c4.user = user2
+        c4.jobs = [Job("resource1.4")]
+        c4.jobs[0].user = user2
         Refund(c4, 3)
         stdout, stderr = capture(lambda:
             print_users_report([user1, user2], projects=[project1]))
@@ -213,15 +231,20 @@ class TestUsersReport (CbankViewTester):
         a1 = Allocation(project1, resource1, 100, start, end)
         a2 = Allocation(project2, resource2, 100, start, end)
         c1 = Charge(a1, 10)
-        c1.user = user1
+        c1.jobs = [Job("resource1.1")]
+        c1.jobs[0].user = user1
         Refund(c1, 9)
         c2 = Charge(a1, 7)
-        c2.user = user2
+        c2.jobs = [Job("resource1.2")]
+        c2.jobs[0].user = user2
         Refund(c2, 3)
         Refund(c2, 4)
-        Charge(a2, 3).user = user2
+        c3 = Charge(a2, 3)
+        c3.jobs = [Job("resource2.1")]
+        c3.jobs[0].user = user2
         c4 = Charge(a2, 5)
-        c4.user = user2
+        c4.jobs = [Job("resource2.2")]
+        c4.jobs[0].user = user2
         Refund(c4, 3)
         stdout, stderr = capture(lambda:
             print_users_report([user1, user2], resources=[resource2]))
@@ -251,19 +274,23 @@ class TestUsersReport (CbankViewTester):
         a2 = Allocation(project2, resource2, 100, start, end)
         c1 = Charge(a1, 10)
         c1.datetime = datetime(2000, 1, 2)
-        c1.user = user1
+        c1.jobs = [Job("resource1.1")]
+        c1.jobs[0].user = user1
         Refund(c1, 9)
         c2 = Charge(a1, 7)
         c2.datetime = datetime(2000, 1, 3)
-        c2.user = user2
+        c2.jobs = [Job("resource1.2")]
+        c2.jobs[0].user = user2
         Refund(c2, 3)
         Refund(c2, 4)
         c3 = Charge(a2, 3)
         c3.datetime = datetime(2000, 1, 4)
-        c3.user = user2
+        c3.jobs = [Job("resource2.1")]
+        c3.jobs[0].user = user2
         c4 = Charge(a2, 5)
         c4.datetime = datetime(2000, 1, 5)
-        c4.user = user2
+        c4.jobs = [Job("resource2.2")]
+        c4.jobs[0].user = user2
         Refund(c4, 3)
         stdout, stderr = capture(lambda:
             print_users_report([user1, user2], after=datetime(2000, 1, 3)))
@@ -293,19 +320,23 @@ class TestUsersReport (CbankViewTester):
         a2 = Allocation(project2, resource2, 100, start, end)
         c1 = Charge(a1, 10)
         c1.datetime = datetime(2000, 1, 2)
-        c1.user = user1
+        c1.jobs = [Job("resource1.1")]
+        c1.jobs[0].user = user1
         Refund(c1, 9)
         c2 = Charge(a1, 7)
         c2.datetime = datetime(2000, 1, 3)
-        c2.user = user2
+        c2.jobs = [Job("resource1.2")]
+        c2.jobs[0].user = user2
         Refund(c2, 3)
         Refund(c2, 4)
         c3 = Charge(a2, 3)
         c3.datetime = datetime(2000, 1, 4)
-        c3.user = user2
+        c3.jobs = [Job("resource2.1")]
+        c3.jobs[0].user = user2
         c4 = Charge(a2, 5)
         c4.datetime = datetime(2000, 1, 5)
-        c4.user = user2
+        c4.jobs = [Job("resource2.2")]
+        c4.jobs[0].user = user2
         Refund(c4, 3)
         stdout, stderr = capture(lambda:
             print_users_report([user1, user2], before=datetime(2000, 1, 4)))
@@ -427,14 +458,14 @@ class TestProjectsReport (CbankViewTester):
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, resource1, 10, start, end)
-        Charge(a1, 10).user = user1
+        Charge(a1, 10)
         a2 = Allocation(project1, resource1, 20, start, end)
-        Charge(a2, 15).user = user1
-        Charge(a2, 5).user = user1
+        Charge(a2, 15)
+        Charge(a2, 5)
         Allocation(project2, resource1, 30, start, end)
         a4 = Allocation(project2, resource2, 35, start, end)
-        Charge(a4, 9).user = user1
-        Charge(a4, 8).user = user1
+        Charge(a4, 9)
+        Charge(a4, 8)
         stdout, stderr = capture(lambda:
             print_projects_report([project1, project2]))
         stdout_ = dedent("""\
@@ -461,19 +492,16 @@ class TestProjectsReport (CbankViewTester):
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, resource1, 10, start, end)
         c1 = Charge(a1, 10)
-        c1.user = user1
         Refund(c1, 4)
         a2 = Allocation(project1, resource1, 20, start, end)
         c2 = Charge(a2, 15)
-        c2.user = user1
         Refund(c2, 3)
         Refund(c2, 5)
-        Charge(a2, 5).user = user1
+        Charge(a2, 5)
         Allocation(project2, resource1, 30, start, end)
         a4 = Allocation(project2, resource2, 35, start, end)
-        Charge(a4, 9).user = user1
+        Charge(a4, 9)
         c5 = Charge(a4, 8)
-        c5.user = user1
         Refund(c5, 8)
         stdout, stderr = capture(lambda:
             print_projects_report([project1, project2]))
@@ -490,6 +518,48 @@ class TestProjectsReport (CbankViewTester):
             """)
         assert_eq_output(stdout.getvalue(), stdout_)
         assert_eq_output(stderr.getvalue(), stderr_)
+    
+    def test_users (self):
+        user1 = user_by_name("user1")
+        project1, project2 = [project_by_name(project)
+            for project in ["project1", "project2"]]
+        resource1, resource2 = [resource_by_name(resource)
+            for resource in ["resource1", "resource2"]]
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        a1 = Allocation(project1, resource1, 10, start, end)
+        c1 = Charge(a1, 10)
+        Refund(c1, 4)
+        a2 = Allocation(project1, resource1, 20, start, end)
+        c2 = Charge(a2, 15)
+        c2.jobs = [Job("resource1.1")]
+        c2.jobs[0].user = user1
+        Refund(c2, 3)
+        Refund(c2, 5)
+        Charge(a2, 5)
+        Allocation(project2, resource1, 30, start, end)
+        a4 = Allocation(project2, resource2, 35, start, end)
+        c4 = Charge(a4, 9)
+        c4.jobs = [Job("resource2.1")]
+        c4.jobs[0].user = user1
+        c5 = Charge(a4, 8)
+        Refund(c5, 8)
+        stdout, stderr = capture(lambda:
+            print_projects_report([project1, project2], users=[user1]))
+        stdout_ = dedent("""\
+            project1              1             7.0            12.0
+            project2              1             9.0            56.0
+            """)
+        stderr_ = dedent("""\
+            Name            Charges         Charged       Available
+            --------------- ------- --------------- ---------------
+                            ------- --------------- ---------------
+                                  2            16.0            68.0
+            Units are undefined.
+            """)
+        assert_eq_output(stdout.getvalue(), stdout_)
+        assert_eq_output(stderr.getvalue(), stderr_)
+
 
 class TestAllocationsReport (CbankViewTester):
     
@@ -657,23 +727,28 @@ class TestAllocationsReport (CbankViewTester):
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, resource1, 10, start, end)
         c1 = Charge(a1, 10)
-        c1.user = user1
+        c1.jobs = [Job("resource1.1")]
+        c1.jobs[0].user = user1
         Refund(c1, 4)
         a2 = Allocation(project1, resource1, 20, start, end)
         c2 = Charge(a2, 15)
-        c2.user = user2
+        c2.jobs = [Job("resource1.2")]
+        c2.jobs[0].user = user2
         Refund(c2, 3)
         Refund(c2, 5)
         c3 = Charge(a2, 5)
-        c3.user = user1
+        c3.jobs = [Job("resource1.3")]
+        c3.jobs[0].user = user1
         a3 = Allocation(project2, resource1, 30, start, end)
         a4 = Allocation(project2, resource2, 35, start, end)
         Hold(a4, 9)
         Hold(a4, 8).active = False
         c4 = Charge(a4, 9)
-        c4.user = user1
+        c4.jobs = [Job("resource2.1")]
+        c4.jobs[0].user = user1
         c5 = Charge(a4, 8)
-        c5.user = user2
+        c5.jobs = [Job("resource2.2")]
+        c5.jobs[0].user = user2
         Refund(c5, 8)
         Session.flush() # give the allocations ids
         stdout, stderr = capture(lambda:
@@ -706,27 +781,22 @@ class TestAllocationsReport (CbankViewTester):
         a1 = Allocation(project1, resource1, 10, start, end)
         c1 = Charge(a1, 10)
         c1.datetime = datetime(2000, 1, 1)
-        c1.user = user1
         Refund(c1, 4)
         a2 = Allocation(project1, resource1, 20, start, end)
         c2 = Charge(a2, 15)
         c2.datetime = datetime(2000, 1, 2)
-        c2.user = user2
         Refund(c2, 3)
         Refund(c2, 5)
         c3 = Charge(a2, 5)
         c3.datetime = datetime(2000, 1, 3)
-        c3.user = user1
         a3 = Allocation(project2, resource1, 30, start, end)
         a4 = Allocation(project2, resource2, 35, start, end)
         Hold(a4, 9)
         Hold(a4, 8).active = False
         c4 = Charge(a4, 9)
         c4.datetime = datetime(2000, 1, 4)
-        c4.user = user1
         c5 = Charge(a4, 8)
         c5.datetime = datetime(2000, 1, 5)
-        c5.user = user2
         Refund(c5, 8)
         Session.flush() # give the allocations ids
         stdout, stderr = capture(lambda:
@@ -760,27 +830,22 @@ class TestAllocationsReport (CbankViewTester):
         a1 = Allocation(project1, resource1, 10, start, end)
         c1 = Charge(a1, 10)
         c1.datetime = datetime(2000, 1, 1)
-        c1.user = user1
         Refund(c1, 4)
         a2 = Allocation(project1, resource1, 20, start, end)
         c2 = Charge(a2, 15)
         c2.datetime = datetime(2000, 1, 2)
-        c2.user = user2
         Refund(c2, 3)
         Refund(c2, 5)
         c3 = Charge(a2, 5)
         c3.datetime = datetime(2000, 1, 3)
-        c3.user = user1
         a3 = Allocation(project2, resource1, 30, start, end)
         a4 = Allocation(project2, resource2, 35, start, end)
         Hold(a4, 9)
         Hold(a4, 8).active = False
         c4 = Charge(a4, 9)
         c4.datetime = datetime(2000, 1, 4)
-        c4.user = user1
         c5 = Charge(a4, 8)
         c5.datetime = datetime(2000, 1, 5)
-        c5.user = user2
         Refund(c5, 8)
         Session.flush() # give the allocations ids
         stdout, stderr = capture(lambda:
@@ -979,10 +1044,10 @@ class TestChargesReport (CbankViewTester):
         stdout_ = dedent("""\
             """)
         stderr_ = dedent("""\
-            #      Date       Resource Project         User           Charged
-            ------ ---------- -------- --------------- -------- -------------
-                                                                -------------
-                                                                          0.0
+            #      Date       Resource Project               Charged
+            ------ ---------- -------- --------------- -------------
+                                                       -------------
+                                                                 0.0
             Units are undefined.
             """)
         assert_eq_output(stdout.getvalue(), stdout_)
@@ -1005,27 +1070,23 @@ class TestChargesReport (CbankViewTester):
         a4 = Allocation(project2, resource2, 35, start, end)
         c4 = Charge(a4, 9)
         c5 = Charge(a4, 8)
-        for charge in (c1, c2, c3):
-            charge.user = user1
-        for charge in (c4, c5):
-            charge.user = user2
         for charge in (c1, c2, c3, c4, c5):
             charge.datetime = datetime(2000, 1, 1)
         Session.flush() # give charges ids
         stdout, stderr = capture(lambda:
             print_charges_report([c1, c2, c3, c4, c5]))
         stdout_ = dedent("""\
-            1      2000-01-01 resource1 project1        user1             10.0
-            2      2000-01-01 resource1 project1        user1             15.0
-            3      2000-01-01 resource1 project1        user1              5.0
-            4      2000-01-01 resource2 project2        user2              9.0
-            5      2000-01-01 resource2 project2        user2              8.0
+            1      2000-01-01 resource1 project1                 10.0
+            2      2000-01-01 resource1 project1                 15.0
+            3      2000-01-01 resource1 project1                  5.0
+            4      2000-01-01 resource2 project2                  9.0
+            5      2000-01-01 resource2 project2                  8.0
             """)
         stderr_ = dedent("""\
-            #      Date       Resource Project         User           Charged
-            ------ ---------- -------- --------------- -------- -------------
-                                                                -------------
-                                                                         47.0
+            #      Date       Resource Project               Charged
+            ------ ---------- -------- --------------- -------------
+                                                       -------------
+                                                                47.0
             Units are undefined.
             """)
         assert_eq_output(stdout.getvalue(), stdout_)
@@ -1052,27 +1113,23 @@ class TestChargesReport (CbankViewTester):
         c4 = Charge(a4, 9)
         c5 = Charge(a4, 8)
         Refund(c5, 8)
-        for charge in (c1, c2, c3):
-            charge.user = user1
-        for charge in (c4, c5):
-            charge.user = user2
         for charge in (c1, c2, c3, c4, c5):
             charge.datetime = datetime(2000, 1, 1)
         Session.flush() # give charges ids
         stdout, stderr = capture(lambda:
             print_charges_report([c1, c2, c3, c4, c5]))
         stdout_ = dedent("""\
-            1      2000-01-01 resource1 project1        user1              6.0
-            2      2000-01-01 resource1 project1        user1              7.0
-            3      2000-01-01 resource1 project1        user1              5.0
-            4      2000-01-01 resource2 project2        user2              9.0
-            5      2000-01-01 resource2 project2        user2              0.0
+            1      2000-01-01 resource1 project1                  6.0
+            2      2000-01-01 resource1 project1                  7.0
+            3      2000-01-01 resource1 project1                  5.0
+            4      2000-01-01 resource2 project2                  9.0
+            5      2000-01-01 resource2 project2                  0.0
             """)
         stderr_ = dedent("""\
-            #      Date       Resource Project         User           Charged
-            ------ ---------- -------- --------------- -------- -------------
-                                                                -------------
-                                                                         27.0
+            #      Date       Resource Project               Charged
+            ------ ---------- -------- --------------- -------------
+                                                       -------------
+                                                                27.0
             Units are undefined.
             """)
         assert_eq_output(stdout.getvalue(), stdout_)
