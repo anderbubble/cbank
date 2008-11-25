@@ -835,8 +835,9 @@ def detail_charges_main ():
         admin_projects = current_user.admin_projects
         permitted_charges = []
         for charge in charges:
-            allowed = charge.user is current_user \
-                or charge.allocation.project in admin_projects
+            users = [job.user for job in charge.jobs if job.user is not None]
+            allowed = (current_user in users
+                or charge.allocation.project in admin_projects)
             if not allowed:
                 print >> sys.stderr, "%s: not permitted: %s" % (
                     charge.id, current_user)

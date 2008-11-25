@@ -10,7 +10,7 @@ from sqlalchemy import create_engine
 import clusterbank
 from clusterbank.model import upstream, metadata, User, Project, Allocation, \
     Hold, Job, Charge, Refund
-from clusterbank.controllers import user, project, user_by_name, \
+from clusterbank.controllers import user, project, resource, user_by_name, \
     project_by_name, resource_by_name, Session
 import clusterbank.upstreams.default as upstream_
 import clusterbank.cbank.controllers as controllers
@@ -18,7 +18,8 @@ from clusterbank.cbank.controllers import main, report_main, new_main, \
     report_users_main, report_projects_main, report_allocations_main, \
     report_holds_main, report_jobs_main, report_charges_main, \
     new_allocation_main, new_charge_main, new_hold_main, new_refund_main, \
-    handle_exceptions, detail_jobs_main, import_main, import_jobs_main
+    handle_exceptions, detail_jobs_main, import_main, import_jobs_main, \
+    detail_charges_main
 from clusterbank.cbank.exceptions import UnknownCommand, \
     UnexpectedArguments, UnknownProject, MissingArgument, MissingResource, \
     NotPermitted, ValueError_, UnknownCharge
@@ -165,6 +166,67 @@ class CbankTester (object):
         Session.remove()
         clusterbank.config.remove_section("cbank")
         metadata.drop_all()
+
+
+class TestDetailCharges (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        self._print_charges = controllers.print_charges
+        controllers.print_charges = FakeFunc()
+    
+    def teardown (self):
+        CbankTester.teardown(self)
+        controllers.print_charges = self._print_charges
+    
+    def test_charge_user (self):
+        a = Allocation(project("project1"), resource("resource1"), 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        c = Charge(a, 0)
+        c.jobs = [Job("resource1.1")]
+        c.jobs[0].user = current_user()
+        Session.add(c)
+        Session.flush()
+        run(detail_charges_main, ["%i" % c.id])
+        args, kwargs = controllers.print_charges.calls[0]
+        assert_equal(list(args[0]), [c])
+    
+    def test_charge_non_user (self):
+        a = Allocation(project("project1"), resource("resource1"), 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        c = Charge(a, 0)
+        Session.add(c)
+        Session.flush()
+        run(detail_charges_main, ["%i" % c.id])
+        args, kwargs = controllers.print_charges.calls[0]
+        assert_equal(list(args[0]), [])
+    
+    def test_charge_project_admin (self):
+        a = Allocation(project("project3"), resource("resource1"), 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        c = Charge(a, 0)
+        Session.add(c)
+        Session.flush()
+        run(detail_charges_main, ["%i" % c.id])
+        args, kwargs = controllers.print_charges.calls[0]
+        assert_equal(list(args[0]), [c])
+
+
+class TestAdminDetailCharges (TestDetailCharges):
+    
+    def setup (self):
+        TestDetailCharges.setup(self)
+        be_admin()
+    
+    def test_charge_non_user (self):
+        a = Allocation(project("project1"), resource("resource1"), 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        c = Charge(a, 0)
+        Session.add(c)
+        Session.flush()
+        run(detail_charges_main, ["%i" % c.id])
+        args, kwargs = controllers.print_charges.calls[0]
+        assert_equal(list(args[0]), [c])
 
 
 class TestMain (CbankTester):
