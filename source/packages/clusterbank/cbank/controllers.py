@@ -700,8 +700,8 @@ def report_charges_main ():
     comments = options.comments
     charges = Session().query(Charge)
     if users:
-        charges = charges.filter(Charge.user.has(User.id.in_(
-            user_.id for user_ in users)))
+        charges = charges.filter(Charge.jobs.any(Job.user.has(User.id.in_(
+            user_.id for user_ in users))))
     if projects:
         charges = charges.filter(Charge.allocation.has(Allocation.project.has(
             Project.id.in_(project.id for project in projects))))
@@ -1103,7 +1103,7 @@ def new_charge_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-u", "--user",
         type="user", dest="user",
-        help="charge made by USER", metavar="USER"))
+        help="hold for USER", metavar="USER"))
     parser.add_option(Option("-r", "--resource",
         type="resource", dest="resource",
         help="charge for RESOURCE", metavar="RESOURCE"))

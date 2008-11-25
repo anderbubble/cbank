@@ -2135,16 +2135,20 @@ class TestChargesReport (CbankTester):
         for allocation in Session().query(Allocation):
             c1 = Charge(allocation, 0)
             c1.datetime = datetime(2000, 1, 1)
-            c1.user = user1
+            c1.jobs = [Job("1.%i.%s" % (allocation.id, allocation.resource))]
+            c1.jobs[0].user = user1
             c2 = Charge(allocation, 0)
             c2.datetime = datetime(1999, 1, 1)
-            c2.user = user2
+            c2.jobs = [Job("2.%i.%s" % (allocation.id, allocation.resource))]
+            c2.jobs[0].user = user2
             c3 = Charge(allocation, 0)
             c3.datetime = datetime(1999, 1, 1)
-            c3.user = current_user()
+            c3.jobs = [Job("3.%i.%s" % (allocation.id, allocation.resource))]
+            c3.jobs[0].user = current_user()
             c4 = Charge(allocation, 0)
             c4.datetime = datetime(2001, 1, 1)
-            c4.user = current_user()
+            c4.jobs = [Job("4.%i.%s" % (allocation.id, allocation.resource))]
+            c4.jobs[0].user = current_user()
         Session.flush()
     
     def teardown (self):
@@ -2152,10 +2156,8 @@ class TestChargesReport (CbankTester):
         controllers.print_charges_report = self._print_charges_report
     
     def test_default (self):
-        charges = Session().query(Charge).filter_by(
-            user=current_user()).filter(Charge.allocation.has(
-            Allocation.project.has(Project.id.in_(project.id for project in
-            current_user().projects))))
+        charges = Session().query(Charge).filter(
+            Charge.id.in_([11, 12, 15, 16, 19, 20, 23, 24]))
         code, stdout, stderr = run(report_charges_main)
         assert_equal(code, 0)
         args, kwargs = controllers.print_charges_report.calls[0]
@@ -2174,9 +2176,7 @@ class TestChargesReport (CbankTester):
         assert not controllers.print_charges_report.calls
     
     def test_project_admin_users (self):
-        charges = Session().query(Charge).filter_by(
-            user=user_by_name("user1")).filter(Charge.allocation.has(
-            Allocation.project == project_by_name("project4")))
+        charges = Session().query(Charge).filter(Charge.id.in_([25, 29]))
         code, stdout, stderr = run(report_charges_main,
             "-u user1 -p project4".split())
         assert_equal(code, 0)
@@ -2184,21 +2184,17 @@ class TestChargesReport (CbankTester):
         assert_equal(set(args[0]), set(charges))
     
     def test_self_users (self):
-        user = current_user()
-        charges = Session().query(Charge).filter_by(
-            user=user).filter(Charge.allocation.has(
-            Allocation.project.has(Project.id.in_(project.id for project in
-            user.projects))))
+        charges = Session().query(Charge).filter(
+            Charge.id.in_([11, 12, 15, 16, 19, 20, 23, 24]))
         code, stdout, stderr = run(report_charges_main,
-            ("-u %s" % user).split())
+            ("-u %s" % current_user()).split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_charges_report.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_member_projects (self):
-        charges = Session().query(Charge).filter_by(
-            user=current_user()).filter(Charge.allocation.has(
-            Allocation.project==project_by_name("project2")))
+        charges = Session().query(Charge).filter(
+            Charge.id.in_([11, 12, 15, 16]))
         code, stdout, stderr = run(report_charges_main, "-p project2".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_charges_report.calls[0]
@@ -2206,39 +2202,31 @@ class TestChargesReport (CbankTester):
     
     def test_project_admin_projects (self):
         charges = Session().query(Charge).filter(
-            Charge.allocation.has(
-            Allocation.project == project_by_name("project4")))
+            Charge.id.in_([25, 26, 27, 28, 29, 30, 31, 32]))
         code, stdout, stderr = run(report_charges_main, "-p project4".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_charges_report.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_other_projects (self):
-        charges = Session().query(Charge).filter_by(
-            user=current_user()).filter(Charge.allocation.has(
-            Allocation.project==project_by_name("project1")))
+        charges = Session().query(Charge).filter(
+            Charge.id.in_([3, 4, 7, 8]))
         code, stdout, stderr = run(report_charges_main, "-p project1".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_charges_report.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_resources (self):
-        charges = Session().query(Charge).filter_by(
-            user=current_user()).filter(Charge.allocation.has(
-            Allocation.project.has(Project.id.in_(project.id for project in
-            current_user().projects)))).filter(Charge.allocation.has(
-            Allocation.resource == resource_by_name("resource1")))
+        charges = Session().query(Charge).filter(
+            Charge.id.in_([11, 12, 19, 20]))
         code, stdout, stderr = run(report_charges_main, "-r resource1".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_charges_report.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_after (self):
-        charges = Session().query(Charge).filter_by(
-            user=current_user()).filter(Charge.allocation.has(
-            Allocation.project.has(Project.id.in_(project.id for project in
-            current_user().projects)))).filter(
-                Charge.datetime>=datetime(2000, 1, 1))
+        charges = Session().query(Charge).filter(
+            Charge.id.in_([12, 16, 20, 24]))
         code, stdout, stderr = run(report_charges_main,
             "-a 2000-01-01".split())
         assert_equal(code, 0)
@@ -2246,11 +2234,8 @@ class TestChargesReport (CbankTester):
         assert_equal(set(args[0]), set(charges))
     
     def test_before (self):
-        charges = Session().query(Charge).filter_by(
-            user=current_user()).filter(Charge.allocation.has(
-            Allocation.project.has(Project.id.in_(project.id for project in
-            current_user().projects)))).filter(
-                Charge.datetime<datetime(2000, 1, 1))
+        charges = Session().query(Charge).filter(
+            Charge.id.in_([11, 15, 19, 23]))
         code, stdout, stderr = run(
             report_charges_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
@@ -2269,20 +2254,21 @@ class TestChargesReport_Admin (TestChargesReport):
     
     def setup (self):
         TestChargesReport.setup(self)
+        Charge.__repr__ = lambda self: str(self.id)
         be_admin()
     
     def test_self_users (self):
-        user = current_user()
-        charges = Session().query(Charge).filter_by(user=user)
+        charges = Session().query(Charge).filter(Charge.id.in_([
+            20, 4, 11, 27, 24, 15, 8, 31, 3, 12, 19, 16, 23, 32, 28, 7]))
         code, stdout, stderr = run(report_charges_main,
-            ("-u %s" % user).split())
+            ("-u %s" % current_user()).split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_charges_report.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_resources (self):
-        charges = Session().query(Charge).filter(Charge.allocation.has(
-            Allocation.resource == resource_by_name("resource1")))
+        charges = Session().query(Charge).filter(Charge.id.in_([
+            3, 2, 26, 28, 19, 9, 20, 10, 25, 1, 27, 11, 18, 12, 17, 4]))
         code, stdout, stderr = run(
             report_charges_main, "-r resource1".split())
         assert_equal(code, 0)
@@ -2290,9 +2276,8 @@ class TestChargesReport_Admin (TestChargesReport):
         assert_equal(set(args[0]), set(charges))
     
     def test_other_users (self):
-        charges = Session().query(Charge).filter_by(
-            user=user_by_name("user1")).filter(Charge.allocation.has(
-            Allocation.project == project_by_name("project1")))
+        charges = Session().query(Charge).filter(
+            Charge.id.in_([1, 5]))
         code, stdout, stderr = run(report_charges_main,
             "-p project1 -u user1".split())
         assert_equal(code, 0)
@@ -2300,17 +2285,16 @@ class TestChargesReport_Admin (TestChargesReport):
         assert_equal(set(args[0]), set(charges))
     
     def test_other_projects (self):
-        charges = Session().query(Charge).filter(Charge.allocation.has(
-            Allocation.project==project_by_name("project1")))
+        charges = Session().query(Charge).filter(
+            Charge.id.in_([8, 2, 7, 1, 3, 5, 4, 6]))
         code, stdout, stderr = run(report_charges_main, "-p project1".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_charges_report.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_member_users (self):
-        charges = Session().query(Charge).filter_by(
-            user=user_by_name("user1")).filter(Charge.allocation.has(
-            Allocation.project==project_by_name("project2")))
+        charges = Session().query(Charge).filter(
+            Charge.id.in_([9, 13]))
         code, stdout, stderr = run(report_charges_main,
             "-p project2 -u user1".split())
         assert_equal(code, 0)
@@ -2318,8 +2302,8 @@ class TestChargesReport_Admin (TestChargesReport):
         assert_equal(set(args[0]), set(charges))
      
     def test_member_projects (self):
-        charges = Session().query(Charge).filter(Charge.allocation.has(
-            Allocation.project==project_by_name("project2")))
+        charges = Session().query(Charge).filter(
+            Charge.id.in_([10, 16, 14, 13, 9, 15, 11, 12]))
         code, stdout, stderr = run(report_charges_main, "-p project2".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_charges_report.calls[0]
@@ -2333,8 +2317,8 @@ class TestChargesReport_Admin (TestChargesReport):
         assert_equal(set(args[0]), set(charges))
     
     def test_after (self):
-        charges = Session().query(Charge).filter(
-            Charge.datetime >= datetime(2000, 1, 1))
+        charges = Session().query(Charge).filter(Charge.id.in_([
+            28, 4, 25, 24, 21, 16, 9, 29, 8, 13, 1, 20, 5, 12, 32, 17]))
         code, stdout, stderr = run(
             report_charges_main, "-a 2000-01-01".split())
         assert_equal(code, 0)
@@ -2342,8 +2326,8 @@ class TestChargesReport_Admin (TestChargesReport):
         assert_equal(set(args[0]), set(charges))
     
     def test_before (self):
-        charges = Session().query(Charge).filter(
-            Charge.datetime < datetime(2000, 1, 1))
+        charges = Session().query(Charge).filter(Charge.id.in_([
+            3, 11, 18, 10, 31, 15, 23, 2, 27, 6, 7, 26, 19, 14, 22, 30]))
         code, stdout, stderr = run(
             report_charges_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
