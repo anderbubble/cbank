@@ -135,7 +135,6 @@ mapper(Charge, charges, properties={
     'id':charges.c.id,
     'allocation':relation(Allocation, backref="charges"),
     'datetime':charges.c.datetime,
-    'user':relation(User, backref="charges"),
     'amount':charges.c.amount,
     'comment':charges.c.comment})
 

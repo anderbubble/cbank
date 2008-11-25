@@ -151,7 +151,6 @@ charges = Table("charges", metadata,
     Column("allocation_id", None, ForeignKey("allocations.id"), nullable=False),
     Column("datetime", DateTime, nullable=False, default=datetime.now),
     Column("amount", Integer, nullable=False),
-    Column("user_id", None, ForeignKey("users.id"), nullable=True),
     Column("comment", Text),
     mysql_engine="InnoDB")
 

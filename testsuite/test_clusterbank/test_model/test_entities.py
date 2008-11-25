@@ -361,7 +361,6 @@ class TestCharge (EntityTester):
         assert charge.allocation is allocation
         assert charge.amount == 600
         assert charge.comment is None
-        assert charge.user is None
         assert charge.refunds == []
     
     @raises(ValueError)

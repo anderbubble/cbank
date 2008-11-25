@@ -118,7 +118,6 @@ class User (UpstreamEntity):
     Attributes:
     holds -- holds associated with the user
     jobs -- jobs the user has run
-    charges -- charges associated with the user
     
     Properties:
     name -- upstream name of the user
@@ -136,7 +135,6 @@ class User (UpstreamEntity):
         UpstreamEntity.__init__(self, id_)
         self.holds = []
         self.jobs = []
-        self.charges = []
     
     def _get_name (self):
         """Retrieve the user's name from upstream."""
@@ -524,7 +522,6 @@ class Charge (Entity):
         Entity.__init__(self)
         self.datetime = datetime.now()
         self.allocation = allocation
-        self.user = None
         self.comment = None
         self.refunds = []
         self.amount = amount
