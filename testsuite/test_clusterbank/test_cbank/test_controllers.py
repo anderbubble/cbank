@@ -549,7 +549,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 100 -r resource1 -c test -u user1"
+        args = "project1 100 -r resource1 -c test"
         code, stdout, stderr = run(new_charge_main, args.split())
         assert code == 0
         assert charges.count() == 1, "didn't create a charge"
@@ -560,8 +560,6 @@ class TestNewChargeMain (CbankTester):
             "incorrect charge amount: %i" % charge.amount
         assert charge.comment == "test", \
             "incorrect comment: %s" % charge.comment
-        assert charge.user is user, \
-            "incorrect user on charge: %s" % charge.user
     
     def test_unknown_arguments (self):
         project = project_by_name("project1")
@@ -575,7 +573,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 100 -r resource1 -c test -u user1 asdf"
+        args = "project1 100 -r resource1 -c test asdf"
         code, stdout, stderr = run(new_charge_main, args.split())
         assert not charges.count()
         assert code == UnexpectedArguments.exit_code, code
@@ -593,7 +591,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 100 -r resource1 -c test -u user1"
+        args = "project1 100 -r resource1 -c test"
         code, stdout, stderr = run(new_charge_main, args.split())
         assert code == 0
         assert charges.count() == 1, "didn't create a charge"
@@ -604,8 +602,6 @@ class TestNewChargeMain (CbankTester):
             "incorrect charge amount: %i" % charge.amount
         assert charge.comment == "test", \
             "incorrect comment: %s" % charge.comment
-        assert charge.user is user, \
-            "incorrect user on charge: %s" % charge.user
     
     def test_without_resource (self):
         project = project_by_name("project1")
@@ -619,7 +615,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 100 -c test -u user1"
+        args = "project1 100 -c test"
         code, stdout, stderr = run(new_charge_main, args.split())
         assert code == MissingResource.exit_code, code
         assert not charges.count(), "created a charge"
@@ -637,7 +633,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 100 -c test -u user1"
+        args = "project1 100 -c test"
         code, stdout, stderr = run(new_charge_main, args.split())
         assert code == 0, code
         assert charges.count(), "didn't create a charge"
@@ -656,7 +652,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "100 -r resource1 -c test -u user1"
+        args = "100 -r resource1 -c test"
         code, stdout, stderr = run(new_charge_main, args.split())
         assert code == UnknownProject.exit_code, code
         assert not charges.count(), "created a charge"
@@ -673,7 +669,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 -r resource1 -c test -u user1"
+        args = "project1 -r resource1 -c test"
         code, stdout, stderr = run(new_charge_main, args.split())
         assert code == MissingArgument.exit_code, code
         assert not charges.count(), "created a charge"
@@ -690,7 +686,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 '-100' -r resource1 -c test -u user1"
+        args = "project1 '-100' -r resource1 -c test"
         code, stdout, stderr = run(new_charge_main, args.split())
         Session.remove()
         assert not charges.count(), \
@@ -710,7 +706,7 @@ class TestNewChargeMain (CbankTester):
             start=now-timedelta(days=1), expiration=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
-        args = "project1 100 -r resource1 -u user1"
+        args = "project1 100 -r resource1"
         code, stdout, stderr = run(new_charge_main, args.split())
         assert code == 0
         assert charges.count() == 1, "didn't create a charge"
@@ -721,33 +717,6 @@ class TestNewChargeMain (CbankTester):
             "incorrect charge amount: %i" % charge.amount
         assert charge.comment is None, \
             "incorrect comment: %s" % charge.comment
-        assert charge.user is user, \
-            "incorrect user on charge: %s" % charge.user
-    
-    def test_without_user (self):
-        project = project_by_name("project1")
-        resource = resource_by_name("resource1")
-        charges = Session.query(Charge)
-        assert not charges.count(), "started with existing charges"
-        now = datetime.now()
-        allocation = Allocation(
-            project=project, resource=resource, amount=1000,
-            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
-        Session.add(allocation)
-        Session.commit()
-        args = "project1 100 -r resource1 -c test"
-        code, stdout, stderr = run(new_charge_main, args.split())
-        assert code == 0, 0
-        assert charges.count() == 1, "didn't create a charge"
-        charge = charges.one()
-        assert charge.allocation is allocation, \
-            "incorrect allocation: %r" % charge.allocation
-        assert charge.amount == 100, \
-            "incorrect charge amount: %i" % charge.amount
-        assert charge.comment == "test", \
-            "incorrect comment: %s" % charge.comment
-        assert charge.user is current_user(), \
-            "incorrect user on charge: %s" % charge.user
     
     def test_non_admin (self):
         clusterbank.config.set("cbank", "admins", "")

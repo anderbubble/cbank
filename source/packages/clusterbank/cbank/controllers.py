@@ -238,7 +238,6 @@ def new_charge_main ():
         project=project_, resource=options.resource)
     charges = Charge.distributed(allocations, amount)
     for charge in charges:
-        charge.user = options.user
         charge.comment = options.comment
     if options.commit:
         for charge in charges:
@@ -1101,9 +1100,6 @@ def new_allocation_parser ():
 def new_charge_parser ():
     """An optparse parser for creating new charges."""
     parser = optparse.OptionParser(version=clusterbank.__version__)
-    parser.add_option(Option("-u", "--user",
-        type="user", dest="user",
-        help="hold for USER", metavar="USER"))
     parser.add_option(Option("-r", "--resource",
         type="resource", dest="resource",
         help="charge for RESOURCE", metavar="RESOURCE"))
