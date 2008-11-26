@@ -330,7 +330,15 @@ def import_jobs_main ():
         raise UnexpectedArguments(args)
     s = Session()
     counter = 0
+    job_entry_types = ["Q", "S", "E"]
     for line in read(sys.stdin):
+        try:
+            line_type = line.split(";", 3)[1]
+        except IndexError:
+            continue
+        else:
+            if line_type not in job_entry_types:
+                continue
         job = job_from_pbs(line)
         job = s.merge(job)
         counter += 1

@@ -1072,6 +1072,26 @@ class TestImportJobs (CbankTester):
         jobs = Session.query(Job)
         assert_equal(jobs.count(), 0)
     
+    def test_not_job (self):
+        stdin = StringIO()
+        entry = "04/18/2008 02:10:12;R;692009.jmayor5.lcrc.anl.gov;"
+        stdin.write(entry)
+        stdin.seek(0)
+        code, stdout, stderr = run(import_jobs_main, [], stdin)
+        assert_equal(code, 0)
+        jobs = Session.query(Job)
+        assert_equal(jobs.count(), 0)
+    
+    def test_invalid (self):
+        stdin = StringIO()
+        entry = "some invalid data"
+        stdin.write(entry)
+        stdin.seek(0)
+        code, stdout, stderr = run(import_jobs_main, [], stdin)
+        assert_equal(code, 0)
+        jobs = Session.query(Job)
+        assert_equal(jobs.count(), 0)
+    
     def test_job_from_pbs_q (self):
         entry = "04/18/2008 02:10:12;Q;692009.jmayor5.lcrc.anl.gov;queue=shared\n"
         stdin = StringIO()
