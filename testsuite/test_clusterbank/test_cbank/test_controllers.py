@@ -24,7 +24,7 @@ from clusterbank.cbank.exceptions import UnknownCommand, \
     UnexpectedArguments, UnknownProject, MissingArgument, MissingResource, \
     NotPermitted, ValueError_, UnknownCharge
 
-from nose.tools import assert_equal, assert_true
+from nose.tools import assert_equal, assert_true, assert_false
 
 
 def current_username ():
@@ -1344,6 +1344,13 @@ class TestUsersReport (CbankTester):
         assert_equal(code, 0)
         args, kwargs = controllers.print_users_report.calls[0]
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
+    
+    def test_long (self):
+        code, stdout, stderr = run(
+            report_users_main, ["-l"])
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_users_report.calls[0]
+        assert_false(kwargs['truncate'])
 
 
 class TestUsersReport_Admin (TestUsersReport):
@@ -1484,6 +1491,14 @@ class TestProjectsReport (CbankTester):
         assert_equal(code, 0)
         args, kwargs = controllers.print_projects_report.calls[0]
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
+    
+    def test_long (self):
+        code, stdout, stderr = run(
+            report_projects_main, ["-l"])
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_projects_report.calls[0]
+        assert_false(kwargs['truncate'])
+
 
 class TestProjectsReport_Admin (TestProjectsReport):
     
@@ -1643,6 +1658,13 @@ class TestAllocationsReport (CbankTester):
         assert_equal(code, 0)
         args, kwargs = controllers.print_allocations_report.calls[0]
         assert_true(kwargs['comments'])
+    
+    def test_long (self):
+        code, stdout, stderr = run(
+            report_allocations_main, ["-l"])
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_allocations_report.calls[0]
+        assert_false(kwargs['truncate'])
 
 
 class TestAllocationsReport_Admin (TestAllocationsReport):
@@ -1848,6 +1870,13 @@ class TestHoldsReport (CbankTester):
         assert_equal(code, 0)
         args, kwargs = controllers.print_holds_report.calls[0]
         assert_true(kwargs['comments'])
+    
+    def test_long (self):
+        code, stdout, stderr = run(
+            report_holds_main, ["-l"])
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_false(kwargs['truncate'])
 
 
 class TestHoldsReport_Admin (TestHoldsReport):
@@ -2118,6 +2147,13 @@ class TestJobsReport (CbankTester):
         jobs = Session().query(Job).filter(Job.id.in_(["resource2.1"]))
         args, kwargs = controllers.print_jobs_report.calls[0]
         assert_equal(set(args[0]), set(jobs))
+    
+    def test_long (self):
+        code, stdout, stderr = run(
+            report_jobs_main, ["-l"])
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_jobs_report.calls[0]
+        assert_false(kwargs['truncate'])
 
 
 class TestJobsReport_Admin (TestJobsReport):
@@ -2344,6 +2380,13 @@ class TestChargesReport (CbankTester):
         assert_equal(code, 0)
         args, kwargs = controllers.print_charges_report.calls[0]
         assert_true(kwargs['comments'])
+    
+    def test_long (self):
+        code, stdout, stderr = run(
+            report_charges_main, ["-l"])
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_charges_report.calls[0]
+        assert_false(kwargs['truncate'])
 
 
 class TestChargesReport_Admin (TestChargesReport):

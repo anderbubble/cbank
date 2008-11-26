@@ -511,7 +511,8 @@ def report_users_main ():
                 raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
     print_users_report(users, projects=projects,
-        resources=resources, after=options.after, before=options.before)
+        resources=resources, after=options.after, before=options.before,
+        truncate=(not options.long))
 
 
 @handle_exceptions
@@ -542,7 +543,8 @@ def report_projects_main ():
                 raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
     print_projects_report(projects, users=users, resources=resources,
-        after=options.after, before=options.before)
+        after=options.after, before=options.before,
+        truncate=(not options.long))
 
 
 @handle_exceptions
@@ -593,7 +595,8 @@ def report_allocations_main ():
             allocations = allocations.filter(
                 Allocation.start <= options.before)
     print_allocations_report(allocations.all(), users=users,
-        after=options.after, before=options.before, comments=comments)
+        after=options.after, before=options.before, comments=comments,
+        truncate=(not options.long))
 
 
 @handle_exceptions
@@ -633,7 +636,7 @@ def report_holds_main ():
         holds = holds.filter(Hold.datetime >= options.after)
     if options.before:
         holds = holds.filter(Hold.datetime < options.before)
-    print_holds_report(holds, comments=comments)
+    print_holds_report(holds, comments=comments, truncate=(not options.long))
 
 
 @handle_exceptions
@@ -672,7 +675,7 @@ def report_jobs_main ():
             Job.end <= options.before))
     if resources:
         jobs = (job_ for job_ in jobs if job_.resource in resources)
-    print_jobs_report(jobs)
+    print_jobs_report(jobs, truncate=(not options.long))
 
 
 @handle_exceptions
@@ -711,7 +714,8 @@ def report_charges_main ():
         charges = charges.filter(Charge.datetime >= options.after)
     if options.before:
         charges = charges.filter(Charge.datetime < options.before)
-    print_charges_report(charges, comments=comments)
+    print_charges_report(charges, comments=comments,
+        truncate=(not options.long))
 
 
 @handle_exceptions
@@ -954,7 +958,10 @@ def report_users_parser ():
     parser.add_option(Option("-b", "--before",
         dest="before", type="date",
         help="report charges before (and excluding) DATE", metavar="DATE"))
-    parser.set_defaults(projects=[], users=[], resources=[])
+    parser.add_option(Option("-l", "--long",
+        dest="long", action="store_true",
+        help="do not truncate long strings"))
+    parser.set_defaults(projects=[], users=[], resources=[], long=False)
     return parser
 
 
@@ -976,7 +983,10 @@ def report_projects_parser ():
     parser.add_option(Option("-b", "--before",
         dest="before", type="date",
         help="report charges before (and excluding) DATE", metavar="DATE"))
-    parser.set_defaults(projects=[], users=[], resources=[])
+    parser.add_option(Option("-l", "--long",
+        dest="long", action="store_true",
+        help="do not truncate long strings"))
+    parser.set_defaults(projects=[], users=[], resources=[], long=False)
     return parser
 
 
@@ -1001,7 +1011,11 @@ def report_allocations_parser ():
     parser.add_option(Option("-c", "--comments",
         dest="comments", action="store_true",
         help="include the comment line for each allocation"))
-    parser.set_defaults(projects=[], users=[], resources=[], comments=False)
+    parser.add_option(Option("-l", "--long",
+        dest="long", action="store_true",
+        help="do not truncate long strings"))
+    parser.set_defaults(projects=[], users=[], resources=[], comments=False,
+        long=False)
     return parser
 
 
@@ -1026,7 +1040,11 @@ def report_holds_parser ():
     parser.add_option(Option("-c", "--comments",
         dest="comments", action="store_true",
         help="include the comment line for each hold"))
-    parser.set_defaults(projects=[], users=[], resources=[], comments=False)
+    parser.add_option(Option("-l", "--long",
+        dest="long", action="store_true",
+        help="do not truncate long strings"))
+    parser.set_defaults(projects=[], users=[], resources=[], comments=False,
+        long=False)
     return parser
 
 
@@ -1048,6 +1066,10 @@ def report_jobs_parser ():
     parser.add_option(Option("-b", "--before",
         dest="before", type="date",
         help="report jobs before (and excluding) DATE", metavar="DATE"))
+    parser.add_option(Option("-l", "--long",
+        dest="long", action="store_true",
+        help="do not truncate long strings"))
+    parser.set_defaults(long=False)
     return parser
 
 
@@ -1072,7 +1094,11 @@ def report_charges_parser ():
     parser.add_option(Option("-c", "--comments",
         dest="comments", action="store_true",
         help="include the comment line for each charge"))
-    parser.set_defaults(projects=[], users=[], resources=[], comments=False)
+    parser.add_option(Option("-l", "--long",
+        dest="long", action="store_true",
+        help="do not truncate long strings"))
+    parser.set_defaults(projects=[], users=[], resources=[], comments=False,
+        long=False)
     return parser
 
 

@@ -50,7 +50,7 @@ locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 
 
 def print_users_report (users, projects=None, resources=None,
-                        after=None, before=None):
+                        after=None, before=None, truncate=True):
     
     """Users report.
     
@@ -69,7 +69,8 @@ def print_users_report (users, projects=None, resources=None,
     
     format = Formatter(["Name", "Charges", "Charged"])
     format.widths = {'Name':10, 'Charges':8, 'Charged':15}
-    format.truncate = {'Name':True}
+    if truncate:
+        format.truncate = {'Name':True}
     format.aligns = {'Charges':"right", 'Charged':"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
@@ -132,7 +133,7 @@ def print_users_report (users, projects=None, resources=None,
 
 
 def print_projects_report (projects, users=None, resources=None,
-                           before=None, after=None):
+                           before=None, after=None, truncate=True):
     
     """Projects report.
     
@@ -152,7 +153,8 @@ def print_projects_report (projects, users=None, resources=None,
     format = Formatter([
         "Name", "Charges", "Charged", "Available"])
     format.widths = {'Name':15, 'Charges':7, 'Charged':15, 'Available':15}
-    format.truncate = {'Name':True}
+    if truncate:
+        format.truncate = {'Name':True}
     format.aligns = {'Charges':"right",
         'Charged':"right", "Available":"right"}
     print >> sys.stderr, format.header()
@@ -250,7 +252,8 @@ def print_projects_report (projects, users=None, resources=None,
 
 
 def print_allocations_report (allocations, users=None,
-                              before=None, after=None, comments=False):
+                              before=None, after=None,
+                              comments=False, truncate=True):
     
     """Allocations report.
     
@@ -275,7 +278,8 @@ def print_allocations_report (allocations, users=None,
     format.headers = {'Allocation':"#"}
     format.widths = {'Allocation':4, 'Project':15, 'Available':13,
         'Charges':7, 'Charged':13, 'Expiration':10}
-    format.truncate = {'Resource':True, 'Project':True}
+    if truncate:
+        format.truncate = {'Resource':True, 'Project':True}
     format.aligns = {'Available':"right", 'Charges':"right", 'Charged':"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
@@ -361,7 +365,7 @@ def print_allocations_report (allocations, users=None,
     print >> sys.stderr, unit_definition()
 
 
-def print_holds_report (holds, comments=None):
+def print_holds_report (holds, comments=False, truncate=True):
     
     """Holds report.
     
@@ -381,7 +385,8 @@ def print_holds_report (holds, comments=None):
     format.headers = {'Hold':"#"}
     format.widths = {
         'Hold':6, 'User':8, 'Project':15, 'Held':13, 'Date':10}
-    format.truncate = {'User':True, 'Project':True, 'Resource':True}
+    if truncate:
+        format.truncate = {'User':True, 'Project':True, 'Resource':True}
     format.aligns = {'Held':"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
@@ -408,7 +413,7 @@ def print_holds_report (holds, comments=None):
     print >> sys.stderr, unit_definition()
 
 
-def print_jobs_report (jobs):
+def print_jobs_report (jobs, truncate=True):
     
     """Jobs report.
     
@@ -423,7 +428,8 @@ def print_jobs_report (jobs):
     format.aligns = {'Duration':"right", 'Charged':"right"}
     format.widths = {'ID':19, 'Name': 10, 'User':8, 'Account':15,
         'Duration':9, 'Charged':13}
-    format.truncate = {'Name':True, 'User':True, 'Account':True}
+    if truncate:
+        format.truncate = {'Name':True, 'User':True, 'Account':True}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
     duration_sum = timedelta()
@@ -462,7 +468,7 @@ def format_timedelta (td):
     return "%i:%.2i:%.2i" % (hours, minutes, seconds)
 
 
-def print_charges_report (charges, comments=False):
+def print_charges_report (charges, comments=False, truncate=True):
     
     """Charges report.
     
@@ -482,7 +488,8 @@ def print_charges_report (charges, comments=False):
     format.headers = {'Charge':"#"}
     format.widths = {
         'Charge':6, 'Project':15, 'Charged':13, 'Date':10}
-    format.truncate = {'Resource':True, 'Project':True}
+    if truncate:
+        format.truncate = {'Resource':True, 'Project':True}
     format.aligns = {'Charged':"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
