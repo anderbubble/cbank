@@ -69,6 +69,7 @@ def print_users_report (users, projects=None, resources=None,
     
     format = Formatter(["Name", "Charges", "Charged"])
     format.widths = {'Name':10, 'Charges':8, 'Charged':15}
+    format.truncate = {'Name':True}
     format.aligns = {'Charges':"right", 'Charged':"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
@@ -151,6 +152,7 @@ def print_projects_report (projects, users=None, resources=None,
     format = Formatter([
         "Name", "Charges", "Charged", "Available"])
     format.widths = {'Name':15, 'Charges':7, 'Charged':15, 'Available':15}
+    format.truncate = {'Name':True}
     format.aligns = {'Charges':"right",
         'Charged':"right", "Available":"right"}
     print >> sys.stderr, format.header()
@@ -273,6 +275,7 @@ def print_allocations_report (allocations, users=None,
     format.headers = {'Allocation':"#"}
     format.widths = {'Allocation':4, 'Project':15, 'Available':13,
         'Charges':7, 'Charged':13, 'Expiration':10}
+    format.truncate = {'Resource':True, 'Project':True}
     format.aligns = {'Available':"right", 'Charges':"right", 'Charged':"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
@@ -378,6 +381,7 @@ def print_holds_report (holds, comments=None):
     format.headers = {'Hold':"#"}
     format.widths = {
         'Hold':6, 'User':8, 'Project':15, 'Held':13, 'Date':10}
+    format.truncate = {'User':True, 'Project':True, 'Resource':True}
     format.aligns = {'Held':"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
@@ -419,6 +423,7 @@ def print_jobs_report (jobs):
     format.aligns = {'Duration':"right", 'Charged':"right"}
     format.widths = {'ID':19, 'Name': 10, 'User':8, 'Account':15,
         'Duration':9, 'Charged':13}
+    format.truncate = {'Name':True, 'User':True, 'Account':True}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
     duration_sum = timedelta()
@@ -477,6 +482,7 @@ def print_charges_report (charges, comments=False):
     format.headers = {'Charge':"#"}
     format.widths = {
         'Charge':6, 'Project':15, 'Charged':13, 'Date':10}
+    format.truncate = {'Resource':True, 'Project':True}
     format.aligns = {'Charged':"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
@@ -665,6 +671,7 @@ class Formatter (object):
         self.headers = {}
         self.widths = {}
         self.aligns = {}
+        self.truncate = {}
     
     def __call__ (self, *args, **kwargs):
         """Convenience access to format()."""
@@ -678,6 +685,8 @@ class Formatter (object):
             datum = str(datum)
             align = self._get_align(field)
             width = self._get_width(field)
+            if self._get_truncate(field):
+                datum = datum[:width]
             if align == "left":
                 datum = datum.ljust(width)
             elif align == "right":
@@ -694,6 +703,9 @@ class Formatter (object):
     
     def _get_width (self, field):
         return self.widths.get(field, len(self._get_header(field)))
+    
+    def _get_truncate (self, field):
+        return self.truncate.get(field, False)
     
     def _get_header (self, field):
         return self.headers.get(field, field)
