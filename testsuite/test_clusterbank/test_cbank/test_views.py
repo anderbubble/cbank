@@ -1033,12 +1033,9 @@ class TestJobsReport (CbankViewTester):
     
     def setup (self):
         CbankViewTester.setup(self)
-        config.add_section("resources")
-        config.set("resources", "res1", r"res1\..*")
     
     def teardown (self):
         CbankViewTester.teardown(self)
-        config.remove_section("resources")
     
     def test_blank (self):
         stdout, stderr = capture(lambda: print_jobs_report([]))

@@ -8,7 +8,7 @@ from clusterbank.upstreams import default as upstream_
 from clusterbank.upstreams.default import User, Project, Resource
 import clusterbank.controllers
 from clusterbank.controllers import (Session, user, project, user_by_name,
-    project_by_name, resource, resource_by_name, job_from_pbs, job_charge)
+    project_by_name, resource, resource_by_name, job_from_pbs)
 from clusterbank.exceptions import NotFound
 from clusterbank.model import metadata, Allocation, Charge
 
@@ -91,8 +91,6 @@ class TestJobFunctions (object):
     def setup (self):
         """Create the tables before each test."""
         metadata.create_all()
-        config.add_section("resources")
-        config.set("resources", "spam", r"spam\..*")
         self._datetime = clusterbank.model.entities.datetime
         clusterbank.model.entities.datetime = \
             FakeDateTime(datetime(2000, 1, 1))
@@ -101,7 +99,6 @@ class TestJobFunctions (object):
         """drop the database after each test."""
         Session.remove()
         metadata.drop_all()
-        config.remove_section("resources")
         clusterbank.model.entities.datetime = self._datetime
     
     def test_job_from_pbs_q (self):
@@ -185,31 +182,4 @@ class TestJobFunctions (object):
         entry = "04/18/2008 03:35:28;E;691908.jmayor5.lcrc.anl.gov;user=invalid"
         job_ = job_from_pbs(entry)
         assert_ident(job_.user, None)
-    
-    def test_job_resource (self):
-        job = Job("spam.1234")
-        assert_ident(job.resource, resource("spam"))
-    
-    def test_job_resource_unknown (self):
-        job = Job("unknown.1234")
-        assert_ident(job.resource, None)
-    
-    def test_job_resource_from_charges (self):
-        p = project_by_name("grail")
-        r = resource_by_name("spam")
-        a = Allocation(p, r, 0, datetime(2000, 1, 1), datetime(2001, 1, 1))
-        job = Job("1234")
-        job.charges = [Charge(a, 0)]
-        assert_ident(job.resource, resource("spam"))
-    
-    def test_job_charge (self):
-        project_ = project("grail")
-        resource_ = resource("spam")
-        allocation = Allocation(project_, resource_, 100,
-            datetime(2000, 1, 1), datetime(2001, 1, 1))
-        job_ = Job("spam.1234")
-        job_.account = project_
-        charges = job_charge(job_, 10)
-        assert_equal(set(charge.allocation for charge in charges),
-            set([allocation]))
-
+ 

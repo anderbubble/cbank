@@ -1991,26 +1991,34 @@ class TestJobsReport (CbankTester):
         self._print_jobs_report = controllers.print_jobs_report
         controllers.print_jobs_report = FakeFunc()
         current_user_ = current_user()
-        clusterbank.config.add_section("resources")
-        clusterbank.config.set("resources", "resource1", r"resource1\..*")
-        clusterbank.config.set("resources", "resource2", r"resource2\..*")
+        p1r1 = Allocation(project("project1"), resource("resource1"), 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        p2r1 = Allocation(project("project2"), resource("resource1"), 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        p4r1 = Allocation(project("project4"), resource("resource1"), 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        p2r2 = Allocation(project("project2"), resource("resource2"), 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
         j1 = Job("resource1.1")
         j1.user = current_user_
         j1.start = datetime(2000, 1, 1)
         j1.end = datetime(2000, 1, 2)
         j1.account = project_by_name("project2")
         j1.ctime = datetime(2000, 1, 1)
+        j1.charges = [Charge(p2r1, 0)]
         j2 = Job("resource1.2")
         j2.user = current_user_
         j2.start = datetime(2000, 1, 30)
         j2.end = datetime(2000, 2, 2)
         j2.ctime = datetime(2000, 1, 2)
         j2.account = project_by_name("project2")
+        j2.charges = [Charge(p2r1, 0)]
         j3 = Job("resource1.3")
         j3.user = current_user_
         j3.start = datetime(2000, 2, 1)
         j3.account = project_by_name("project2")
         j3.ctime = datetime(2000, 1, 4)
+        j3.charges = [Charge(p2r1, 0)]
         j4 = Job("resource1.4")
         j4.user = current_user_
         j4.ctime = datetime(2000, 1, 5)
@@ -2020,6 +2028,7 @@ class TestJobsReport (CbankTester):
         j5.end = datetime(2000, 2, 2)
         j5.account = project_by_name("project4")
         j5.ctime = datetime(2000, 1, 6)
+        j5.charges = [Charge(p4r1, 0)]
         j6 = Job("resource1.6")
         j6.start = datetime(2000, 2, 1)
         j6.ctime = datetime(2000, 1, 7)
@@ -2027,40 +2036,50 @@ class TestJobsReport (CbankTester):
         j7.account = project_by_name("project2")
         j7.user = current_user_
         j7.ctime = datetime(2000, 1, 8)
+        j7.charges = [Charge(p2r1, 0)]
         j8 = Job("resource1.8")
         j8.account = project_by_name("project2")
         j8.user = user_by_name("user2")
         j8.ctime = datetime(2000, 1, 9)
+        j8.charges = [Charge(p2r1, 0)]
         j9 = Job("resource1.9")
         j9.account = project_by_name("project2")
         j9.ctime = datetime(2000, 1, 10)
+        j9.charges = [Charge(p2r1, 0)]
         j10 = Job("resource1.10")
         j10.account = project_by_name("project4")
         j10.user = current_user_
         j10.ctime = datetime(2000, 1, 11)
+        j10.charges = [Charge(p4r1, 0)]
         j11 = Job("resource1.11")
         j11.account = project_by_name("project4")
         j11.user = user_by_name("user1")
         j11.ctime = datetime(2000, 1, 12)
+        j11.charges = [Charge(p4r1, 0)]
         j12 = Job("resource1.12")
         j12.account = project_by_name("project4")
         j12.ctime = datetime(2000, 1, 13)
+        j12.charges = [Charge(p4r1, 0)]
         j13 = Job("resource1.13")
         j13.account = project_by_name("project1")
         j13.user = current_user_
         j13.ctime = datetime(2000, 1, 14)
+        j13.charges = [Charge(p1r1, 0)]
         j14 = Job("resource1.14")
         j14.user = user_by_name("user1")
         j14.account = project_by_name("project1")
         j14.ctime = datetime(2000, 1, 15)
+        j14.charges = [Charge(p1r1, 0)]
         j15 = Job("resource1.15")
         j15.user = user_by_name("user1")
         j15.account = project_by_name("project2")
         j15.ctime = datetime(2000, 1, 16)
+        j15.charges = [Charge(p2r1, 0)]
         j1_2 = Job("resource2.1")
         j1_2.user = current_user_
         j1_2.account = project_by_name("project2")
         j1_2.ctime = datetime(2000, 1, 3)
+        j1_2.charges = [Charge(p2r2, 0)]
         jobs = [j1, j2, j3, j4, j5, j6, j7, j8, j9, j10, j11, j12, j13, j14,
             j15, j1_2]
         for job_ in jobs:
@@ -2070,7 +2089,6 @@ class TestJobsReport (CbankTester):
     def teardown (self):
         CbankTester.teardown(self)
         controllers.print_jobs_report = self._print_jobs_report
-        clusterbank.config.remove_section("resources")
     
     def test_default (self):
         code, stdout, stderr = run(report_jobs_main)

@@ -682,7 +682,9 @@ def report_jobs_main ():
         jobs = jobs.filter(or_(Job.start < options.before,
             Job.end <= options.before))
     if resources:
-        jobs = (job_ for job_ in jobs if job_.resource in resources)
+        jobs = jobs.filter(Job.charges.any(Charge.allocation.has(
+            Allocation.resource.has(Resource.id.in_(
+            resource.id for resource in resources)))))
     print_jobs_report(jobs, truncate=(not options.long))
 
 

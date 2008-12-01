@@ -3,11 +3,6 @@
 [main]
 # database=engine://user:pass@host:port/schema
 
-[resources]
-# resource1=.*\.resource1\..*
-# resource2=.*\.resource2\..*
-# __default__=resource2
-
 [upstream]
 # module=clusterbank.upstreams.default
 

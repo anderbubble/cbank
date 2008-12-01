@@ -19,7 +19,6 @@ users_property -- property decorator that produces user objects
 projects_property -- property decorator that produces project objects
 resource_property -- property decorator that produces a resource object
 job_from_pbs -- create a job from a pbs entry
-job_charge -- create charges for a job
 """
 
 
@@ -38,7 +37,7 @@ __all__ = ["Session", "user", "user_by_id", "user_by_name",
     "project", "project_by_id", "project_by_name",
     "resource", "resource_by_id", "resource_by_name",
     "users_property", "projects_property", "resource_property",
-    "job_from_pbs", "job_charge"]
+    "job_from_pbs"]
 
 
 class EntityConstraints (SessionExtension):
@@ -346,14 +345,4 @@ def subdict (dict_, keyroot):
     """
     return dict((key[len(keyroot):], value)
         for (key, value) in dict_.iteritems() if key.startswith(keyroot))
-
-
-def job_charge (job_, amount):
-    """Charge an amount against a job's account for the job's resource.
-    
-    Arguments:
-    job_ -- the job to use to determine what to charge
-    amount -- the amount to charge
-    """
-    return job_.account.charge(job_.resource, amount)
 

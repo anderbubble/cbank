@@ -427,9 +427,6 @@ class Job (Entity):
     resources_used -- aggregate amount of specified resources used
     accounting_id -- CSA JID, job ID
     charges -- charges associated with the job
-    
-    Properties:
-    resource -- the resource used by the job
     """
     
     def __init__ (self, id_):
@@ -464,32 +461,6 @@ class Job (Entity):
     
     def __str__ (self):
         return str(self.id)
-    
-    def _get_resource (self):
-        """Determine the resource used by a job.
-        
-        clusterbank.conf can specify patterns for job ids.
-        Alternatively, the resource can be determined based on charges applied.
-        """
-        try:
-            resources_defined = config.options("resources")
-        except ConfigParser.NoSectionError:
-            return None
-        for resource in resources_defined:
-            if resource == "__default__":
-                return config.get("resources", "__default__")
-            pattern = config.get("resources", resource)
-            if re.match(pattern, self.id):
-                return resource
-        else:
-            resources = set([charge.allocation.resource
-                for charge in self.charges])
-            if len(resources) == 1:
-                return list(resources)[0].name
-            else:
-                return None
-    
-    resource = property(_get_resource)
 
 
 class Charge (Entity):

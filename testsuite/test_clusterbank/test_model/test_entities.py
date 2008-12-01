@@ -201,12 +201,9 @@ class TestJob (EntityTester):
     
     def setup (self):
         EntityTester.setup(self)
-        config.add_section("resources")
-        config.set("resources", "spam", r"spam\..*")
     
     def teardown (self):
         EntityTester.teardown(self)
-        config.remove_section("resources")
     
     def test_init (self):
         job = Job("www.example.com.123")
@@ -344,10 +341,6 @@ class TestJob (EntityTester):
         # check the job's attributes for persistence
         assert_equal(job.resource_list, {'walltime':timedelta(microseconds=1)})
         assert_equal(job.resources_used, {'walltime':timedelta(microseconds=1)})
-    
-    def test_resource (self):
-        assert_equal(Job("spam.1234")._get_resource(), "spam")
-        assert_ident(Job("unknown.1234")._get_resource(), None)
 
 
 class TestCharge (EntityTester):
