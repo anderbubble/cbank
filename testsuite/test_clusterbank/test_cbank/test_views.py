@@ -1,3 +1,5 @@
+from nose.tools import assert_equal
+
 import sys
 import os
 from datetime import datetime, timedelta
@@ -17,7 +19,7 @@ from clusterbank.model.database import metadata
 import clusterbank.upstreams.default as upstream
 from clusterbank.cbank.views import print_users_report, \
     print_projects_report, print_allocations_report, print_holds_report, \
-    print_jobs_report, print_charges_report, print_jobs
+    print_jobs_report, print_charges_report, print_jobs, display_units
 
 
 class FakeDateTime (object):
@@ -72,6 +74,26 @@ def capture (func):
 def assert_eq_output (output, correct):
     assert output == correct, os.linesep.join([
         "incorrect output", output, "expected", correct])
+
+
+class TestDisplayUnits (object):
+    
+    def setup (self):
+        config.add_section("cbank")
+    
+    def teardown (self):
+        config.remove_section("cbank")
+    
+    def test_no_unit_factor (self):
+        assert_equal(display_units(1000), "1000.0")
+    
+    def test_unit_factor_simple (self):
+        config.set("cbank", "unit_factor", "10")
+        assert_equal(display_units(1000), "10000.0")
+    
+    def test_unit_factor_fraction (self):
+        config.set("cbank", "unit_factor", "1/10")
+        assert_equal(display_units(1000), "100.0")
 
 
 class CbankViewTester (object):

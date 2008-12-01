@@ -638,12 +638,9 @@ def unit_definition ():
 
 
 def display_units (amount):
-    """A locale-specific view of units."""
-    converted_amount = convert_units(amount)
-    if 0 < converted_amount < 0.1:
-        return "< 0.1"
-    else:
-        return locale.format("%.1f", converted_amount, True)
+    """A user-friendly view of units."""
+    amount_ = convert_units(amount)
+    return ("%.1f" %  amount_)
 
 
 def convert_units (amount):
