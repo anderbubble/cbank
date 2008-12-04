@@ -160,11 +160,11 @@ def print_projects_report (projects, users=None, resources=None,
     """
     
     format = Formatter([
-        "Name", "Charges", "Charged", "Available"])
-    format.widths = {'Name':15, 'Charges':7, 'Charged':15, 'Available':15}
+        "Name", "Jobs", "Charged", "Available"])
+    format.widths = {'Name':15, 'Jobs':7, 'Charged':15, 'Available':15}
     if truncate:
         format.truncate = {'Name':True}
-    format.aligns = {'Charges':"right",
+    format.aligns = {'Jobs':"right",
         'Charged':"right", "Available":"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
@@ -183,9 +183,12 @@ def print_projects_report (projects, users=None, resources=None,
         func.sum(Hold.amount).label("hold_sum")).group_by(Project.id)
     holds_q = holds_q.join(Hold.allocation, Allocation.project)
     holds_q = holds_q.filter(Hold.active == True)
+    jobs_q = s.query(
+        Project.id.label("project_id"),
+        func.count(Job.id).label("job_count")).group_by(Project.id)
+    jobs_q = jobs_q.join(Job.account)
     charges_q = s.query(
         Project.id.label("project_id"),
-        func.count(Charge.id).label("charge_count"),
         func.sum(Charge.amount).label("charge_sum")).group_by(Project.id)
     charges_q = charges_q.join(Charge.allocation, Allocation.project)
     refunds_q = s.query(
@@ -201,60 +204,67 @@ def print_projects_report (projects, users=None, resources=None,
         charges_q = charges_q.filter(resources_)
         refunds_q = refunds_q.filter(resources_)
     
-    spec_charges_q = charges_q
-    spec_refunds_q = refunds_q
+    allocation_charges_q = charges_q
+    allocation_refunds_q = refunds_q
     if users:
-        users_ = Charge.jobs.any(Job.user.has(User.id.in_(
-            user.id for user in users)))
-        spec_charges_q = spec_charges_q.filter(users_)
-        spec_refunds_q = spec_refunds_q.filter(users_)
+        users_ = Job.user.has(User.id.in_(user.id for user in users))
+        jobs_q = jobs_q.filter(Job.user.has(users_))
+        charges_ = Charge.jobs.any(users_)
+        charges_q = charges_q.filter(charges_)
+        refunds_q = refunds_q.filter(charges_)
     if after:
+        jobs_q = jobs_q.filter(Job.end > after)
         after_ = Charge.datetime >= after
-        spec_charges_q = spec_charges_q.filter(after_)
-        spec_refunds_q = spec_refunds_q.filter(after_)
+        charges_q = charges_q.filter(after_)
+        refunds_q = refunds_q.filter(after_)
     if before:
+        jobs_q = jobs_q.filter(Job.start < before)
         before_ = Charge.datetime < before
-        spec_charges_q = spec_charges_q.filter(before_)
-        spec_refunds_q = spec_refunds_q.filter(before_)
+        charges_q = charges_q.filter(before_)
+        refunds_q = refunds_q.filter(before_)
     
     allocations_q = allocations_q.subquery()
     holds_q = holds_q.subquery()
+    allocation_charges_q = allocation_charges_q.subquery()
+    allocation_refunds_q = allocation_refunds_q.subquery()
+    jobs_q = jobs_q.subquery()
     charges_q = charges_q.subquery()
     refunds_q = refunds_q.subquery()
-    spec_charges_q = spec_charges_q.subquery()
-    spec_refunds_q = spec_refunds_q.subquery()
     query = s.query(
         Project,
-        func.coalesce(spec_charges_q.c.charge_count, 0),
-        cast(func.coalesce(spec_charges_q.c.charge_sum, 0)
-            - func.coalesce(spec_refunds_q.c.refund_sum, 0), Integer),
+        func.coalesce(jobs_q.c.job_count, 0),
+        cast(func.coalesce(charges_q.c.charge_sum, 0)
+            - func.coalesce(refunds_q.c.refund_sum, 0), Integer),
         cast(func.coalesce(allocations_q.c.allocation_sum, 0)
             - func.coalesce(holds_q.c.hold_sum, 0)
-            - func.coalesce(charges_q.c.charge_sum, 0)
-            + func.coalesce(refunds_q.c.refund_sum, 0), Integer))
+            - func.coalesce(allocation_charges_q.c.charge_sum, 0)
+            + func.coalesce(allocation_refunds_q.c.refund_sum, 0), Integer))
     query = query.outerjoin(
-        (spec_charges_q, Project.id == spec_charges_q.c.project_id),
-        (spec_refunds_q, Project.id == spec_refunds_q.c.project_id),
+        (jobs_q, Project.id == jobs_q.c.project_id),
+        (charges_q, Project.id == charges_q.c.project_id),
+        (refunds_q, Project.id == refunds_q.c.project_id),
         (allocations_q, Project.id == allocations_q.c.project_id),
         (holds_q, Project.id == holds_q.c.project_id),
-        (charges_q, Project.id == charges_q.c.project_id),
-        (refunds_q, Project.id == refunds_q.c.project_id))
+        (allocation_charges_q,
+            Project.id == allocation_charges_q.c.project_id),
+        (allocation_refunds_q,
+            Project.id == allocation_refunds_q.c.project_id))
     query = query.order_by(Project.id)
     query = query.filter(Project.id.in_(project.id for project in projects))
     
     allocation_sum_total = 0
-    charge_count_total = 0
+    job_count_total = 0
     charge_sum_total = 0
-    for project, charge_count, charge_sum, allocation_sum in query:
-        charge_count_total += charge_count
+    for project, job_count, charge_sum, allocation_sum in query:
+        job_count_total += job_count
         charge_sum_total += charge_sum
         allocation_sum_total += allocation_sum
         print format({'Name':project.name,
-            'Charges':charge_count,
+            'Jobs':job_count,
             'Charged':display_units(charge_sum),
             'Available':display_units(allocation_sum)})
-    print >> sys.stderr, format.separator(["Charges", "Charged", "Available"])
-    print >> sys.stderr, format({'Charges':charge_count_total,
+    print >> sys.stderr, format.separator(["Jobs", "Charged", "Available"])
+    print >> sys.stderr, format({'Jobs':job_count_total,
         'Charged':display_units(charge_sum_total),
         'Available':display_units(allocation_sum_total)})
     print >> sys.stderr, unit_definition()
