@@ -289,17 +289,17 @@ def print_allocations_report (allocations, users=None,
     comments -- report allocation comments
     """
     
-    fields = ["Allocation", "Expiration", "Resource", "Project", "Charges",
+    fields = ["Allocation", "Expiration", "Resource", "Project", "Jobs",
         "Charged", "Available"]
     if comments:
         fields.append("Comment")
     format = Formatter(fields)
     format.headers = {'Allocation':"#"}
     format.widths = {'Allocation':4, 'Project':15, 'Available':13,
-        'Charges':7, 'Charged':13, 'Expiration':10}
+        'Jobs':7, 'Charged':13, 'Expiration':10}
     if truncate:
         format.truncate = {'Resource':True, 'Project':True}
-    format.aligns = {'Available':"right", 'Charges':"right", 'Charged':"right"}
+    format.aligns = {'Available':"right", 'Jobs':"right", 'Charged':"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
     
@@ -311,7 +311,6 @@ def print_allocations_report (allocations, users=None,
     holds_q = holds_q.filter(Hold.active == True)
     charges_q = s.query(
         Allocation.id.label("allocation_id"),
-        func.count(Charge.id).label("charge_count"),
         func.sum(Charge.amount).label("charge_sum")).group_by(Allocation.id)
     charges_q = charges_q.join(Charge.allocation)
     refunds_q = s.query(
@@ -319,52 +318,64 @@ def print_allocations_report (allocations, users=None,
         func.sum(Refund.amount).label("refund_sum")).group_by(Allocation.id)
     refunds_q = refunds_q.join(
         Refund.charge, Charge.allocation)
-    spec_charges_q = charges_q
-    spec_refunds_q = refunds_q
+    jobs_q = s.query(
+        Allocation.id.label("allocation_id"),
+        func.count(Job.id).label("job_count")).group_by(Allocation.id)
+    jobs_q = jobs_q.join(
+        Job.charges, Charge.allocation)
+    allocation_charges_q = charges_q
+    allocation_refunds_q = refunds_q
     
     if users:
-        users_ = Charge.jobs.any(Job.user.has(User.id.in_(
-            user.id for user in users)))
-        spec_charges_q = spec_charges_q.filter(users_)
-        spec_refunds_q = spec_refunds_q.filter(users_)
+        jobs_ = Job.user.has(User.id.in_(user.id for user in users))
+        jobs_q = jobs_q.filter(jobs_)
+        charges_ = Charge.jobs.any(jobs_)
+        charges_q = charges_q.filter(charges_)
+        refunds_q = refunds_q.filter(charges_)
     if after:
+        jobs_q = jobs_q.filter(Job.end > after)
         after_ = Charge.datetime >= after
-        spec_charges_q = spec_charges_q.filter(after_)
-        spec_refunds_q = spec_refunds_q.filter(after_)
+        charges_q = charges_q.filter(after_)
+        refunds_q = refunds_q.filter(after_)
     if before:
+        jobs_q = jobs_q.filter(Job.start < before)
         before_ = Charge.datetime < before
-        spec_charges_q = spec_charges_q.filter(before_)
-        spec_refunds_q = spec_refunds_q.filter(before_)
+        charges_q = charges_q.filter(before_)
+        refunds_q = refunds_q.filter(before_)
     
     holds_q = holds_q.subquery()
     charges_q = charges_q.subquery()
     refunds_q = refunds_q.subquery()
-    spec_charges_q = spec_charges_q.subquery()
-    spec_refunds_q = spec_refunds_q.subquery()
+    jobs_q = jobs_q.subquery()
+    allocation_charges_q = allocation_charges_q.subquery()
+    allocation_refunds_q = allocation_refunds_q.subquery()
     query = s.query(
         Allocation,
-        func.coalesce(spec_charges_q.c.charge_count, 0),
-        cast(func.coalesce(spec_charges_q.c.charge_sum, 0)
-            - func.coalesce(spec_refunds_q.c.refund_sum, 0), Integer),
+        func.coalesce(jobs_q.c.job_count, 0),
+        cast(func.coalesce(charges_q.c.charge_sum, 0)
+            - func.coalesce(refunds_q.c.refund_sum, 0), Integer),
         cast(Allocation.amount
             - func.coalesce(holds_q.c.hold_sum, 0)
-            - func.coalesce(charges_q.c.charge_sum, 0)
-            + func.coalesce(refunds_q.c.refund_sum, 0), Integer))
+            - func.coalesce(allocation_charges_q.c.charge_sum, 0)
+            + func.coalesce(allocation_refunds_q.c.refund_sum, 0), Integer))
     query = query.outerjoin(
-        (spec_charges_q, Allocation.id == spec_charges_q.c.allocation_id),
-        (spec_refunds_q, Allocation.id == spec_refunds_q.c.allocation_id),
-        (holds_q, Allocation.id == holds_q.c.allocation_id),
+        (jobs_q, Allocation.id == jobs_q.c.allocation_id),
         (charges_q, Allocation.id == charges_q.c.allocation_id),
-        (refunds_q, Allocation.id == refunds_q.c.allocation_id))
+        (refunds_q, Allocation.id == refunds_q.c.allocation_id),
+        (holds_q, Allocation.id == holds_q.c.allocation_id),
+        (allocation_charges_q,
+            Allocation.id == allocation_charges_q.c.allocation_id),
+        (allocation_refunds_q,
+            Allocation.id == allocation_refunds_q.c.allocation_id))
     query = query.filter(Allocation.id.in_(
         allocation.id for allocation in allocations))
     query = query.order_by(Allocation.id)
     
-    charge_count_total = 0
+    job_count_total = 0
     charge_sum_total = 0
     allocation_sum_total = 0
-    for allocation, charge_count, charge_sum, allocation_sum in query:
-        charge_count_total += charge_count
+    for allocation, job_count, charge_sum, allocation_sum in query:
+        job_count_total += job_count
         charge_sum_total += charge_sum
         allocation_sum_total += allocation_sum
         print format({
@@ -372,13 +383,13 @@ def print_allocations_report (allocations, users=None,
             'Project':allocation.project,
             'Resource':allocation.resource,
             'Expiration':format_datetime(allocation.expiration),
-            'Charges':charge_count,
+            'Jobs':job_count,
             'Charged':display_units(charge_sum),
             'Available':display_units(allocation_sum),
             'Comment':allocation.comment})
-    print >> sys.stderr, format.separator(["Available", "Charges", "Charged"])
+    print >> sys.stderr, format.separator(["Available", "Jobs", "Charged"])
     print >> sys.stderr, format({
-        'Charges':charge_count_total,
+        'Jobs':job_count_total,
         'Charged':display_units(charge_sum_total),
         'Available':display_units(allocation_sum_total)})
     print >> sys.stderr, unit_definition()

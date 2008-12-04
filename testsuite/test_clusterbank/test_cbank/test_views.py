@@ -772,307 +772,358 @@ class TestAllocationsReport (CbankViewTester):
     
     def test_blank (self):
         stdout, stderr = capture(lambda: print_allocations_report([]))
-        stdout_ = dedent("""\
-            """)
-        stderr_ = dedent("""\
-            #    Expiration Resource Project         Charges       Charged     Available
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
+            #    Expiration Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            0           0.0           0.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
+            """))
     
     def test_allocations (self):
-        project1, project2 = [project_by_name(project)
-            for project in ["project1", "project2"]]
-        res1, res2 = [resource_by_name(resource)
-            for resource in ["res1", "res2"]]
+        project1 = project("project1")
+        project2 = project("project2")
+        res1 = resource("res1")
+        res2 = resource("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
         a2 = Allocation(project1, res1, 20, start, end)
         a3 = Allocation(project2, res1, 30, start, end)
         a4 = Allocation(project2, res2, 35, start, end)
-        Session.flush() # give the allocations ids
+        Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4]))
-        stdout_ = dedent("""\
+        assert_eq_output(stdout.getvalue(), dedent("""\
             1    2000-01-08 res1     project1              0           0.0          10.0
             2    2000-01-08 res1     project1              0           0.0          20.0
             3    2000-01-08 res1     project2              0           0.0          30.0
             4    2000-01-08 res2     project2              0           0.0          35.0
-            """)
-        stderr_ = dedent("""\
-            #    Expiration Resource Project         Charges       Charged     Available
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
+            #    Expiration Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            0           0.0          95.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
+            """))
     
     def test_holds (self):
-        project1, project2 = [project_by_name(project)
-            for project in ["project1", "project2"]]
-        res1, res2 = [resource_by_name(resource)
-            for resource in ["res1", "res2"]]
+        project1 = project("project1")
+        project2 = project("project2")
+        res1 = resource("res1")
+        res2 = resource("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
-        Hold(a1, 10)
         a2 = Allocation(project1, res1, 20, start, end)
-        Hold(a2, 15).active = False
-        Hold(a2, 5)
         a3 = Allocation(project2, res1, 30, start, end)
         a4 = Allocation(project2, res2, 35, start, end)
+        Hold(a1, 10)
+        h2 = Hold(a2, 15)
+        Hold(a2, 5)
         Hold(a4, 9)
-        Hold(a4, 8).active = False
-        Session.flush() # give the allocations ids
+        h5 = Hold(a4, 8)
+        h2.active = False
+        h5.active = False
+        Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4]))
-        stdout_ = dedent("""\
+        assert_eq_output(stdout.getvalue(), dedent("""\
             1    2000-01-08 res1     project1              0           0.0           0.0
             2    2000-01-08 res1     project1              0           0.0          15.0
             3    2000-01-08 res1     project2              0           0.0          30.0
             4    2000-01-08 res2     project2              0           0.0          26.0
-            """)
-        stderr_ = dedent("""\
-            #    Expiration Resource Project         Charges       Charged     Available
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
+            #    Expiration Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            0           0.0          71.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
-
+            """))
+    
     def test_charges (self):
-        project1, project2 = [project_by_name(project)
-            for project in ["project1", "project2"]]
-        res1, res2 = [resource_by_name(resource)
-            for resource in ["res1", "res2"]]
+        project1 = project("project1")
+        project2 = project("project2")
+        res1 = resource("res1")
+        res2 = resource("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
-        Charge(a1, 10)
         a2 = Allocation(project1, res1, 20, start, end)
+        a3 = Allocation(project2, res1, 30, start, end)
+        a4 = Allocation(project2, res2, 35, start, end)
+        Charge(a1, 10)
         Charge(a2, 15)
         Charge(a2, 5)
-        a3 = Allocation(project2, res1, 30, start, end)
-        a4 = Allocation(project2, res2, 35, start, end)
         Charge(a4, 9)
         Charge(a4, 8)
-        Session.flush() # give the allocations ids
+        Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4]))
-        stdout_ = dedent("""\
-            1    2000-01-08 res1     project1              1          10.0           0.0
-            2    2000-01-08 res1     project1              2          20.0           0.0
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            1    2000-01-08 res1     project1              0          10.0           0.0
+            2    2000-01-08 res1     project1              0          20.0           0.0
             3    2000-01-08 res1     project2              0           0.0          30.0
-            4    2000-01-08 res2     project2              2          17.0          18.0
-            """)
-        stderr_ = dedent("""\
-            #    Expiration Resource Project         Charges       Charged     Available
+            4    2000-01-08 res2     project2              0          17.0          18.0
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
+            #    Expiration Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
-                                                           5          47.0          48.0
+                                                           0          47.0          48.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
+            """))
     
     def test_refunds (self):
-        project1, project2 = [project_by_name(project)
-            for project in ["project1", "project2"]]
-        res1, res2 = [resource_by_name(resource)
-            for resource in ["res1", "res2"]]
+        project1 = project("project1")
+        project2 = project("project2")
+        res1 = resource("res1")
+        res2 = resource("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
-        c1 = Charge(a1, 10)
-        Refund(c1, 4)
         a2 = Allocation(project1, res1, 20, start, end)
-        c2 = Charge(a2, 15)
-        Refund(c2, 3)
-        Refund(c2, 5)
-        Charge(a2, 5)
         a3 = Allocation(project2, res1, 30, start, end)
         a4 = Allocation(project2, res2, 35, start, end)
+        c1 = Charge(a1, 10)
+        c2 = Charge(a2, 15)
+        Charge(a2, 5)
         Charge(a4, 9)
         c5 = Charge(a4, 8)
+        Refund(c1, 4)
+        Refund(c2, 3)
+        Refund(c2, 5)
         Refund(c5, 8)
-        Session.flush() # give the allocations ids
+        Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4]))
-        stdout_ = dedent("""\
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            1    2000-01-08 res1     project1              0           6.0           4.0
+            2    2000-01-08 res1     project1              0          12.0           8.0
+            3    2000-01-08 res1     project2              0           0.0          30.0
+            4    2000-01-08 res2     project2              0           9.0          26.0
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
+            #    Expiration Resource Project            Jobs       Charged     Available
+            ---- ---------- -------- --------------- ------- ------------- -------------
+                                                     ------- ------------- -------------
+                                                           0          27.0          68.0
+            Units are undefined.
+            """))
+    
+    def test_jobs (self):
+        project1 = project("project1")
+        project2 = project("project2")
+        res1 = resource("res1")
+        res2 = resource("res2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        a1 = Allocation(project1, res1, 10, start, end)
+        a2 = Allocation(project1, res1, 20, start, end)
+        a3 = Allocation(project2, res1, 30, start, end)
+        a4 = Allocation(project2, res2, 35, start, end)
+        c1 = Charge(a1, 10)
+        c2 = Charge(a2, 15)
+        c3 = Charge(a2, 5)
+        c4 = Charge(a4, 9)
+        c5 = Charge(a4, 8)
+        Refund(c1, 4)
+        Refund(c2, 3)
+        Refund(c2, 5)
+        Refund(c5, 8)
+        c1.jobs = [Job("res1.1")]
+        c2.jobs = [Job("res1.2")]
+        c3.jobs = [Job("res1.3")]
+        c4.jobs = [Job("res2.1")]
+        c5.jobs = [Job("res2.2")]
+        Session.flush() # assign allocation ids
+        stdout, stderr = capture(lambda:
+            print_allocations_report([a1, a2, a3, a4]))
+        assert_eq_output(stdout.getvalue(), dedent("""\
             1    2000-01-08 res1     project1              1           6.0           4.0
             2    2000-01-08 res1     project1              2          12.0           8.0
             3    2000-01-08 res1     project2              0           0.0          30.0
             4    2000-01-08 res2     project2              2           9.0          26.0
-            """)
-        stderr_ = dedent("""\
-            #    Expiration Resource Project         Charges       Charged     Available
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
+            #    Expiration Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            5          27.0          68.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
+            """))
 
     def test_users_filter (self):
-        user1, user2 = [user_by_name(user)
-            for user in ["user1", "user2"]]
-        project1, project2 = [project_by_name(project)
-            for project in ["project1", "project2"]]
-        res1, res2 = [resource_by_name(resource)
-            for resource in ["res1", "res2"]]
+        user1 = user("user1")
+        user2 = user("user2")
+        project1 = project("project1")
+        project2 = project("project2")
+        res1 = resource("res1")
+        res2 = resource("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
-        c1 = Charge(a1, 10)
-        c1.jobs = [Job("res1.1")]
-        c1.jobs[0].user = user1
-        Refund(c1, 4)
         a2 = Allocation(project1, res1, 20, start, end)
-        c2 = Charge(a2, 15)
-        c2.jobs = [Job("res1.2")]
-        c2.jobs[0].user = user2
-        Refund(c2, 3)
-        Refund(c2, 5)
-        c3 = Charge(a2, 5)
-        c3.jobs = [Job("res1.3")]
-        c3.jobs[0].user = user1
         a3 = Allocation(project2, res1, 30, start, end)
         a4 = Allocation(project2, res2, 35, start, end)
         Hold(a4, 9)
-        Hold(a4, 8).active = False
+        h2 = Hold(a4, 8)
+        h2.active = False
+        c1 = Charge(a1, 10)
+        c2 = Charge(a2, 15)
+        c3 = Charge(a2, 5)
         c4 = Charge(a4, 9)
-        c4.jobs = [Job("res2.1")]
-        c4.jobs[0].user = user1
         c5 = Charge(a4, 8)
-        c5.jobs = [Job("res2.2")]
-        c5.jobs[0].user = user2
+        Refund(c1, 4)
+        Refund(c2, 3)
+        Refund(c2, 5)
         Refund(c5, 8)
+        c1.jobs = [Job("res1.1")]
+        c2.jobs = [Job("res1.2")]
+        c3.jobs = [Job("res1.3")]
+        c4.jobs = [Job("res2.1")]
+        c5.jobs = [Job("res2.2")]
+        c1.jobs[0].user = user1
+        c2.jobs[0].user = user2
+        c3.jobs[0].user = user1
+        c4.jobs[0].user = user1
+        c5.jobs[0].user = user2
         Session.flush() # give the allocations ids
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4], users=[user1]))
-        stdout_ = dedent("""\
+        assert_eq_output(stdout.getvalue(), dedent("""\
             1    2000-01-08 res1     project1              1           6.0           4.0
             2    2000-01-08 res1     project1              1           5.0           8.0
             3    2000-01-08 res1     project2              0           0.0          30.0
             4    2000-01-08 res2     project2              1           9.0          17.0
-            """)
-        stderr_ = dedent("""\
-            #    Expiration Resource Project         Charges       Charged     Available
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
+            #    Expiration Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            3          20.0          59.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
+            """))
 
     def test_after_filter (self):
-        user1, user2 = [user_by_name(user)
-            for user in ["user1", "user2"]]
-        project1, project2 = [project_by_name(project)
-            for project in ["project1", "project2"]]
-        res1, res2 = [resource_by_name(resource)
-            for resource in ["res1", "res2"]]
+        user1 = user("user1")
+        user2 = user("user2")
+        project1 = project("project1")
+        project2 = project("project2")
+        res1 = resource("res1")
+        res2 = resource("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
-        c1 = Charge(a1, 10)
-        c1.datetime = datetime(2000, 1, 1)
-        Refund(c1, 4)
         a2 = Allocation(project1, res1, 20, start, end)
-        c2 = Charge(a2, 15)
-        c2.datetime = datetime(2000, 1, 2)
-        Refund(c2, 3)
-        Refund(c2, 5)
-        c3 = Charge(a2, 5)
-        c3.datetime = datetime(2000, 1, 3)
         a3 = Allocation(project2, res1, 30, start, end)
         a4 = Allocation(project2, res2, 35, start, end)
         Hold(a4, 9)
-        Hold(a4, 8).active = False
+        h2 = Hold(a4, 8)
+        h2.active = False
+        c1 = Charge(a1, 10)
+        c2 = Charge(a2, 15)
+        c3 = Charge(a2, 5)
         c4 = Charge(a4, 9)
-        c4.datetime = datetime(2000, 1, 4)
         c5 = Charge(a4, 8)
-        c5.datetime = datetime(2000, 1, 5)
+        Refund(c1, 4)
+        Refund(c2, 3)
+        Refund(c2, 5)
         Refund(c5, 8)
-        Session.flush() # give the allocations ids
+        c1.jobs = [Job("res1.1")]
+        c2.jobs = [Job("res1.2")]
+        c3.jobs = [Job("res1.3")]
+        c4.jobs = [Job("res2.1")]
+        c5.jobs = [Job("res2.2")]
+        c1.datetime = datetime(2000, 1, 2)
+        c2.datetime = datetime(2000, 1, 3)
+        c3.datetime = datetime(2000, 1, 4)
+        c4.datetime = datetime(2000, 1, 5)
+        c5.datetime = datetime(2000, 1, 6)
+        c1.jobs[0].end = datetime(2000, 1, 2)
+        c2.jobs[0].end = datetime(2000, 1, 3)
+        c3.jobs[0].end = datetime(2000, 1, 4)
+        c4.jobs[0].end = datetime(2000, 1, 5)
+        c5.jobs[0].end = datetime(2000, 1, 6)
+        Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4],
-                                     after=datetime(2000, 1, 3)))
-        stdout_ = dedent("""\
+                                     after=datetime(2000, 1, 4)))
+        assert_eq_output(stdout.getvalue(), dedent("""\
             1    2000-01-08 res1     project1              0           0.0           4.0
-            2    2000-01-08 res1     project1              1           5.0           8.0
+            2    2000-01-08 res1     project1              0           5.0           8.0
             3    2000-01-08 res1     project2              0           0.0          30.0
             4    2000-01-08 res2     project2              2           9.0          17.0
-            """)
-        stderr_ = dedent("""\
-            #    Expiration Resource Project         Charges       Charged     Available
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
+            #    Expiration Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
-                                                           3          14.0          59.0
+                                                           2          14.0          59.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
+            """))
 
     def test_before_filter (self):
-        user1, user2 = [user_by_name(user)
-            for user in ["user1", "user2"]]
-        project1, project2 = [project_by_name(project)
-            for project in ["project1", "project2"]]
-        res1, res2 = [resource_by_name(resource)
-            for resource in ["res1", "res2"]]
+        user1 = user("user1")
+        user2 = user("user2")
+        project1 = project("project1")
+        project2 = project("project2")
+        res1 = resource("res1")
+        res2 = resource("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
-        c1 = Charge(a1, 10)
-        c1.datetime = datetime(2000, 1, 1)
-        Refund(c1, 4)
         a2 = Allocation(project1, res1, 20, start, end)
-        c2 = Charge(a2, 15)
-        c2.datetime = datetime(2000, 1, 2)
-        Refund(c2, 3)
-        Refund(c2, 5)
-        c3 = Charge(a2, 5)
-        c3.datetime = datetime(2000, 1, 3)
         a3 = Allocation(project2, res1, 30, start, end)
         a4 = Allocation(project2, res2, 35, start, end)
         Hold(a4, 9)
-        Hold(a4, 8).active = False
+        h2 = Hold(a4, 8)
+        h2.active = False
+        c1 = Charge(a1, 10)
+        c2 = Charge(a2, 15)
+        c3 = Charge(a2, 5)
         c4 = Charge(a4, 9)
-        c4.datetime = datetime(2000, 1, 4)
         c5 = Charge(a4, 8)
-        c5.datetime = datetime(2000, 1, 5)
+        Refund(c1, 4)
+        Refund(c2, 3)
+        Refund(c2, 5)
         Refund(c5, 8)
-        Session.flush() # give the allocations ids
+        c1.jobs = [Job("res1.1")]
+        c2.jobs = [Job("res1.2")]
+        c3.jobs = [Job("res1.3")]
+        c4.jobs = [Job("res2.1")]
+        c5.jobs = [Job("res2.2")]
+        c1.datetime = datetime(2000, 1, 2)
+        c2.datetime = datetime(2000, 1, 3)
+        c3.datetime = datetime(2000, 1, 4)
+        c4.datetime = datetime(2000, 1, 5)
+        c5.datetime = datetime(2000, 1, 6)
+        c1.jobs[0].start = datetime(2000, 1, 1)
+        c2.jobs[0].start = datetime(2000, 1, 2)
+        c3.jobs[0].start = datetime(2000, 1, 3)
+        c4.jobs[0].start = datetime(2000, 1, 4)
+        c5.jobs[0].start = datetime(2000, 1, 5)
+        Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4],
                                      before=datetime(2000, 1, 4)))
-        stdout_ = dedent("""\
+        assert_eq_output(stdout.getvalue(), dedent("""\
             1    2000-01-08 res1     project1              1           6.0           4.0
-            2    2000-01-08 res1     project1              2          12.0           8.0
+            2    2000-01-08 res1     project1              2           7.0           8.0
             3    2000-01-08 res1     project2              0           0.0          30.0
             4    2000-01-08 res2     project2              0           0.0          17.0
-            """)
-        stderr_ = dedent("""\
-            #    Expiration Resource Project         Charges       Charged     Available
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
+            #    Expiration Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
-                                                           3          18.0          59.0
+                                                           3          13.0          59.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
+            """))
 
 
 class TestHoldsReport (CbankViewTester):

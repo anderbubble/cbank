@@ -1,4 +1,4 @@
-.Dd 26 November 2008
+.Dd 4 December 2008
 .Os Python 2.x
 .Dt CBANK 7 USD
 .Sh NAME
@@ -8,11 +8,11 @@
 .Nm
 .Op options
 .Sh DESCRIPTION
-For each applicable allocation report the expiration date, the associated resource and project, the number of charges, the total amount charged, and the amount available to be charged.
+For each applicable allocation report the expiration date, the associated resource and project, the number of jobs, the total amount charged, and the amount available to be charged.
 .Sh OPTIONS
 .Bl -tag
 .It Fl u Ar user
-Report charges for
+Report jobs and charges for
 .Ar user .
 If no
 .Ar project
@@ -28,13 +28,13 @@ Report allocations for
 (default specified in
 .Pa /etc/clusterbank.conf )
 .It Fl a Ar date
-Report charges that occured after (and including)
+Report jobs and charges that occured after (and including)
 .Ar date .
 Allocations that expire after
 .Ar date
 will be included in the report.
 .It Fl b Ar date
-Report charges that occured before (and excluding)
+Report jobs and charges that occured before (and excluding)
 .Ar date .
 Allocations that start before
 .Ar date
@@ -45,13 +45,13 @@ Report associated comments.
 Do not truncate long string fields.
 .El
 .Sh EXAMPLES
-Report charges to the project 'grail' by users 'monty' and 'python':
+The project 'grail' by users 'monty' and 'python':
 .Bd -filled -offset indent
 .Nm
 -p grail -u monty -u python
 .Ed
 .Pp
-Report charges by and to the projects of 'monty' between 5 October 1969 and 5 December 1974:
+Allocations to the projects of 'monty' between 5 October 1969 and 5 December 1974:
 .Bd -filled -offset indent
 .Nm
 -u monty -a 1969-10-05 -b 1974-12-05
