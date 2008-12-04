@@ -67,18 +67,21 @@ def print_users_report (users, projects=None, resources=None,
     before -- only show charges before this datetime (exclusive)
     """
     
-    format = Formatter(["Name", "Charges", "Charged"])
-    format.widths = {'Name':10, 'Charges':8, 'Charged':15}
+    format = Formatter(["Name", "Jobs", "Charged"])
+    format.widths = {'Name':10, 'Jobs':8, 'Charged':15}
     if truncate:
         format.truncate = {'Name':True}
-    format.aligns = {'Charges':"right", 'Charged':"right"}
+    format.aligns = {'Jobs':"right", 'Charged':"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
     
     s = Session()
+    jobs_q = s.query(
+        User.id.label("user_id"),
+        func.count(Job.id).label("job_count")).group_by(User.id)
+    jobs_q = jobs_q.join(Job.user)
     charges_q = s.query(
         User.id.label("user_id"),
-        func.count(Charge.id).label("charge_count"),
         func.sum(Charge.amount).label("charge_sum")).group_by(User.id)
     charges_q = charges_q.join(Charge.jobs, Job.user)
     refunds_q = s.query(
@@ -87,47 +90,53 @@ def print_users_report (users, projects=None, resources=None,
     refunds_q = refunds_q.join(Refund.charge, Charge.jobs, Job.user)
     
     if projects:
-        projects_ = Charge.allocation.has(Allocation.project.has(
-            Project.id.in_(project.id for project in projects)))
-        charges_q = charges_q.filter(projects_)
-        refunds_q = refunds_q.filter(projects_)
+        projects_ = Project.id.in_(project.id for project in projects)
+        jobs_q = jobs_q.filter(Job.account.has(projects_))
+        charges_ = Charge.allocation.has(Allocation.project.has(projects_))
+        charges_q = charges_q.filter(charges_)
+        refunds_q = refunds_q.filter(charges_)
     if resources:
-        resources_ = Charge.allocation.has(Allocation.resource.has(
+        charges_ = Charge.allocation.has(Allocation.resource.has(
             Resource.id.in_(resource.id for resource in resources)))
-        charges_q = charges_q.filter(resources_)
-        refunds_q = refunds_q.filter(resources_)
+        jobs_q = jobs_q.filter(Job.charges.any(charges_))
+        charges_q = charges_q.filter(charges_)
+        refunds_q = refunds_q.filter(charges_)
     if after:
-        after_ = Charge.datetime >= after
-        charges_q = charges_q.filter(after_)
-        refunds_q = refunds_q.filter(after_)
+        jobs_q = jobs_q.filter(Job.end > after)
+        charges_ = Charge.datetime >= after
+        charges_q = charges_q.filter(charges_)
+        refunds_q = refunds_q.filter(charges_)
     if before:
-        before_ = Charge.datetime < before
-        charges_q = charges_q.filter(before_)
-        refunds_q = refunds_q.filter(before_)
+        jobs_q = jobs_q.filter(Job.start < before)
+        charges_ = Charge.datetime < before
+        charges_q = charges_q.filter(charges_)
+        refunds_q = refunds_q.filter(charges_)
     
+    jobs_q = jobs_q.subquery()
     charges_q = charges_q.subquery()
     refunds_q = refunds_q.subquery()
     query = s.query(
         User,
-        func.coalesce(charges_q.c.charge_count, 0),
+        func.coalesce(jobs_q.c.job_count, 0),
         cast(func.coalesce(charges_q.c.charge_sum, 0)
             - func.coalesce(refunds_q.c.refund_sum, 0), Integer)
         ).group_by(User.id)
     query = query.outerjoin(
+        (jobs_q, User.id == jobs_q.c.user_id),
         (charges_q, User.id == charges_q.c.user_id),
         (refunds_q, User.id == refunds_q.c.user_id)).group_by(User.id)
     query = query.filter(User.id.in_(user.id for user in users))
     query = query.order_by(User.id)
     
-    charge_count_total = 0
+    job_count_total = 0
     charge_sum_total = 0
-    for user, charge_count, charge_sum in query:
-        charge_count_total += charge_count
+    for user, job_count, charge_sum in query:
+        job_count_total += job_count
         charge_sum_total += charge_sum
-        print format({'Name':user.name, 'Charges':charge_count,
+        print format({'Name':user.name, 'Jobs':job_count,
             'Charged':display_units(charge_sum)})
-    print >> sys.stderr, format.separator(["Charges", "Charged"])
-    print >> sys.stderr, format({'Charges':charge_count_total,
+    print >> sys.stderr, format.separator(["Jobs", "Charged"])
+    print >> sys.stderr, format({'Jobs':job_count_total,
         'Charged':display_units(charge_sum_total)})
     print >> sys.stderr, unit_definition()
 
