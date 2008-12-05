@@ -1410,7 +1410,7 @@ class TestPrintJobs (CbankViewTester):
         Session.flush()
         stdout, stderr = capture(lambda:
             print_jobs([job]))
-        stdout_ = dedent("""\
+        assert_eq_output(stdout.getvalue(), dedent("""\
             Job www.example.com.123
              * User: user1
              * Group: agroup
@@ -1437,6 +1437,5 @@ class TestPrintJobs (CbankViewTester):
                 * otherresource: stringvalue
                 * walltime: 0:10:00
              * Accounting id: someaccountingid
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
+            """))
 
