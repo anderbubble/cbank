@@ -1130,34 +1130,32 @@ class TestHoldsReport (CbankViewTester):
     
     def test_blank (self):
         stdout, stderr = capture(lambda: print_holds_report([]))
-        stdout_ = dedent("""\
-            """)
-        stderr_ = dedent("""\
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
             #      Date       Resource Project         User              Held
             ------ ---------- -------- --------------- -------- -------------
                                                                 -------------
                                                                           0.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
+            """))
 
     def test_holds (self):
-        user1, user2 = [user_by_name(user)
-            for user in ["user1", "user2"]]
-        project1, project2 = [project_by_name(project)
-            for project in ["project1", "project2"]]
-        res1, res2 = [resource_by_name(resource)
-            for resource in ["res1", "res2"]]
+        user1 = user("user1")
+        user2 = user("user2")
+        project1 = project("project1")
+        project2 = project("project2")
+        res1 = resource("res1")
+        res2 = resource("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
-        h1 = Hold(a1, 10)
         a2 = Allocation(project1, res1, 20, start, end)
-        h2 = Hold(a2, 15)
-        h3 = Hold(a2, 5)
         Allocation(project2, res1, 30, start, end)
         a4 = Allocation(project2, res2, 35, start, end)
+        h1 = Hold(a1, 10)
+        h2 = Hold(a2, 15)
+        h3 = Hold(a2, 5)
         h4 = Hold(a4, 9)
         h5 = Hold(a4, 8)
         for hold in (h1, h2, h3):
@@ -1166,25 +1164,23 @@ class TestHoldsReport (CbankViewTester):
             hold.user = user2
         for hold in (h1, h2, h3, h4, h5):
             hold.datetime = datetime(2000, 1, 1)
-        Session.flush() # give holds ids
+        Session.flush() # assign hold ids
         stdout, stderr = capture(lambda:
             print_holds_report([h1, h2, h3, h4, h5]))
-        stdout_ = dedent("""\
+        assert_eq_output(stdout.getvalue(), dedent("""\
             1      2000-01-01 res1     project1        user1             10.0
             2      2000-01-01 res1     project1        user1             15.0
             3      2000-01-01 res1     project1        user1              5.0
             4      2000-01-01 res2     project2        user2              9.0
             5      2000-01-01 res2     project2        user2              8.0
-            """)
-        stderr_ = dedent("""\
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
             #      Date       Resource Project         User              Held
             ------ ---------- -------- --------------- -------- -------------
                                                                 -------------
                                                                          47.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
+            """))
 
 
 class TestJobsReport (CbankViewTester):
