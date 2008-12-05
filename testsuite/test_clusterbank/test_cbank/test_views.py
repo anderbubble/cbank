@@ -1283,99 +1283,95 @@ class TestChargesReport (CbankViewTester):
     
     def test_blank (self):
         stdout, stderr = capture(lambda: print_charges_report([]))
-        stdout_ = dedent("""\
-            """)
-        stderr_ = dedent("""\
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
             #      Date       Resource Project               Charged
             ------ ---------- -------- --------------- -------------
                                                        -------------
                                                                  0.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
+            """))
 
     def test_charges (self):
-        user1, user2 = [user_by_name(user) for user in ["user1", "user2"]]
-        project1, project2 = [project_by_name(project)
-            for project in ["project1", "project2"]]
-        res1, res2 = [resource_by_name(resource)
-            for resource in ["res1", "res2"]]
+        user1 = user("user1")
+        user2 = user("user2")
+        project1 = project("project1")
+        project2 = project("project2")
+        res1 = resource("res1")
+        res2 = resource("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
-        c1 = Charge(a1, 10)
         a2 = Allocation(project1, res1, 20, start, end)
-        c2 = Charge(a2, 15)
-        c3 = Charge(a2, 5)
         Allocation(project2, res1, 30, start, end)
         a4 = Allocation(project2, res2, 35, start, end)
+        c1 = Charge(a1, 10)
+        c2 = Charge(a2, 15)
+        c3 = Charge(a2, 5)
         c4 = Charge(a4, 9)
         c5 = Charge(a4, 8)
         for charge in (c1, c2, c3, c4, c5):
             charge.datetime = datetime(2000, 1, 1)
-        Session.flush() # give charges ids
+        Session.flush() # assign charge ids
         stdout, stderr = capture(lambda:
             print_charges_report([c1, c2, c3, c4, c5]))
-        stdout_ = dedent("""\
+        assert_eq_output(stdout.getvalue(), dedent("""\
             1      2000-01-01 res1     project1                 10.0
             2      2000-01-01 res1     project1                 15.0
             3      2000-01-01 res1     project1                  5.0
             4      2000-01-01 res2     project2                  9.0
             5      2000-01-01 res2     project2                  8.0
-            """)
-        stderr_ = dedent("""\
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
             #      Date       Resource Project               Charged
             ------ ---------- -------- --------------- -------------
                                                        -------------
                                                                 47.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
+            """))
     
     def test_refunds (self):
-        user1, user2 = [user_by_name(user) for user in ["user1", "user2"]]
-        project1, project2 = [project_by_name(project)
-            for project in ["project1", "project2"]]
-        res1, res2 = [resource_by_name(resource)
-            for resource in ["res1", "res2"]]
+        user1 = user("user1")
+        user2 = user("user2")
+        project1 = project("project1")
+        project2 = project("project2")
+        res1 = resource("res1")
+        res2 = resource("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
-        c1 = Charge(a1, 10)
-        Refund(c1, 4)
         a2 = Allocation(project1, res1, 20, start, end)
-        c2 = Charge(a2, 15)
-        Refund(c2, 3)
-        Refund(c2, 5)
-        c3 = Charge(a2, 5)
         Allocation(project2, res1, 30, start, end)
         a4 = Allocation(project2, res2, 35, start, end)
+        c1 = Charge(a1, 10)
+        c2 = Charge(a2, 15)
+        c3 = Charge(a2, 5)
         c4 = Charge(a4, 9)
         c5 = Charge(a4, 8)
-        Refund(c5, 8)
         for charge in (c1, c2, c3, c4, c5):
             charge.datetime = datetime(2000, 1, 1)
-        Session.flush() # give charges ids
+        Refund(c1, 4)
+        Refund(c2, 3)
+        Refund(c2, 5)
+        Refund(c5, 8)
+        Session.flush() # assign charge ids
         stdout, stderr = capture(lambda:
             print_charges_report([c1, c2, c3, c4, c5]))
-        stdout_ = dedent("""\
+        assert_eq_output(stdout.getvalue(), dedent("""\
             1      2000-01-01 res1     project1                  6.0
             2      2000-01-01 res1     project1                  7.0
             3      2000-01-01 res1     project1                  5.0
             4      2000-01-01 res2     project2                  9.0
             5      2000-01-01 res2     project2                  0.0
-            """)
-        stderr_ = dedent("""\
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
             #      Date       Resource Project               Charged
             ------ ---------- -------- --------------- -------------
                                                        -------------
                                                                 27.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
+            """))
 
 
 class TestPrintJobs (CbankViewTester):
