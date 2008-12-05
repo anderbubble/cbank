@@ -1193,17 +1193,15 @@ class TestJobsReport (CbankViewTester):
     
     def test_blank (self):
         stdout, stderr = capture(lambda: print_jobs_report([]))
-        stdout_ = dedent("""\
-            """)
-        stderr_ = dedent("""\
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
             ID                  Name       User     Account          Duration       Charged
             ------------------- ---------- -------- --------------- --------- -------------
                                                                     --------- -------------
                                                                       0:00:00           0.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
+            """))
     
     def test_bare_jobs (self):
         s = Session()
@@ -1211,20 +1209,18 @@ class TestJobsReport (CbankViewTester):
         for job in jobs:
             s.add(job)
         stdout, stderr = capture(lambda: print_jobs_report(jobs))
-        stdout_ = dedent("""\
+        assert_eq_output(stdout.getvalue(), dedent("""\
             res1.1                                                                      0.0
             res1.2                                                                      0.0
             res1.3                                                                      0.0
-            """)
-        stderr_ = dedent("""\
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
             ID                  Name       User     Account          Duration       Charged
             ------------------- ---------- -------- --------------- --------- -------------
                                                                     --------- -------------
                                                                       0:00:00           0.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
+            """))
     
     def test_long_job (self):
         s = Session()
@@ -1233,18 +1229,16 @@ class TestJobsReport (CbankViewTester):
         job.end = datetime(2000, 2, 1)
         s.add(job)
         stdout, stderr = capture(lambda: print_jobs_report([job]))
-        stdout_ = dedent("""\
+        assert_eq_output(stdout.getvalue(), dedent("""\
             res1.1                                                  744:00:00           0.0
-            """)
-        stderr_ = dedent("""\
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
             ID                  Name       User     Account          Duration       Charged
             ------------------- ---------- -------- --------------- --------- -------------
                                                                     --------- -------------
                                                                     744:00:00           0.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
+            """))
     
     def test_full_jobs (self):
         s = Session()
@@ -1256,36 +1250,33 @@ class TestJobsReport (CbankViewTester):
         a = Allocation(project1, res1, 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         j1 = Job("res1.1")
+        j2 = Job("res1.2")
+        j3 = Job("res1.3")
+        j2.user = user1
+        j3.user = user2
         j1.account = project1
+        j3.account = project2
         j1.name = "somename"
-        j1.start = datetime(2000, 1, 1)
-        j1.end = j1.start + timedelta(minutes=30)
         j1.charges = [Charge(a, 10), Charge(a, 20)]
         j1.charges[1].refund(5)
-        j2 = Job("res1.2")
-        j2.user = user1
+        j1.start = datetime(2000, 1, 1)
         j2.start = datetime(2000, 1, 2)
-        j3 = Job("res1.3")
-        j3.account = project2
-        j3.user = user2
+        j1.end = j1.start + timedelta(minutes=30)
         for job in [j1, j2, j3]:
             s.add(job)
-        s.flush() # give charges ids
         stdout, stderr = capture(lambda: print_jobs_report([j1, j2, j3]))
-        stdout_ = dedent("""\
+        assert_eq_output(stdout.getvalue(), dedent("""\
             res1.1              somename            project1          0:30:00          25.0
             res1.2                         user1                                        0.0
             res1.3                         user2    project2                            0.0
-            """)
-        stderr_ = dedent("""\
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
             ID                  Name       User     Account          Duration       Charged
             ------------------- ---------- -------- --------------- --------- -------------
                                                                     --------- -------------
                                                                       0:30:00          25.0
             Units are undefined.
-            """)
-        assert_eq_output(stdout.getvalue(), stdout_)
-        assert_eq_output(stderr.getvalue(), stderr_)
+            """))
 
 
 class TestChargesReport (CbankViewTester):
