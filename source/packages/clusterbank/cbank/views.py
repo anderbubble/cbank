@@ -589,6 +589,7 @@ def print_jobs (jobs):
 
 
 def print_job (job):
+    """Print a job in user-friendly detail."""
     print "Job %s" % job
     print " * User: %s" % job.user
     print " * Group: %s" % job.group
