@@ -474,10 +474,6 @@ def print_jobs_report (jobs, truncate=True):
             duration = format_timedelta(duration_td)
         charged = sum(charge.effective_amount() for charge in job.charges)
         charge_sum += charged
-        if job.start is not None:
-            start = format_datetime(job.start)
-        else:
-            start = ""
         print format({
             'ID':job.id,
             'Name':job.name or "",
