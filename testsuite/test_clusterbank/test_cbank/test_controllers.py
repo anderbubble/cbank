@@ -47,7 +47,7 @@ class FakeDateTime (object):
         return self._now
 
 
-def assert_ident (obj1, obj2):
+def assert_identical (obj1, obj2):
     assert obj1 is obj2, "%r is not %r" % (obj1, obj2)
 
 
@@ -1116,9 +1116,9 @@ class TestImportJobs (CbankTester):
         assert_equal(jobs.count(), 1)
         job_ = jobs.one()
         assert_equal(job_.id, "692009.jmayor5.lcrc.anl.gov")
-        assert_ident(job_.user, user("user1"))
+        assert_identical(job_.user, user("user1"))
         assert_equal(job_.group, "agroup")
-        assert_ident(job_.account, project("project1"))
+        assert_identical(job_.account, project("project1"))
         assert_equal(job_.name, "myjob")
         assert_equal(job_.queue, "shared")
         assert_equal(job_.ctime, datetime(2008, 4, 18, 2, 10, 12))
@@ -1141,9 +1141,9 @@ class TestImportJobs (CbankTester):
         assert_equal(jobs.count(), 1)
         job_ = jobs.one()
         assert_equal(job_.id, "691908.jmayor5.lcrc.anl.gov")
-        assert_ident(job_.user, user("user1"))
+        assert_identical(job_.user, user("user1"))
         assert_equal(job_.group, "agroup")
-        assert_ident(job_.account, project("project1"))
+        assert_identical(job_.account, project("project1"))
         assert_equal(job_.name, "myjob")
         assert_equal(job_.queue, "pri4")
         assert_equal(job_.ctime, datetime(2008, 4, 16, 15, 34, 26))
@@ -1161,7 +1161,7 @@ class TestImportJobs (CbankTester):
         assert_equal(job_.end, datetime(2008, 4, 18, 3, 35, 28))
         assert_equal(job_.exit_status, 265)
     
-    def test_job_from_pbs_q_duplicate (self):
+    def test_job_from_pbs_q_updated (self):
         entry1 = "04/18/2008 02:10:12;Q;692009.jmayor5.lcrc.anl.gov;queue=shared\n"
         entry2 = "04/18/2008 02:10:12;Q;692009.jmayor5.lcrc.anl.gov;queue=exclusive\n"
         stdin = StringIO()
@@ -1174,6 +1174,54 @@ class TestImportJobs (CbankTester):
         job_ = jobs.one()
         assert_equal(job_.id, "692009.jmayor5.lcrc.anl.gov")
         assert_equal(job_.queue, "exclusive")
+    
+    def test_job_from_pbs_q_duplicate (self):
+        entry = "04/18/2008 02:10:12;Q;692009.jmayor5.lcrc.anl.gov;queue=shared\n"
+        stdin = StringIO()
+        stdin.write(entry)
+        stdin.write(entry)
+        stdin.seek(0)
+        code, stdout, stderr = run(import_jobs_main, [], stdin)
+        assert_equal(code, 0)
+        jobs = Session.query(Job)
+        assert_equal(jobs.count(), 1)
+        job_ = jobs.one()
+        assert_equal(job_.id, "692009.jmayor5.lcrc.anl.gov")
+        assert_equal(job_.queue, "shared")
+    
+    def test_job_from_pbs_e_duplicate_run (self):
+        entry = "04/18/2008 03:35:28;E;691908.jmayor5.lcrc.anl.gov;user=user1 account=project1"
+        stdin = StringIO()
+        stdin.write(entry)
+        stdin.seek(0)
+        code, stdout, stderr = run(import_jobs_main, [], stdin)
+        stdin.seek(0)
+        code, stdout, stderr = run(import_jobs_main, [], stdin)
+        assert_equal(code, 0)
+        jobs = Session.query(Job)
+        assert_equal(jobs.count(), 1)
+        job_ = jobs.one()
+        assert_equal(job_.id, "691908.jmayor5.lcrc.anl.gov")
+        assert_identical(job_.user, user("user1"))
+        assert_identical(job_.account, project("project1"))
+
+    def test_job_from_pbs_e_update_run (self):
+        entry1 = "04/18/2008 03:35:28;E;691908.jmayor5.lcrc.anl.gov;user=user2 account=project2"
+        entry2 = "04/18/2008 03:35:28;E;691908.jmayor5.lcrc.anl.gov;user=user2 account=project2"
+        stdin = StringIO()
+        stdin.write(entry1)
+        stdin.write(entry2)
+        stdin.seek(0)
+        code, stdout, stderr = run(import_jobs_main, [], stdin)
+        stdin.seek(0)
+        code, stdout, stderr = run(import_jobs_main, [], stdin)
+        assert_equal(code, 0)
+        jobs = Session.query(Job)
+        assert_equal(jobs.count(), 1)
+        job_ = jobs.one()
+        assert_equal(job_.id, "691908.jmayor5.lcrc.anl.gov")
+        assert_identical(job_.user, user("user2"))
+        assert_identical(job_.account, project("project2"))
 
 
 class TestReportMain (CbankTester):
