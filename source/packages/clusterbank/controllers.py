@@ -200,6 +200,9 @@ def _entity_by_id (cls, id_):
     with the id exists. For most cases, use entity_by_id in stead.
     """
     s = Session()
+    for entity in s:
+        if isinstance(entity, cls) and entity.id == id_:
+            return entity
     try:
         return s.query(cls).filter_by(id=id_).one()
     except InvalidRequestError:
