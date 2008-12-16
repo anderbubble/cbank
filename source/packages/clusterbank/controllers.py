@@ -254,19 +254,21 @@ def job_from_pbs (entry):
     Supports Q, S, and E entries.
     """
     id_string, message_text = entry.split(";", 3)[2:]
-    job_ = Job(id_string)
     messages = dict(message.split("=", 1)
         for message in message_text.split(" ") if "=" in message)
+    try:
+        user_ = user(messages['user'])
+    except (KeyError, NotFound):
+        user_ = None
+    try:
+        account_ = project(messages['account'])
+    except (KeyError, NotFound):
+        account_ = None
+    job_ = Job(id_string)
     job_.queue = messages.get("queue", None)
-    try:
-        job_.user = user(messages['user'])
-    except (KeyError, NotFound):
-        pass
+    job_.user = user_
     job_.group = messages.get("group", None)
-    try:
-        job_.account = project(messages['account'])
-    except (KeyError, NotFound):
-        pass
+    job_.account = account_
     job_.name = messages.get("jobname")
     try:
         job_.ctime = datetime.fromtimestamp(float(messages['ctime']))
