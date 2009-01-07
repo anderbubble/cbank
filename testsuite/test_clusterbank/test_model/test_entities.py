@@ -17,7 +17,7 @@ def assert_in (item, container):
     assert item in container, "%s not in %s" % (item, container)
 
 
-def assert_ident (item1, item2):
+def assert_identical (item1, item2):
     assert item1 is item2, "%r is not %r" % (item1, item2)
 
 
@@ -273,7 +273,7 @@ class TestJob (EntityTester):
         job = s.query(Job).filter_by(id="www.example.com.123").one()
         # check the job's attributes for persistence
         assert_equal(job.id, "www.example.com.123")
-        assert_ident(job.user, s.query(User).filter_by(id=1).one())
+        assert_identical(job.user, s.query(User).filter_by(id=1).one())
         assert_equal(job.group, "agroup")
         assert_equal(job.account, s.query(Project).filter_by(id=1).one())
         assert_equal(job.name, "myjob")
