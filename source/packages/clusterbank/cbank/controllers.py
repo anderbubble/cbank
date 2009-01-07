@@ -326,7 +326,8 @@ def print_import_main_help ():
 @require_admin
 def import_jobs_main ():
     """Import jobs from pbs accounting logs."""
-    if sys.argv[1:]:
+    args = sys.argv[1:]
+    if args:
         raise UnexpectedArguments(args)
     s = Session()
     counter = 0

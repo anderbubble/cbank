@@ -1054,6 +1054,11 @@ class TestImportJobs (CbankTester):
         CbankTester.setup(self)
         be_admin()
     
+    def test_extra_arguments (self):
+        code, stdout, stderr = run(import_jobs_main, ["arg1, arg2"])
+        assert_equal(stderr.read(),
+            "cbank: unexpected arguments: arg1, arg2\n")
+    
     def test_empty (self):
         stdin = StringIO()
         stdin.write("   \n  ")
