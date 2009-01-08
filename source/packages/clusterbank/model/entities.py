@@ -473,6 +473,7 @@ class Charge (Entity):
     datetime -- when the chage was entered
     comment -- misc. comments
     refunds -- refunds from the charge
+    job -- the job associated with this charge
     
     Classmethods:
     distributed -- construct multiple charges across multiple allocations
@@ -496,7 +497,7 @@ class Charge (Entity):
         self.comment = None
         self.refunds = []
         self.amount = amount
-        self.jobs = []
+        self.job = None
     
     @classmethod
     def distributed (cls, allocations, amount):

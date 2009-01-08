@@ -935,11 +935,11 @@ class TestAllocationsReport (CbankViewTester):
         Refund(c2, 3)
         Refund(c2, 5)
         Refund(c5, 8)
-        c1.jobs = [Job("res1.1")]
-        c2.jobs = [Job("res1.2")]
-        c3.jobs = [Job("res1.3")]
-        c4.jobs = [Job("res2.1")]
-        c5.jobs = [Job("res2.2")]
+        c1.job = Job("res1.1")
+        c2.job = Job("res1.2")
+        c3.job = Job("res1.3")
+        c4.job = Job("res2.1")
+        c5.job = Job("res2.2")
         Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4]))
@@ -982,16 +982,16 @@ class TestAllocationsReport (CbankViewTester):
         Refund(c2, 3)
         Refund(c2, 5)
         Refund(c5, 8)
-        c1.jobs = [Job("res1.1")]
-        c2.jobs = [Job("res1.2")]
-        c3.jobs = [Job("res1.3")]
-        c4.jobs = [Job("res2.1")]
-        c5.jobs = [Job("res2.2")]
-        c1.jobs[0].user = user1
-        c2.jobs[0].user = user2
-        c3.jobs[0].user = user1
-        c4.jobs[0].user = user1
-        c5.jobs[0].user = user2
+        c1.job = Job("res1.1")
+        c2.job = Job("res1.2")
+        c3.job = Job("res1.3")
+        c4.job = Job("res2.1")
+        c5.job = Job("res2.2")
+        c1.job.user = user1
+        c2.job.user = user2
+        c3.job.user = user1
+        c4.job.user = user1
+        c5.job.user = user2
         Session.flush() # give the allocations ids
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4], users=[user1]))
@@ -1034,21 +1034,21 @@ class TestAllocationsReport (CbankViewTester):
         Refund(c2, 3)
         Refund(c2, 5)
         Refund(c5, 8)
-        c1.jobs = [Job("res1.1")]
-        c2.jobs = [Job("res1.2")]
-        c3.jobs = [Job("res1.3")]
-        c4.jobs = [Job("res2.1")]
-        c5.jobs = [Job("res2.2")]
+        c1.job = Job("res1.1")
+        c2.job = Job("res1.2")
+        c3.job = Job("res1.3")
+        c4.job = Job("res2.1")
+        c5.job = Job("res2.2")
         c1.datetime = datetime(2000, 1, 2)
         c2.datetime = datetime(2000, 1, 3)
         c3.datetime = datetime(2000, 1, 4)
         c4.datetime = datetime(2000, 1, 5)
         c5.datetime = datetime(2000, 1, 6)
-        c1.jobs[0].end = datetime(2000, 1, 2)
-        c2.jobs[0].end = datetime(2000, 1, 3)
-        c3.jobs[0].end = datetime(2000, 1, 4)
-        c4.jobs[0].end = datetime(2000, 1, 5)
-        c5.jobs[0].end = datetime(2000, 1, 6)
+        c1.job.end = datetime(2000, 1, 2)
+        c2.job.end = datetime(2000, 1, 3)
+        c3.job.end = datetime(2000, 1, 4)
+        c4.job.end = datetime(2000, 1, 5)
+        c5.job.end = datetime(2000, 1, 6)
         Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4],
@@ -1092,21 +1092,21 @@ class TestAllocationsReport (CbankViewTester):
         Refund(c2, 3)
         Refund(c2, 5)
         Refund(c5, 8)
-        c1.jobs = [Job("res1.1")]
-        c2.jobs = [Job("res1.2")]
-        c3.jobs = [Job("res1.3")]
-        c4.jobs = [Job("res2.1")]
-        c5.jobs = [Job("res2.2")]
+        c1.job = Job("res1.1")
+        c2.job = Job("res1.2")
+        c3.job = Job("res1.3")
+        c4.job = Job("res2.1")
+        c5.job = Job("res2.2")
         c1.datetime = datetime(2000, 1, 2)
         c2.datetime = datetime(2000, 1, 3)
         c3.datetime = datetime(2000, 1, 4)
         c4.datetime = datetime(2000, 1, 5)
         c5.datetime = datetime(2000, 1, 6)
-        c1.jobs[0].start = datetime(2000, 1, 1)
-        c2.jobs[0].start = datetime(2000, 1, 2)
-        c3.jobs[0].start = datetime(2000, 1, 3)
-        c4.jobs[0].start = datetime(2000, 1, 4)
-        c5.jobs[0].start = datetime(2000, 1, 5)
+        c1.job.start = datetime(2000, 1, 1)
+        c2.job.start = datetime(2000, 1, 2)
+        c3.job.start = datetime(2000, 1, 3)
+        c4.job.start = datetime(2000, 1, 4)
+        c5.job.start = datetime(2000, 1, 5)
         Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda:
             print_allocations_report([a1, a2, a3, a4],

@@ -724,7 +724,7 @@ def report_charges_main ():
     comments = options.comments
     charges = Session().query(Charge)
     if users:
-        charges = charges.filter(Charge.jobs.any(Job.user.has(User.id.in_(
+        charges = charges.filter(Charge.job.has(Job.user.has(User.id.in_(
             user_.id for user_ in users))))
     if projects:
         charges = charges.filter(Charge.allocation.has(Allocation.project.has(
@@ -861,8 +861,8 @@ def detail_charges_main ():
         admin_projects = current_user.admin_projects
         permitted_charges = []
         for charge in charges:
-            users = [job.user for job in charge.jobs if job.user is not None]
-            allowed = (current_user in users
+            allowed = ((
+                charge.job and charge.job.user is current_user)
                 or charge.allocation.project in admin_projects)
             if not allowed:
                 print >> sys.stderr, "%s: not permitted: %s" % (
@@ -883,9 +883,10 @@ def detail_refunds_main ():
         admin_projects = current_user.admin_projects
         permitted_refunds = []
         for refund in refunds:
-            users = [job.user for job in refund.charge.jobs
-                if job.user is not None]
-            allowed = (current_user in users
+            
+            allowed = (
+                (refund.charge.job and refund.charge.job.user and
+                    refund.charge.job.user is current_user)
                 or refund.charge.allocation.project in admin_projects)
             if not allowed:
                 print >> sys.stderr, "%s: not permitted: %s" % (

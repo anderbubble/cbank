@@ -83,11 +83,11 @@ def print_users_report (users, projects=None, resources=None,
     charges_q = s.query(
         User.id.label("user_id"),
         func.sum(Charge.amount).label("charge_sum")).group_by(User.id)
-    charges_q = charges_q.join(Charge.jobs, Job.user)
+    charges_q = charges_q.join(Charge.job, Job.user)
     refunds_q = s.query(
         User.id.label("user_id"),
         func.sum(Refund.amount).label("refund_sum")).group_by(User.id)
-    refunds_q = refunds_q.join(Refund.charge, Charge.jobs, Job.user)
+    refunds_q = refunds_q.join(Refund.charge, Charge.job, Job.user)
     
     if projects:
         projects_ = Project.id.in_(project.id for project in projects)
@@ -209,7 +209,7 @@ def print_projects_report (projects, users=None, resources=None,
     if users:
         users_ = Job.user.has(User.id.in_(user.id for user in users))
         jobs_q = jobs_q.filter(Job.user.has(users_))
-        charges_ = Charge.jobs.any(users_)
+        charges_ = Charge.job.has(users_)
         charges_q = charges_q.filter(charges_)
         refunds_q = refunds_q.filter(charges_)
     if after:
@@ -329,7 +329,7 @@ def print_allocations_report (allocations, users=None,
     if users:
         jobs_ = Job.user.has(User.id.in_(user.id for user in users))
         jobs_q = jobs_q.filter(jobs_)
-        charges_ = Charge.jobs.any(jobs_)
+        charges_ = Charge.job.has(jobs_)
         charges_q = charges_q.filter(charges_)
         refunds_q = refunds_q.filter(charges_)
     if after:

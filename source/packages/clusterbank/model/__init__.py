@@ -30,7 +30,7 @@ from clusterbank.model.entities import upstream, User, Project, \
     Resource, Allocation, Hold, Job, Charge, Refund
 from clusterbank.model.database import metadata, \
     users, projects, resources, \
-    allocations, holds, jobs, charges, jobs_charges, refunds
+    allocations, holds, jobs, charges, refunds
 
 
 __all__ = ["upstream", "User", "Project", "Resource",
@@ -127,8 +127,7 @@ mapper(Job, jobs, properties={
     'end':jobs.c.end,
     'exit_status':jobs.c.exit_status,
     'resources_used':jobs.c.resources_used,
-    'accounting_id':jobs.c.accounting_id,
-    'charges':relation(Charge, secondary=jobs_charges, backref="jobs")})
+    'accounting_id':jobs.c.accounting_id})
 
 
 mapper(Charge, charges, properties={
@@ -136,7 +135,8 @@ mapper(Charge, charges, properties={
     'allocation':relation(Allocation, backref="charges"),
     'datetime':charges.c.datetime,
     'amount':charges.c.amount,
-    'comment':charges.c.comment})
+    'comment':charges.c.comment,
+    'job':relation(Job, backref="charges")})
 
 
 mapper(Refund, refunds, properties={

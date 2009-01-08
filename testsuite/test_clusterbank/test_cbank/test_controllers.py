@@ -183,8 +183,8 @@ class TestDetailCharges (CbankTester):
         a = Allocation(project("project1"), resource("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
-        c.jobs = [Job("resource1.1")]
-        c.jobs[0].user = current_user()
+        c.job = Job("resource1.1")
+        c.job.user = current_user()
         Session.add(c)
         Session.flush()
         run(detail_charges_main, ["%i" % c.id])
@@ -244,8 +244,8 @@ class TestDetailRefunds (CbankTester):
         a = Allocation(project("project1"), resource("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
-        c.jobs = [Job("resource1.1")]
-        c.jobs[0].user = current_user()
+        c.job = Job("resource1.1")
+        c.job.user = current_user()
         r = Refund(c)
         Session.add(r)
         Session.flush()
@@ -2358,20 +2358,20 @@ class TestChargesReport (CbankTester):
         for allocation in Session().query(Allocation):
             c1 = Charge(allocation, 0)
             c1.datetime = datetime(2000, 1, 1)
-            c1.jobs = [Job("1.%i.%s" % (allocation.id, allocation.resource))]
-            c1.jobs[0].user = user1
+            c1.job = Job("1.%i.%s" % (allocation.id, allocation.resource))
+            c1.job.user = user1
             c2 = Charge(allocation, 0)
             c2.datetime = datetime(1999, 1, 1)
-            c2.jobs = [Job("2.%i.%s" % (allocation.id, allocation.resource))]
-            c2.jobs[0].user = user2
+            c2.job = Job("2.%i.%s" % (allocation.id, allocation.resource))
+            c2.job.user = user2
             c3 = Charge(allocation, 0)
             c3.datetime = datetime(1999, 1, 1)
-            c3.jobs = [Job("3.%i.%s" % (allocation.id, allocation.resource))]
-            c3.jobs[0].user = current_user()
+            c3.job = Job("3.%i.%s" % (allocation.id, allocation.resource))
+            c3.job.user = current_user()
             c4 = Charge(allocation, 0)
             c4.datetime = datetime(2001, 1, 1)
-            c4.jobs = [Job("4.%i.%s" % (allocation.id, allocation.resource))]
-            c4.jobs[0].user = current_user()
+            c4.job = Job("4.%i.%s" % (allocation.id, allocation.resource))
+            c4.job.user = current_user()
         Session.flush()
     
     def teardown (self):

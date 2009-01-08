@@ -25,7 +25,7 @@ from sqlalchemy.types import TypeDecorator, Integer, DateTime, \
 __all__ = [
     "metadata",
     "users", "projects", "resources",
-    "allocations", "holds", "jobs", "charges", "jobs_charges", "refunds",
+    "allocations", "holds", "jobs", "charges", "refunds",
 ]
 
 
@@ -152,12 +152,7 @@ charges = Table("charges", metadata,
     Column("datetime", DateTime, nullable=False, default=datetime.now),
     Column("amount", Integer, nullable=False),
     Column("comment", Text),
-    mysql_engine="InnoDB")
-
-
-jobs_charges = Table("jobs_charges", metadata,
-    Column("job_id", None, ForeignKey("jobs.id")),
-    Column("charge_id", None, ForeignKey("charges.id")),
+    Column("job_id", None, ForeignKey("jobs.id"), nullable=True),
     mysql_engine="InnoDB")
 
 
