@@ -2395,6 +2395,24 @@ class TestChargesReport (CbankTester):
         args, kwargs = controllers.print_charges_report.calls[0]
         assert_equal(set(args[0]), set(charges))
     
+    def test_job (self):
+        charges = Session().query(Charge).filter(
+            Charge.id.in_([19]))
+        code, stdout, stderr = run(report_charges_main,
+            "-j 3.5.resource1".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_charges_report.calls[0]
+        assert_equal(set(args[0]), set(charges))
+    
+    def test_jobs (self):
+        charges = Session().query(Charge).filter(
+            Charge.id.in_([19, 23]))
+        code, stdout, stderr = run(report_charges_main,
+            "-j 3.5.resource1 -j 3.6.resource2".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_charges_report.calls[0]
+        assert_equal(set(args[0]), set(charges))
+    
     def test_other_users (self):
         code, stdout, stderr = run(report_charges_main,
             "-p project1 -u user1".split())

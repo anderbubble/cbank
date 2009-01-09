@@ -739,6 +739,9 @@ def report_charges_main ():
         charges = charges.filter(Charge.datetime >= options.after)
     if options.before:
         charges = charges.filter(Charge.datetime < options.before)
+    if options.jobs:
+        charges = charges.filter(or_(
+            *[Charge.job == job_ for job_ in options.jobs]))
     print_charges_report(charges, comments=comments,
         truncate=(not options.long))
 
@@ -1123,8 +1126,11 @@ def report_charges_parser ():
     parser.add_option(Option("-l", "--long",
         dest="long", action="store_true",
         help="do not truncate long strings"))
-    parser.set_defaults(projects=[], users=[], resources=[], comments=False,
-        long=False)
+    parser.add_option(Option("-j", "--job",
+        dest="jobs", type="job", action="append",
+        help="report charges related to JOB", metavar="JOB"))
+    parser.set_defaults(projects=[], users=[], resources=[], jobs=[],
+        comments=False, long=False)
     return parser
 
 
@@ -1220,6 +1226,7 @@ class Option (optparse.Option):
     user -- parse a user from its name or id
     project -- parse a project from its name or id
     resource -- parse a resource from its name or id
+    job -- parse a job from its id
     """
     
     DATE_FORMATS = [
@@ -1280,12 +1287,20 @@ class Option (optparse.Option):
             raise optparse.OptionValueError(
                 "option %s: unknown user: %s" % (opt, value))
     
+    def check_job (self, opt, value):
+        """Parse a job from its id."""
+        try:
+            return Session.query(Job).filter_by(id=value).one()
+        except InvalidRequestError:
+            raise optparse.OptionValueError(
+                "option %s: unknown job: %s" % (opt, value))
+    
     TYPES = optparse.Option.TYPES + (
-        "date", "project", "resource", "user")
+        "date", "project", "resource", "user", "job")
     
     TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
     TYPE_CHECKER['date'] = check_date
     TYPE_CHECKER['project'] = check_project
     TYPE_CHECKER['resource'] = check_resource
     TYPE_CHECKER['user'] = check_user
-
+    TYPE_CHECKER['job'] = check_job
