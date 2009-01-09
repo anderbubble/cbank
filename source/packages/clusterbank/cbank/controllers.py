@@ -660,8 +660,8 @@ def report_holds_main ():
     if options.before:
         holds = holds.filter(Hold.datetime < options.before)
     if options.jobs:
-        holds = holds.filter(or_(
-            *[Hold.job == job_ for job_ in options.jobs]))
+        holds = holds.filter(Hold.job.has(Job.id.in_(
+            job.id for job in options.jobs)))
     print_holds_report(holds, comments=comments, truncate=(not options.long))
 
 
@@ -743,8 +743,8 @@ def report_charges_main ():
     if options.before:
         charges = charges.filter(Charge.datetime < options.before)
     if options.jobs:
-        charges = charges.filter(or_(
-            *[Charge.job == job_ for job_ in options.jobs]))
+        charges = charges.filter(Charge.job.has(Job.id.in_(
+            job.id for job in options.jobs)))
     print_charges_report(charges, comments=comments,
         truncate=(not options.long))
 
