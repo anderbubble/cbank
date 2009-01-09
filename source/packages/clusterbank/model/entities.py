@@ -329,6 +329,7 @@ class Hold (Entity):
     
     Attributes:
     allocation -- allocation to which the hold applies
+    job -- job for which the hold exists
     datetime -- when the hold was entered
     amount -- amount held
     comment -- misc. comments
@@ -352,6 +353,7 @@ class Hold (Entity):
         self.active = True
         self.amount = amount
         self.user = None
+        self.job = None
     
     @classmethod
     def distributed (cls, allocations, amount):

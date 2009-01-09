@@ -119,6 +119,7 @@ holds = Table("holds", metadata,
     Column("user_id", None, ForeignKey("users.id"), nullable=True),
     Column("comment", Text),
     Column("active", Boolean, nullable=False, default=True),
+    Column("job_id", None, ForeignKey("jobs.id"), nullable=True),
     mysql_engine="InnoDB")
 
 

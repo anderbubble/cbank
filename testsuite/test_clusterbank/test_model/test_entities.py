@@ -166,6 +166,22 @@ class TestHold (EntityTester):
         assert hold.comment is None
         assert hold.user is None
         assert hold.active
+        assert hold.job is None
+    
+    def test_persistence (self):
+        user = User(1)
+        project = Project(1)
+        resource = Resource(1)
+        allocation = Allocation(project, resource, 10,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        hold = Hold(allocation, 2)
+        Session.save(hold)
+        Session.commit()
+        Session.close()
+        hold = Session.query(Hold).one()
+        assert_equal(hold.id, 1)
+        assert_equal(hold.allocation_id, 1)
+        assert_equal(hold.amount, 2)
     
     @raises(ValueError)
     def test_distributed_without_allocations (self):
