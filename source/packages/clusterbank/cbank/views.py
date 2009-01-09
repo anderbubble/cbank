@@ -580,6 +580,7 @@ def print_hold (hold):
     print " * Project: %s" % hold.allocation.project
     print " * Resource: %s" % hold.allocation.resource
     print " * Comment: %s" % hold.comment
+    print " * Job: %s" % hold.job
 
 
 def print_jobs (jobs):

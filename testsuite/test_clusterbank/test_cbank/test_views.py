@@ -20,7 +20,7 @@ import clusterbank.upstreams.default as upstream
 from clusterbank.cbank.views import print_users_report, \
     print_projects_report, print_allocations_report, print_holds_report, \
     print_jobs_report, print_charges_report, print_charges, print_jobs, \
-    print_refunds, display_units
+    print_refunds, print_holds, display_units
 
 
 class FakeDateTime (object):
@@ -1372,6 +1372,56 @@ class TestChargesReport (CbankViewTester):
                                                        -------------
                                                                 27.0
             Units are undefined.
+            """))
+
+
+class TestPrintHolds (CbankViewTester):
+    
+    def test_hold (self):
+        user1 = user_by_name("user1")
+        project1 = project_by_name("project1")
+        res1 = resource_by_name("res1")
+        allocation1 = Allocation(project1, res1, 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        hold = Hold(allocation1, 0)
+        hold.datetime = datetime(2000, 1, 1)
+        Session.add(hold)
+        Session.flush()
+        stdout, stderr = capture(lambda:
+            print_holds([hold]))
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            Hold #1 -- 0.0
+             * Datetime: 2000-01-01 00:00:00
+             * Active: True
+             * Allocation: #1
+             * Project: project1
+             * Resource: res1
+             * Comment: None
+             * Job: None
+            """))
+    
+    def test_job_hold (self):
+        user1 = user_by_name("user1")
+        project1 = project_by_name("project1")
+        res1 = resource_by_name("res1")
+        allocation1 = Allocation(project1, res1, 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        hold = Hold(allocation1, 0)
+        hold.datetime = datetime(2000, 1, 1)
+        hold.job = Job("res1.1")
+        Session.add(hold)
+        Session.flush()
+        stdout, stderr = capture(lambda:
+            print_holds([hold]))
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            Hold #1 -- 0.0
+             * Datetime: 2000-01-01 00:00:00
+             * Active: True
+             * Allocation: #1
+             * Project: project1
+             * Resource: res1
+             * Comment: None
+             * Job: res1.1
             """))
 
 
