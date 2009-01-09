@@ -326,7 +326,8 @@ def print_import_main_help ():
 @require_admin
 def import_jobs_main ():
     """Import jobs from pbs accounting logs."""
-    args = sys.argv[1:]
+    parser = import_jobs_parser()
+    options, args = parser.parse_args()
     if args:
         raise UnexpectedArguments(args)
     s = Session()
@@ -353,6 +354,8 @@ def import_jobs_main ():
         except InvalidRequestError:
             pass # The job wasn't in the session.
         job = s.merge(job)
+        if options.verbose:
+            print >> sys.stderr, job
         counter += 1
         if counter >= 100:
             s.commit()
@@ -1196,6 +1199,15 @@ def new_refund_parser ():
     parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.set_defaults(commit=True)
+    return parser
+
+
+def import_jobs_parser ():
+    """An optparse parser for importing jobs."""
+    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser.add_option(Option("-v", "--verbose", dest="verbose",
+        action="store_true", help="display each imported job"))
+    parser.set_defaults(verbose=False)
     return parser
 
 

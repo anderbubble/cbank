@@ -1097,6 +1097,15 @@ class TestImportJobs (CbankTester):
         jobs = Session.query(Job)
         assert_equal(jobs.count(), 0)
     
+    def test_verbose (self):
+        entry = "04/18/2008 02:10:12;Q;692009.jmayor5.lcrc.anl.gov;queue=shared\n"
+        stdin = StringIO()
+        stdin.write(entry)
+        stdin.seek(0)
+        code, stdout, stderr = run(import_jobs_main, ["-v"], stdin)
+        assert_equal(code, 0)
+        assert_equal(stderr.read(), "692009.jmayor5.lcrc.anl.gov\n")
+    
     def test_job_from_pbs_q (self):
         entry = "04/18/2008 02:10:12;Q;692009.jmayor5.lcrc.anl.gov;queue=shared\n"
         stdin = StringIO()
