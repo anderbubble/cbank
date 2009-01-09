@@ -1825,18 +1825,22 @@ class TestHoldsReport (CbankTester):
                 datetime(2000, 1, 1), datetime(2001, 1, 1))
         for allocation in Session().query(Allocation):
             h1 = Hold(allocation, 0)
-            h1.datetime = datetime(2000, 1, 1)
-            h1.user = user1
             h2 = Hold(allocation, 0)
-            h2.datetime = datetime(1999, 1, 1)
-            h2.user = user2
             h3 = Hold(allocation, 0)
+            h4 = Hold(allocation, 0)
+            h1.datetime = datetime(2000, 1, 1)
+            h2.datetime = datetime(1999, 1, 1)
             h3.datetime = datetime(1999, 1, 1)
+            h4.datetime = datetime(2001, 1, 1)
+            h1.user = user1
+            h2.user = user2
             h3.active = False
             h2.user = current_user()
-            h4 = Hold(allocation, 0)
-            h4.datetime = datetime(2001, 1, 1)
             h2.user = current_user()
+            h1.job = Job("1.%i.%s" % (allocation.id, allocation.resource))
+            h2.job = Job("2.%i.%s" % (allocation.id, allocation.resource))
+            h3.job = Job("3.%i.%s" % (allocation.id, allocation.resource))
+            h4.job = Job("4.%i.%s" % (allocation.id, allocation.resource))
         Session.flush()
     
     def teardown (self):
@@ -1849,6 +1853,24 @@ class TestHoldsReport (CbankTester):
             Allocation.project.has(Project.id.in_(project.id for project in
             current_user().projects))))
         code, stdout, stderr = run(report_holds_main)
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
+    
+    def test_job (self):
+        holds = Session().query(Hold).filter(
+            Hold.id.in_([14]))
+        code, stdout, stderr = run(report_holds_main,
+            "-j 2.4.resource2".split())
+        assert_equal(code, 0)
+        args, kwargs = controllers.print_holds_report.calls[0]
+        assert_equal(set(args[0]), set(holds))
+    
+    def test_jobs (self):
+        holds = Session().query(Hold).filter(
+            Hold.id.in_([14, 18]))
+        code, stdout, stderr = run(report_holds_main,
+            "-j 2.4.resource2 -j 2.5.resource1".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_holds_report.calls[0]
         assert_equal(set(args[0]), set(holds))

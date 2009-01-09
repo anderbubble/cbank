@@ -659,6 +659,9 @@ def report_holds_main ():
         holds = holds.filter(Hold.datetime >= options.after)
     if options.before:
         holds = holds.filter(Hold.datetime < options.before)
+    if options.jobs:
+        holds = holds.filter(or_(
+            *[Hold.job == job_ for job_ in options.jobs]))
     print_holds_report(holds, comments=comments, truncate=(not options.long))
 
 
@@ -1072,8 +1075,11 @@ def report_holds_parser ():
     parser.add_option(Option("-l", "--long",
         dest="long", action="store_true",
         help="do not truncate long strings"))
-    parser.set_defaults(projects=[], users=[], resources=[], comments=False,
-        long=False)
+    parser.add_option(Option("-j", "--job",
+        dest="jobs", type="job", action="append",
+        help="report charges related to JOB", metavar="JOB"))
+    parser.set_defaults(projects=[], users=[], resources=[], jobs=[],
+        comments=False, long=False)
     return parser
 
 
