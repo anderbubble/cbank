@@ -635,6 +635,7 @@ def print_charge (charge):
     print " * Project: %s" % charge.allocation.project
     print " * Resource: %s" % charge.allocation.resource
     print " * Comment: %s" % charge.comment
+    print " * Job: %s" % charge.job
 
 
 def print_refunds (refunds):
