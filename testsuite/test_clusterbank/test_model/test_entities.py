@@ -175,13 +175,15 @@ class TestHold (EntityTester):
         allocation = Allocation(project, resource, 10,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         hold = Hold(allocation, 2)
-        Session.save(hold)
+        hold.job = Job("resource1.1")
+        Session.add(hold)
         Session.commit()
         Session.close()
         hold = Session.query(Hold).one()
         assert_equal(hold.id, 1)
         assert_equal(hold.allocation_id, 1)
         assert_equal(hold.amount, 2)
+        assert_equal(hold.job_id, "resource1.1")
     
     @raises(ValueError)
     def test_distributed_without_allocations (self):
@@ -243,7 +245,8 @@ class TestJob (EntityTester):
         assert job.exit_status is None
         assert job.resources_used == {}
         assert job.accounting_id is None
-        assert job.charges == [] # cbank specific
+        assert job.charges == [] # not PBS
+        assert job.holds == [] # not PBS
     
     def test_str (self):
         job = Job("www.example.com.123")

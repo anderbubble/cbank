@@ -104,7 +104,8 @@ mapper(Hold, holds, properties={
     'user':relation(User, backref="holds"),
     'amount':holds.c.amount,
     'comment':holds.c.comment,
-    'active':holds.c.active})
+    'active':holds.c.active,
+    'job':relation(Job, backref="holds")})
 
 
 mapper(Job, jobs, properties={

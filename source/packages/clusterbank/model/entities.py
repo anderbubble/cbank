@@ -429,6 +429,7 @@ class Job (Entity):
     resources_used -- aggregate amount of specified resources used
     accounting_id -- CSA JID, job ID
     charges -- charges associated with the job
+    holds -- holds associated with the job
     """
     
     def __init__ (self, id_):
@@ -460,6 +461,7 @@ class Job (Entity):
         self.resources_used = {}
         self.accounting_id = None
         self.charges = []
+        self.holds = []
     
     def __str__ (self):
         return str(self.id)
