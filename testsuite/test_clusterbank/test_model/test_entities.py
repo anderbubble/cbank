@@ -355,6 +355,7 @@ class TestCharge (EntityTester):
         assert charge.amount == 600
         assert charge.comment is None
         assert charge.refunds == []
+        assert charge.job is None
     
     @raises(ValueError)
     def test_distributed_without_allocations (self):
