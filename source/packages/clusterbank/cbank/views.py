@@ -653,6 +653,7 @@ def print_refund (refund):
     print " * Project: %s" % refund.charge.allocation.project
     print " * Resource: %s" % refund.charge.allocation.resource
     print " * Comment: %s" % refund.comment
+    print " * Job: %s" % refund.charge.job
 
 
 def unit_definition ():

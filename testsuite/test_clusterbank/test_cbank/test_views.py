@@ -20,7 +20,7 @@ import clusterbank.upstreams.default as upstream
 from clusterbank.cbank.views import print_users_report, \
     print_projects_report, print_allocations_report, print_holds_report, \
     print_jobs_report, print_charges_report, print_charges, print_jobs, \
-    display_units
+    print_refunds, display_units
 
 
 class FakeDateTime (object):
@@ -1481,6 +1481,58 @@ class TestPrintCharges (CbankViewTester):
         assert_eq_output(stdout.getvalue(), dedent("""\
             Charge #1 -- 0.0
              * Datetime: 2000-01-01 00:00:00
+             * Allocation: #1
+             * Project: project1
+             * Resource: res1
+             * Comment: None
+             * Job: res1.1
+            """))
+
+
+class TestPrintRefunds (CbankViewTester):
+    
+    def test_refund (self):
+        user1 = user_by_name("user1")
+        project1 = project_by_name("project1")
+        res1 = resource_by_name("res1")
+        allocation1 = Allocation(project1, res1, 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        charge = Charge(allocation1, 0)
+        refund = Refund(charge, 0)
+        refund.datetime = datetime(2000, 1, 1)
+        Session.add(refund)
+        Session.flush()
+        stdout, stderr = capture(lambda:
+            print_refunds([refund]))
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            Refund #1 -- 0.0
+             * Datetime: 2000-01-01 00:00:00
+             * Charge: #1
+             * Allocation: #1
+             * Project: project1
+             * Resource: res1
+             * Comment: None
+             * Job: None
+            """))
+    
+    def test_job_refund (self):
+        user1 = user_by_name("user1")
+        project1 = project_by_name("project1")
+        res1 = resource_by_name("res1")
+        allocation1 = Allocation(project1, res1, 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        charge = Charge(allocation1, 0)
+        charge.job = Job("res1.1")
+        refund = Refund(charge, 0)
+        refund.datetime = datetime(2000, 1, 1)
+        Session.add(refund)
+        Session.flush()
+        stdout, stderr = capture(lambda:
+            print_refunds([refund]))
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            Refund #1 -- 0.0
+             * Datetime: 2000-01-01 00:00:00
+             * Charge: #1
              * Allocation: #1
              * Project: project1
              * Resource: res1
