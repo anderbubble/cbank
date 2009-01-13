@@ -177,7 +177,7 @@ def print_projects_report (projects, users=None, resources=None,
     allocations_q = allocations_q.join(Allocation.project)
     now = datetime.now()
     allocations_q = allocations_q.filter(
-        and_(Allocation.start<=now, Allocation.expiration>now))
+        and_(Allocation.start<=now, Allocation.end>now))
     holds_q = s.query(
         Project.id.label("project_id"),
         func.sum(Hold.amount).label("hold_sum")).group_by(Project.id)
@@ -382,7 +382,7 @@ def print_allocations_report (allocations, users=None,
             'Allocation':allocation.id,
             'Project':allocation.project,
             'Resource':allocation.resource,
-            'Expiration':format_datetime(allocation.expiration),
+            'Expiration':format_datetime(allocation.end),
             'Jobs':job_count,
             'Charged':display_units(charge_sum),
             'Available':display_units(allocation_sum),
@@ -561,7 +561,7 @@ def print_allocation (allocation):
     print " * Project: %s" % allocation.project
     print " * Resource: %s" % allocation.resource
     print " * Start: %s" % allocation.start
-    print " * Expiration: %s" % allocation.expiration
+    print " * Expiration: %s" % allocation.end
     print " * Comment: %s" % allocation.comment
 
 

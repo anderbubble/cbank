@@ -452,8 +452,8 @@ class TestNewAllocationMain (CbankTester):
         assert query.count() == 1, "didn't create an allocation"
         allocation = query.one()
         assert allocation.start == datetime(2008, 1, 1), allocation.start
-        assert allocation.expiration == datetime(2009, 1, 1), \
-            allocation.expiration
+        assert allocation.end == datetime(2009, 1, 1), \
+            allocation.end
         assert allocation.amount == 1000, allocation.amount
         assert allocation.comment == "test", allocation.comment
         assert code == 0, code
@@ -486,8 +486,8 @@ class TestNewAllocationMain (CbankTester):
         assert query.count() == 1, "didn't create an allocation"
         allocation = query.one()
         assert allocation.start == datetime(2008, 1, 1), allocation.start
-        assert allocation.expiration == datetime(2009, 1, 1), \
-            allocation.expiration
+        assert allocation.end == datetime(2009, 1, 1), \
+            allocation.end
         assert allocation.amount == 2000, allocation.amount
         assert allocation.comment == "test", allocation.comment
         assert code == 0, code
@@ -589,7 +589,7 @@ class TestNewAllocationMain (CbankTester):
         assert allocation.start == datetime(2000, 1, 1), allocation.start
         assert code == 0, code
     
-    def test_without_expiration (self):
+    def test_without_end (self):
         project = project_by_name("project1")
         resource = resource_by_name("resource1")
         query = Session.query(Allocation).filter_by(
@@ -603,8 +603,8 @@ class TestNewAllocationMain (CbankTester):
         allocation = query.one()
         now = datetime(2000, 1, 1)
         assert allocation.start == datetime(2000, 1, 1), allocation.start
-        assert allocation.expiration == datetime(2001, 1, 1), \
-            allocation.expiration
+        assert allocation.end == datetime(2001, 1, 1), \
+            allocation.end
         assert code == 0, code
 
     def test_without_resource (self):
@@ -673,7 +673,7 @@ class TestNewChargeMain (CbankTester):
         now = datetime.now()
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
-            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
         args = "project1 100 -r resource1 -c test"
@@ -697,7 +697,7 @@ class TestNewChargeMain (CbankTester):
         now = datetime.now()
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
-            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
         args = "project1 100 -r resource1 -c test asdf"
@@ -715,7 +715,7 @@ class TestNewChargeMain (CbankTester):
         now = datetime.now()
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
-            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
         args = "project1 100 -r resource1 -c test"
@@ -739,7 +739,7 @@ class TestNewChargeMain (CbankTester):
         now = datetime.now()
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
-            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
         args = "project1 100 -c test"
@@ -757,7 +757,7 @@ class TestNewChargeMain (CbankTester):
         now = datetime.now()
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
-            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
         args = "project1 100 -c test"
@@ -776,7 +776,7 @@ class TestNewChargeMain (CbankTester):
         now = datetime.now()
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
-            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
         args = "100 -r resource1 -c test"
@@ -793,7 +793,7 @@ class TestNewChargeMain (CbankTester):
         now = datetime.now()
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
-            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
         args = "project1 -r resource1 -c test"
@@ -810,7 +810,7 @@ class TestNewChargeMain (CbankTester):
         now = datetime.now()
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
-            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
         args = "project1 '-100' -r resource1 -c test"
@@ -830,7 +830,7 @@ class TestNewChargeMain (CbankTester):
         now = datetime.now()
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
-            start=now-timedelta(days=1), expiration=now+timedelta(days=1))
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
         args = "project1 100 -r resource1"
@@ -854,7 +854,7 @@ class TestNewChargeMain (CbankTester):
         now = datetime.now()
         allocation = Allocation(project=project, resource=resource,
             amount=1000, start=now-timedelta(days=1),
-            expiration=now+timedelta(days=1))
+            end=now+timedelta(days=1))
         Session.add(allocation)
         Session.commit()
         args = "project1 100 -r resource1 -c test"
@@ -884,7 +884,7 @@ class TestNewRefundMain (CbankTester):
         assert not refunds.count(), "started with existing refunds"
         allocation = Allocation(project=project, resource=resource,
             amount=1000, start=now-timedelta(days=1),
-            expiration=now+timedelta(days=1))
+            end=now+timedelta(days=1))
         charge = Charge(allocation=allocation, amount=100)
         Session.add(allocation)
         Session.add(charge)
@@ -906,7 +906,7 @@ class TestNewRefundMain (CbankTester):
         assert not refunds.count(), "started with existing refunds"
         allocation = Allocation(project=project, resource=resource,
             amount=1000, start=now-timedelta(days=1),
-            expiration=now+timedelta(days=1))
+            end=now+timedelta(days=1))
         charge = Charge(allocation=allocation, amount=100)
         Session.add(allocation)
         Session.add(charge)
@@ -925,7 +925,7 @@ class TestNewRefundMain (CbankTester):
         assert not refunds.count(), "started with existing refunds"
         allocation = Allocation(project=project, resource=resource,
             amount=1000, start=now-timedelta(days=1),
-            expiration=now+timedelta(days=1))
+            end=now+timedelta(days=1))
         charge = Charge(allocation=allocation, amount=100)
         Session.add(allocation)
         Session.add(charge)
@@ -947,7 +947,7 @@ class TestNewRefundMain (CbankTester):
         assert not refunds.count(), "started with existing refunds"
         allocation = Allocation(project=project, resource=resource,
             amount=1000, start=now-timedelta(days=1),
-            expiration=now+timedelta(days=1))
+            end=now+timedelta(days=1))
         charge = Charge(allocation=allocation, amount=100)
         Session.add(allocation)
         Session.add(charge)
@@ -969,7 +969,7 @@ class TestNewRefundMain (CbankTester):
         assert not refunds.count(), "started with existing refunds"
         allocation = Allocation(project=project, resource=resource,
             amount=1000, start=now-timedelta(days=1),
-            expiration=now+timedelta(days=1))
+            end=now+timedelta(days=1))
         charge = Charge(allocation=allocation, amount=100)
         Session.add(allocation)
         Session.add(charge)
@@ -990,7 +990,7 @@ class TestNewRefundMain (CbankTester):
         assert not refunds.count(), "started with existing refunds"
         allocation = Allocation(project=project, resource=resource,
             amount=1000, start=now-timedelta(days=1),
-            expiration=now+timedelta(days=1))
+            end=now+timedelta(days=1))
         charge = Charge(allocation=allocation, amount=100)
         Session.add(allocation)
         Session.add(charge)
@@ -1012,7 +1012,7 @@ class TestNewRefundMain (CbankTester):
         assert not refunds.count(), "started with existing refunds"
         allocation = Allocation(project=project, resource=resource,
             amount=1000, start=now-timedelta(days=1),
-            expiration=now+timedelta(days=1))
+            end=now+timedelta(days=1))
         charge = Charge(allocation=allocation, amount=100)
         refund = Refund(charge, 25)
         Session.add(allocation)
@@ -1036,7 +1036,7 @@ class TestNewRefundMain (CbankTester):
         assert not refunds.count(), "started with existing refunds"
         allocation = Allocation(project=project, resource=resource,
             amount=1000, start=now-timedelta(days=1),
-            expiration=now+timedelta(days=1))
+            end=now+timedelta(days=1))
         charge = Charge(allocation=allocation, amount=100)
         Session.add(allocation)
         Session.add(charge)
@@ -1622,7 +1622,7 @@ def allocations (projects):
 def active (allocations):
     now = datetime(2000, 1, 1)
     return (allocation for allocation in allocations
-        if allocation.start <= now and allocation.expiration > now)
+        if allocation.start <= now and allocation.end > now)
  
 
 class TestAllocationsReport (CbankTester):
@@ -1715,7 +1715,7 @@ class TestAllocationsReport (CbankTester):
     def test_after (self):
         allocations_ = allocations(current_user().projects)
         allocations_ = [a for a in allocations_
-            if a.expiration > datetime(2001, 1, 1)]
+            if a.end > datetime(2001, 1, 1)]
         code, stdout, stderr = run(
             report_allocations_main, "-a 2001-01-01".split())
         assert_equal(code, 0)
@@ -1792,7 +1792,7 @@ class TestAllocationsReport_Admin (TestAllocationsReport):
 
     def test_after (self):
         allocations_ = [a for a in Session.query(Allocation)
-            if a.expiration > datetime(2001, 1, 1)]
+            if a.end > datetime(2001, 1, 1)]
         code, stdout, stderr = run(
             report_allocations_main, "-a 2001-01-01".split())
         assert_equal(code, 0)

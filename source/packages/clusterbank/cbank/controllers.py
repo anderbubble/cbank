@@ -209,7 +209,7 @@ def new_allocation_main ():
         raise MissingResource()
     comment = options.comment or options.deprecated_comment
     allocation = Allocation(project_, options.resource, amount,
-        options.start, options.expiration)
+        options.start, options.end)
     allocation.comment = comment
     if options.commit:
         s = Session()
@@ -608,12 +608,12 @@ def report_allocations_main ():
     if not (options.after or options.before):
         now = datetime.now()
         allocations = allocations.filter(and_(
-            Allocation.expiration > now,
+            Allocation.end > now,
             Allocation.start <= now))
     else:
         if options.after:
             allocations = allocations.filter(
-                Allocation.expiration > options.after)
+                Allocation.end > options.after)
         if options.before:
             allocations = allocations.filter(
                 Allocation.start <= options.before)
@@ -1149,8 +1149,8 @@ def new_allocation_parser ():
     parser.add_option(Option("-s", "--start",
         dest="start", type="date",
         help="allocation starts at DATE", metavar="DATE"))
-    parser.add_option(Option("-e", "--expiration",
-        dest="expiration", type="date",
+    parser.add_option(Option("-e", "--end",
+        dest="end", type="date",
         help="allocation expires at DATE", metavar="DATE"))
     parser.add_option("-m", dest="deprecated_comment",
         help="deprecated: use -c instead")
@@ -1159,7 +1159,7 @@ def new_allocation_parser ():
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save the allocation"))
     now = datetime.now()
-    parser.set_defaults(start=now, expiration=datetime(now.year+1, 1, 1),
+    parser.set_defaults(start=now, end=datetime(now.year+1, 1, 1),
         commit=True, resource=configured_resource())
     return parser
 

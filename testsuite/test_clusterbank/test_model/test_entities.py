@@ -79,7 +79,7 @@ class TestAllocation (EntityTester):
         assert allocation.amount == 1500
         assert allocation.comment is None
         assert allocation.start == start
-        assert allocation.expiration == start + timedelta(days=1)
+        assert allocation.end == start + timedelta(days=1)
         assert allocation.holds == []
         assert allocation.charges == []
     
@@ -89,9 +89,9 @@ class TestAllocation (EntityTester):
             now+timedelta(days=1), now+timedelta(days=2))
         assert not allocation.active
         allocation.start = now - timedelta(days=2)
-        allocation.expiration = now - timedelta(days=1)
+        allocation.end = now - timedelta(days=1)
         assert not allocation.active
-        allocation.expiration = now + timedelta(days=1)
+        allocation.end = now + timedelta(days=1)
         assert allocation.active
     
     def test_amount_with_active_hold (self):
@@ -191,10 +191,10 @@ class TestHold (EntityTester):
     
     def test_distributed (self):
         start = datetime.now()
-        expiration = start + timedelta(days=365)
+        end = start + timedelta(days=365)
         allocations = [
-            Allocation(None, None, 600, start, expiration),
-            Allocation(None, None, 600, start, expiration)]
+            Allocation(None, None, 600, start, end),
+            Allocation(None, None, 600, start, end)]
         holds = Hold.distributed(allocations, amount=900)
         assert len(holds) == 2
         assert holds[0].allocation is allocations[0]
@@ -204,10 +204,10 @@ class TestHold (EntityTester):
     
     def test_distributed_zero_amount (self):
         start = datetime.now()
-        expiration = start + timedelta(days=365)
+        end = start + timedelta(days=365)
         allocations = [
-            Allocation(None, None, 600, start, expiration),
-            Allocation(None, None, 600, start, expiration)]
+            Allocation(None, None, 600, start, end),
+            Allocation(None, None, 600, start, end)]
         holds = Hold.distributed(allocations, amount=0)
         assert len(holds) == 1, "holds: %i" % len(holds)
         hold = holds[0]
@@ -382,10 +382,10 @@ class TestCharge (EntityTester):
     
     def test_distributed (self):
         start = datetime.now()
-        expiration = start + timedelta(days=365)
+        end = start + timedelta(days=365)
         allocations = [
-            Allocation(None, None, 600, start, expiration),
-            Allocation(None, None, 600, start, expiration)]
+            Allocation(None, None, 600, start, end),
+            Allocation(None, None, 600, start, end)]
         charges = Charge.distributed(allocations, amount=900)
         assert len(charges) == 2
         assert sum(charge.amount for charge in charges) == 900
@@ -396,10 +396,10 @@ class TestCharge (EntityTester):
     
     def test_distributed_zero_amount (self):
         start = datetime.now()
-        expiration = start + timedelta(days=365)
+        end = start + timedelta(days=365)
         allocations = [
-            Allocation(None, None, 600, start, expiration),
-            Allocation(None, None, 600, start, expiration)]
+            Allocation(None, None, 600, start, end),
+            Allocation(None, None, 600, start, end)]
         charges = Charge.distributed(allocations, amount=0)
         assert len(charges) == 1, "charges: %i" % len(charges)
         charge = charges[0]
@@ -408,10 +408,10 @@ class TestCharge (EntityTester):
     
     def test_distributed_with_insufficient_allocation (self):
         start = datetime.now()
-        expiration = start + timedelta(days=365)
+        end = start + timedelta(days=365)
         allocations = [
-            Allocation(None, None, 600, start, expiration),
-            Allocation(None, None, 600, start, expiration)]
+            Allocation(None, None, 600, start, end),
+            Allocation(None, None, 600, start, end)]
         charges = Charge.distributed(allocations, amount=1300)
         assert len(charges) == 2
         assert charges[0].allocation is allocations[0]

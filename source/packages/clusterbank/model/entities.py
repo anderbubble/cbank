@@ -222,7 +222,7 @@ class Project (UpstreamEntity):
         """
         now = datetime.now()
         allocations = [allocation for allocation in self.allocations
-            if allocation.start <= now and allocation.expiration > now
+            if allocation.start <= now and allocation.end > now
             and allocation.resource == resource]
         charges = Charge.distributed(allocations, amount)
         return charges
@@ -265,7 +265,7 @@ class Allocation (Entity):
     datetime -- when the allocation was entered
     amount -- amount allocated
     start -- when the allocation becomes active
-    expiration -- when the allocation expires
+    end -- when the allocation expires
     comment -- misc. comments
     holds -- holds on this allocation
     charges -- charges against this allocation
@@ -279,7 +279,7 @@ class Allocation (Entity):
     amount_available -- the amount available to be charged
     """
     
-    def __init__ (self, project, resource, amount, start, expiration):
+    def __init__ (self, project, resource, amount, start, end):
         """Initialize a new resource allocation.
         
         Arguments:
@@ -287,7 +287,7 @@ class Allocation (Entity):
         resource -- the resource allocated
         amount -- how much of the resource to allocate
         start -- when the allocation becomes active
-        expiration -- when the allocation is no longer active
+        end -- when the allocation is no longer active
         """
         Entity.__init__(self)
         self.datetime = datetime.now()
@@ -295,7 +295,7 @@ class Allocation (Entity):
         self.resource = resource
         self.amount = amount
         self.start = start
-        self.expiration = expiration
+        self.end = end
         self.comment = None
         self.holds = []
         self.charges = []
@@ -314,7 +314,7 @@ class Allocation (Entity):
     
     def _get_active (self):
         """Determine whether or not this allocation is still active."""
-        return self.start <= datetime.now() < self.expiration
+        return self.start <= datetime.now() < self.end
     
     active = property(_get_active)
 
