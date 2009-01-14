@@ -342,18 +342,6 @@ def import_jobs_main ():
             if line_type not in job_entry_types:
                 continue
         job = job_from_pbs(line)
-        try:
-            # If the job is related to a user or project, it will already be
-            # in the session. We have to remove it here to prevent it from
-            # being flushed to the db during the merge.
-            #
-            # This is a bug in SA 0.5.0rc4, and should be fixed in SA trunk.
-            # (http://www.sqlalchemy.org/trac/changeset/5378)
-            # Try removing this block after SA 0.4.0rc5 (or 0.4.0) is released.
-            s.expunge(job)
-        except InvalidRequestError:
-            pass # The job wasn't in the session.
-        job = s.merge(job)
         if options.verbose:
             print >> sys.stderr, job
         counter += 1

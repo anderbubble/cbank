@@ -253,56 +253,56 @@ def job_from_pbs (entry):
     
     Supports Q, S, and E entries.
     """
-    id_string, message_text = entry.split(";", 3)[2:]
-    messages = dict(message.split("=", 1)
-        for message in message_text.split(" ") if "=" in message)
+    id_, message_text = entry.split(";", 3)[2:]
+    attributes = dict(attribute.split("=", 1)
+        for attribute in message_text.split(" ") if "=" in attribute)
     try:
-        user_ = user(messages['user'])
+        user_ = user(attributes['user'])
     except (KeyError, NotFound):
         user_ = None
     try:
-        account_ = project(messages['account'])
+        account_ = project(attributes['account'])
     except (KeyError, NotFound):
         account_ = None
-    job_ = Job(id_string)
-    job_.queue = messages.get("queue", None)
+    job_ = _entity_by_id(Job, id_)
+    job_.queue = attributes.get("queue")
     job_.user = user_
-    job_.group = messages.get("group", None)
+    job_.group = attributes.get("group")
     job_.account = account_
-    job_.name = messages.get("jobname")
+    job_.name = attributes.get("jobname")
     try:
-        job_.ctime = datetime.fromtimestamp(float(messages['ctime']))
+        job_.ctime = datetime.fromtimestamp(float(attributes['ctime']))
     except (KeyError, ValueError):
         pass
     try:
-        job_.qtime = datetime.fromtimestamp(float(messages['qtime']))
+        job_.qtime = datetime.fromtimestamp(float(attributes['qtime']))
     except (KeyError, ValueError):
         pass
     try:
-        job_.etime = datetime.fromtimestamp(float(messages['etime']))
+        job_.etime = datetime.fromtimestamp(float(attributes['etime']))
     except (KeyError, ValueError):
         pass
     try:
-        job_.start = datetime.fromtimestamp(float(messages['start']))
+        job_.start = datetime.fromtimestamp(float(attributes['start']))
     except (KeyError, ValueError):
         pass
     try:
-        job_.end = datetime.fromtimestamp(float(messages['end']))
+        job_.end = datetime.fromtimestamp(float(attributes['end']))
     except (KeyError, ValueError):
         pass
     try:
-        job_.exit_status = int(messages['Exit_status'])
+        job_.exit_status = int(attributes['Exit_status'])
     except (KeyError, ValueError):
         pass
-    job_.exec_host = messages.get("exec_host")
+    job_.exec_host = attributes.get("exec_host")
     job_.resource_list = dict_parser(dict_parser(
-            subdict(messages, "Resource_List."),
+            subdict(attributes, "Resource_List."),
         int), parse_timedelta)
     job_.resources_used = dict_parser(dict_parser(
-            subdict(messages, "resources_used."),
+            subdict(attributes, "resources_used."),
         int), parse_timedelta)
     try:
-        job_.session = int(messages['session'])
+        job_.session = int(attributes['session'])
     except (KeyError, ValueError):
         pass
     return job_

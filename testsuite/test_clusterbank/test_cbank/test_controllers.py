@@ -1218,7 +1218,32 @@ class TestImportJobs (CbankTester):
         assert_equal(job_.id, "691908.jmayor5.lcrc.anl.gov")
         assert_identical(job_.user, user("user1"))
         assert_identical(job_.account, project("project1"))
-
+    
+    def test_job_from_pbs_e_with_charges (self):
+        entry = "04/18/2008 03:35:28;E;691908.jmayor5.lcrc.anl.gov;user=user1 account=project2"
+        stdin = StringIO()
+        stdin.write(entry)
+        stdin.seek(0)
+        # import the job once
+        code, stdout, stderr = run(import_jobs_main, [], stdin)
+        # charge the job to an allocation
+        allocation = Allocation(project("project1"), resource("resource1"), 0,
+            datetime(2008, 1, 1), datetime(2009, 1, 1))
+        charge = Charge(allocation, 0)
+        job = Session.query(Job).one()
+        job.charges = [charge]
+        Session.commit()
+        charge_id = charge.id
+        # reset
+        stdin.seek(0)
+        Session.close()
+        # import the job again
+        code, stdout, stderr = run(import_jobs_main, [], stdin)
+        assert_equal(code, 0)
+        job = Session.query(Job).one()
+        assert_equal(set(charge.id for charge in job.charges),
+            set([charge_id]))
+    
     def test_job_from_pbs_e_update_run (self):
         entry1 = "04/18/2008 03:35:28;E;691908.jmayor5.lcrc.anl.gov;user=user2 account=project2"
         entry2 = "04/18/2008 03:35:28;E;691908.jmayor5.lcrc.anl.gov;user=user2 account=project2"
