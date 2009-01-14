@@ -253,9 +253,12 @@ def job_from_pbs (entry):
     
     Supports Q, S, and E entries.
     """
-    entry_type, id_, message_text = entry.split(";", 3)[1:]
+    try:
+        entry_type, id_, message_text = entry.split(";", 3)[1:]
+    except ValueError:
+        raise ValueError("Invalid job record: %s" % entry)
     if entry_type not in ("Q", "S", "E"):
-        raise ValueError("Invalid entry type %s" % entry_type)
+        raise ValueError("Invalid job record: %s" % entry)
     attributes = dict(attribute.split("=", 1)
         for attribute in message_text.split(" ") if "=" in attribute)
     try:

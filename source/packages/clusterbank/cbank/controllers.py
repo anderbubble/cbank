@@ -335,7 +335,8 @@ def import_jobs_main ():
     for line in read(sys.stdin):
         try:
             job = job_from_pbs(line)
-        except ValueError:
+        except ValueError, e:
+            print >> sys.stderr, e
             continue
         else:
             if options.verbose:
