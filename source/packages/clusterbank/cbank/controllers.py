@@ -337,12 +337,13 @@ def import_jobs_main ():
             job = job_from_pbs(line)
         except ValueError:
             continue
-        if options.verbose:
-            print >> sys.stderr, job
-        counter += 1
-        if counter >= 100:
-            s.commit()
-            counter = 0
+        else:
+            if options.verbose:
+                print >> sys.stderr, job
+            counter += 1
+            if counter >= 100:
+                s.commit()
+                counter = 0
     if counter != 0:
         s.commit()
 
