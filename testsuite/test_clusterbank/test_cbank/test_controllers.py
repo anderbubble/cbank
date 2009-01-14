@@ -1245,7 +1245,7 @@ class TestImportJobs (CbankTester):
             set([charge_id]))
     
     def test_job_from_pbs_e_update_run (self):
-        entry1 = "04/18/2008 03:35:28;E;691908.jmayor5.lcrc.anl.gov;user=user2 account=project2"
+        entry1 = "04/18/2008 03:35:28;E;691908.jmayor5.lcrc.anl.gov;user=user2 account=project1"
         entry2 = "04/18/2008 03:35:28;E;691908.jmayor5.lcrc.anl.gov;user=user2 account=project2"
         stdin = StringIO()
         stdin.write(entry1)
