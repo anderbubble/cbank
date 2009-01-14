@@ -267,46 +267,42 @@ def job_from_pbs (entry):
     except (KeyError, NotFound):
         account_ = None
     job_ = _entity_by_id(Job, id_)
-    job_.queue = attributes.get("queue")
     job_.user = user_
-    job_.group = attributes.get("group")
     job_.account = account_
-    job_.name = attributes.get("jobname")
+    for attribute in ("queue", "group", "exec_host"):
+        try:
+            value = attributes[attribute]
+        except KeyError:
+            continue
+        else:
+            setattr(job_, attribute, value)
+    for attribute in ("ctime", "qtime", "etime", "start", "end"):
+        try:
+            value = datetime.fromtimestamp(float(attributes[attribute]))
+        except KeyError:
+            continue
+        else:
+            setattr(job_, attribute, value)
+    # The following are not generalized because of discrepancies in
+    # capitalization.
     try:
-        job_.ctime = datetime.fromtimestamp(float(attributes['ctime']))
-    except (KeyError, ValueError):
-        pass
-    try:
-        job_.qtime = datetime.fromtimestamp(float(attributes['qtime']))
-    except (KeyError, ValueError):
-        pass
-    try:
-        job_.etime = datetime.fromtimestamp(float(attributes['etime']))
-    except (KeyError, ValueError):
-        pass
-    try:
-        job_.start = datetime.fromtimestamp(float(attributes['start']))
-    except (KeyError, ValueError):
-        pass
-    try:
-        job_.end = datetime.fromtimestamp(float(attributes['end']))
-    except (KeyError, ValueError):
+        job_.name = attributes["jobname"]
+    except KeyError:
         pass
     try:
         job_.exit_status = int(attributes['Exit_status'])
     except (KeyError, ValueError):
         pass
-    job_.exec_host = attributes.get("exec_host")
+    try:
+        job_.session = int(attributes['session'])
+    except (KeyError, ValueError):
+        pass
     job_.resource_list = dict_parser(dict_parser(
             subdict(attributes, "Resource_List."),
         int), parse_timedelta)
     job_.resources_used = dict_parser(dict_parser(
             subdict(attributes, "resources_used."),
         int), parse_timedelta)
-    try:
-        job_.session = int(attributes['session'])
-    except (KeyError, ValueError):
-        pass
     return job_
 
 
