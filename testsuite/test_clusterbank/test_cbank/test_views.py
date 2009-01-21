@@ -17,9 +17,9 @@ from clusterbank.controllers import user_by_name, project_by_name, \
     resource_by_name, Session, user, project, resource
 from clusterbank.model.database import metadata
 import clusterbank.upstreams.default as upstream
-from clusterbank.cbank.views import print_users_report, \
-    print_projects_report, print_allocations_report, print_holds_report, \
-    print_jobs_report, print_charges_report, print_charges, print_jobs, \
+from clusterbank.cbank.views import print_users_list, \
+    print_projects_list, print_allocations_list, print_holds_list, \
+    print_jobs_list, print_charges_list, print_charges, print_jobs, \
     print_refunds, print_holds, display_units
 
 
@@ -111,7 +111,7 @@ class TestUsersReport (CbankViewTester):
     
     def test_blank (self):
         users = [user_by_name(user) for user in ["user1", "user2"]]
-        stdout, stderr = capture(lambda: print_users_report(users))
+        stdout, stderr = capture(lambda: print_users_list(users))
         assert_eq_output(stdout.getvalue(), dedent("""\
             user1             0             0.0
             user2             0             0.0
@@ -142,7 +142,7 @@ class TestUsersReport (CbankViewTester):
         j2.user = user2
         j3.user = user2
         j4.user = user2
-        stdout, stderr = capture(lambda: print_users_report([user1, user2]))
+        stdout, stderr = capture(lambda: print_users_list([user1, user2]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             user1             1             0.0
             user2             3             0.0
@@ -177,7 +177,7 @@ class TestUsersReport (CbankViewTester):
         j2.charges = [Charge(a1, 7)]
         j3.charges = [Charge(a2, 3)]
         j4.charges = [Charge(a2, 5)]
-        stdout, stderr = capture(lambda: print_users_report([user1, user2]))
+        stdout, stderr = capture(lambda: print_users_list([user1, user2]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             user1             1            10.0
             user2             3            15.0
@@ -216,7 +216,7 @@ class TestUsersReport (CbankViewTester):
         Refund(j2.charges[0], 3)
         Refund(j2.charges[0], 4)
         Refund(j4.charges[0], 3)
-        stdout, stderr = capture(lambda: print_users_report([user1, user2]))
+        stdout, stderr = capture(lambda: print_users_list([user1, user2]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             user1             1             1.0
             user2             3             5.0
@@ -256,7 +256,7 @@ class TestUsersReport (CbankViewTester):
         Refund(j2.charges[0], 4)
         Refund(j4.charges[0], 3)
         stdout, stderr = capture(lambda:
-            print_users_report([user1, user2], projects=[project1]))
+            print_users_list([user1, user2], projects=[project1]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             user1             0             1.0
             user2             0             0.0
@@ -297,7 +297,7 @@ class TestUsersReport (CbankViewTester):
         Refund(j2.charges[0], 4)
         Refund(j4.charges[0], 3)
         stdout, stderr = capture(lambda:
-            print_users_report([user1, user2], resources=[res2]))
+            print_users_list([user1, user2], resources=[res2]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             user1             0             0.0
             user2             2             5.0
@@ -346,7 +346,7 @@ class TestUsersReport (CbankViewTester):
         Refund(j2.charges[0], 4)
         Refund(j4.charges[0], 3)
         stdout, stderr = capture(lambda:
-            print_users_report([user1, user2], after=datetime(2000, 1, 3)))
+            print_users_list([user1, user2], after=datetime(2000, 1, 3)))
         assert_eq_output(stdout.getvalue(), dedent("""\
             user1             0             0.0
             user2             2             5.0
@@ -395,7 +395,7 @@ class TestUsersReport (CbankViewTester):
         Refund(j2.charges[0], 4)
         Refund(j4.charges[0], 3)
         stdout, stderr = capture(lambda:
-            print_users_report([user1, user2], before=datetime(2000, 1, 4)))
+            print_users_list([user1, user2], before=datetime(2000, 1, 4)))
         assert_eq_output(stdout.getvalue(), dedent("""\
             user1             1             1.0
             user2             2             0.0
@@ -412,7 +412,7 @@ class TestUsersReport (CbankViewTester):
 class TestProjectsReport (CbankViewTester):
     
     def test_blank (self):
-        stdout, stderr = capture(lambda: print_projects_report([]))
+        stdout, stderr = capture(lambda: print_projects_list([]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
@@ -427,7 +427,7 @@ class TestProjectsReport (CbankViewTester):
         project1 = project("project1")
         project2 = project("project2")
         stdout, stderr = capture(lambda:
-            print_projects_report([project1, project2]))
+            print_projects_list([project1, project2]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             project1              0             0.0             0.0
             project2              0             0.0             0.0
@@ -452,7 +452,7 @@ class TestProjectsReport (CbankViewTester):
         Allocation(project2, res1, 30, start, end)
         Allocation(project2, res2, 35, start, end)
         stdout, stderr = capture(lambda:
-            print_projects_report([project1, project2]))
+            print_projects_list([project1, project2]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             project1              0             0.0            30.0
             project2              0             0.0            65.0
@@ -484,7 +484,7 @@ class TestProjectsReport (CbankViewTester):
         a4h1.active = False
         Hold(a4, 8)
         stdout, stderr = capture(lambda:
-            print_projects_report([project1, project2]))
+            print_projects_list([project1, project2]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             project1              0             0.0             5.0
             project2              0             0.0            57.0
@@ -511,7 +511,7 @@ class TestProjectsReport (CbankViewTester):
         j4.account = project2
         j5.account = project2
         stdout, stderr = capture(lambda:
-            print_projects_report([project1, project2]))
+            print_projects_list([project1, project2]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             project1              3             0.0             0.0
             project2              2             0.0             0.0
@@ -551,7 +551,7 @@ class TestProjectsReport (CbankViewTester):
         j4.charges = [Charge(a4, 9)]
         j5.charges = [Charge(a4, 8)]
         stdout, stderr = capture(lambda:
-            print_projects_report([project1, project2]))
+            print_projects_list([project1, project2]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             project1              3            30.0             0.0
             project2              2            17.0            48.0
@@ -595,7 +595,7 @@ class TestProjectsReport (CbankViewTester):
         Refund(j2.charges[0], 5)
         Refund(j5.charges[0], 8)
         stdout, stderr = capture(lambda:
-            print_projects_report([project1, project2]))
+            print_projects_list([project1, project2]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             project1              3            18.0            12.0
             project2              2             9.0            56.0
@@ -649,7 +649,7 @@ class TestProjectsReport (CbankViewTester):
         Refund(j2.charges[0], 5)
         Refund(j5.charges[0], 8)
         stdout, stderr = capture(lambda:
-            print_projects_report([project1, project2],
+            print_projects_list([project1, project2],
                 after=datetime(2000, 1, 3)))
         assert_eq_output(stdout.getvalue(), dedent("""\
             project1              1            12.0            12.0
@@ -704,7 +704,7 @@ class TestProjectsReport (CbankViewTester):
         Refund(j2.charges[0], 5)
         Refund(j5.charges[0], 8)
         stdout, stderr = capture(lambda:
-            print_projects_report([project1, project2],
+            print_projects_list([project1, project2],
                 before=datetime(2000, 1, 3)))
         assert_eq_output(stdout.getvalue(), dedent("""\
             project1              2             6.0            12.0
@@ -753,7 +753,7 @@ class TestProjectsReport (CbankViewTester):
         Refund(j2.charges[0], 5)
         Refund(j5.charges[0], 8)
         stdout, stderr = capture(lambda:
-            print_projects_report([project1, project2], users=[user1]))
+            print_projects_list([project1, project2], users=[user1]))
         stdout_ = dedent("""\
             project1              2            11.0            12.0
             project2              1             0.0            56.0
@@ -772,7 +772,7 @@ class TestProjectsReport (CbankViewTester):
 class TestAllocationsReport (CbankViewTester):
     
     def test_blank (self):
-        stdout, stderr = capture(lambda: print_allocations_report([]))
+        stdout, stderr = capture(lambda: print_allocations_list([]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
@@ -796,7 +796,7 @@ class TestAllocationsReport (CbankViewTester):
         a4 = Allocation(project2, res2, 35, start, end)
         Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda:
-            print_allocations_report([a1, a2, a3, a4]))
+            print_allocations_list([a1, a2, a3, a4]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             1    2000-01-08 res1     project1              0           0.0          10.0
             2    2000-01-08 res1     project1              0           0.0          20.0
@@ -831,7 +831,7 @@ class TestAllocationsReport (CbankViewTester):
         h5.active = False
         Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda:
-            print_allocations_report([a1, a2, a3, a4]))
+            print_allocations_list([a1, a2, a3, a4]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             1    2000-01-08 res1     project1              0           0.0           0.0
             2    2000-01-08 res1     project1              0           0.0          15.0
@@ -864,7 +864,7 @@ class TestAllocationsReport (CbankViewTester):
         Charge(a4, 8)
         Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda:
-            print_allocations_report([a1, a2, a3, a4]))
+            print_allocations_list([a1, a2, a3, a4]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             1    2000-01-08 res1     project1              0          10.0           0.0
             2    2000-01-08 res1     project1              0          20.0           0.0
@@ -901,7 +901,7 @@ class TestAllocationsReport (CbankViewTester):
         Refund(c5, 8)
         Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda:
-            print_allocations_report([a1, a2, a3, a4]))
+            print_allocations_list([a1, a2, a3, a4]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             1    2000-01-08 res1     project1              0           6.0           4.0
             2    2000-01-08 res1     project1              0          12.0           8.0
@@ -943,7 +943,7 @@ class TestAllocationsReport (CbankViewTester):
         c5.job = Job("res2.2")
         Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda:
-            print_allocations_report([a1, a2, a3, a4]))
+            print_allocations_list([a1, a2, a3, a4]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             1    2000-01-08 res1     project1              1           6.0           4.0
             2    2000-01-08 res1     project1              2          12.0           8.0
@@ -995,7 +995,7 @@ class TestAllocationsReport (CbankViewTester):
         c5.job.user = user2
         Session.flush() # give the allocations ids
         stdout, stderr = capture(lambda:
-            print_allocations_report([a1, a2, a3, a4], users=[user1]))
+            print_allocations_list([a1, a2, a3, a4], users=[user1]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             1    2000-01-08 res1     project1              1           6.0           4.0
             2    2000-01-08 res1     project1              1           5.0           8.0
@@ -1052,7 +1052,7 @@ class TestAllocationsReport (CbankViewTester):
         c5.job.end = datetime(2000, 1, 6)
         Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda:
-            print_allocations_report([a1, a2, a3, a4],
+            print_allocations_list([a1, a2, a3, a4],
                                      after=datetime(2000, 1, 4)))
         assert_eq_output(stdout.getvalue(), dedent("""\
             1    2000-01-08 res1     project1              0           0.0           4.0
@@ -1110,7 +1110,7 @@ class TestAllocationsReport (CbankViewTester):
         c5.job.start = datetime(2000, 1, 5)
         Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda:
-            print_allocations_report([a1, a2, a3, a4],
+            print_allocations_list([a1, a2, a3, a4],
                                      before=datetime(2000, 1, 4)))
         assert_eq_output(stdout.getvalue(), dedent("""\
             1    2000-01-08 res1     project1              1           6.0           4.0
@@ -1130,7 +1130,7 @@ class TestAllocationsReport (CbankViewTester):
 class TestHoldsReport (CbankViewTester):
     
     def test_blank (self):
-        stdout, stderr = capture(lambda: print_holds_report([]))
+        stdout, stderr = capture(lambda: print_holds_list([]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
@@ -1167,7 +1167,7 @@ class TestHoldsReport (CbankViewTester):
             hold.datetime = datetime(2000, 1, 1)
         Session.flush() # assign hold ids
         stdout, stderr = capture(lambda:
-            print_holds_report([h1, h2, h3, h4, h5]))
+            print_holds_list([h1, h2, h3, h4, h5]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             1      2000-01-01 res1     project1        user1             10.0
             2      2000-01-01 res1     project1        user1             15.0
@@ -1193,7 +1193,7 @@ class TestJobsReport (CbankViewTester):
         CbankViewTester.teardown(self)
     
     def test_blank (self):
-        stdout, stderr = capture(lambda: print_jobs_report([]))
+        stdout, stderr = capture(lambda: print_jobs_list([]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
@@ -1209,7 +1209,7 @@ class TestJobsReport (CbankViewTester):
         jobs = [Job("res1.1"), Job("res1.2"), Job("res1.3")]
         for job in jobs:
             s.add(job)
-        stdout, stderr = capture(lambda: print_jobs_report(jobs))
+        stdout, stderr = capture(lambda: print_jobs_list(jobs))
         assert_eq_output(stdout.getvalue(), dedent("""\
             res1.1                                                                      0.0
             res1.2                                                                      0.0
@@ -1229,7 +1229,7 @@ class TestJobsReport (CbankViewTester):
         job.start = datetime(2000, 1, 1)
         job.end = datetime(2000, 2, 1)
         s.add(job)
-        stdout, stderr = capture(lambda: print_jobs_report([job]))
+        stdout, stderr = capture(lambda: print_jobs_list([job]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             res1.1                                                  744:00:00           0.0
             """))
@@ -1265,7 +1265,7 @@ class TestJobsReport (CbankViewTester):
         j1.end = j1.start + timedelta(minutes=30)
         for job in [j1, j2, j3]:
             s.add(job)
-        stdout, stderr = capture(lambda: print_jobs_report([j1, j2, j3]))
+        stdout, stderr = capture(lambda: print_jobs_list([j1, j2, j3]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             res1.1              somename            project1          0:30:00          25.0
             res1.2                         user1                                        0.0
@@ -1283,7 +1283,7 @@ class TestJobsReport (CbankViewTester):
 class TestChargesReport (CbankViewTester):
     
     def test_blank (self):
-        stdout, stderr = capture(lambda: print_charges_report([]))
+        stdout, stderr = capture(lambda: print_charges_list([]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
@@ -1316,7 +1316,7 @@ class TestChargesReport (CbankViewTester):
             charge.datetime = datetime(2000, 1, 1)
         Session.flush() # assign charge ids
         stdout, stderr = capture(lambda:
-            print_charges_report([c1, c2, c3, c4, c5]))
+            print_charges_list([c1, c2, c3, c4, c5]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             1      2000-01-01 res1     project1                 10.0
             2      2000-01-01 res1     project1                 15.0
@@ -1358,7 +1358,7 @@ class TestChargesReport (CbankViewTester):
         Refund(c5, 8)
         Session.flush() # assign charge ids
         stdout, stderr = capture(lambda:
-            print_charges_report([c1, c2, c3, c4, c5]))
+            print_charges_list([c1, c2, c3, c4, c5]))
         assert_eq_output(stdout.getvalue(), dedent("""\
             1      2000-01-01 res1     project1                  6.0
             2      2000-01-01 res1     project1                  7.0

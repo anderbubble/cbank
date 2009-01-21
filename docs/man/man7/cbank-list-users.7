@@ -1,51 +1,54 @@
-.Dd 26 November 2008
+.Dd 21 January 2009
 .Os Python 2.x
 .Dt CBANK 7 USD
 .Sh NAME
-.Nm cbank-report-holds
+.Nm cbank-list-users
 .Nd clusterbank command-line interface
 .Sh SYNOPSIS
 .Nm
 .Op options
 .Sh DESCRIPTION
-For each applicable active hold report the date that the hold was created; the associated resource, project, and user; and the amount held.
+For each applicable user, list the number of jobs and the total amount charged.
 .Sh OPTIONS
 .Bl -tag
 .It Fl u Ar user
-Report holds associated
+Report jobs and charges for
 .Ar user .
 If no
 .Ar project
 is specified, projects that
 .Ar user
-is a member of will be included in the report.
+is a member of will be included in the list.
 .It Fl p Ar project
-Report holds on
+Report jobs and charges of
 .Ar project .
+If no
+.Ar user
+is specified, members of
+.Ar project
+will be included in the list.
 .It Fl r Ar resource
-Report holds for
+Report jobs and charges on
 .Ar resource .
 (default specified in
 .Pa /etc/clusterbank.conf )
 .It Fl a Ar date
-Report holds created after (and including)
+Report jobs and charges after (and including)
 .Ar date .
 .It Fl b Ar date
-Report holds created before (and excluding)
+Report jobs and charges before (and excluding)
 .Ar date .
-.It Fl c
-Report associated comments.
 .It Fl l
 Do not truncate long string fields.
 .El
 .Sh EXAMPLES
-Report holds on the project 'grail' associated with users 'monty' and 'python':
+The projects 'grail' and 'circus':
 .Bd -filled -offset indent
 .Nm
--p grail -u monty -u python
+-p grail -p circus
 .Ed
 .Pp
-Report holds associated with 'monty' between 5 October 1969 and 5 December 1974:
+By user 'monty' between 5 October 1969 and 5 December 1974:
 .Bd -filled -offset indent
 .Nm
 -u monty -a 1969-10-05 -b 1974-12-05
@@ -58,7 +61,7 @@ Global configuration and defaults.
 .El
 .Sh SEE ALSO
 .Xr cbank 7 ,
-.Xr cbank-report 7
+.Xr cbank-list 7
 .Sh AUTHORS
 .An Jonathon Anderson
 .Ad janderso@alcf.anl.gov

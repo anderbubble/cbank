@@ -1,4 +1,4 @@
-.Dd 29 August 2008
+.Dd 21 January 2009
 .Os Python 2.x
 .Dt CBANK 7 USD
 .Sh NAME
@@ -13,8 +13,8 @@ A metacommand that dispatches to another
 .Bl -tag
 .It new
 Create new enties (allocations, charges, etc.).
-.It report (default)
-Generate reports.
+.It list (default)
+Generate lists.
 .It detail
 Display all data for a given entity.
 .El
@@ -27,7 +27,7 @@ Any non-ambiguous value for
 is valid. Therefore, the following commands are equivalent:
 .Bd -filled -offset indent
 .Nm
-report
+list
 .Ed
 .Bd -filled -offset indent -compact
 .Nm
@@ -45,7 +45,7 @@ Global configuration and defaults.
 .El
 .Sh SEE ALSO
 .Xr cbank-new 7 ,
-.Xr cbank-report 7 ,
+.Xr cbank-list 7 ,
 .Xr cbank-detail 7
 .Sh AUTHORS
 .An Jonathon Anderson

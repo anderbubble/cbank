@@ -1,54 +1,44 @@
-.Dd 3 December 2008
+.Dd 21 January 2009
 .Os Python 2.x
 .Dt CBANK 7 USD
 .Sh NAME
-.Nm cbank-report-users
+.Nm cbank-list-jobs
 .Nd clusterbank command-line interface
 .Sh SYNOPSIS
 .Nm
 .Op options
 .Sh DESCRIPTION
-For each applicable user, report the number of jobs and the total amount charged.
+For each applicable job list the id, name, user, account, and duration, as well as the effective amount charged.
 .Sh OPTIONS
 .Bl -tag
 .It Fl u Ar user
-Report jobs and charges for
+Report jobs associated with
 .Ar user .
-If no
-.Ar project
-is specified, projects that
-.Ar user
-is a member of will be included in the report.
 .It Fl p Ar project
-Report jobs and charges of
+Report jobs for
 .Ar project .
-If no
-.Ar user
-is specified, members of
-.Ar project
-will be included in the report.
 .It Fl r Ar resource
-Report jobs and charges on
+Report jobs on
 .Ar resource .
 (default specified in
 .Pa /etc/clusterbank.conf )
 .It Fl a Ar date
-Report jobs and charges after (and including)
+Report jobs that end after
 .Ar date .
 .It Fl b Ar date
-Report jobs and charges before (and excluding)
+Report jobs that start before or on
 .Ar date .
 .It Fl l
 Do not truncate long string fields.
 .El
 .Sh EXAMPLES
-The projects 'grail' and 'circus':
+Report jobs for the project 'grail' associated with users 'monty' or 'python':
 .Bd -filled -offset indent
 .Nm
--p grail -p circus
+-p grail -u monty -u python
 .Ed
 .Pp
-By user 'monty' between 5 October 1969 and 5 December 1974:
+Report jobs associated with 'monty' that ran between 5 October 1969 and 5 December 1974:
 .Bd -filled -offset indent
 .Nm
 -u monty -a 1969-10-05 -b 1974-12-05
@@ -61,7 +51,7 @@ Global configuration and defaults.
 .El
 .Sh SEE ALSO
 .Xr cbank 7 ,
-.Xr cbank-report 7
+.Xr cbank-list 7
 .Sh AUTHORS
 .An Jonathon Anderson
 .Ad janderso@alcf.anl.gov

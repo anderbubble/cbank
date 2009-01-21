@@ -1,15 +1,15 @@
 """Views of the model provided by cbank.
 
 Classes:
-Formatter -- a tabular formatter for reports
+Formatter -- a tabular formatter for lists
 
 Functions:
-print_users_report -- charges for users
-print_projects_report -- allocations and charges for projects
-print_allocations_report -- allocation and charges for allocations
-print_holds_report -- a table of holds
-print_jobs_report -- a table of jobs
-print_charges_report -- a table of charges
+print_users_list -- charges for users
+print_projects_list -- allocations and charges for projects
+print_allocations_list -- allocation and charges for allocations
+print_holds_list -- a table of holds
+print_jobs_list -- a table of jobs
+print_charges_list -- a table of charges
 print_allocations -- print multiple allocations
 print_allocation -- print a single allocation
 print_holds -- print multiple holds
@@ -42,23 +42,23 @@ from clusterbank.model import (User, Project, Resource, Allocation, Hold,
 from clusterbank.controllers import Session
 
 __all__ = ["unit_definition", "convert_units", "display_units",
-    "print_users_report", "print_projects_report", "print_allocations_report",
-    "print_holds_report", "print_jobs_report", "print_charges_report"]
+    "print_users_list", "print_projects_list", "print_allocations_list",
+    "print_holds_list", "print_jobs_list", "print_charges_list"]
 
 
 locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 
 
-def print_users_report (users, projects=None, resources=None,
+def print_users_list (users, projects=None, resources=None,
                         after=None, before=None, truncate=True):
     
-    """Users report.
+    """Users list.
     
-    The users report lists the number of charges and total amount charged
+    The users list lists the number of charges and total amount charged
     for each specified user.
     
     Arguments:
-    users -- users to report
+    users -- users to list
     
     Keyword arguments:
     projects -- only show charges for these projects
@@ -141,16 +141,16 @@ def print_users_report (users, projects=None, resources=None,
     print >> sys.stderr, unit_definition()
 
 
-def print_projects_report (projects, users=None, resources=None,
+def print_projects_list (projects, users=None, resources=None,
                            before=None, after=None, truncate=True):
     
-    """Projects report.
+    """Projects list.
     
-    The projects report lists allocations and charges for each project
+    The projects list lists allocations and charges for each project
     in the system.
     
     Arguments:
-    projects -- projects to report
+    projects -- projects to list
     
     Keyword arguments:
     users -- only show charges by these users
@@ -270,23 +270,23 @@ def print_projects_report (projects, users=None, resources=None,
     print >> sys.stderr, unit_definition()
 
 
-def print_allocations_report (allocations, users=None,
+def print_allocations_list (allocations, users=None,
                               before=None, after=None,
                               comments=False, truncate=True):
     
-    """Allocations report.
+    """Allocations list.
     
-    The allocations report lists attributes of and charges against allocations
+    The allocations list lists attributes of and charges against allocations
     in the system.
     
     Arguments:
-    allocations -- allocations to report
+    allocations -- allocations to list
     
     Keyword arguments:
     users -- only show charges by these users
     after -- only show charges after this datetime (inclusive)
     before -- only show charges before this datetime (exclusive)
-    comments -- report allocation comments
+    comments -- list allocation comments
     """
     
     fields = ["Allocation", "Expiration", "Resource", "Project", "Jobs",
@@ -395,17 +395,17 @@ def print_allocations_report (allocations, users=None,
     print >> sys.stderr, unit_definition()
 
 
-def print_holds_report (holds, comments=False, truncate=True):
+def print_holds_list (holds, comments=False, truncate=True):
     
-    """Holds report.
+    """Holds list.
     
-    The holds report displays individual holds.
+    The holds list displays individual holds.
     
     Arguments:
-    holds -- holds to report
+    holds -- holds to list
     
     Keyword arguments:
-    comments -- report hold comments
+    comments -- list hold comments
     """
     
     fields = ["Hold", "Date", "Resource", "Project", "User", "Held"]
@@ -443,14 +443,14 @@ def print_holds_report (holds, comments=False, truncate=True):
     print >> sys.stderr, unit_definition()
 
 
-def print_jobs_report (jobs, truncate=True):
+def print_jobs_list (jobs, truncate=True):
     
-    """Jobs report.
+    """Jobs list.
     
-    The jobs report displays individual jobs.
+    The jobs list displays individual jobs.
     
     Arguments:
-    jobs -- jobs to report
+    jobs -- jobs to list
     """
     
     format = Formatter(["ID", "Name", "User", "Account", "Duration",
@@ -494,17 +494,17 @@ def format_timedelta (td):
     return "%i:%.2i:%.2i" % (hours, minutes, seconds)
 
 
-def print_charges_report (charges, comments=False, truncate=True):
+def print_charges_list (charges, comments=False, truncate=True):
     
-    """Charges report.
+    """Charges list.
     
-    The charges report displays individual charges.
+    The charges list displays individual charges.
     
     Arguments:
-    charges -- charges to report
+    charges -- charges to list
     
     Keyword arguments:
-    comments -- report charge comments
+    comments -- list charge comments
     """
     
     fields = ["Charge", "Date", "Resource", "Project", "Charged"]
@@ -685,7 +685,7 @@ def format_datetime (datetime_):
 
 
 class Formatter (object):
-    """A tabular formatter for reports.
+    """A tabular formatter for lists.
     
     Attributes:
     fields -- the fields (columns) in the table

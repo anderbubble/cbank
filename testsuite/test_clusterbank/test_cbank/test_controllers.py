@@ -14,9 +14,9 @@ from clusterbank.controllers import user, project, resource, user_by_name, \
     project_by_name, resource_by_name, Session
 import clusterbank.upstreams.default as upstream_
 import clusterbank.cbank.controllers as controllers
-from clusterbank.cbank.controllers import main, report_main, new_main, \
-    report_users_main, report_projects_main, report_allocations_main, \
-    report_holds_main, report_jobs_main, report_charges_main, \
+from clusterbank.cbank.controllers import main, list_main, new_main, \
+    list_users_main, list_projects_main, list_allocations_main, \
+    list_holds_main, list_jobs_main, list_charges_main, \
     new_allocation_main, new_charge_main, new_hold_main, new_refund_main, \
     handle_exceptions, detail_jobs_main, import_main, import_jobs_main, \
     detail_charges_main, detail_refunds_main
@@ -298,30 +298,30 @@ class TestMain (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._report_main = controllers.report_main
+        self._list_main = controllers.list_main
         self._new_main = controllers.new_main
         self._detail_main = controllers.detail_main
-        controllers.report_main = FakeFunc()
+        controllers.list_main = FakeFunc()
         controllers.new_main = FakeFunc()
         controllers.detail_main = FakeFunc()
     
     def teardown (self):
         CbankTester.teardown(self)
-        controllers.report_main = self._report_main
+        controllers.list_main = self._list_main
         controllers.new_main = self._new_main
         controllers.detail_main = self._detail_main
     
     def test_callable (self):
         assert callable(main), "main is not callable"
     
-    def test_report (self):
+    def test_list (self):
         def test_ ():
-            assert sys.argv[0] == "main report"
+            assert sys.argv[0] == "main list"
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        controllers.report_main.func = test_
-        args = "report 1 2 3"
+        controllers.list_main.func = test_
+        args = "list 1 2 3"
         run(main, args.split())
-        assert controllers.report_main.calls
+        assert controllers.list_main.calls
     
     def test_new (self):
         def test_ ():
@@ -345,19 +345,19 @@ class TestMain (CbankTester):
         def test_ ():
             assert sys.argv[0] == "main"
             assert sys.argv[1:] == args.split(), sys.argv
-        controllers.report_main.func = test_
+        controllers.list_main.func = test_
         args = "1 2 3"
         run(main, args.split())
-        assert controllers.report_main.calls
+        assert controllers.list_main.calls
     
     def test_invalid (self):
         def test_ ():
             assert sys.argv[0] == "main"
             assert sys.argv[1:] == args.split(), sys.argv
-        controllers.report_main.func = test_
+        controllers.list_main.func = test_
         args = "invalid_command 1 2 3"
         run(main, args.split())
-        assert controllers.report_main.calls
+        assert controllers.list_main.calls
 
 
 class TestNewMain (CbankTester):
@@ -1267,150 +1267,150 @@ class TestReportMain (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._report_users_main = controllers.report_users_main
-        self._report_projects_main = controllers.report_projects_main
-        self._report_allocations_main = controllers.report_allocations_main
-        self._report_holds_main = controllers.report_holds_main
-        self._report_jobs_main = controllers.report_jobs_main
-        self._report_charges_main = controllers.report_charges_main
-        controllers.report_users_main = FakeFunc()
-        controllers.report_projects_main = FakeFunc()
-        controllers.report_allocations_main = FakeFunc()
-        controllers.report_holds_main = FakeFunc()
-        controllers.report_jobs_main = FakeFunc()
-        controllers.report_charges_main = FakeFunc()
+        self._list_users_main = controllers.list_users_main
+        self._list_projects_main = controllers.list_projects_main
+        self._list_allocations_main = controllers.list_allocations_main
+        self._list_holds_main = controllers.list_holds_main
+        self._list_jobs_main = controllers.list_jobs_main
+        self._list_charges_main = controllers.list_charges_main
+        controllers.list_users_main = FakeFunc()
+        controllers.list_projects_main = FakeFunc()
+        controllers.list_allocations_main = FakeFunc()
+        controllers.list_holds_main = FakeFunc()
+        controllers.list_jobs_main = FakeFunc()
+        controllers.list_charges_main = FakeFunc()
     
     def teardown (self):
         CbankTester.teardown(self)
-        controllers.report_users_main = self._report_users_main
-        controllers.report_projects_main = self._report_projects_main
-        controllers.report_allocations_main = self._report_allocations_main
-        controllers.report_holds_main = self._report_holds_main
-        controllers.report_jobs_main = self._report_jobs_main
-        controllers.report_charges_main = self._report_charges_main
+        controllers.list_users_main = self._list_users_main
+        controllers.list_projects_main = self._list_projects_main
+        controllers.list_allocations_main = self._list_allocations_main
+        controllers.list_holds_main = self._list_holds_main
+        controllers.list_jobs_main = self._list_jobs_main
+        controllers.list_charges_main = self._list_charges_main
     
     def test_exists_and_callable (self):
-        assert hasattr(controllers, "report_main"), \
-            "report_main does not exist"
-        assert callable(controllers.report_main), \
-            "report_main is not callable"
+        assert hasattr(controllers, "list_main"), \
+            "list_main does not exist"
+        assert callable(controllers.list_main), \
+            "list_main is not callable"
     
     def test_users (self):
         def test_ ():
-            assert sys.argv[0] == "report_main users", sys.argv
+            assert sys.argv[0] == "list_main users", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        controllers.report_users_main.func = test_
+        controllers.list_users_main.func = test_
         args = "users 1 2 3"
-        run(report_main, args.split())
-        assert controllers.report_users_main.calls
+        run(list_main, args.split())
+        assert controllers.list_users_main.calls
     
     def test_projects (self):
         def test_ ():
-            assert sys.argv[0] == "report_main projects", sys.argv
+            assert sys.argv[0] == "list_main projects", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        controllers.report_projects_main.func = test_
+        controllers.list_projects_main.func = test_
         args = "projects 1 2 3"
-        run(report_main, args.split())
-        assert controllers.report_projects_main.calls
+        run(list_main, args.split())
+        assert controllers.list_projects_main.calls
     
     def test_allocations (self):
         def test_ ():
-            assert sys.argv[0] == "report_main allocations", sys.argv
+            assert sys.argv[0] == "list_main allocations", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        controllers.report_allocations_main.func = test_
+        controllers.list_allocations_main.func = test_
         args = "allocations 1 2 3"
-        run(report_main, args.split())
-        assert controllers.report_allocations_main.calls
+        run(list_main, args.split())
+        assert controllers.list_allocations_main.calls
     
     def test_holds (self):
         def test_ ():
-            assert sys.argv[0] == "report_main holds", sys.argv
+            assert sys.argv[0] == "list_main holds", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        controllers.report_holds_main.func = test_
+        controllers.list_holds_main.func = test_
         args = "holds 1 2 3"
-        run(report_main, args.split())
-        assert controllers.report_holds_main.calls
+        run(list_main, args.split())
+        assert controllers.list_holds_main.calls
     
     def test_holds (self):
         def test_ ():
-            assert sys.argv[0] == "report_main jobs", sys.argv
+            assert sys.argv[0] == "list_main jobs", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        controllers.report_jobs_main.func = test_
+        controllers.list_jobs_main.func = test_
         args = "jobs 1 2 3"
-        run(report_main, args.split())
-        assert controllers.report_jobs_main.calls
+        run(list_main, args.split())
+        assert controllers.list_jobs_main.calls
     
     def test_charges (self):
         def test_ ():
-            assert sys.argv[0] == "report_main charges", sys.argv
+            assert sys.argv[0] == "list_main charges", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        controllers.report_charges_main.func = test_
+        controllers.list_charges_main.func = test_
         args = "charges 1 2 3"
-        run(report_main, args.split())
-        assert controllers.report_charges_main.calls
+        run(list_main, args.split())
+        assert controllers.list_charges_main.calls
     
     def test_default (self):
         def test_ ():
-            assert sys.argv[0] == "report_main", sys.argv
+            assert sys.argv[0] == "list_main", sys.argv
             assert sys.argv[1:] == args.split(), sys.argv
-        controllers.report_projects_main.func = test_
+        controllers.list_projects_main.func = test_
         args = "1 2 3"
-        run(report_main, args.split())
-        assert controllers.report_projects_main.calls
+        run(list_main, args.split())
+        assert controllers.list_projects_main.calls
     
     def test_invalid (self):
         def test_ ():
-            assert sys.argv[0] == "report_main", sys.argv
+            assert sys.argv[0] == "list_main", sys.argv
             assert sys.argv[1:] == args.split(), sys.argv
-        controllers.report_projects_main.func = test_
+        controllers.list_projects_main.func = test_
         args = "invalid 1 2 3"
-        run(report_main, args.split())
-        assert controllers.report_projects_main.calls
+        run(list_main, args.split())
+        assert controllers.list_projects_main.calls
 
 
 class TestUsersReport (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._print_users_report = controllers.print_users_report
-        controllers.print_users_report = FakeFunc()
+        self._print_users_list = controllers.print_users_list
+        controllers.print_users_list = FakeFunc()
     
     def teardown (self):
         CbankTester.teardown(self)
-        controllers.print_users_report = self._print_users_report
+        controllers.print_users_list = self._print_users_list
     
     def test_default (self):
         """Current user's charges filtered by user's projects."""
         user = current_user()
         projects = user.projects
-        code, stdout, stderr = run(report_users_main)
+        code, stdout, stderr = run(list_users_main)
         assert_equal(code, 0)
-        args, kwargs = controllers.print_users_report.calls[0]
+        args, kwargs = controllers.print_users_list.calls[0]
         assert_equal(set(args[0]), set([user]))
         assert_equal(set(kwargs['projects']), set(projects))
     
     def test_self_users (self):
         user = current_user()
         projects = user.projects
-        code, stdout, stderr = run(report_users_main,
+        code, stdout, stderr = run(list_users_main,
             ("-u %s" % user.name).split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_users_report.calls[0]
+        args, kwargs = controllers.print_users_list.calls[0]
         assert_equal(set(args[0]), set([user]))
         assert_equal(set(kwargs['projects']), set(projects))
     
     def test_other_users (self):
         """cannot specify other users."""
-        code, stdout, stderr = run(report_users_main, "-u user1".split())
+        code, stdout, stderr = run(list_users_main, "-u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not controllers.print_users_report.calls
+        assert not controllers.print_users_list.calls
     
     def test_other_projects (self):
         """anyone can specify any project filters"""
         code, stdout, stderr = run(
-            report_users_main, "-p project1 -p project2".split())
+            list_users_main, "-p project1 -p project2".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_users_report.calls[0]
+        args, kwargs = controllers.print_users_list.calls[0]
         projects = [project_by_name(project)
             for project in ["project1", "project2"]]
         assert_equal(set(kwargs['projects']), set(projects))
@@ -1418,45 +1418,45 @@ class TestUsersReport (CbankTester):
     def test_project_admin_projects (self):
         project = project_by_name("project3")
         users = project.members
-        code, stdout, stderr = run(report_users_main, "-p project3".split())
+        code, stdout, stderr = run(list_users_main, "-p project3".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_users_report.calls[0]
+        args, kwargs = controllers.print_users_list.calls[0]
         assert_equal(set(args[0]), set(users))
         assert_equal(set(kwargs['projects']), set([project]))
     
     def test_project_admin_users (self):
         code, stdout, stderr = run(
-            report_users_main, "-p project3 -u user1".split())
+            list_users_main, "-p project3 -u user1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_users_report.calls[0]
+        args, kwargs = controllers.print_users_list.calls[0]
         assert_equal(set(args[0]), set([user_by_name("user1")]))
         assert_equal(set(kwargs['projects']),
             set([project_by_name("project3")]))
     
     def test_resources (self):
-        code, stdout, stderr = run(report_users_main, "-r resource1".split())
+        code, stdout, stderr = run(list_users_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_users_report.calls[0]
+        args, kwargs = controllers.print_users_list.calls[0]
         assert_equal(set(kwargs['resources']),
             set([resource_by_name("resource1")]))
         
     def test_after (self):
-        code, stdout, stderr = run(report_users_main, "-a 2000-01-01".split())
+        code, stdout, stderr = run(list_users_main, "-a 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_users_report.calls[0]
+        args, kwargs = controllers.print_users_list.calls[0]
         assert_equal(kwargs['after'], datetime(2000, 1, 1))
     
     def test_before (self):
-        code, stdout, stderr = run(report_users_main, "-b 2000-01-01".split())
+        code, stdout, stderr = run(list_users_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_users_report.calls[0]
+        args, kwargs = controllers.print_users_list.calls[0]
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
     
     def test_long (self):
         code, stdout, stderr = run(
-            report_users_main, ["-l"])
+            list_users_main, ["-l"])
         assert_equal(code, 0)
-        args, kwargs = controllers.print_users_report.calls[0]
+        args, kwargs = controllers.print_users_list.calls[0]
         assert_false(kwargs['truncate'])
 
 
@@ -1469,18 +1469,18 @@ class TestUsersReport_Admin (TestUsersReport):
     def test_default (self):
         """All users, no filters."""
         users = Session().query(User).all()
-        code, stdout, stderr = run(report_users_main)
+        code, stdout, stderr = run(list_users_main)
         assert_equal(code, 0)
-        args, kwargs = controllers.print_users_report.calls[0]
+        args, kwargs = controllers.print_users_list.calls[0]
         assert_equal(set(args[0]), set(users))
         assert_equal(kwargs['projects'], [])
     
     def test_other_users (self):
         """admin can specify other users."""
         code, stdout, stderr = run(
-            report_users_main, "-u user1 -u user2".split())
+            list_users_main, "-u user1 -u user2".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_users_report.calls[0]
+        args, kwargs = controllers.print_users_list.calls[0]
         users = [user_by_name(user) for user in ["user1", "user2"]]
         assert_equal(set(args[0]), set(users))
         assert_equal(kwargs['projects'], [])
@@ -1488,10 +1488,10 @@ class TestUsersReport_Admin (TestUsersReport):
     def test_self_users (self):
         user = current_user()
         projects = user.projects
-        code, stdout, stderr = run(report_users_main,
+        code, stdout, stderr = run(list_users_main,
             ("-u %s" % user.name).split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_users_report.calls[0]
+        args, kwargs = controllers.print_users_list.calls[0]
         assert_equal(set(args[0]), set([user]))
         assert_equal(set(kwargs['projects']), set([]))
 
@@ -1500,51 +1500,51 @@ class TestProjectsReport (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._print_projects_report = controllers.print_projects_report
-        controllers.print_projects_report = FakeFunc()
+        self._print_projects_list = controllers.print_projects_list
+        controllers.print_projects_list = FakeFunc()
     
     def teardown (self):
         CbankTester.teardown(self)
-        controllers.print_projects_report = self._print_projects_report
+        controllers.print_projects_list = self._print_projects_list
     
     def test_default (self):
         """Current user's projects"""
         projects = current_user().projects
-        code, stdout, stderr = run(report_projects_main)
+        code, stdout, stderr = run(list_projects_main)
         assert_equal(code, 0)
-        args, kwargs = controllers.print_projects_report.calls[0]
+        args, kwargs = controllers.print_projects_list.calls[0]
         assert_equal(set(args[0]), set(projects))
     
     def test_member_projects (self):
         """a specific project of the user"""
-        code, stdout, stderr = run(report_projects_main, "-p project2".split())
+        code, stdout, stderr = run(list_projects_main, "-p project2".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_projects_report.calls[0]
+        args, kwargs = controllers.print_projects_list.calls[0]
         assert_equal(set(args[0]), set([project_by_name("project2")]))
         
     def test_project_admin_projects (self):
         """a specific project the user admins"""
-        code, stdout, stderr = run(report_projects_main, "-p project3".split())
+        code, stdout, stderr = run(list_projects_main, "-p project3".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_projects_report.calls[0]
+        args, kwargs = controllers.print_projects_list.calls[0]
         assert_equal(set(args[0]), set([project_by_name("project3")]))
     
     def test_other_projects (self):
         """cannot see other projects (not member, not admin)"""
-        code, stdout, stderr = run(report_projects_main, "-p project1".split())
+        code, stdout, stderr = run(list_projects_main, "-p project1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not controllers.print_projects_report.calls
+        assert not controllers.print_projects_list.calls
     
     def test_other_users (self):
-        code, stdout, stderr = run(report_projects_main, "-u user1".split())
+        code, stdout, stderr = run(list_projects_main, "-u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not controllers.print_projects_report.calls
+        assert not controllers.print_projects_list.calls
 
     def test_project_admin_users (self):
         code, stdout, stderr = run(
-            report_projects_main, "-p project3 -u user1".split())
+            list_projects_main, "-p project3 -u user1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_projects_report.calls[0]
+        args, kwargs = controllers.print_projects_list.calls[0]
         assert_equal(set(args[0]), set([project_by_name("project3")]))
         assert_equal(set(kwargs['users']), set([user_by_name("user1")]))
     
@@ -1552,58 +1552,58 @@ class TestProjectsReport (CbankTester):
         user = current_user()
         projects = user.projects
         code, stdout, stderr = run(
-            report_projects_main, ("-u %s" % user.name).split())
+            list_projects_main, ("-u %s" % user.name).split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_projects_report.calls[0]
+        args, kwargs = controllers.print_projects_list.calls[0]
         assert_equal(set(kwargs['users']), set([user]))
     
     def test_resources (self):
-        code, stdout, stderr = run(report_projects_main, "-r resource1".split())
+        code, stdout, stderr = run(list_projects_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_projects_report.calls[0]
+        args, kwargs = controllers.print_projects_list.calls[0]
         assert_equal(set(kwargs['resources']),
             set([resource_by_name("resource1")]))
         
     def test_after (self):
         code, stdout, stderr = run(
-            report_projects_main, "-a 2000-01-01".split())
+            list_projects_main, "-a 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_projects_report.calls[0]
+        args, kwargs = controllers.print_projects_list.calls[0]
         assert_equal(kwargs['after'], datetime(2000, 1, 1))
     
     def test_before (self):
         code, stdout, stderr = run(
-            report_projects_main, "-b 2000-01-01".split())
+            list_projects_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_projects_report.calls[0]
+        args, kwargs = controllers.print_projects_list.calls[0]
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
 
     def test_resources (self):
-        code, stdout, stderr = run(report_projects_main, "-r resource1".split())
+        code, stdout, stderr = run(list_projects_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_projects_report.calls[0]
+        args, kwargs = controllers.print_projects_list.calls[0]
         assert_equal(set(kwargs['resources']),
             set([resource_by_name("resource1")]))
         
     def test_after (self):
         code, stdout, stderr = run(
-            report_projects_main, "-a 2000-01-01".split())
+            list_projects_main, "-a 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_projects_report.calls[0]
+        args, kwargs = controllers.print_projects_list.calls[0]
         assert_equal(kwargs['after'], datetime(2000, 1, 1))
     
     def test_before (self):
         code, stdout, stderr = run(
-            report_projects_main, "-b 2000-01-01".split())
+            list_projects_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_projects_report.calls[0]
+        args, kwargs = controllers.print_projects_list.calls[0]
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
     
     def test_long (self):
         code, stdout, stderr = run(
-            report_projects_main, ["-l"])
+            list_projects_main, ["-l"])
         assert_equal(code, 0)
-        args, kwargs = controllers.print_projects_report.calls[0]
+        args, kwargs = controllers.print_projects_list.calls[0]
         assert_false(kwargs['truncate'])
 
 
@@ -1616,22 +1616,22 @@ class TestProjectsReport_Admin (TestProjectsReport):
     def test_default (self):
         """all projects"""
         projects = Session.query(Project).all()
-        code, stdout, stderr = run(report_projects_main)
+        code, stdout, stderr = run(list_projects_main)
         assert_equal(code, 0)
-        args, kwargs = controllers.print_projects_report.calls[0]
+        args, kwargs = controllers.print_projects_list.calls[0]
         assert_equal(set(args[0]), set(projects))
 
     def test_other_projects (self):
-        code, stdout, stderr = run(report_projects_main, "-p project3".split())
+        code, stdout, stderr = run(list_projects_main, "-p project3".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_projects_report.calls[0]
+        args, kwargs = controllers.print_projects_list.calls[0]
         assert_equal(set(args[0]), set([project_by_name("project3")]))
     
     def test_other_users (self):
         user = user_by_name("user1")
-        code, stdout, stderr = run(report_projects_main, "-u user1".split())
+        code, stdout, stderr = run(list_projects_main, "-u user1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_projects_report.calls[0]
+        args, kwargs = controllers.print_projects_list.calls[0]
         assert_equal(set(kwargs['users']), set([user_by_name("user1")]))
         assert_equal(set(args[0]), set(user.projects))
 
@@ -1654,8 +1654,8 @@ class TestAllocationsReport (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._print_allocations_report = controllers.print_allocations_report
-        controllers.print_allocations_report = FakeFunc()
+        self._print_allocations_list = controllers.print_allocations_list
+        controllers.print_allocations_list = FakeFunc()
         for project in Session().query(Project):
             Allocation(project, resource_by_name("resource1"), 0,
                 datetime(1999, 1, 1), datetime(2000, 1, 1))
@@ -1669,51 +1669,51 @@ class TestAllocationsReport (CbankTester):
     
     def teardown (self):
         CbankTester.teardown(self)
-        controllers.print_allocations_report = self._print_allocations_report
+        controllers.print_allocations_list = self._print_allocations_list
     
     def test_default (self):
         """Current user's allocations"""
         projects = current_user().projects
-        code, stdout, stderr = run(report_allocations_main)
+        code, stdout, stderr = run(list_allocations_main)
         assert_equal(code, 0)
-        args, kwargs = controllers.print_allocations_report.calls[0]
+        args, kwargs = controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]), set(active(allocations(projects))))
     
     def test_member_projects (self):
         """a specific project of the user"""
         code, stdout, stderr = run(
-            report_allocations_main, "-p project2".split())
+            list_allocations_main, "-p project2".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_allocations_report.calls[0]
+        args, kwargs = controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]),
             set(active(project_by_name("project2").allocations)))
         
     def test_project_admin_projects (self):
         """a specific project the user admins"""
         code, stdout, stderr = run(
-            report_allocations_main, "-p project3".split())
+            list_allocations_main, "-p project3".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_allocations_report.calls[0]
+        args, kwargs = controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]),
             set(active(project_by_name("project3").allocations)))
     
     def test_other_projects (self):
         """cannot see other projects (not member, not admin)"""
         code, stdout, stderr = run(
-            report_allocations_main, "-p project1".split())
+            list_allocations_main, "-p project1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not controllers.print_allocations_report.calls
+        assert not controllers.print_allocations_list.calls
     
     def test_other_users (self):
-        code, stdout, stderr = run(report_allocations_main, "-u user1".split())
+        code, stdout, stderr = run(list_allocations_main, "-u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not controllers.print_allocations_report.calls
+        assert not controllers.print_allocations_list.calls
 
     def test_project_admin_users (self):
         code, stdout, stderr = run(
-            report_allocations_main, "-p project3 -u user1".split())
+            list_allocations_main, "-p project3 -u user1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_allocations_report.calls[0]
+        args, kwargs = controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]),
             set(active(project_by_name("project3").allocations)))
         assert_equal(set(kwargs['users']), set([user_by_name("user1")]))
@@ -1722,9 +1722,9 @@ class TestAllocationsReport (CbankTester):
         user = current_user()
         projects = user.projects
         code, stdout, stderr = run(
-            report_allocations_main, ("-u %s" % user.name).split())
+            list_allocations_main, ("-u %s" % user.name).split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_allocations_report.calls[0]
+        args, kwargs = controllers.print_allocations_list.calls[0]
         assert_equal(set(kwargs['users']), set([user]))
     
     def test_resources (self):
@@ -1732,9 +1732,9 @@ class TestAllocationsReport (CbankTester):
             for allocation in allocations(current_user().projects)
             if allocation.resource == resource_by_name("resource1")])
         code, stdout, stderr = run(
-            report_allocations_main, "-r resource1".split())
+            list_allocations_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_allocations_report.calls[0]
+        args, kwargs = controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]), set(allocations_))
         
     def test_after (self):
@@ -1742,9 +1742,9 @@ class TestAllocationsReport (CbankTester):
         allocations_ = [a for a in allocations_
             if a.end > datetime(2001, 1, 1)]
         code, stdout, stderr = run(
-            report_allocations_main, "-a 2001-01-01".split())
+            list_allocations_main, "-a 2001-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_allocations_report.calls[0]
+        args, kwargs = controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]), set(allocations_))
         assert_equal(kwargs['after'], datetime(2001, 1, 1))
     
@@ -1753,24 +1753,24 @@ class TestAllocationsReport (CbankTester):
         allocations_ = [a for a in allocations_
             if a.start <= datetime(2000, 1, 1)]
         code, stdout, stderr = run(
-            report_allocations_main, "-b 2000-01-01".split())
+            list_allocations_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_allocations_report.calls[0]
+        args, kwargs = controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]), set(allocations_))
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
     
     def test_comments (self):
         code, stdout, stderr = run(
-            report_allocations_main, ["-c"])
+            list_allocations_main, ["-c"])
         assert_equal(code, 0)
-        args, kwargs = controllers.print_allocations_report.calls[0]
+        args, kwargs = controllers.print_allocations_list.calls[0]
         assert_true(kwargs['comments'])
     
     def test_long (self):
         code, stdout, stderr = run(
-            report_allocations_main, ["-l"])
+            list_allocations_main, ["-l"])
         assert_equal(code, 0)
-        args, kwargs = controllers.print_allocations_report.calls[0]
+        args, kwargs = controllers.print_allocations_list.calls[0]
         assert_false(kwargs['truncate'])
 
 
@@ -1783,24 +1783,24 @@ class TestAllocationsReport_Admin (TestAllocationsReport):
     def test_default (self):
         """all active allocations"""
         allocations = active(Session.query(Allocation))
-        code, stdout, stderr = run(report_allocations_main)
+        code, stdout, stderr = run(list_allocations_main)
         assert_equal(code, 0)
-        args, kwargs = controllers.print_allocations_report.calls[0]
+        args, kwargs = controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]), set(allocations))
 
     def test_other_projects (self):
         code, stdout, stderr = run(
-            report_allocations_main, "-p project3".split())
+            list_allocations_main, "-p project3".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_allocations_report.calls[0]
+        args, kwargs = controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]),
             set(active(project_by_name("project3").allocations)))
     
     def test_other_users (self):
         user = user_by_name("user1")
-        code, stdout, stderr = run(report_allocations_main, "-u user1".split())
+        code, stdout, stderr = run(list_allocations_main, "-u user1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_allocations_report.calls[0]
+        args, kwargs = controllers.print_allocations_list.calls[0]
         assert_equal(set(kwargs['users']), set([user_by_name("user1")]))
         assert_equal(set(args[0]),
             set(active(allocations(user.projects))))
@@ -1810,18 +1810,18 @@ class TestAllocationsReport_Admin (TestAllocationsReport):
             for allocation in Session.query(Allocation).all()
             if allocation.resource == resource_by_name("resource1")])
         code, stdout, stderr = run(
-            report_allocations_main, "-r resource1".split())
+            list_allocations_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_allocations_report.calls[0]
+        args, kwargs = controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]), set(allocations_))
 
     def test_after (self):
         allocations_ = [a for a in Session.query(Allocation)
             if a.end > datetime(2001, 1, 1)]
         code, stdout, stderr = run(
-            report_allocations_main, "-a 2001-01-01".split())
+            list_allocations_main, "-a 2001-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_allocations_report.calls[0]
+        args, kwargs = controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]), set(allocations_))
         assert_equal(kwargs['after'], datetime(2001, 1, 1))
     
@@ -1829,9 +1829,9 @@ class TestAllocationsReport_Admin (TestAllocationsReport):
         allocations_ = [a for a in Session.query(Allocation)
             if a.start <= datetime(2000, 1, 1)]
         code, stdout, stderr = run(
-            report_allocations_main, "-b 2000-01-01".split())
+            list_allocations_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_allocations_report.calls[0]
+        args, kwargs = controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]), set(allocations_))
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
 
@@ -1840,8 +1840,8 @@ class TestHoldsReport (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._print_holds_report = controllers.print_holds_report
-        controllers.print_holds_report = FakeFunc()
+        self._print_holds_list = controllers.print_holds_list
+        controllers.print_holds_list = FakeFunc()
         user1, user2 = [user_by_name(user) for user in ["user1", "user2"]]
         for project in Session().query(Project):
             Allocation(project, resource_by_name("resource1"), 0,
@@ -1870,56 +1870,56 @@ class TestHoldsReport (CbankTester):
     
     def teardown (self):
         CbankTester.teardown(self)
-        controllers.print_holds_report = self._print_holds_report
+        controllers.print_holds_list = self._print_holds_list
     
     def test_default (self):
         holds = Session().query(Hold).filter_by(
             user=current_user(), active=True).filter(Hold.allocation.has(
             Allocation.project.has(Project.id.in_(project.id for project in
             current_user().projects))))
-        code, stdout, stderr = run(report_holds_main)
+        code, stdout, stderr = run(list_holds_main)
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_job (self):
         holds = Session().query(Hold).filter(
             Hold.id.in_([14]))
-        code, stdout, stderr = run(report_holds_main,
+        code, stdout, stderr = run(list_holds_main,
             "-j 2.4.resource2".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_jobs (self):
         holds = Session().query(Hold).filter(
             Hold.id.in_([14, 18]))
-        code, stdout, stderr = run(report_holds_main,
+        code, stdout, stderr = run(list_holds_main,
             "-j 2.4.resource2 -j 2.5.resource1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_other_users (self):
-        code, stdout, stderr = run(report_holds_main,
+        code, stdout, stderr = run(list_holds_main,
             "-p project1 -u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not controllers.print_holds_report.calls
+        assert not controllers.print_holds_list.calls
 
     def test_member_users (self):
-        code, stdout, stderr = run(report_holds_main,
+        code, stdout, stderr = run(list_holds_main,
             "-p project2 -u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not controllers.print_holds_report.calls
+        assert not controllers.print_holds_list.calls
     
     def test_project_admin_users (self):
         holds = Session().query(Hold).filter_by(active=True,
             user=user_by_name("user1")).filter(Hold.allocation.has(
             Allocation.project == project_by_name("project4")))
-        code, stdout, stderr = run(report_holds_main,
+        code, stdout, stderr = run(list_holds_main,
             "-u user1 -p project4".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_self_users (self):
@@ -1928,36 +1928,36 @@ class TestHoldsReport (CbankTester):
             user=user, active=True).filter(Hold.allocation.has(
             Allocation.project.has(Project.id.in_(project.id
                 for project in user.projects))))
-        code, stdout, stderr = run(report_holds_main, ("-u %s" % user).split())
+        code, stdout, stderr = run(list_holds_main, ("-u %s" % user).split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_member_projects (self):
         holds = Session().query(Hold).filter_by(
             user=current_user(), active=True).filter(Hold.allocation.has(
             Allocation.project==project_by_name("project2")))
-        code, stdout, stderr = run(report_holds_main, "-p project2".split())
+        code, stdout, stderr = run(list_holds_main, "-p project2".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_project_admin_projects (self):
         holds = Session().query(Hold).filter_by(active=True).filter(
             Hold.allocation.has(
             Allocation.project == project_by_name("project4")))
-        code, stdout, stderr = run(report_holds_main, "-p project4".split())
+        code, stdout, stderr = run(list_holds_main, "-p project4".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_other_projects (self):
         holds = Session().query(Hold).filter_by(
             user=current_user(), active=True).filter(Hold.allocation.has(
             Allocation.project==project_by_name("project1")))
-        code, stdout, stderr = run(report_holds_main, "-p project1".split())
+        code, stdout, stderr = run(list_holds_main, "-p project1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_resources (self):
@@ -1966,9 +1966,9 @@ class TestHoldsReport (CbankTester):
             Allocation.project.has(Project.id.in_(project.id for project in
             current_user().projects)))).filter(Hold.allocation.has(
             Allocation.resource == resource_by_name("resource1")))
-        code, stdout, stderr = run(report_holds_main, "-r resource1".split())
+        code, stdout, stderr = run(list_holds_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_after (self):
@@ -1977,9 +1977,9 @@ class TestHoldsReport (CbankTester):
             Allocation.project.has(Project.id.in_(project.id for project in
             current_user().projects)))).filter(
             Hold.datetime >= datetime(2000, 1, 1))
-        code, stdout, stderr = run(report_holds_main, "-a 2000-01-01".split())
+        code, stdout, stderr = run(list_holds_main, "-a 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_before (self):
@@ -1988,23 +1988,23 @@ class TestHoldsReport (CbankTester):
             Allocation.project.has(Project.id.in_(project.id for project in
             current_user().projects)))).filter(
             Hold.datetime < datetime(2000, 1, 1))
-        code, stdout, stderr = run(report_holds_main, "-b 2000-01-01".split())
+        code, stdout, stderr = run(list_holds_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_comments (self):
         code, stdout, stderr = run(
-            report_holds_main, ["-c"])
+            list_holds_main, ["-c"])
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_true(kwargs['comments'])
     
     def test_long (self):
         code, stdout, stderr = run(
-            report_holds_main, ["-l"])
+            list_holds_main, ["-l"])
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_false(kwargs['truncate'])
 
 
@@ -2017,79 +2017,79 @@ class TestHoldsReport_Admin (TestHoldsReport):
     def test_self_users (self):
         user = current_user()
         holds = Session().query(Hold).filter_by(user=user, active=True)
-        code, stdout, stderr = run(report_holds_main, ("-u %s" % user).split())
+        code, stdout, stderr = run(list_holds_main, ("-u %s" % user).split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_resources (self):
         holds = Session().query(Hold).filter_by(
             active=True).filter(Hold.allocation.has(
             Allocation.resource == resource_by_name("resource1")))
-        code, stdout, stderr = run(report_holds_main, "-r resource1".split())
+        code, stdout, stderr = run(list_holds_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_other_users (self):
         holds = Session().query(Hold).filter_by(active=True,
             user=user_by_name("user1")).filter(Hold.allocation.has(
             Allocation.project == project_by_name("project1")))
-        code, stdout, stderr = run(report_holds_main,
+        code, stdout, stderr = run(list_holds_main,
             "-p project1 -u user1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_other_projects (self):
         holds = Session().query(Hold).filter_by(
             active=True).filter(Hold.allocation.has(
             Allocation.project==project_by_name("project1")))
-        code, stdout, stderr = run(report_holds_main, "-p project1".split())
+        code, stdout, stderr = run(list_holds_main, "-p project1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_member_users (self):
         holds = Session().query(Hold).filter_by(user=user_by_name("user1"),
             active=True).filter(Hold.allocation.has(
             Allocation.project==project_by_name("project2")))
-        code, stdout, stderr = run(report_holds_main,
+        code, stdout, stderr = run(list_holds_main,
             "-p project2 -u user1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
      
     def test_member_projects (self):
         holds = Session().query(Hold).filter_by(
             active=True).filter(Hold.allocation.has(
             Allocation.project==project_by_name("project2")))
-        code, stdout, stderr = run(report_holds_main, "-p project2".split())
+        code, stdout, stderr = run(list_holds_main, "-p project2".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_default (self):
         holds = Session().query(Hold).filter_by(active=True)
-        code, stdout, stderr = run(report_holds_main)
+        code, stdout, stderr = run(list_holds_main)
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_after (self):
         holds = Session().query(Hold).filter_by(
             active=True).filter(Hold.datetime >= datetime(2000, 1, 1))
-        code, stdout, stderr = run(report_holds_main, "-a 2000-01-01".split())
+        code, stdout, stderr = run(list_holds_main, "-a 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_before (self):
         holds = Session().query(Hold).filter_by(
             active=True).filter(Hold.datetime < datetime(2000, 1, 1))
-        code, stdout, stderr = run(report_holds_main, "-b 2000-01-01".split())
+        code, stdout, stderr = run(list_holds_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_holds_report.calls[0]
+        args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
 
 
@@ -2097,8 +2097,8 @@ class TestJobsReport (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._print_jobs_report = controllers.print_jobs_report
-        controllers.print_jobs_report = FakeFunc()
+        self._print_jobs_list = controllers.print_jobs_list
+        controllers.print_jobs_list = FakeFunc()
         current_user_ = current_user()
         p1r1 = Allocation(project("project1"), resource("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
@@ -2197,20 +2197,20 @@ class TestJobsReport (CbankTester):
     
     def teardown (self):
         CbankTester.teardown(self)
-        controllers.print_jobs_report = self._print_jobs_report
+        controllers.print_jobs_list = self._print_jobs_list
     
     def test_default (self):
-        code, stdout, stderr = run(report_jobs_main)
+        code, stdout, stderr = run(list_jobs_main)
         assert_equal(code, 0)
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.3", "resource1.7", "resource2.1"]))
         assert_equal(set(args[0]), set(jobs))
     
     def test_default_order (self):
-        code, stdout, stderr = run(report_jobs_main)
+        code, stdout, stderr = run(list_jobs_main)
         assert_equal(code, 0)
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         s = Session()
         jobs = [s.query(Job).filter_by(id="resource1.1").one(),
             s.query(Job).filter_by(id="resource1.2").one(),
@@ -2220,86 +2220,86 @@ class TestJobsReport (CbankTester):
         assert_equal(list(args[0]), jobs)
     
     def test_after (self):
-        code, stdout, stderr = run(report_jobs_main, "-a 2000-02-01".split())
+        code, stdout, stderr = run(list_jobs_main, "-a 2000-02-01".split())
         assert_equal(code, 0)
         jobs = Session().query(Job).filter(Job.id.in_([
             "resource1.2", "resource1.3"]))
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_before (self):
-        code, stdout, stderr = run(report_jobs_main, "-b 2000-02-01".split())
+        code, stdout, stderr = run(list_jobs_main, "-b 2000-02-01".split())
         assert_equal(code, 0)
         jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2"]))
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_other_users (self):
-        code, stdout, stderr = run(report_jobs_main,
+        code, stdout, stderr = run(list_jobs_main,
             "-p project1 -u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not controllers.print_jobs_report.calls
+        assert not controllers.print_jobs_list.calls
 
     def test_member_users (self):
-        code, stdout, stderr = run(report_jobs_main,
+        code, stdout, stderr = run(list_jobs_main,
             "-p project2 -u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not controllers.print_jobs_report.calls
+        assert not controllers.print_jobs_list.calls
     
     def test_project_admin_users (self):
-        code, stdout, stderr = run(report_jobs_main,
+        code, stdout, stderr = run(list_jobs_main,
             "-u user1 -p project4".split())
         assert_equal(code, 0)
         jobs = Session().query(Job).filter(Job.id.in_([
             "resource1.5", "resource1.11"]))
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
      
     def test_self_users (self):
         user = current_user()
-        code, stdout, stderr = run(report_jobs_main, ("-u %s" % user).split())
+        code, stdout, stderr = run(list_jobs_main, ("-u %s" % user).split())
         assert_equal(code, 0)
         jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.3", "resource1.7", "resource2.1"]))
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_member_projects (self):
-        code, stdout, stderr = run(report_jobs_main, "-p project2".split())
+        code, stdout, stderr = run(list_jobs_main, "-p project2".split())
         assert_equal(code, 0)
         jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.3", "resource1.7", "resource2.1"]))
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_project_admin_projects (self):
-        code, stdout, stderr = run(report_jobs_main, "-p project4".split())
+        code, stdout, stderr = run(list_jobs_main, "-p project4".split())
         assert_equal(code, 0)
         jobs = Session().query(Job).filter(Job.id.in_(["resource1.5",
             "resource1.10", "resource1.11", "resource1.12"]))
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_other_projects (self):
-        code, stdout, stderr = run(report_jobs_main, "-p project1".split())
+        code, stdout, stderr = run(list_jobs_main, "-p project1".split())
         assert_equal(code, 0)
         jobs = Session().query(Job).filter(Job.id.in_(["resource1.13"]))
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_resources (self):
-        code, stdout, stderr = run(report_jobs_main, "-r resource2".split())
+        code, stdout, stderr = run(list_jobs_main, "-r resource2".split())
         assert_equal(code, 0)
         jobs = Session().query(Job).filter(Job.id.in_(["resource2.1"]))
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_long (self):
         code, stdout, stderr = run(
-            report_jobs_main, ["-l"])
+            list_jobs_main, ["-l"])
         assert_equal(code, 0)
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         assert_false(kwargs['truncate'])
 
 
@@ -2310,16 +2310,16 @@ class TestJobsReport_Admin (TestJobsReport):
         be_admin()
 
     def test_default (self):
-        code, stdout, stderr = run(report_jobs_main)
+        code, stdout, stderr = run(list_jobs_main)
         assert_equal(code, 0)
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         jobs = Session().query(Job)
         assert_equal(set(args[0]), set(jobs))
     
     def test_default_order (self):
-        code, stdout, stderr = run(report_jobs_main)
+        code, stdout, stderr = run(list_jobs_main)
         assert_equal(code, 0)
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         s = Session()
         jobs = [s.query(Job).filter_by(id="resource1.1").one(),
             s.query(Job).filter_by(id="resource1.2").one(),
@@ -2341,61 +2341,61 @@ class TestJobsReport_Admin (TestJobsReport):
     
     def test_self_users (self):
         user = current_user()
-        code, stdout, stderr = run(report_jobs_main, ("-u %s" % user).split())
+        code, stdout, stderr = run(list_jobs_main, ("-u %s" % user).split())
         assert_equal(code, 0)
         jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.3", "resource1.4", "resource1.7",
             "resource1.10", "resource1.13", "resource2.1"]))
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_member_projects (self):
-        code, stdout, stderr = run(report_jobs_main, "-p project2".split())
+        code, stdout, stderr = run(list_jobs_main, "-p project2".split())
         assert_equal(code, 0)
         jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.3", "resource1.7", "resource1.8",
             "resource1.9", "resource1.15", "resource2.1"]))
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_after (self):
-        code, stdout, stderr = run(report_jobs_main, "-a 2000-02-01".split())
+        code, stdout, stderr = run(list_jobs_main, "-a 2000-02-01".split())
         assert_equal(code, 0)
         jobs = Session().query(Job).filter(Job.id.in_(["resource1.2",
             "resource1.3", "resource1.5", "resource1.6"]))
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_before (self):
-        code, stdout, stderr = run(report_jobs_main, "-b 2000-02-01".split())
+        code, stdout, stderr = run(list_jobs_main, "-b 2000-02-01".split())
         assert_equal(code, 0)
         jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.5"]))
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
 
     def test_member_users (self):
-        code, stdout, stderr = run(report_jobs_main,
+        code, stdout, stderr = run(list_jobs_main,
             "-p project2 -u user1".split())
         assert_equal(code, 0)
         jobs = Session().query(Job).filter(Job.id.in_(["resource1.15"]))
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_other_users (self):
-        code, stdout, stderr = run(report_jobs_main,
+        code, stdout, stderr = run(list_jobs_main,
             "-p project1 -u user1".split())
         assert_equal(code, 0)
         jobs = Session().query(Job).filter(Job.id.in_(["resource1.14"]))
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_other_projects (self):
-        code, stdout, stderr = run(report_jobs_main, "-p project1".split())
+        code, stdout, stderr = run(list_jobs_main, "-p project1".split())
         assert_equal(code, 0)
         jobs = Session().query(Job).filter(Job.id.in_(["resource1.13",
             "resource1.14"]))
-        args, kwargs = controllers.print_jobs_report.calls[0]
+        args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
 
 
@@ -2403,8 +2403,8 @@ class TestChargesReport (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._print_charges_report = controllers.print_charges_report
-        controllers.print_charges_report = FakeFunc()
+        self._print_charges_list = controllers.print_charges_list
+        controllers.print_charges_list = FakeFunc()
         user1, user2 = [user_by_name(user) for user in ["user1", "user2"]]
         for project in Session().query(Project):
             Allocation(project, resource_by_name("resource1"), 0,
@@ -2432,125 +2432,125 @@ class TestChargesReport (CbankTester):
     
     def teardown (self):
         CbankTester.teardown(self)
-        controllers.print_charges_report = self._print_charges_report
+        controllers.print_charges_list = self._print_charges_list
     
     def test_default (self):
         charges = Session().query(Charge).filter(
             Charge.id.in_([11, 12, 15, 16, 19, 20, 23, 24]))
-        code, stdout, stderr = run(report_charges_main)
+        code, stdout, stderr = run(list_charges_main)
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_job (self):
         charges = Session().query(Charge).filter(
             Charge.id.in_([19]))
-        code, stdout, stderr = run(report_charges_main,
+        code, stdout, stderr = run(list_charges_main,
             "-j 3.5.resource1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_jobs (self):
         charges = Session().query(Charge).filter(
             Charge.id.in_([19, 23]))
-        code, stdout, stderr = run(report_charges_main,
+        code, stdout, stderr = run(list_charges_main,
             "-j 3.5.resource1 -j 3.6.resource2".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_other_users (self):
-        code, stdout, stderr = run(report_charges_main,
+        code, stdout, stderr = run(list_charges_main,
             "-p project1 -u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not controllers.print_charges_report.calls
+        assert not controllers.print_charges_list.calls
 
     def test_member_users (self):
-        code, stdout, stderr = run(report_charges_main,
+        code, stdout, stderr = run(list_charges_main,
             "-p project2 -u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not controllers.print_charges_report.calls
+        assert not controllers.print_charges_list.calls
     
     def test_project_admin_users (self):
         charges = Session().query(Charge).filter(Charge.id.in_([25, 29]))
-        code, stdout, stderr = run(report_charges_main,
+        code, stdout, stderr = run(list_charges_main,
             "-u user1 -p project4".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_self_users (self):
         charges = Session().query(Charge).filter(
             Charge.id.in_([11, 12, 15, 16, 19, 20, 23, 24]))
-        code, stdout, stderr = run(report_charges_main,
+        code, stdout, stderr = run(list_charges_main,
             ("-u %s" % current_user()).split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_member_projects (self):
         charges = Session().query(Charge).filter(
             Charge.id.in_([11, 12, 15, 16]))
-        code, stdout, stderr = run(report_charges_main, "-p project2".split())
+        code, stdout, stderr = run(list_charges_main, "-p project2".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_project_admin_projects (self):
         charges = Session().query(Charge).filter(
             Charge.id.in_([25, 26, 27, 28, 29, 30, 31, 32]))
-        code, stdout, stderr = run(report_charges_main, "-p project4".split())
+        code, stdout, stderr = run(list_charges_main, "-p project4".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_other_projects (self):
         charges = Session().query(Charge).filter(
             Charge.id.in_([3, 4, 7, 8]))
-        code, stdout, stderr = run(report_charges_main, "-p project1".split())
+        code, stdout, stderr = run(list_charges_main, "-p project1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_resources (self):
         charges = Session().query(Charge).filter(
             Charge.id.in_([11, 12, 19, 20]))
-        code, stdout, stderr = run(report_charges_main, "-r resource1".split())
+        code, stdout, stderr = run(list_charges_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_after (self):
         charges = Session().query(Charge).filter(
             Charge.id.in_([12, 16, 20, 24]))
-        code, stdout, stderr = run(report_charges_main,
+        code, stdout, stderr = run(list_charges_main,
             "-a 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_before (self):
         charges = Session().query(Charge).filter(
             Charge.id.in_([11, 15, 19, 23]))
         code, stdout, stderr = run(
-            report_charges_main, "-b 2000-01-01".split())
+            list_charges_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_comments (self):
         code, stdout, stderr = run(
-            report_charges_main, ["-c"])
+            list_charges_main, ["-c"])
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_true(kwargs['comments'])
     
     def test_long (self):
         code, stdout, stderr = run(
-            report_charges_main, ["-l"])
+            list_charges_main, ["-l"])
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_false(kwargs['truncate'])
 
 
@@ -2564,78 +2564,78 @@ class TestChargesReport_Admin (TestChargesReport):
     def test_self_users (self):
         charges = Session().query(Charge).filter(Charge.id.in_([
             20, 4, 11, 27, 24, 15, 8, 31, 3, 12, 19, 16, 23, 32, 28, 7]))
-        code, stdout, stderr = run(report_charges_main,
+        code, stdout, stderr = run(list_charges_main,
             ("-u %s" % current_user()).split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_resources (self):
         charges = Session().query(Charge).filter(Charge.id.in_([
             3, 2, 26, 28, 19, 9, 20, 10, 25, 1, 27, 11, 18, 12, 17, 4]))
         code, stdout, stderr = run(
-            report_charges_main, "-r resource1".split())
+            list_charges_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_other_users (self):
         charges = Session().query(Charge).filter(
             Charge.id.in_([1, 5]))
-        code, stdout, stderr = run(report_charges_main,
+        code, stdout, stderr = run(list_charges_main,
             "-p project1 -u user1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_other_projects (self):
         charges = Session().query(Charge).filter(
             Charge.id.in_([8, 2, 7, 1, 3, 5, 4, 6]))
-        code, stdout, stderr = run(report_charges_main, "-p project1".split())
+        code, stdout, stderr = run(list_charges_main, "-p project1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_member_users (self):
         charges = Session().query(Charge).filter(
             Charge.id.in_([9, 13]))
-        code, stdout, stderr = run(report_charges_main,
+        code, stdout, stderr = run(list_charges_main,
             "-p project2 -u user1".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
      
     def test_member_projects (self):
         charges = Session().query(Charge).filter(
             Charge.id.in_([10, 16, 14, 13, 9, 15, 11, 12]))
-        code, stdout, stderr = run(report_charges_main, "-p project2".split())
+        code, stdout, stderr = run(list_charges_main, "-p project2".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_default (self):
         charges = Session().query(Charge)
-        code, stdout, stderr = run(report_charges_main)
+        code, stdout, stderr = run(list_charges_main)
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_after (self):
         charges = Session().query(Charge).filter(Charge.id.in_([
             28, 4, 25, 24, 21, 16, 9, 29, 8, 13, 1, 20, 5, 12, 32, 17]))
         code, stdout, stderr = run(
-            report_charges_main, "-a 2000-01-01".split())
+            list_charges_main, "-a 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_before (self):
         charges = Session().query(Charge).filter(Charge.id.in_([
             3, 11, 18, 10, 31, 15, 23, 2, 27, 6, 7, 26, 19, 14, 22, 30]))
         code, stdout, stderr = run(
-            report_charges_main, "-b 2000-01-01".split())
+            list_charges_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = controllers.print_charges_report.calls[0]
+        args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
 
 
@@ -2653,7 +2653,7 @@ class TestDetailJobs (CbankTester):
         CbankTester.teardown(self)
         controllers.print_jobs = self._print_jobs
     
-    def test_jobs_report (self):
+    def test_jobs_list (self):
         code, stdout, stderr = run(
             detail_jobs_main, "resource1.1".split())
         assert_equal(code, 0)

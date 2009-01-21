@@ -1,15 +1,15 @@
-.Dd 13 November 2008
+.Dd 21 January 2009
 .Os Python 2.x
 .Dt CBANK 7 USD
 .Sh NAME
-.Nm cbank-report
+.Nm cbank-list
 .Nd clusterbank command-line interface
 .Sh SYNOPSIS
 .Nm
-.Op Ar report
+.Op Ar list
 .Sh DESCRIPTION
 Generate a clusterbank
-.Ar report :
+.Ar list :
 .Bl -tag
 .It users
 Report aggregate data by user.
@@ -26,10 +26,10 @@ Report individual charges.
 .El
 .Pp
 Additional arguments are passed to the specific
-.Ar report .
+.Ar list .
 .Sh EXAMPLES
 Any non-ambiguous value for
-.Ar report
+.Ar list
 is valid. Therefore, the following commands are equivalent:
 .Bd -filled -offset indent
 .Nm
@@ -55,12 +55,12 @@ Global configuration and defaults.
 .El
 .Sh SEE ALSO
 .Xr cbank 7 ,
-.Xr cbank-report-users 7 ,
-.Xr cbank-report-projects 7 ,
-.Xr cbank-report-allocations 7 ,
-.Xr cbank-report-holds 7 ,
-.Xr cbank-report-jobs 7 ,
-.Xr cbank-report-charges 7
+.Xr cbank-list-users 7 ,
+.Xr cbank-list-projects 7 ,
+.Xr cbank-list-allocations 7 ,
+.Xr cbank-list-holds 7 ,
+.Xr cbank-list-jobs 7 ,
+.Xr cbank-list-charges 7
 .Sh AUTHORS
 .An Jonathon Anderson
 .Ad janderso@alcf.anl.gov

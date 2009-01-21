@@ -1,14 +1,14 @@
-.Dd 26 November 2008
+.Dd 21 January 2009
 .Os Python 2.x
 .Dt CBANK 7 USD
 .Sh NAME
-.Nm cbank-report-charges
+.Nm cbank-list-charges
 .Nd clusterbank command-line interface
 .Sh SYNOPSIS
 .Nm
 .Op options
 .Sh DESCRIPTION
-For each applicable charge report the associated date, resource, project, and user, as well as the effective amount charged.
+For each applicable charge list the associated date, resource, project, and user, as well as the effective amount charged.
 .Sh OPTIONS
 .Bl -tag
 .It Fl u Ar user
@@ -18,7 +18,7 @@ Report charges associated with
 .Ar project
 is specified, projects that
 .Ar user
-is a member of will be included in the report.
+is a member of will be included in the list.
 .It Fl p Ar project
 Report charges to
 .Ar project .
@@ -39,7 +39,7 @@ Report associated comments.
 Do not truncate long string fields.
 .El
 .Sh EXAMPLES
-Generate a report of all charges associated with the current user:
+Generate a list of all charges associated with the current user:
 Report charges to the project 'grail' associated with users 'monty' and 'python':
 .Bd -filled -offset indent
 .Nm
@@ -59,7 +59,7 @@ Global configuration and defaults.
 .El
 .Sh SEE ALSO
 .Xr cbank 7 ,
-.Xr cbank-report 7
+.Xr cbank-list 7
 .Sh AUTHORS
 .An Jonathon Anderson
 .Ad janderso@alcf.anl.gov
