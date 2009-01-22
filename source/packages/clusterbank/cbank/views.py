@@ -374,7 +374,10 @@ def print_allocations_list (allocations, users=None,
     job_count_total = 0
     charge_sum_total = 0
     allocation_sum_total = 0
+    now = datetime.now()
     for allocation, job_count, charge_sum, allocation_sum in query:
+        if not (allocation.start <= now < allocation.end):
+            allocation_sum = 0
         job_count_total += job_count
         charge_sum_total += charge_sum
         allocation_sum_total += allocation_sum

@@ -17,6 +17,7 @@ from clusterbank.controllers import user_by_name, project_by_name, \
     resource_by_name, Session, user, project, resource
 from clusterbank.model.database import metadata
 import clusterbank.upstreams.default as upstream
+import clusterbank.cbank.views
 from clusterbank.cbank.views import print_users_list, \
     print_projects_list, print_allocations_list, print_holds_list, \
     print_jobs_list, print_charges_list, print_charges, print_jobs, \
@@ -811,6 +812,34 @@ class TestAllocationsReport (CbankViewTester):
             Units are undefined.
             """))
     
+    def test_expired (self):
+        project1 = project("project1")
+        project2 = project("project2")
+        res1 = resource("res1")
+        res2 = resource("res2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        a1 = Allocation(project1, res1, 10, start, start)
+        a2 = Allocation(project1, res1, 20, start, end)
+        a3 = Allocation(project2, res1, 30, start, end)
+        a4 = Allocation(project2, res2, 35, start, start)
+        Session.flush() # assign allocation ids
+        stdout, stderr = capture(lambda:
+            print_allocations_list([a1, a2, a3, a4]))
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            1    2000-01-01 res1     project1              0           0.0           0.0
+            2    2000-01-08 res1     project1              0           0.0          20.0
+            3    2000-01-08 res1     project2              0           0.0          30.0
+            4    2000-01-01 res2     project2              0           0.0           0.0
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
+            #    Expiration Resource Project            Jobs       Charged     Available
+            ---- ---------- -------- --------------- ------- ------------- -------------
+                                                     ------- ------------- -------------
+                                                           0           0.0          50.0
+            Units are undefined.
+            """))
+    
     def test_holds (self):
         project1 = project("project1")
         project2 = project("project2")
@@ -876,6 +905,39 @@ class TestAllocationsReport (CbankViewTester):
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            0          47.0          48.0
+            Units are undefined.
+            """))
+    
+    def test_expired_charges (self):
+        project1 = project("project1")
+        project2 = project("project2")
+        res1 = resource("res1")
+        res2 = resource("res2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        a1 = Allocation(project1, res1, 10, start, start)
+        a2 = Allocation(project1, res1, 20, start, end)
+        a3 = Allocation(project2, res1, 30, start, end)
+        a4 = Allocation(project2, res2, 35, start, start)
+        Charge(a1, 10)
+        Charge(a2, 15)
+        Charge(a2, 5)
+        Charge(a4, 9)
+        Charge(a4, 8)
+        Session.flush() # assign allocation ids
+        stdout, stderr = capture(lambda:
+            print_allocations_list([a1, a2, a3, a4]))
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            1    2000-01-01 res1     project1              0          10.0           0.0
+            2    2000-01-08 res1     project1              0          20.0           0.0
+            3    2000-01-08 res1     project2              0           0.0          30.0
+            4    2000-01-01 res2     project2              0          17.0           0.0
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
+            #    Expiration Resource Project            Jobs       Charged     Available
+            ---- ---------- -------- --------------- ------- ------------- -------------
+                                                     ------- ------------- -------------
+                                                           0          47.0          30.0
             Units are undefined.
             """))
     
