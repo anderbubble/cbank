@@ -291,14 +291,14 @@ def print_allocations_list (allocations, users=None,
     comments -- list allocation comments
     """
     
-    fields = ["Allocation", "Expiration", "Resource", "Project", "Jobs",
+    fields = ["Allocation", "End", "Resource", "Project", "Jobs",
         "Charged", "Available"]
     if comments:
         fields.append("Comment")
     format = Formatter(fields)
     format.headers = {'Allocation':"#"}
     format.widths = {'Allocation':4, 'Project':15, 'Available':13,
-        'Jobs':7, 'Charged':13, 'Expiration':10}
+        'Jobs':7, 'Charged':13, 'End':10}
     if truncate:
         format.truncate = {'Resource':True, 'Project':True}
     format.aligns = {'Available':"right", 'Jobs':"right", 'Charged':"right"}
@@ -390,7 +390,7 @@ def print_allocations_list (allocations, users=None,
             'Allocation':allocation.id,
             'Project':allocation.project,
             'Resource':allocation.resource,
-            'Expiration':format_datetime(allocation.end),
+            'End':format_datetime(allocation.end),
             'Jobs':job_count,
             'Charged':display_units(charge_sum),
             'Available':display_units(allocation_sum),
@@ -569,7 +569,7 @@ def print_allocation (allocation):
     print " * Project: %s" % allocation.project
     print " * Resource: %s" % allocation.resource
     print " * Start: %s" % allocation.start
-    print " * Expiration: %s" % allocation.end
+    print " * End: %s" % allocation.end
     print " * Comment: %s" % allocation.comment
 
 

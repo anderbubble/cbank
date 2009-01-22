@@ -842,7 +842,7 @@ class TestAllocationsReport (CbankViewTester):
         assert_eq_output(stdout.getvalue(), dedent("""\
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
-            #    Expiration Resource Project            Jobs       Charged     Available
+            #    End        Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            0           0.0           0.0
@@ -870,7 +870,7 @@ class TestAllocationsReport (CbankViewTester):
             4    2000-01-08 res2     project2              0           0.0          35.0
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
-            #    Expiration Resource Project            Jobs       Charged     Available
+            #    End        Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            0           0.0          95.0
@@ -898,7 +898,7 @@ class TestAllocationsReport (CbankViewTester):
             4    2000-01-01 res2     project2              0           0.0           0.0
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
-            #    Expiration Resource Project            Jobs       Charged     Available
+            #    End        Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            0           0.0          50.0
@@ -933,7 +933,7 @@ class TestAllocationsReport (CbankViewTester):
             4    2000-01-08 res2     project2              0           0.0          26.0
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
-            #    Expiration Resource Project            Jobs       Charged     Available
+            #    End        Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            0           0.0          71.0
@@ -966,7 +966,7 @@ class TestAllocationsReport (CbankViewTester):
             4    2000-01-08 res2     project2              0          17.0          18.0
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
-            #    Expiration Resource Project            Jobs       Charged     Available
+            #    End        Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            0          47.0          48.0
@@ -999,7 +999,7 @@ class TestAllocationsReport (CbankViewTester):
             4    2000-01-01 res2     project2              0          17.0           0.0
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
-            #    Expiration Resource Project            Jobs       Charged     Available
+            #    End        Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            0          47.0          30.0
@@ -1036,7 +1036,7 @@ class TestAllocationsReport (CbankViewTester):
             4    2000-01-08 res2     project2              0           9.0          26.0
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
-            #    Expiration Resource Project            Jobs       Charged     Available
+            #    End        Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            0          27.0          68.0
@@ -1078,7 +1078,7 @@ class TestAllocationsReport (CbankViewTester):
             4    2000-01-08 res2     project2              2           9.0          26.0
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
-            #    Expiration Resource Project            Jobs       Charged     Available
+            #    End        Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            5          27.0          68.0
@@ -1130,7 +1130,7 @@ class TestAllocationsReport (CbankViewTester):
             4    2000-01-08 res2     project2              1           9.0          17.0
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
-            #    Expiration Resource Project            Jobs       Charged     Available
+            #    End        Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            3          20.0          59.0
@@ -1188,7 +1188,7 @@ class TestAllocationsReport (CbankViewTester):
             4    2000-01-08 res2     project2              2           9.0          17.0
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
-            #    Expiration Resource Project            Jobs       Charged     Available
+            #    End        Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            2          14.0          59.0
@@ -1246,7 +1246,7 @@ class TestAllocationsReport (CbankViewTester):
             4    2000-01-08 res2     project2              0           0.0          17.0
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
-            #    Expiration Resource Project            Jobs       Charged     Available
+            #    End        Resource Project            Jobs       Charged     Available
             ---- ---------- -------- --------------- ------- ------------- -------------
                                                      ------- ------------- -------------
                                                            3          13.0          59.0
