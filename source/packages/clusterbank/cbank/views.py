@@ -325,8 +325,11 @@ def print_allocations_list (allocations, users=None,
         func.count(Job.id).label("job_count")).group_by(Allocation.id)
     jobs_q = jobs_q.join(
         Job.charges, Charge.allocation)
-    allocation_charges_q = charges_q
-    allocation_refunds_q = refunds_q
+    now = datetime.now()
+    allocations_ = and_(Allocation.start <= now, Allocation.end > now)
+    charges_ = Charge.allocation.has(allocations_)
+    allocation_charges_q = charges_q.filter(charges_)
+    allocation_refunds_q = refunds_q.filter(Refund.charge.has(charges_))
     
     if users:
         jobs_ = Job.user.has(User.id.in_(user.id for user in users))
