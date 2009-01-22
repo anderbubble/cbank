@@ -204,8 +204,10 @@ def print_projects_list (projects, users=None, resources=None,
         charges_q = charges_q.filter(resources_)
         refunds_q = refunds_q.filter(resources_)
     
-    allocation_charges_q = charges_q
-    allocation_refunds_q = refunds_q
+    allocations_ = and_(Allocation.start <= now, Allocation.end > now)
+    charges_ = Charge.allocation.has(allocations_)
+    allocation_charges_q = charges_q.filter(charges_)
+    allocation_refunds_q = refunds_q.filter(Refund.charge.has(charges_))
     if users:
         users_ = Job.user.has(User.id.in_(user.id for user in users))
         jobs_q = jobs_q.filter(Job.user.has(users_))

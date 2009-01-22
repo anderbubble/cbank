@@ -466,6 +466,31 @@ class TestProjectsReport (CbankViewTester):
             Units are undefined.
             """))
     
+    def test_expired_allocations (self):
+        project1 = project("project1")
+        project2 = project("project2")
+        res1 = resource("res1")
+        res2 = resource("res2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        Allocation(project1, res1, 10, start, start)
+        Allocation(project1, res1, 20, start, start)
+        Allocation(project2, res1, 30, start, end)
+        Allocation(project2, res2, 35, start, start)
+        stdout, stderr = capture(lambda:
+            print_projects_list([project1, project2]))
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            project1              0             0.0             0.0
+            project2              0             0.0            30.0
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
+            Name               Jobs         Charged       Available
+            --------------- ------- --------------- ---------------
+                            ------- --------------- ---------------
+                                  0             0.0            30.0
+            Units are undefined.
+            """))
+    
     def test_holds (self):
         project1 = project("project1")
         project2 = project("project2")
@@ -562,6 +587,46 @@ class TestProjectsReport (CbankViewTester):
             --------------- ------- --------------- ---------------
                             ------- --------------- ---------------
                                   5            47.0            48.0
+            Units are undefined.
+            """))
+    
+    def test_expired_charges (self):
+        project1 = project("project1")
+        project2 = project("project2")
+        res1 = resource("res1")
+        res2 = resource("res2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        a1 = Allocation(project1, res1, 10, start, start)
+        a2 = Allocation(project1, res1, 20, start, end)
+        Allocation(project2, res1, 30, start, start)
+        a4 = Allocation(project2, res2, 35, start, start)
+        j1 = Job("res1.1")
+        j2 = Job("res1.2")
+        j3 = Job("res1.3")
+        j4 = Job("res2.1")
+        j5 = Job("res2.2")
+        j1.account = project1
+        j2.account = project1
+        j3.account = project1
+        j4.account = project2
+        j5.account = project2
+        j1.charges = [Charge(a1, 10)]
+        j2.charges = [Charge(a2, 15)]
+        j3.charges = [Charge(a2, 5)]
+        j4.charges = [Charge(a4, 9)]
+        j5.charges = [Charge(a4, 8)]
+        stdout, stderr = capture(lambda:
+            print_projects_list([project1, project2]))
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            project1              3            30.0             0.0
+            project2              2            17.0             0.0
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
+            Name               Jobs         Charged       Available
+            --------------- ------- --------------- ---------------
+                            ------- --------------- ---------------
+                                  5            47.0             0.0
             Units are undefined.
             """))
     
