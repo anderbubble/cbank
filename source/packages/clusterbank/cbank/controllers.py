@@ -492,7 +492,7 @@ def user_projects_all (users):
 
 @handle_exceptions
 def list_users_main ():
-    """Report charges for users."""
+    """List charges for users."""
     parser = list_users_parser()
     options, args = parser.parse_args()
     if args:
@@ -525,7 +525,7 @@ def list_users_main ():
 
 @handle_exceptions
 def list_projects_main ():
-    """Report charges and allocations for projects."""
+    """List charges and allocations for projects."""
     parser = list_projects_parser()
     options, args = parser.parse_args()
     if args:
@@ -557,7 +557,7 @@ def list_projects_main ():
 
 @handle_exceptions
 def list_allocations_main ():
-    """Report charges and allocation for allocations."""
+    """List charges and allocation for allocations."""
     parser = list_allocations_parser()
     options, args = parser.parse_args()
     if args:
@@ -609,7 +609,7 @@ def list_allocations_main ():
 
 @handle_exceptions
 def list_holds_main ():
-    """Report active holds."""
+    """List active holds."""
     parser = list_holds_parser()
     options, args = parser.parse_args()
     if args:
@@ -652,7 +652,7 @@ def list_holds_main ():
 
 @handle_exceptions
 def list_jobs_main ():
-    """Report jobs."""
+    """List jobs."""
     options, args = list_jobs_parser().parse_args()
     if args:
         raise UnexpectedArguments(args)
@@ -693,7 +693,7 @@ def list_jobs_main ():
 
 @handle_exceptions
 def list_charges_main ():
-    """Report charges."""
+    """List charges."""
     parser = list_charges_parser()
     options, args = parser.parse_args()
     if args:

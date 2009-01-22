@@ -1263,7 +1263,7 @@ class TestImportJobs (CbankTester):
         assert_identical(job_.account, project("project2"))
 
 
-class TestReportMain (CbankTester):
+class TestListMain (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
@@ -1368,7 +1368,7 @@ class TestReportMain (CbankTester):
         assert controllers.list_projects_main.calls
 
 
-class TestUsersReport (CbankTester):
+class TestUsersList (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
@@ -1460,10 +1460,10 @@ class TestUsersReport (CbankTester):
         assert_false(kwargs['truncate'])
 
 
-class TestUsersReport_Admin (TestUsersReport):
+class TestUsersList_Admin (TestUsersList):
     
     def setup (self):
-        TestUsersReport.setup(self)
+        TestUsersList.setup(self)
         be_admin()
     
     def test_default (self):
@@ -1496,7 +1496,7 @@ class TestUsersReport_Admin (TestUsersReport):
         assert_equal(set(kwargs['projects']), set([]))
 
 
-class TestProjectsReport (CbankTester):
+class TestProjectsList (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
@@ -1607,10 +1607,10 @@ class TestProjectsReport (CbankTester):
         assert_false(kwargs['truncate'])
 
 
-class TestProjectsReport_Admin (TestProjectsReport):
+class TestProjectsList_Admin (TestProjectsList):
     
     def setup (self):
-        TestProjectsReport.setup(self)
+        TestProjectsList.setup(self)
         be_admin()
     
     def test_default (self):
@@ -1650,7 +1650,7 @@ def active (allocations):
         if allocation.start <= now and allocation.end > now)
  
 
-class TestAllocationsReport (CbankTester):
+class TestAllocationsList (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
@@ -1774,10 +1774,10 @@ class TestAllocationsReport (CbankTester):
         assert_false(kwargs['truncate'])
 
 
-class TestAllocationsReport_Admin (TestAllocationsReport):
+class TestAllocationsList_Admin (TestAllocationsList):
     
     def setup (self):
-        TestAllocationsReport.setup(self)
+        TestAllocationsList.setup(self)
         be_admin()
     
     def test_default (self):
@@ -1836,7 +1836,7 @@ class TestAllocationsReport_Admin (TestAllocationsReport):
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
 
 
-class TestHoldsReport (CbankTester):
+class TestHoldsList (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
@@ -2008,10 +2008,10 @@ class TestHoldsReport (CbankTester):
         assert_false(kwargs['truncate'])
 
 
-class TestHoldsReport_Admin (TestHoldsReport):
+class TestHoldsList_Admin (TestHoldsList):
     
     def setup (self):
-        TestHoldsReport.setup(self)
+        TestHoldsList.setup(self)
         be_admin()
     
     def test_self_users (self):
@@ -2093,7 +2093,7 @@ class TestHoldsReport_Admin (TestHoldsReport):
         assert_equal(set(args[0]), set(holds))
 
 
-class TestJobsReport (CbankTester):
+class TestJobsList (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
@@ -2303,10 +2303,10 @@ class TestJobsReport (CbankTester):
         assert_false(kwargs['truncate'])
 
 
-class TestJobsReport_Admin (TestJobsReport):
+class TestJobsList_Admin (TestJobsList):
     
     def setup (self):
-        TestJobsReport.setup(self)
+        TestJobsList.setup(self)
         be_admin()
 
     def test_default (self):
@@ -2399,7 +2399,7 @@ class TestJobsReport_Admin (TestJobsReport):
         assert_equal(set(args[0]), set(jobs))
 
 
-class TestChargesReport (CbankTester):
+class TestChargesList (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
@@ -2554,10 +2554,10 @@ class TestChargesReport (CbankTester):
         assert_false(kwargs['truncate'])
 
 
-class TestChargesReport_Admin (TestChargesReport):
+class TestChargesList_Admin (TestChargesList):
     
     def setup (self):
-        TestChargesReport.setup(self)
+        TestChargesList.setup(self)
         Charge.__repr__ = lambda self: str(self.id)
         be_admin()
     

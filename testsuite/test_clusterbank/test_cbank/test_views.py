@@ -108,7 +108,7 @@ class CbankViewTester (object):
         Session.remove()
 
 
-class TestUsersReport (CbankViewTester):
+class TestUsersList (CbankViewTester):
     
     def test_blank (self):
         users = [user_by_name(user) for user in ["user1", "user2"]]
@@ -410,7 +410,7 @@ class TestUsersReport (CbankViewTester):
             """))
 
 
-class TestProjectsReport (CbankViewTester):
+class TestProjectsList (CbankViewTester):
     
     def test_blank (self):
         stdout, stderr = capture(lambda: print_projects_list([]))
@@ -835,7 +835,7 @@ class TestProjectsReport (CbankViewTester):
         assert_eq_output(stderr.getvalue(), stderr_)
 
 
-class TestAllocationsReport (CbankViewTester):
+class TestAllocationsList (CbankViewTester):
     
     def test_blank (self):
         stdout, stderr = capture(lambda: print_allocations_list([]))
@@ -1254,7 +1254,7 @@ class TestAllocationsReport (CbankViewTester):
             """))
 
 
-class TestHoldsReport (CbankViewTester):
+class TestHoldsList (CbankViewTester):
     
     def test_blank (self):
         stdout, stderr = capture(lambda: print_holds_list([]))
@@ -1311,7 +1311,7 @@ class TestHoldsReport (CbankViewTester):
             """))
 
 
-class TestJobsReport (CbankViewTester):
+class TestJobsList (CbankViewTester):
     
     def setup (self):
         CbankViewTester.setup(self)
@@ -1407,7 +1407,7 @@ class TestJobsReport (CbankViewTester):
             """))
 
 
-class TestChargesReport (CbankViewTester):
+class TestChargesList (CbankViewTester):
     
     def test_blank (self):
         stdout, stderr = capture(lambda: print_charges_list([]))
