@@ -41,10 +41,11 @@ from clusterbank.model import User, Project, Resource, Allocation, Hold, \
     Job, Charge, Refund
 from clusterbank.controllers import (Session, user, project, resource,
     job_from_pbs)
-from clusterbank.cbank.views import print_allocation, print_charges, \
-    print_holds, print_refund, print_users_list, print_projects_list, \
-    print_allocations_list, print_holds_list, print_jobs_list, \
-    print_charges_list, print_allocations, print_refunds, print_jobs
+from clusterbank.cbank.views import (print_allocation, print_charges,
+    print_hold, print_holds, print_refund, print_users_list,
+    print_projects_list, print_allocations_list, print_holds_list,
+    print_jobs_list, print_charges_list, print_allocations, print_refunds,
+    print_jobs)
 from clusterbank.cbank.common import get_unit_factor
 from clusterbank.exceptions import NotFound
 from clusterbank.cbank.exceptions import (CbankException, NotPermitted,
@@ -391,6 +392,20 @@ def pop_allocation (args, index):
     except InvalidRequestError:
         raise UnknownAllocation(allocation_id)
     return allocation
+
+
+def pop_hold (args, index):
+    """Pop a hold from the front of args."""
+    try:
+        hold_id = args.pop(index)
+    except IndexError:
+        raise MissingArgument("hold")
+    try:
+        hold = Session.query(Hold).filter_by(
+            id=hold_id).one()
+    except InvalidRequestError:
+        raise UnknownAllocation(hold_id)
+    return hold
 
 
 def pop_charge (args, index):
@@ -995,18 +1010,33 @@ def edit_allocation_main ():
     print_allocation(allocation)
 
 
-@require_admin
 @handle_exceptions
-def edit_hold_main (): pass
+@require_admin
+def edit_hold_main ():
+    """Edit an existing hold."""
+    parser = edit_hold_parser()
+    options, args = parser.parse_args()
+    hold = pop_hold(args, 0)
+    if args:
+        raise UnexpectedArguments(args)
+    if options.amount is not None:
+        hold.amount = options.amount
+    if options.comment is not None:
+        hold.comment = options.comment
+    if options.active is not None:
+        hold.active = options.active
+    if options.commit:
+        Session.commit()
+    print_hold(hold)
 
 
-@require_admin
 @handle_exceptions
+@require_admin
 def edit_charge_main (): pass
 
 
-@require_admin
 @handle_exceptions
+@require_admin
 def edit_refund_main (): pass
 
 
@@ -1330,6 +1360,22 @@ def edit_allocation_parser ():
         help="allocation expires at DATE", metavar="DATE"))
     parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
+    parser.add_option(Option("-n", dest="commit", action="store_false",
+        help="do not save the allocation"))
+    parser.set_defaults(commit=True)
+    return parser
+
+
+def edit_hold_parser ():
+    """An optparse parser for editing existing holds."""
+    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser.add_option(Option("-m", "--amount",
+        type="amount", dest="amount",
+        help="change the AMOUNT", metavar="AMOUNT"))
+    parser.add_option("-c", "--comment", dest="comment",
+        help="arbitrary COMMENT", metavar="COMMENT")
+    parser.add_option("-d", "--deactivate", action="store_false",
+        dest="active", help="deactivate the hold")
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save the allocation"))
     parser.set_defaults(commit=True)
