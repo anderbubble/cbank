@@ -218,7 +218,7 @@ def new_allocation_main ():
         raise UnexpectedArguments(args)
     if not options.resource:
         raise MissingResource()
-    comment = options.comment or options.deprecated_comment
+    comment = options.comment
     allocation = Allocation(project_, options.resource, amount,
         options.start, options.end)
     allocation.comment = comment
@@ -1256,8 +1256,6 @@ def new_allocation_parser ():
     parser.add_option(Option("-e", "--end",
         dest="end", type="date",
         help="allocation expires at DATE", metavar="DATE"))
-    parser.add_option("-m", dest="deprecated_comment",
-        help="deprecated: use -c instead")
     parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option(Option("-n", dest="commit", action="store_false",
@@ -1274,8 +1272,6 @@ def new_charge_parser ():
     parser.add_option(Option("-r", "--resource",
         type="resource", dest="resource",
         help="charge for RESOURCE", metavar="RESOURCE"))
-    parser.add_option("-m", dest="deprecated_comment",
-        help="deprecated: use -c instead")
     parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option(Option("-n", dest="commit", action="store_false",
@@ -1294,8 +1290,6 @@ def new_hold_parser ():
     parser.add_option(Option("-r", "--resource",
         type="resource", dest="resource",
         help="hold for RESOURCE", metavar="RESOURCE"))
-    parser.add_option("-m", dest="deprecated_comment",
-        help="deprecated: use -c instead")
     parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option(Option("-n", dest="commit", action="store_false",
@@ -1310,8 +1304,6 @@ def new_refund_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save the refund"))
-    parser.add_option("-m", dest="deprecated_comment",
-        help="deprecated: use -c instead")
     parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.set_defaults(commit=True)
