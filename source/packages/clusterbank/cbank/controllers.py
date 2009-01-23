@@ -993,8 +993,6 @@ def edit_allocation_main ():
     allocation = pop_allocation(args, 0)
     if args:
         raise UnexpectedArguments(args)
-    if options.amount is not None:
-        allocation.amount = options.amount
     if options.start is not None:
         allocation.start = options.start
     if options.end is not None:
@@ -1015,8 +1013,6 @@ def edit_hold_main ():
     hold = pop_hold(args, 0)
     if args:
         raise UnexpectedArguments(args)
-    if options.amount is not None:
-        hold.amount = options.amount
     if options.comment is not None:
         hold.comment = options.comment
     if options.active is not None:
@@ -1035,8 +1031,6 @@ def edit_charge_main ():
     charge = pop_charge(args, 0)
     if args:
         raise UnexpectedArguments(args)
-    if options.amount is not None:
-        charge.amount = options.amount
     if options.comment is not None:
         charge.comment = options.comment
     if options.commit:
@@ -1352,9 +1346,6 @@ def new_refund_parser ():
 def edit_allocation_parser ():
     """An optparse parser for editing existing allocations."""
     parser = optparse.OptionParser(version=clusterbank.__version__)
-    parser.add_option(Option("-m", "--amount",
-        type="amount", dest="amount",
-        help="change the AMOUNT", metavar="AMOUNT"))
     parser.add_option(Option("-s", "--start",
         dest="start", type="date",
         help="allocation starts at DATE", metavar="DATE"))
@@ -1372,9 +1363,6 @@ def edit_allocation_parser ():
 def edit_hold_parser ():
     """An optparse parser for editing existing holds."""
     parser = optparse.OptionParser(version=clusterbank.__version__)
-    parser.add_option(Option("-m", "--amount",
-        type="amount", dest="amount",
-        help="change the AMOUNT", metavar="AMOUNT"))
     parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option("-d", "--deactivate", action="store_false",
@@ -1388,9 +1376,6 @@ def edit_hold_parser ():
 def edit_charge_parser ():
     """An optparse parser for editing existing charges."""
     parser = optparse.OptionParser(version=clusterbank.__version__)
-    parser.add_option(Option("-m", "--amount",
-        type="amount", dest="amount",
-        help="change the AMOUNT", metavar="AMOUNT"))
     parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option("-d", "--deactivate", action="store_false",
@@ -1488,15 +1473,8 @@ class Option (optparse.Option):
             raise optparse.OptionValueError(
                 "option %s: unknown job: %s" % (opt, value))
     
-    def check_amount (self, opt, value):
-        """Parse an amount to its internal representation."""
-        try:
-            return parse_units(float(value))
-        except ValueError_, e:
-            raise optparse.OptionValueError("option %s: %s" % (opt, e))
-    
     TYPES = optparse.Option.TYPES + (
-        "date", "project", "resource", "user", "job", "amount")
+        "date", "project", "resource", "user", "job")
     
     TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
     TYPE_CHECKER['date'] = check_date
@@ -1504,4 +1482,3 @@ class Option (optparse.Option):
     TYPE_CHECKER['resource'] = check_resource
     TYPE_CHECKER['user'] = check_user
     TYPE_CHECKER['job'] = check_job
-    TYPE_CHECKER['amount'] = check_amount

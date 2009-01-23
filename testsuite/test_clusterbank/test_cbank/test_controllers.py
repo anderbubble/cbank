@@ -1144,15 +1144,6 @@ class TestEditAllocationMain (CbankTester):
         assert callable(controllers.edit_allocation_main), \
             "edit_allocation_main is not callable"
 
-    def test_amount (self):
-        args = "-m 200 1"
-        code, stdout, stderr = run(
-            controllers.edit_allocation_main, args.split())
-        Session.remove()
-        assert_equal(code, 0)
-        a = Session.query(Allocation).filter_by(id=1).one()
-        assert_equal(a.amount, 200)
-    
     def test_start (self):
         args = "-s 2009-01-01 1"
         code, stdout, stderr = run(
@@ -1181,7 +1172,7 @@ class TestEditAllocationMain (CbankTester):
         assert_equal(a.comment, "newcomment")
     
     def test_no_commit (self):
-        args = "1 -n -c newcomment -s 2009-01-01 -e 2010-01-01 -m 200"
+        args = "1 -n -c newcomment -s 2009-01-01 -e 2010-01-01"
         code, stdout, stderr = run(
             controllers.edit_allocation_main, args.split())
         Session.remove()
@@ -1220,15 +1211,6 @@ class TestEditHoldMain (CbankTester):
         assert callable(controllers.edit_hold_main), \
             "edit_hold_main is not callable"
     
-    def test_amount (self):
-        args = "-m 20 1"
-        code, stdout, stderr = run(
-            controllers.edit_hold_main, args.split())
-        Session.remove()
-        assert_equal(code, 0)
-        h = Session.query(Hold).filter_by(id=1).one()
-        assert_equal(h.amount, 20)
-    
     def test_comment (self):
         args = "-c newcomment 1"
         code, stdout, stderr = run(
@@ -1248,7 +1230,7 @@ class TestEditHoldMain (CbankTester):
         assert_false(h.active)
     
     def test_no_commit (self):
-        args = "1 -n -d -c newcomment -m 20"
+        args = "1 -n -d -c newcomment"
         code, stdout, stderr = run(
             controllers.edit_hold_main, args.split())
         Session.remove()
@@ -1284,15 +1266,6 @@ class TestEditChargeMain (CbankTester):
         assert callable(controllers.edit_charge_main), \
             "edit_charge_main is not callable"
     
-    def test_amount (self):
-        args = "-m 20 1"
-        code, stdout, stderr = run(
-            controllers.edit_charge_main, args.split())
-        Session.remove()
-        assert_equal(code, 0)
-        h = Session.query(Charge).filter_by(id=1).one()
-        assert_equal(h.amount, 20)
-    
     def test_comment (self):
         args = "-c newcomment 1"
         code, stdout, stderr = run(
@@ -1303,7 +1276,7 @@ class TestEditChargeMain (CbankTester):
         assert_equal(h.comment, "newcomment")
     
     def test_no_commit (self):
-        args = "1 -n -d -c newcomment -m 20"
+        args = "1 -n -d -c newcomment"
         code, stdout, stderr = run(
             controllers.edit_charge_main, args.split())
         Session.remove()
