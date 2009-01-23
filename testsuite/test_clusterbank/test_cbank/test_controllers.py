@@ -1144,24 +1144,6 @@ class TestEditAllocationMain (CbankTester):
         assert callable(controllers.edit_allocation_main), \
             "edit_allocation_main is not callable"
 
-    def test_resource (self):
-        args = "-r resource2 1"
-        code, stdout, stderr = run(
-            controllers.edit_allocation_main, args.split())
-        Session.remove()
-        assert_equal(code, 0)
-        a = Session.query(Allocation).filter_by(id=1).one()
-        assert_identical(a.resource, resource("resource2"))
-    
-    def test_project (self):
-        args = "-p project2 1"
-        code, stdout, stderr = run(
-            controllers.edit_allocation_main, args.split())
-        Session.remove()
-        assert_equal(code, 0)
-        a = Session.query(Allocation).filter_by(id=1).one()
-        assert_identical(a.project, project("project2"))
-    
     def test_amount (self):
         args = "-m 200 1"
         code, stdout, stderr = run(
@@ -1199,7 +1181,7 @@ class TestEditAllocationMain (CbankTester):
         assert_equal(a.comment, "newcomment")
     
     def test_no_commit (self):
-        args = "1 -n -p project2 -r resource2 -c newcomment -s 2009-01-01 -e 2010-01-01 -m 200"
+        args = "1 -n -c newcomment -s 2009-01-01 -e 2010-01-01 -m 200"
         code, stdout, stderr = run(
             controllers.edit_allocation_main, args.split())
         Session.remove()

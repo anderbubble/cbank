@@ -993,10 +993,6 @@ def edit_allocation_main ():
     allocation = pop_allocation(args, 0)
     if args:
         raise UnexpectedArguments(args)
-    if options.resource:
-        allocation.resource = options.resource
-    if options.project:
-        allocation.project = options.project
     if options.amount is not None:
         allocation.amount = options.amount
     if options.start is not None:
@@ -1343,12 +1339,6 @@ def new_refund_parser ():
 def edit_allocation_parser ():
     """An optparse parser for editing existing allocations."""
     parser = optparse.OptionParser(version=clusterbank.__version__)
-    parser.add_option(Option("-r", "--resource",
-        type="resource", dest="resource",
-        help="change the RESOURCE", metavar="RESOURCE"))
-    parser.add_option(Option("-p", "--project",
-        type="project", dest="project",
-        help="change the PROJECT", metavar="PROJECT"))
     parser.add_option(Option("-m", "--amount",
         type="amount", dest="amount",
         help="change the AMOUNT", metavar="AMOUNT"))
