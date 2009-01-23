@@ -29,6 +29,7 @@ setup(
         "cbank-edit = clusterbank.cbank.controllers:edit_main",
         "cbank-edit-alloctaion = clusterbank.cbank.controllers:edit_allocation_main",
         "cbank-edit-hold = clusterbank.cbank.controllers:edit_hold_main",
+        "cbank-edit-charge = clusterbank.cbank.controllers:edit_charge_main",
         "cbank-import = clusterbank.cbank.controllers:import_main",
         "cbank-import-jobs = clusterbank.cbank.controllers:import_jobs_main",
         "cbank-list = clusterbank.cbank.controllers:list_main",

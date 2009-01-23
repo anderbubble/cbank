@@ -1266,6 +1266,60 @@ class TestEditHoldMain (CbankTester):
         assert_equal(code, NotPermitted.exit_code)
 
 
+class TestEditChargeMain (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        be_admin()
+        a = Allocation(project("project1"), resource("resource1"), 100,
+            datetime(2008, 1, 1), datetime(2009, 1, 1))
+        c = Charge(a, 10)
+        c.id = 1
+        Session.add(c)
+        Session.commit()
+    
+    def test_exists_and_callable (self):
+        assert hasattr(controllers, "edit_charge_main"), \
+            "edit_charge_main does not exist"
+        assert callable(controllers.edit_charge_main), \
+            "edit_charge_main is not callable"
+    
+    def test_amount (self):
+        args = "-m 20 1"
+        code, stdout, stderr = run(
+            controllers.edit_charge_main, args.split())
+        Session.remove()
+        assert_equal(code, 0)
+        h = Session.query(Charge).filter_by(id=1).one()
+        assert_equal(h.amount, 20)
+    
+    def test_comment (self):
+        args = "-c newcomment 1"
+        code, stdout, stderr = run(
+            controllers.edit_charge_main, args.split())
+        Session.remove()
+        assert_equal(code, 0)
+        h = Session.query(Charge).filter_by(id=1).one()
+        assert_equal(h.comment, "newcomment")
+    
+    def test_no_commit (self):
+        args = "1 -n -d -c newcomment -m 20"
+        code, stdout, stderr = run(
+            controllers.edit_charge_main, args.split())
+        Session.remove()
+        assert_equal(code, 0)
+        h = Session.query(Charge).filter_by(id=1).one()
+        assert_identical(h.comment, None)
+        assert_equal(h.amount, 10)
+    
+    def test_non_admin (self):
+        clusterbank.config.set("cbank", "admins", "")
+        args = ""
+        code, stdout, stderr = run(
+            controllers.edit_charge_main, args.split())
+        assert_equal(code, NotPermitted.exit_code)
+
+
 class TestImportJobs (CbankTester):
 
     def setup (self):

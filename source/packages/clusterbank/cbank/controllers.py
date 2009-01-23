@@ -41,8 +41,8 @@ from clusterbank.model import User, Project, Resource, Allocation, Hold, \
     Job, Charge, Refund
 from clusterbank.controllers import (Session, user, project, resource,
     job_from_pbs)
-from clusterbank.cbank.views import (print_allocation, print_charges,
-    print_hold, print_holds, print_refund, print_users_list,
+from clusterbank.cbank.views import (print_allocation, print_charge,
+    print_charges, print_hold, print_holds, print_refund, print_users_list,
     print_projects_list, print_allocations_list, print_holds_list,
     print_jobs_list, print_charges_list, print_allocations, print_refunds,
     print_jobs)
@@ -1028,7 +1028,20 @@ def edit_hold_main ():
 
 @handle_exceptions
 @require_admin
-def edit_charge_main (): pass
+def edit_charge_main ():
+    """Edit an existing charge."""
+    parser = edit_charge_parser()
+    options, args = parser.parse_args()
+    charge = pop_charge(args, 0)
+    if args:
+        raise UnexpectedArguments(args)
+    if options.amount is not None:
+        charge.amount = options.amount
+    if options.comment is not None:
+        charge.comment = options.comment
+    if options.commit:
+        Session.commit()
+    print_charge(charge)
 
 
 @handle_exceptions
@@ -1366,6 +1379,22 @@ def edit_hold_parser ():
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option("-d", "--deactivate", action="store_false",
         dest="active", help="deactivate the hold")
+    parser.add_option(Option("-n", dest="commit", action="store_false",
+        help="do not save the allocation"))
+    parser.set_defaults(commit=True)
+    return parser
+
+
+def edit_charge_parser ():
+    """An optparse parser for editing existing charges."""
+    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser.add_option(Option("-m", "--amount",
+        type="amount", dest="amount",
+        help="change the AMOUNT", metavar="AMOUNT"))
+    parser.add_option("-c", "--comment", dest="comment",
+        help="arbitrary COMMENT", metavar="COMMENT")
+    parser.add_option("-d", "--deactivate", action="store_false",
+        dest="active", help="deactivate the charge")
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save the allocation"))
     parser.set_defaults(commit=True)
