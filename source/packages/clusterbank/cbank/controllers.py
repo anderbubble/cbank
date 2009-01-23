@@ -1402,8 +1402,6 @@ def edit_charge_parser ():
     parser = optparse.OptionParser(version=clusterbank.__version__)
     parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
-    parser.add_option("-d", "--deactivate", action="store_false",
-        dest="active", help="deactivate the charge")
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save the allocation"))
     parser.set_defaults(commit=True)

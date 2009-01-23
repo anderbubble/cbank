@@ -1276,7 +1276,7 @@ class TestEditChargeMain (CbankTester):
         assert_equal(h.comment, "newcomment")
     
     def test_no_commit (self):
-        args = "1 -n -d -c newcomment"
+        args = "1 -n -c newcomment"
         code, stdout, stderr = run(
             controllers.edit_charge_main, args.split())
         Session.remove()
