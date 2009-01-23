@@ -1293,6 +1293,51 @@ class TestEditChargeMain (CbankTester):
         assert_equal(code, NotPermitted.exit_code)
 
 
+class TestEditRefundMain (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        be_admin()
+        a = Allocation(project("project1"), resource("resource1"), 100,
+            datetime(2008, 1, 1), datetime(2009, 1, 1))
+        c = Charge(a, 10)
+        r = Refund(c, 5)
+        r.id = 1
+        Session.add(r)
+        Session.commit()
+    
+    def test_exists_and_callable (self):
+        assert hasattr(controllers, "edit_refund_main"), \
+            "edit_refund_main does not exist"
+        assert callable(controllers.edit_refund_main), \
+            "edit_refund_main is not callable"
+    
+    def test_comment (self):
+        args = "-c newcomment 1"
+        code, stdout, stderr = run(
+            controllers.edit_refund_main, args.split())
+        Session.remove()
+        assert_equal(code, 0)
+        refund = Session.query(Refund).filter_by(id=1).one()
+        assert_equal(refund.comment, "newcomment")
+    
+    def test_no_commit (self):
+        args = "1 -n -c newcomment"
+        code, stdout, stderr = run(
+            controllers.edit_refund_main, args.split())
+        Session.remove()
+        assert_equal(code, 0)
+        refund = Session.query(Refund).filter_by(id=1).one()
+        assert_identical(refund.comment, None)
+    
+    def test_non_admin (self):
+        clusterbank.config.set("cbank", "admins", "")
+        args = ""
+        code, stdout, stderr = run(
+            controllers.edit_refund_main, args.split())
+        assert_equal(code, NotPermitted.exit_code)
+
+
 class TestImportJobs (CbankTester):
 
     def setup (self):

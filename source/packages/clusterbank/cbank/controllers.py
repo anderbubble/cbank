@@ -421,6 +421,19 @@ def pop_charge (args, index):
     return charge
 
 
+def pop_refund (args, index):
+    """Pop a refund from the front of args."""
+    try:
+        refund_id = args.pop(index)
+    except IndexError:
+        raise MissingArgument("refund")
+    try:
+        refund = Session().query(Refund).filter_by(id=refund_id).one()
+    except InvalidRequestError:
+        raise UnknownCharge(refund_id)
+    return refund
+
+
 def pop_amount (args, index):
     """Pop an amount from the front of args."""
     try:
@@ -1040,7 +1053,18 @@ def edit_charge_main ():
 
 @handle_exceptions
 @require_admin
-def edit_refund_main (): pass
+def edit_refund_main ():
+    """Edit an existing refund."""
+    parser = edit_refund_parser()
+    options, args = parser.parse_args()
+    refund = pop_refund(args, 0)
+    if args:
+        raise UnexpectedArguments(args)
+    if options.comment is not None:
+        refund.comment = options.comment
+    if options.commit:
+        Session.commit()
+    print_refund(refund)
 
 
 def replace_command ():
@@ -1380,6 +1404,17 @@ def edit_charge_parser ():
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option("-d", "--deactivate", action="store_false",
         dest="active", help="deactivate the charge")
+    parser.add_option(Option("-n", dest="commit", action="store_false",
+        help="do not save the allocation"))
+    parser.set_defaults(commit=True)
+    return parser
+
+
+def edit_refund_parser ():
+    """An optparse parser for editing existing refunds."""
+    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser.add_option("-c", "--comment", dest="comment",
+        help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save the allocation"))
     parser.set_defaults(commit=True)
