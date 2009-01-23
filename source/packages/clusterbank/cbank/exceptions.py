@@ -8,6 +8,7 @@ CbankError -- a generic error (-1)
 UnknownEntity -- an entity could not be found (-2)
 UnknownUser -- a user could not be found (-2)
 UnknownProject -- a project could not be found (-2)
+UnknownAllocation -- an allocation could not be found (-2)
 UnknownCharge -- a charge could not be found (-2)
 MissingArgument -- a required argument is missing (-3)
 UnexpectedArguments -- unexpected arguments were found (-4)
@@ -19,7 +20,7 @@ MissingCommand -- a required dispatch command was not specified (-9)
 """
 
 __all__ = ["CbankException", "CbankError", "UnknownEntity", "UnknownUser",
-    "UnknownProject", "UnknownCharge", "MissingArgument",
+    "UnknownProject", "UnknownAllocation", "UnknownCharge", "MissingArgument",
     "UnexpectedArguments", "UnknownCommand", "NotPermitted",
     "MissingResource", "ValueError_", "MissingCommand"]
 
@@ -77,6 +78,17 @@ class UnknownProject (UnknownEntity):
             return "cbank: unknown project"
         else:
             return "cbank: unknown project: %s" % self.args[0]
+
+
+class UnknownAllocation (UnknownEntity):
+    
+    """The specified allocation is not present in the system."""
+    
+    def __str__ (self):
+        if not self.args:
+            return "cbank: unknown allocation"
+        else:
+            return "cbank: unknown allocation: %s" % self.args[0]
 
 
 class UnknownCharge (UnknownEntity):

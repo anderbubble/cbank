@@ -4,6 +4,7 @@ main -- metacontroller that dispatches to list_main and new_main
 new_main -- metacontroller that dispatches to creation controllers
 list_main -- metacontroller that dispatches to list controllers
 import_main -- metacontroller that dispatches to import controllers
+edit_main -- metacontroller that dispatches to edit controllers
 new_allocation_main -- creates new allocations
 new_charge_main -- creates new charges
 new_refund_main -- creates new refunds
@@ -14,6 +15,10 @@ list_allocations_main -- allocations list
 list_holds_main -- holds list
 list_jobs_main -- jobs list
 list_charges_main -- charges list
+edit_allocation_main -- edit allocations
+edit_hold_main -- edit holds
+edit_charge_main -- edit charges
+edit_refund_main -- edit refunds
 """
 
 
@@ -42,9 +47,10 @@ from clusterbank.cbank.views import print_allocation, print_charges, \
     print_charges_list, print_allocations, print_refunds, print_jobs
 from clusterbank.cbank.common import get_unit_factor
 from clusterbank.exceptions import NotFound
-from clusterbank.cbank.exceptions import CbankException, NotPermitted, \
-    UnknownCommand, MissingArgument, UnexpectedArguments, MissingResource, \
-    UnknownCharge, UnknownProject, ValueError_, UnknownUser, MissingCommand
+from clusterbank.cbank.exceptions import (CbankException, NotPermitted,
+    UnknownCommand, MissingArgument, UnexpectedArguments, MissingResource,
+    UnknownAllocation, UnknownCharge, UnknownProject, ValueError_,
+    UnknownUser, MissingCommand)
 
 
 __all__ = ["main", "new_main", "import_main", "list_main",
@@ -102,9 +108,12 @@ def main ():
     new -- new_main
     list -- list_main (default)
     detail -- detail_main
+    edit -- edit_main
+    import -- import-main
     """
     try:
-        command = normalize(sys.argv[1], ["new", "import", "list", "detail"])
+        command = normalize(sys.argv[1],
+            ["new", "import", "list", "detail", "edit"])
     except (IndexError, UnknownCommand):
         if help_requested():
             print_main_help()
@@ -120,6 +129,8 @@ def main ():
         return list_main()
     elif command == "detail":
         return detail_main()
+    elif command == "edit":
+        return edit_main()
 
 
 def print_main_help ():
@@ -321,7 +332,6 @@ def print_import_main_help ():
     print dedent(message % {'command':command})
 
 
-
 @handle_exceptions
 @require_admin
 def import_jobs_main ():
@@ -367,6 +377,20 @@ def pop_project (args, index):
         return project(project_name)
     except NotFound:
         raise UnknownProject(project_name)
+
+
+def pop_allocation (args, index):
+    """Pop an allocation from the front of args."""
+    try:
+        allocation_id = args.pop(index)
+    except IndexError:
+        raise MissingArgument("allocation")
+    try:
+        allocation = Session.query(Allocation).filter_by(
+            id=allocation_id).one()
+    except InvalidRequestError:
+        raise UnknownAllocation(allocation_id)
+    return allocation
 
 
 def pop_charge (args, index):
@@ -891,6 +915,101 @@ def detail_refunds_main ():
     print_refunds(refunds)
 
 
+@handle_exceptions
+@require_admin
+def edit_main ():
+    """Secondary cbank metacommand for editing existing entities.
+    
+    Commands:
+    allocation -- new_allocation_main
+    hold -- new_hold_main
+    charge -- new_charge_main
+    refund -- new_refund_main
+    """
+    commands = ["allocation", "hold", "charge", "refund"]
+    try:
+        command = normalize(sys.argv[1], commands)
+    except UnknownCommand:
+        if help_requested():
+            print_edit_main_help()
+            sys.exit()
+        else:
+            raise
+    except IndexError:
+        if help_requested():
+            print_edit_main_help()
+            sys.exit()
+        else:
+            raise MissingCommand(", ".join(commands))
+    replace_command()
+    if command == "allocation":
+        return edit_allocation_main()
+    elif command == "hold":
+        return edit_hold_main()
+    elif command == "charge":
+        return edit_charge_main()
+    elif command == "refund":
+        return edit_refund_main()
+
+
+def print_edit_main_help ():
+    """Print help for the 'cbank edit' metacommand."""
+    command = os.path.basename(sys.argv[0])
+    message = """\
+        usage: %(command)s <entity>
+        
+        Edit clusterbank entities:
+          allocation
+          charge
+          refund
+        
+        Each entity has its own set of options. For help with a specific
+        entity, run
+          %(command)s <entity> -h"""
+    print dedent(message % {'command':command})
+
+
+@handle_exceptions
+@require_admin
+def edit_allocation_main ():
+    """Edit an existing allocation."""
+    parser = edit_allocation_parser()
+    options, args = parser.parse_args()
+    allocation = pop_allocation(args, 0)
+    if args:
+        raise UnexpectedArguments(args)
+    if options.resource:
+        allocation.resource = options.resource
+    if options.project:
+        allocation.project = options.project
+    if options.amount is not None:
+        allocation.amount = options.amount
+    if options.start is not None:
+        allocation.start = options.start
+    if options.end is not None:
+        allocation.end = options.end
+    if options.comment is not None:
+        allocation.comment = options.comment
+    if options.commit:
+        Session.commit()
+    print_allocation(allocation)
+
+
+@require_admin
+@handle_exceptions
+def edit_hold_main (): pass
+
+
+@require_admin
+@handle_exceptions
+def edit_charge_main (): pass
+
+
+@require_admin
+@handle_exceptions
+def edit_refund_main (): pass
+
+
 def replace_command ():
     """Consolidate argv[0] and argv[1] into a single argument."""
     arg0 = " ".join([sys.argv[0], sys.argv[1]])
@@ -1199,6 +1318,32 @@ def new_refund_parser ():
     return parser
 
 
+def edit_allocation_parser ():
+    """An optparse parser for editing existing allocations."""
+    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser.add_option(Option("-r", "--resource",
+        type="resource", dest="resource",
+        help="change the RESOURCE", metavar="RESOURCE"))
+    parser.add_option(Option("-p", "--project",
+        type="project", dest="project",
+        help="change the PROJECT", metavar="PROJECT"))
+    parser.add_option(Option("-m", "--amount",
+        type="amount", dest="amount",
+        help="change the AMOUNT", metavar="AMOUNT"))
+    parser.add_option(Option("-s", "--start",
+        dest="start", type="date",
+        help="allocation starts at DATE", metavar="DATE"))
+    parser.add_option(Option("-e", "--end",
+        dest="end", type="date",
+        help="allocation expires at DATE", metavar="DATE"))
+    parser.add_option("-c", "--comment", dest="comment",
+        help="arbitrary COMMENT", metavar="COMMENT")
+    parser.add_option(Option("-n", dest="commit", action="store_false",
+        help="do not save the allocation"))
+    parser.set_defaults(commit=True)
+    return parser
+
+
 def import_jobs_parser ():
     """An optparse parser for importing jobs."""
     parser = optparse.OptionParser(version=clusterbank.__version__)
@@ -1286,8 +1431,15 @@ class Option (optparse.Option):
             raise optparse.OptionValueError(
                 "option %s: unknown job: %s" % (opt, value))
     
+    def check_amount (self, opt, value):
+        """Parse an amount to its internal representation."""
+        try:
+            return parse_units(float(value))
+        except ValueError_, e:
+            raise optparse.OptionValueError("option %s: %s" % (opt, e))
+    
     TYPES = optparse.Option.TYPES + (
-        "date", "project", "resource", "user", "job")
+        "date", "project", "resource", "user", "job", "amount")
     
     TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
     TYPE_CHECKER['date'] = check_date
@@ -1295,3 +1447,4 @@ class Option (optparse.Option):
     TYPE_CHECKER['resource'] = check_resource
     TYPE_CHECKER['user'] = check_user
     TYPE_CHECKER['job'] = check_job
+    TYPE_CHECKER['amount'] = check_amount

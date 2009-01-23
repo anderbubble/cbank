@@ -14,12 +14,12 @@ from clusterbank.controllers import user, project, resource, user_by_name, \
     project_by_name, resource_by_name, Session
 import clusterbank.upstreams.default as upstream_
 import clusterbank.cbank.controllers as controllers
-from clusterbank.cbank.controllers import main, list_main, new_main, \
-    list_users_main, list_projects_main, list_allocations_main, \
-    list_holds_main, list_jobs_main, list_charges_main, \
-    new_allocation_main, new_charge_main, new_hold_main, new_refund_main, \
-    handle_exceptions, detail_jobs_main, import_main, import_jobs_main, \
-    detail_charges_main, detail_refunds_main
+from clusterbank.cbank.controllers import (main, list_main, new_main,
+    edit_main, list_users_main, list_projects_main, list_allocations_main,
+    list_holds_main, list_jobs_main, list_charges_main, new_allocation_main,
+    new_charge_main, new_hold_main, new_refund_main, handle_exceptions,
+    detail_jobs_main, import_main, import_jobs_main, detail_charges_main,
+    detail_refunds_main)
 from clusterbank.cbank.exceptions import UnknownCommand, \
     UnexpectedArguments, UnknownProject, MissingArgument, MissingResource, \
     NotPermitted, ValueError_, UnknownCharge
@@ -301,15 +301,18 @@ class TestMain (CbankTester):
         self._list_main = controllers.list_main
         self._new_main = controllers.new_main
         self._detail_main = controllers.detail_main
+        self._edit_main = controllers.edit_main
         controllers.list_main = FakeFunc()
         controllers.new_main = FakeFunc()
         controllers.detail_main = FakeFunc()
+        controllers.edit_main = FakeFunc()
     
     def teardown (self):
         CbankTester.teardown(self)
         controllers.list_main = self._list_main
         controllers.new_main = self._new_main
         controllers.detail_main = self._detail_main
+        controllers.edit_main = self._edit_main
     
     def test_callable (self):
         assert callable(main), "main is not callable"
@@ -336,10 +339,19 @@ class TestMain (CbankTester):
         def test_ ():
             assert sys.argv[0] == "main detail", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        controllers.new_main.func = test_
+        controllers.detail_main.func = test_
         args = "detail 1 2 3"
         run(main, args.split())
         assert controllers.detail_main.calls
+    
+    def test_edit (self):
+        def test_ ():
+            assert sys.argv[0] == "main edit", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.edit_main.func = test_
+        args = "edit 1 2 3"
+        run(main, args.split())
+        assert controllers.edit_main.calls
     
     def test_default (self):
         def test_ ():
@@ -1046,6 +1058,166 @@ class TestNewRefundMain (CbankTester):
         Session.remove()
         assert not refunds.count(), "created a refund when not an admin"
         assert code == NotPermitted.exit_code, code
+
+
+class TestEditMain (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        be_admin()
+        self._edit_allocation_main = controllers.edit_allocation_main
+        self._edit_hold_main = controllers.edit_hold_main
+        self._edit_charge_main = controllers.edit_charge_main
+        self._edit_refund_main = controllers.edit_refund_main
+        controllers.edit_allocation_main = FakeFunc()
+        controllers.edit_hold_main = FakeFunc()
+        controllers.edit_charge_main = FakeFunc()
+        controllers.edit_refund_main = FakeFunc()
+    
+    def teardown (self):
+        CbankTester.teardown(self)
+        controllers.edit_allocation_main = self._edit_allocation_main
+        controllers.edit_hold_main = self._edit_hold_main
+        controllers.edit_charge_main = self._edit_charge_main
+        controllers.edit_refund_main = self._edit_refund_main
+    
+    def test_exists_and_callable (self):
+        assert hasattr(controllers, "edit_main"), "edit_main does not exist"
+        assert callable(controllers.edit_main), "edit_main is not callable"
+    
+    def test_allocation (self):
+        args = "allocation 1 2 3"
+        def test_ ():
+            assert sys.argv[0] == "edit_main allocation", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.edit_allocation_main.func = test_
+        run(edit_main, args.split())
+        assert controllers.edit_allocation_main.calls
+    
+    def test_hold (self):
+        args = "hold 1 2 3"
+        def test_ ():
+            assert sys.argv[0] == "edit_main hold", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.edit_hold_main.func = test_
+        run(edit_main, args.split())
+        assert controllers.edit_hold_main.calls
+    
+    def test_charge (self):
+        args = "charge 1 2 3"
+        def test_ ():
+            assert sys.argv[0] == "edit_main charge", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.edit_charge_main.func = test_
+        run(edit_main, args.split())
+        assert controllers.edit_charge_main.calls
+    
+    def test_refund (self):
+        args = "refund 1 2 3"
+        def test_ ():
+            assert sys.argv[0] == "edit_main refund", sys.argv
+            assert sys.argv[1:] == args.split()[1:], sys.argv
+        controllers.edit_refund_main.func = test_
+        run(edit_main, args.split())
+        assert controllers.edit_refund_main.calls
+    
+    def test_invalid (self):
+        args = "invalid 1 2 3"
+        code, stdout, stderr = run(edit_main, args.split())
+        assert code == UnknownCommand.exit_code, code
+
+
+class TestEditAllocationMain (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        be_admin()
+        a = Allocation(project("project1"), resource("resource1"), 100,
+            datetime(2008, 1, 1), datetime(2009, 1, 1))
+        a.id = 1
+        Session.add(a)
+        Session.commit()
+    
+    def test_exists_and_callable (self):
+        assert hasattr(controllers, "edit_allocation_main"), \
+            "edit_allocation_main does not exist"
+        assert callable(controllers.edit_allocation_main), \
+            "edit_allocation_main is not callable"
+
+    def test_resource (self):
+        args = "-r resource2 1"
+        code, stdout, stderr = run(
+            controllers.edit_allocation_main, args.split())
+        Session.remove()
+        assert_equal(code, 0)
+        a = Session.query(Allocation).filter_by(id=1).one()
+        assert_identical(a.resource, resource("resource2"))
+    
+    def test_project (self):
+        args = "-p project2 1"
+        code, stdout, stderr = run(
+            controllers.edit_allocation_main, args.split())
+        Session.remove()
+        assert_equal(code, 0)
+        a = Session.query(Allocation).filter_by(id=1).one()
+        assert_identical(a.project, project("project2"))
+    
+    def test_amount (self):
+        args = "-m 200 1"
+        code, stdout, stderr = run(
+            controllers.edit_allocation_main, args.split())
+        Session.remove()
+        assert_equal(code, 0)
+        a = Session.query(Allocation).filter_by(id=1).one()
+        assert_equal(a.amount, 200)
+    
+    def test_start (self):
+        args = "-s 2009-01-01 1"
+        code, stdout, stderr = run(
+            controllers.edit_allocation_main, args.split())
+        Session.remove()
+        assert_equal(code, 0)
+        a = Session.query(Allocation).filter_by(id=1).one()
+        assert_equal(a.start, datetime(2009, 1, 1))
+    
+    def test_end (self):
+        args = "-e 2010-01-01 1"
+        code, stdout, stderr = run(
+            controllers.edit_allocation_main, args.split())
+        Session.remove()
+        assert_equal(code, 0)
+        a = Session.query(Allocation).filter_by(id=1).one()
+        assert_equal(a.end, datetime(2010, 1, 1))
+    
+    def test_comment (self):
+        args = "-c newcomment 1"
+        code, stdout, stderr = run(
+            controllers.edit_allocation_main, args.split())
+        Session.remove()
+        assert_equal(code, 0)
+        a = Session.query(Allocation).filter_by(id=1).one()
+        assert_equal(a.comment, "newcomment")
+    
+    def test_no_commit (self):
+        args = "1 -n -p project2 -r resource2 -c newcomment -s 2009-01-01 -e 2010-01-01 -m 200"
+        code, stdout, stderr = run(
+            controllers.edit_allocation_main, args.split())
+        Session.remove()
+        assert_equal(code, 0)
+        a = Session.query(Allocation).filter_by(id=1).one()
+        assert_identical(a.project, project("project1"))
+        assert_identical(a.resource, resource("resource1"))
+        assert_identical(a.comment, None)
+        assert_equal(a.start, datetime(2008, 1, 1))
+        assert_equal(a.end, datetime(2009, 1, 1))
+        assert_equal(a.amount, 100)
+    
+    def test_non_admin (self):
+        clusterbank.config.set("cbank", "admins", "")
+        args = ""
+        code, stdout, stderr = run(
+            controllers.edit_allocation_main, args.split())
+        assert_equal(code, NotPermitted.exit_code)
 
 
 class TestImportJobs (CbankTester):

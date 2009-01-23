@@ -26,6 +26,8 @@ setup(
         "cbank-new-hold = clusterbank.cbank.controllers:new_hold_main",
         "cbank-new-charge = clusterbank.cbank.controllers:new_charge_main",
         "cbank-new-refund = clusterbank.cbank.controllers:new_refund_main",
+        "cbank-edit = clusterbank.cbank.controllers:edit_main",
+        "cbank-edit-alloctaion = clusterbank.cbank.controllers:edit_allocation_main",
         "cbank-import = clusterbank.cbank.controllers:import_main",
         "cbank-import-jobs = clusterbank.cbank.controllers:import_jobs_main",
         "cbank-list = clusterbank.cbank.controllers:list_main",
@@ -40,4 +42,3 @@ setup(
         "cbank-detail-holds = clusterbank.cbank.controllers:detail_holds_main",
         "cbank-detail-charges = clusterbank.cbank.controllers:detail_charges_main",
         "cbank-detail-refunds = clusterbank.cbank.controllers:detail_refunds_main"]})
-
