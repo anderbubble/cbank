@@ -1272,11 +1272,15 @@ class TestEditChargeMain (CbankTester):
     def setup (self):
         CbankTester.setup(self)
         be_admin()
-        a = Allocation(project("project1"), resource("resource1"), 100,
+        a1 = Allocation(project("project1"), resource("resource1"), 100,
             datetime(2008, 1, 1), datetime(2009, 1, 1))
-        c = Charge(a, 10)
+        a2 = Allocation(project("project1"), resource("resource1"), 100,
+            datetime(2008, 1, 1), datetime(2009, 1, 1))
+        a1.id = 1
+        a2.id = 2
+        c = Charge(a1, 10)
         c.id = 1
-        Session.add(c)
+        Session.add_all([a1, a2, c])
         Session.commit()
     
     def test_delete (self):
@@ -1306,24 +1310,36 @@ class TestEditChargeMain (CbankTester):
         assert callable(controllers.edit_charge_main), \
             "edit_charge_main is not callable"
     
+    def test_allocation (self):
+        args = "1 -A 2"
+        code, stdout, stderr = run(
+            controllers.edit_charge_main, args.split())
+        Session.remove()
+        assert_equal(code, 0)
+        c = Session.query(Charge).filter_by(id=1).one()
+        a = Session.query(Allocation).get(2)
+        assert_identical(c.allocation, a)
+    
     def test_comment (self):
         args = "-c newcomment 1"
         code, stdout, stderr = run(
             controllers.edit_charge_main, args.split())
         Session.remove()
         assert_equal(code, 0)
-        h = Session.query(Charge).filter_by(id=1).one()
-        assert_equal(h.comment, "newcomment")
+        c = Session.query(Charge).filter_by(id=1).one()
+        assert_equal(c.comment, "newcomment")
     
     def test_no_commit (self):
-        args = "1 -n -c newcomment"
+        args = "1 -n -A 2 -c newcomment"
         code, stdout, stderr = run(
             controllers.edit_charge_main, args.split())
         Session.remove()
         assert_equal(code, 0)
-        h = Session.query(Charge).filter_by(id=1).one()
-        assert_identical(h.comment, None)
-        assert_equal(h.amount, 10)
+        c = Session.query(Charge).filter_by(id=1).one()
+        assert_identical(c.comment, None)
+        assert_equal(c.amount, 10)
+        a = Session.query(Allocation).filter_by(id=1).one()
+        assert_identical(c.allocation, a)
     
     def test_non_admin (self):
         clusterbank.config.set("cbank", "admins", "")

@@ -1062,6 +1062,8 @@ def edit_charge_main ():
                 Session.rollback()
                 raise HasChildren("%s has child entities" % charge)
     else:
+        if options.allocation:
+            charge.allocation = options.allocation
         if options.comment is not None:
             charge.comment = options.comment
         if options.commit:
@@ -1431,6 +1433,9 @@ def edit_charge_parser ():
     parser.add_option(Option("-D", "--delete",
         dest="delete", action="store_true",
         help="delete the charge"))
+    parser.add_option(Option("-A", "--allocation",
+        dest="allocation", type="allocation",
+        help="move the charge to ALLOCATION", metavar="ALLOCATION"))
     parser.set_defaults(commit=True, delete=False)
     return parser
 
@@ -1468,6 +1473,7 @@ class Option (optparse.Option):
     project -- parse a project from its name or id
     resource -- parse a resource from its name or id
     job -- parse a job from its id
+    allocation -- parser an allocation from its id
     """
     
     DATE_FORMATS = [
@@ -1536,8 +1542,16 @@ class Option (optparse.Option):
             raise optparse.OptionValueError(
                 "option %s: unknown job: %s" % (opt, value))
     
+    def check_allocation (self, opt, value):
+        """Parse an allocation from its id."""
+        try:
+            return Session.query(Allocation).filter_by(id=value).one()
+        except InvalidRequestError:
+            raise optparse.OptionValueError(
+                "option %s: unknown job: %s" % (opt, value))
+    
     TYPES = optparse.Option.TYPES + (
-        "date", "project", "resource", "user", "job")
+        "date", "project", "resource", "user", "job", "allocation")
     
     TYPE_CHECKER = optparse.Option.TYPE_CHECKER.copy()
     TYPE_CHECKER['date'] = check_date
@@ -1545,3 +1559,4 @@ class Option (optparse.Option):
     TYPE_CHECKER['resource'] = check_resource
     TYPE_CHECKER['user'] = check_user
     TYPE_CHECKER['job'] = check_job
+    TYPE_CHECKER['allocation'] = check_allocation
