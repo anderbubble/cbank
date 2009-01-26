@@ -20,9 +20,9 @@ from clusterbank.cbank.controllers import (main, list_main, new_main,
     new_charge_main, new_hold_main, new_refund_main, handle_exceptions,
     detail_jobs_main, import_main, import_jobs_main, detail_charges_main,
     detail_refunds_main)
-from clusterbank.cbank.exceptions import UnknownCommand, \
-    UnexpectedArguments, UnknownProject, MissingArgument, MissingResource, \
-    NotPermitted, ValueError_, UnknownCharge
+from clusterbank.cbank.exceptions import (UnknownCommand, UnexpectedArguments,
+    UnknownProject, MissingArgument, MissingResource, NotPermitted,
+    ValueError_, UnknownCharge, HasChildren)
 
 from nose.tools import assert_equal, assert_true, assert_false
 
@@ -1143,7 +1143,26 @@ class TestEditAllocationMain (CbankTester):
             "edit_allocation_main does not exist"
         assert callable(controllers.edit_allocation_main), \
             "edit_allocation_main is not callable"
-
+    
+    def test_delete (self):
+        args = "-D 1"
+        code, stdout, stderr = run(
+            controllers.edit_allocation_main, args.split())
+        assert_equal(code, 0)
+        assert_equal(list(Session.query(Allocation).filter_by(id=1)), [])
+    
+    def test_delete_with_charges (self):
+        a = Session.query(Allocation).filter_by(id=1).one()
+        c = Charge(a, 10)
+        Session.add(c)
+        Session.commit()
+        args = "-D 1"
+        code, stdout, stderr = run(
+            controllers.edit_allocation_main, args.split())
+        Session.remove()
+        assert_equal(code, HasChildren.exit_code)
+        assert_equal(len(list(Session.query(Allocation).filter_by(id=1))), 1)
+    
     def test_start (self):
         args = "-s 2009-01-01 1"
         code, stdout, stderr = run(

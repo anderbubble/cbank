@@ -15,14 +15,15 @@ UnexpectedArguments -- unexpected arguments were found (-4)
 UnknownCommand -- an unknown dispatch command was specified (-5)
 NotPermitted -- the specified action is not permitted (-6)
 MissingResource -- no resource was specified (-7)
-ValueError_ (-8) -- wrapper for the ValueError builtin (-8)
+ValueError_ -- wrapper for the ValueError builtin (-8)
 MissingCommand -- a required dispatch command was not specified (-9)
+HasChildren -- an entity has dependent child entities (-10)
 """
 
 __all__ = ["CbankException", "CbankError", "UnknownEntity", "UnknownUser",
     "UnknownProject", "UnknownAllocation", "UnknownCharge", "MissingArgument",
     "UnexpectedArguments", "UnknownCommand", "NotPermitted",
-    "MissingResource", "ValueError_", "MissingCommand"]
+    "MissingResource", "ValueError_", "MissingCommand", "HasChildren"]
 
 
 class CbankException (Exception):
@@ -196,3 +197,15 @@ class MissingCommand (CbankError):
         else:
             return "cbank: missing command: %s" % self.args[0]
 
+
+class HasChildren (CbankError):
+    
+    """An operation occured on an entity that would affect its children."""
+    
+    exit_code = -10
+    
+    def __str__ (self):
+        if self.args:
+            return "cbank: dependent children: %s" % self.args[0]
+        else:
+            return "cbank: dependent children"

@@ -51,7 +51,7 @@ from clusterbank.exceptions import NotFound
 from clusterbank.cbank.exceptions import (CbankException, NotPermitted,
     UnknownCommand, MissingArgument, UnexpectedArguments, MissingResource,
     UnknownAllocation, UnknownCharge, UnknownProject, ValueError_,
-    UnknownUser, MissingCommand)
+    UnknownUser, MissingCommand, HasChildren)
 
 
 __all__ = ["main", "new_main", "import_main", "list_main",
@@ -1006,14 +1006,23 @@ def edit_allocation_main ():
     allocation = pop_allocation(args, 0)
     if args:
         raise UnexpectedArguments(args)
-    if options.start is not None:
-        allocation.start = options.start
-    if options.end is not None:
-        allocation.end = options.end
-    if options.comment is not None:
-        allocation.comment = options.comment
-    if options.commit:
-        Session.commit()
+    if options.delete:
+        Session.delete(allocation)
+        if options.commit:
+            try:
+                Session.commit()
+            except IntegrityError:
+                Session.rollback()
+                raise HasChildren("%s has child entities" % allocation)
+    else:
+        if options.start is not None:
+            allocation.start = options.start
+        if options.end is not None:
+            allocation.end = options.end
+        if options.comment is not None:
+            allocation.comment = options.comment
+        if options.commit:
+            Session.commit()
     print_allocation(allocation)
 
 
@@ -1370,6 +1379,9 @@ def new_refund_parser ():
 def edit_allocation_parser ():
     """An optparse parser for editing existing allocations."""
     parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser.add_option(Option("-D", "--delete",
+        dest="delete", action="store_true",
+        help="delete the allcation"))
     parser.add_option(Option("-s", "--start",
         dest="start", type="date",
         help="allocation starts at DATE", metavar="DATE"))
@@ -1380,7 +1392,7 @@ def edit_allocation_parser ():
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save the allocation"))
-    parser.set_defaults(commit=True)
+    parser.set_defaults(commit=True, delete=False)
     return parser
 
 
