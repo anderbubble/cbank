@@ -1078,8 +1078,11 @@ def edit_refund_main ():
     refund = pop_refund(args, 0)
     if args:
         raise UnexpectedArguments(args)
-    if options.comment is not None:
-        refund.comment = options.comment
+    if options.delete:
+        Session.delete(refund)
+    else:
+        if options.comment is not None:
+            refund.comment = options.comment
     if options.commit:
         Session.commit()
     print_refund(refund)
@@ -1439,7 +1442,10 @@ def edit_refund_parser ():
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save changes to the refund"))
-    parser.set_defaults(commit=True)
+    parser.add_option(Option("-D", "--delete",
+        dest="delete", action="store_true",
+        help="delete the refund"))
+    parser.set_defaults(commit=True, delete=False)
     return parser
 
 

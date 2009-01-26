@@ -1352,6 +1352,13 @@ class TestEditRefundMain (CbankTester):
         assert callable(controllers.edit_refund_main), \
             "edit_refund_main is not callable"
     
+    def test_delete (self):
+        args = "-D 1"
+        code, stdout, stderr = run(
+            controllers.edit_refund_main, args.split())
+        assert_equal(code, 0)
+        assert_equal(list(Session.query(Refund).filter_by(id=1)), [])
+    
     def test_comment (self):
         args = "-c newcomment 1"
         code, stdout, stderr = run(
