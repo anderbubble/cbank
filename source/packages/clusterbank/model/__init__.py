@@ -137,12 +137,12 @@ mapper(Charge, charges, properties={
     'datetime':charges.c.datetime,
     'amount':charges.c.amount,
     'comment':charges.c.comment,
-    'job':relation(Job, backref="charges")})
+    'job':relation(Job, backref="charges"),
+    'refunds':relation(Refund, backref="charge", cascade="all")})
 
 
 mapper(Refund, refunds, properties={
     'id':refunds.c.id,
-    'charge':relation(Charge, backref="refunds"),
     'datetime':refunds.c.datetime,
     'amount':refunds.c.amount,
     'comment':refunds.c.comment})

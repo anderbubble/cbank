@@ -1279,6 +1279,27 @@ class TestEditChargeMain (CbankTester):
         Session.add(c)
         Session.commit()
     
+    def test_delete (self):
+        args = "-D 1"
+        code, stdout, stderr = run(
+            controllers.edit_charge_main, args.split())
+        assert_equal(code, 0)
+        assert_equal(list(Session.query(Charge).filter_by(id=1)), [])
+    
+    def test_delete_with_refunds (self):
+        a = Session.query(Charge).filter_by(id=1).one()
+        r = Refund(a, 2)
+        r.id = 1
+        Session.add(r)
+        Session.commit()
+        args = "-D 1"
+        code, stdout, stderr = run(
+            controllers.edit_charge_main, args.split())
+        Session.remove()
+        assert_equal(code, 0)
+        assert_equal(list(Session.query(Charge).filter_by(id=1)), [])
+        assert_equal(list(Session.query(Refund).filter_by(id=1)), [])
+    
     def test_exists_and_callable (self):
         assert hasattr(controllers, "edit_charge_main"), \
             "edit_charge_main does not exist"

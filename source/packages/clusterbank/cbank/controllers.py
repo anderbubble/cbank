@@ -1053,10 +1053,19 @@ def edit_charge_main ():
     charge = pop_charge(args, 0)
     if args:
         raise UnexpectedArguments(args)
-    if options.comment is not None:
-        charge.comment = options.comment
-    if options.commit:
-        Session.commit()
+    if options.delete:
+        Session.delete(charge)
+        if options.commit:
+            try:
+                Session.commit()
+            except IntegrityError:
+                Session.rollback()
+                raise HasChildren("%s has child entities" % charge)
+    else:
+        if options.comment is not None:
+            charge.comment = options.comment
+        if options.commit:
+            Session.commit()
     print_charge(charge)
 
 
@@ -1391,7 +1400,7 @@ def edit_allocation_parser ():
     parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option(Option("-n", dest="commit", action="store_false",
-        help="do not save the allocation"))
+        help="do not save changes to the allocation"))
     parser.set_defaults(commit=True, delete=False)
     return parser
 
@@ -1415,8 +1424,11 @@ def edit_charge_parser ():
     parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option(Option("-n", dest="commit", action="store_false",
-        help="do not save the allocation"))
-    parser.set_defaults(commit=True)
+        help="do not save changes to the charge"))
+    parser.add_option(Option("-D", "--delete",
+        dest="delete", action="store_true",
+        help="delete the charge"))
+    parser.set_defaults(commit=True, delete=False)
     return parser
 
 
@@ -1426,7 +1438,7 @@ def edit_refund_parser ():
     parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option(Option("-n", dest="commit", action="store_false",
-        help="do not save the allocation"))
+        help="do not save changes to the refund"))
     parser.set_defaults(commit=True)
     return parser
 
