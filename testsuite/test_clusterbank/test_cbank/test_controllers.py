@@ -676,6 +676,12 @@ class TestNewChargeMain (CbankTester):
         assert callable(controllers.new_charge_main), \
             "new_charge_main is not callable"
     
+    def test_no_allocation (self):
+        args = "project1 100 -r resource1"
+        code, stdout, stderr = run(new_charge_main, args.split())
+        assert_equal(code, ValueError_.exit_code)
+        assert_equal(Session.query(Charge).count(), 0)
+    
     def test_complete (self):
         project = project_by_name("project1")
         resource = resource_by_name("resource1")

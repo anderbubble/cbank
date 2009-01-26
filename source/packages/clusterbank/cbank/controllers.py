@@ -248,7 +248,10 @@ def new_charge_main ():
     s = Session()
     allocations = s.query(Allocation).filter_by(
         project=project_, resource=options.resource)
-    charges = Charge.distributed(allocations, amount)
+    try:
+        charges = Charge.distributed(allocations, amount)
+    except ValueError, ex:
+        raise ValueError_(ex)
     for charge in charges:
         charge.comment = options.comment
     if options.commit:
