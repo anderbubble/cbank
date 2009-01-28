@@ -429,7 +429,7 @@ def print_holds_list (holds, comments=False, truncate=True):
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
     
-    query = Session().query(Hold)
+    query = Session.query(Hold)
     query = query.options(eagerload(
         Hold.allocation, Allocation.project, Allocation.resource))
     query = query.filter(Hold.id.in_(hold.id for hold in holds))

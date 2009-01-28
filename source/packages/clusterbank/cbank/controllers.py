@@ -418,7 +418,7 @@ def pop_charge (args, index):
     except IndexError:
         raise MissingArgument("charge")
     try:
-        charge = Session().query(Charge).filter_by(id=charge_id).one()
+        charge = Session.query(Charge).filter_by(id=charge_id).one()
     except InvalidRequestError:
         raise UnknownCharge(charge_id)
     return charge
@@ -431,7 +431,7 @@ def pop_refund (args, index):
     except IndexError:
         raise MissingArgument("refund")
     try:
-        refund = Session().query(Refund).filter_by(id=refund_id).one()
+        refund = Session.query(Refund).filter_by(id=refund_id).one()
     except InvalidRequestError:
         raise UnknownCharge(refund_id)
     return refund
@@ -560,7 +560,7 @@ def list_users_main ():
             if projects:
                 users = project_members_all(projects)
             else:
-                users = Session().query(User).all()
+                users = Session.query(User).all()
     else:
         if not projects:
             projects = current_user.projects
@@ -593,7 +593,7 @@ def list_projects_main ():
             if users:
                 projects = user_projects_all(users)
             else:
-                projects = Session().query(Project).all()
+                projects = Session.query(Project).all()
     else:
         if not projects:
             projects = current_user.projects
@@ -625,7 +625,7 @@ def list_allocations_main ():
             if users:
                 projects = user_projects_all(users)
             else:
-                projects = Session().query(Project).all()
+                projects = Session.query(Project).all()
     else:
         if not projects:
             projects = current_user.projects
@@ -638,7 +638,7 @@ def list_allocations_main ():
                 raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
     comments = options.comments
-    allocations = Session().query(Allocation)
+    allocations = Session.query(Allocation)
     if resources:
         allocations = allocations.filter(Allocation.resource.has(
             Resource.id.in_(resource.id for resource in resources)))
@@ -684,7 +684,7 @@ def list_holds_main ():
                 raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
     comments = options.comments
-    holds = Session().query(Hold)
+    holds = Session.query(Hold)
     holds = holds.filter(Hold.active==True)
     if users:
         holds = holds.filter(Hold.job.has(Job.user.has(User.id.in_(
@@ -725,7 +725,7 @@ def list_jobs_main ():
             elif set(users) != set([current_user]):
                 raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
-    jobs = Session().query(Job).order_by(Job.ctime).options(
+    jobs = Session.query(Job).order_by(Job.ctime).options(
         eagerload(Job.charges, Charge.refunds))
     if users:
         jobs = jobs.filter(Job.user.has(User.id.in_(
@@ -768,7 +768,7 @@ def list_charges_main ():
                 raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
     comments = options.comments
-    charges = Session().query(Charge)
+    charges = Session.query(Charge)
     if users:
         charges = charges.filter(Charge.job.has(Job.user.has(User.id.in_(
             user_.id for user_ in users))))

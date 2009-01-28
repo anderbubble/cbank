@@ -1827,7 +1827,7 @@ class TestUsersList_Admin (TestUsersList):
     
     def test_default (self):
         """All users, no filters."""
-        users = Session().query(User).all()
+        users = Session.query(User).all()
         code, stdout, stderr = run(list_users_main)
         assert_equal(code, 0)
         args, kwargs = controllers.print_users_list.calls[0]
@@ -2015,7 +2015,7 @@ class TestAllocationsList (CbankTester):
         CbankTester.setup(self)
         self._print_allocations_list = controllers.print_allocations_list
         controllers.print_allocations_list = FakeFunc()
-        for project in Session().query(Project):
+        for project in Session.query(Project):
             Allocation(project, resource_by_name("resource1"), 0,
                 datetime(1999, 1, 1), datetime(2000, 1, 1))
             Allocation(project, resource_by_name("resource1"), 0,
@@ -2202,12 +2202,12 @@ class TestHoldsList (CbankTester):
         self._print_holds_list = controllers.print_holds_list
         controllers.print_holds_list = FakeFunc()
         user1, user2 = [user_by_name(user) for user in ["user1", "user2"]]
-        for project in Session().query(Project):
+        for project in Session.query(Project):
             Allocation(project, resource_by_name("resource1"), 0,
                 datetime(2000, 1, 1), datetime(2001, 1, 1))
             Allocation(project, resource_by_name("resource2"), 0,
                 datetime(2000, 1, 1), datetime(2001, 1, 1))
-        for allocation in Session().query(Allocation):
+        for allocation in Session.query(Allocation):
             h1 = Hold(allocation, 0)
             h2 = Hold(allocation, 0)
             h3 = Hold(allocation, 0)
@@ -2243,7 +2243,7 @@ class TestHoldsList (CbankTester):
         assert_equal(set(args[0]), set(holds))
     
     def test_job (self):
-        holds = Session().query(Hold).filter(
+        holds = Session.query(Hold).filter(
             Hold.id.in_([14]))
         code, stdout, stderr = run(list_holds_main,
             "-j 2.4.resource2".split())
@@ -2252,7 +2252,7 @@ class TestHoldsList (CbankTester):
         assert_equal(set(args[0]), set(holds))
     
     def test_jobs (self):
-        holds = Session().query(Hold).filter(
+        holds = Session.query(Hold).filter(
             Hold.id.in_([14, 18]))
         code, stdout, stderr = run(list_holds_main,
             "-j 2.4.resource2 -j 2.5.resource1".split())
@@ -2306,7 +2306,7 @@ class TestHoldsList (CbankTester):
         assert_equal(set(args[0]), set(holds))
     
     def test_project_admin_projects (self):
-        holds = Session().query(Hold).filter_by(active=True).filter(
+        holds = Session.query(Hold).filter_by(active=True).filter(
             Hold.allocation.has(
             Allocation.project == project_by_name("project4")))
         code, stdout, stderr = run(list_holds_main, "-p project4".split())
@@ -2315,7 +2315,7 @@ class TestHoldsList (CbankTester):
         assert_equal(set(args[0]), set(holds))
     
     def test_other_projects (self):
-        holds = Session().query(Hold).filter_by(active=True)
+        holds = Session.query(Hold).filter_by(active=True)
         holds = holds.filter(Hold.job.has(user=current_user()))
         holds = holds.filter(Hold.allocation.has(
             Allocation.project==project_by_name("project1")))
@@ -2391,7 +2391,7 @@ class TestHoldsList_Admin (TestHoldsList):
         assert_equal(set(args[0]), set(holds))
     
     def test_resources (self):
-        holds = Session().query(Hold).filter_by(
+        holds = Session.query(Hold).filter_by(
             active=True).filter(Hold.allocation.has(
             Allocation.resource == resource_by_name("resource1")))
         code, stdout, stderr = run(list_holds_main, "-r resource1".split())
@@ -2411,7 +2411,7 @@ class TestHoldsList_Admin (TestHoldsList):
         assert_equal(set(args[0]), set(holds))
     
     def test_other_projects (self):
-        holds = Session().query(Hold).filter_by(
+        holds = Session.query(Hold).filter_by(
             active=True).filter(Hold.allocation.has(
             Allocation.project==project_by_name("project1")))
         code, stdout, stderr = run(list_holds_main, "-p project1".split())
@@ -2431,7 +2431,7 @@ class TestHoldsList_Admin (TestHoldsList):
         assert_equal(set(args[0]), set(holds))
      
     def test_member_projects (self):
-        holds = Session().query(Hold).filter_by(
+        holds = Session.query(Hold).filter_by(
             active=True).filter(Hold.allocation.has(
             Allocation.project==project_by_name("project2")))
         code, stdout, stderr = run(list_holds_main, "-p project2".split())
@@ -2440,14 +2440,14 @@ class TestHoldsList_Admin (TestHoldsList):
         assert_equal(set(args[0]), set(holds))
     
     def test_default (self):
-        holds = Session().query(Hold).filter_by(active=True)
+        holds = Session.query(Hold).filter_by(active=True)
         code, stdout, stderr = run(list_holds_main)
         assert_equal(code, 0)
         args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_after (self):
-        holds = Session().query(Hold).filter_by(
+        holds = Session.query(Hold).filter_by(
             active=True).filter(Hold.datetime >= datetime(2000, 1, 1))
         code, stdout, stderr = run(list_holds_main, "-a 2000-01-01".split())
         assert_equal(code, 0)
@@ -2455,7 +2455,7 @@ class TestHoldsList_Admin (TestHoldsList):
         assert_equal(set(args[0]), set(holds))
     
     def test_before (self):
-        holds = Session().query(Hold).filter_by(
+        holds = Session.query(Hold).filter_by(
             active=True).filter(Hold.datetime < datetime(2000, 1, 1))
         code, stdout, stderr = run(list_holds_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
@@ -2573,7 +2573,7 @@ class TestJobsList (CbankTester):
         code, stdout, stderr = run(list_jobs_main)
         assert_equal(code, 0)
         args, kwargs = controllers.print_jobs_list.calls[0]
-        jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
+        jobs = Session.query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.3", "resource1.7", "resource2.1"]))
         assert_equal(set(args[0]), set(jobs))
     
@@ -2592,7 +2592,7 @@ class TestJobsList (CbankTester):
     def test_after (self):
         code, stdout, stderr = run(list_jobs_main, "-a 2000-02-01".split())
         assert_equal(code, 0)
-        jobs = Session().query(Job).filter(Job.id.in_([
+        jobs = Session.query(Job).filter(Job.id.in_([
             "resource1.2", "resource1.3"]))
         args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
@@ -2600,7 +2600,7 @@ class TestJobsList (CbankTester):
     def test_before (self):
         code, stdout, stderr = run(list_jobs_main, "-b 2000-02-01".split())
         assert_equal(code, 0)
-        jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
+        jobs = Session.query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2"]))
         args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
@@ -2621,7 +2621,7 @@ class TestJobsList (CbankTester):
         code, stdout, stderr = run(list_jobs_main,
             "-u user1 -p project4".split())
         assert_equal(code, 0)
-        jobs = Session().query(Job).filter(Job.id.in_([
+        jobs = Session.query(Job).filter(Job.id.in_([
             "resource1.5", "resource1.11"]))
         args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
@@ -2630,7 +2630,7 @@ class TestJobsList (CbankTester):
         user = current_user()
         code, stdout, stderr = run(list_jobs_main, ("-u %s" % user).split())
         assert_equal(code, 0)
-        jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
+        jobs = Session.query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.3", "resource1.7", "resource2.1"]))
         args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
@@ -2638,7 +2638,7 @@ class TestJobsList (CbankTester):
     def test_member_projects (self):
         code, stdout, stderr = run(list_jobs_main, "-p project2".split())
         assert_equal(code, 0)
-        jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
+        jobs = Session.query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.3", "resource1.7", "resource2.1"]))
         args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
@@ -2646,7 +2646,7 @@ class TestJobsList (CbankTester):
     def test_project_admin_projects (self):
         code, stdout, stderr = run(list_jobs_main, "-p project4".split())
         assert_equal(code, 0)
-        jobs = Session().query(Job).filter(Job.id.in_(["resource1.5",
+        jobs = Session.query(Job).filter(Job.id.in_(["resource1.5",
             "resource1.10", "resource1.11", "resource1.12"]))
         args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
@@ -2654,14 +2654,14 @@ class TestJobsList (CbankTester):
     def test_other_projects (self):
         code, stdout, stderr = run(list_jobs_main, "-p project1".split())
         assert_equal(code, 0)
-        jobs = Session().query(Job).filter(Job.id.in_(["resource1.13"]))
+        jobs = Session.query(Job).filter(Job.id.in_(["resource1.13"]))
         args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_resources (self):
         code, stdout, stderr = run(list_jobs_main, "-r resource2".split())
         assert_equal(code, 0)
-        jobs = Session().query(Job).filter(Job.id.in_(["resource2.1"]))
+        jobs = Session.query(Job).filter(Job.id.in_(["resource2.1"]))
         args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
@@ -2683,7 +2683,7 @@ class TestJobsList_Admin (TestJobsList):
         code, stdout, stderr = run(list_jobs_main)
         assert_equal(code, 0)
         args, kwargs = controllers.print_jobs_list.calls[0]
-        jobs = Session().query(Job)
+        jobs = Session.query(Job)
         assert_equal(set(args[0]), set(jobs))
     
     def test_default_order (self):
@@ -2713,7 +2713,7 @@ class TestJobsList_Admin (TestJobsList):
         user = current_user()
         code, stdout, stderr = run(list_jobs_main, ("-u %s" % user).split())
         assert_equal(code, 0)
-        jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
+        jobs = Session.query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.3", "resource1.4", "resource1.7",
             "resource1.10", "resource1.13", "resource2.1"]))
         args, kwargs = controllers.print_jobs_list.calls[0]
@@ -2722,7 +2722,7 @@ class TestJobsList_Admin (TestJobsList):
     def test_member_projects (self):
         code, stdout, stderr = run(list_jobs_main, "-p project2".split())
         assert_equal(code, 0)
-        jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
+        jobs = Session.query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.3", "resource1.7", "resource1.8",
             "resource1.9", "resource1.15", "resource2.1"]))
         args, kwargs = controllers.print_jobs_list.calls[0]
@@ -2731,7 +2731,7 @@ class TestJobsList_Admin (TestJobsList):
     def test_after (self):
         code, stdout, stderr = run(list_jobs_main, "-a 2000-02-01".split())
         assert_equal(code, 0)
-        jobs = Session().query(Job).filter(Job.id.in_(["resource1.2",
+        jobs = Session.query(Job).filter(Job.id.in_(["resource1.2",
             "resource1.3", "resource1.5", "resource1.6"]))
         args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
@@ -2739,7 +2739,7 @@ class TestJobsList_Admin (TestJobsList):
     def test_before (self):
         code, stdout, stderr = run(list_jobs_main, "-b 2000-02-01".split())
         assert_equal(code, 0)
-        jobs = Session().query(Job).filter(Job.id.in_(["resource1.1",
+        jobs = Session.query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.5"]))
         args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
@@ -2748,7 +2748,7 @@ class TestJobsList_Admin (TestJobsList):
         code, stdout, stderr = run(list_jobs_main,
             "-p project2 -u user1".split())
         assert_equal(code, 0)
-        jobs = Session().query(Job).filter(Job.id.in_(["resource1.15"]))
+        jobs = Session.query(Job).filter(Job.id.in_(["resource1.15"]))
         args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
@@ -2756,14 +2756,14 @@ class TestJobsList_Admin (TestJobsList):
         code, stdout, stderr = run(list_jobs_main,
             "-p project1 -u user1".split())
         assert_equal(code, 0)
-        jobs = Session().query(Job).filter(Job.id.in_(["resource1.14"]))
+        jobs = Session.query(Job).filter(Job.id.in_(["resource1.14"]))
         args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_other_projects (self):
         code, stdout, stderr = run(list_jobs_main, "-p project1".split())
         assert_equal(code, 0)
-        jobs = Session().query(Job).filter(Job.id.in_(["resource1.13",
+        jobs = Session.query(Job).filter(Job.id.in_(["resource1.13",
             "resource1.14"]))
         args, kwargs = controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
@@ -2776,12 +2776,12 @@ class TestChargesList (CbankTester):
         self._print_charges_list = controllers.print_charges_list
         controllers.print_charges_list = FakeFunc()
         user1, user2 = [user_by_name(user) for user in ["user1", "user2"]]
-        for project in Session().query(Project):
+        for project in Session.query(Project):
             Allocation(project, resource_by_name("resource1"), 0,
                 datetime(2000, 1, 1), datetime(2001, 1, 1))
             Allocation(project, resource_by_name("resource2"), 0,
                 datetime(2000, 1, 1), datetime(2001, 1, 1))
-        for allocation in Session().query(Allocation):
+        for allocation in Session.query(Allocation):
             c1 = Charge(allocation, 0)
             c1.datetime = datetime(2000, 1, 1)
             c1.job = Job("1.%i.%s" % (allocation.id, allocation.resource))
@@ -2805,7 +2805,7 @@ class TestChargesList (CbankTester):
         controllers.print_charges_list = self._print_charges_list
     
     def test_default (self):
-        charges = Session().query(Charge).filter(
+        charges = Session.query(Charge).filter(
             Charge.id.in_([11, 12, 15, 16, 19, 20, 23, 24]))
         code, stdout, stderr = run(list_charges_main)
         assert_equal(code, 0)
@@ -2813,7 +2813,7 @@ class TestChargesList (CbankTester):
         assert_equal(set(args[0]), set(charges))
     
     def test_job (self):
-        charges = Session().query(Charge).filter(
+        charges = Session.query(Charge).filter(
             Charge.id.in_([19]))
         code, stdout, stderr = run(list_charges_main,
             "-j 3.5.resource1".split())
@@ -2822,7 +2822,7 @@ class TestChargesList (CbankTester):
         assert_equal(set(args[0]), set(charges))
     
     def test_jobs (self):
-        charges = Session().query(Charge).filter(
+        charges = Session.query(Charge).filter(
             Charge.id.in_([19, 23]))
         code, stdout, stderr = run(list_charges_main,
             "-j 3.5.resource1 -j 3.6.resource2".split())
@@ -2843,7 +2843,7 @@ class TestChargesList (CbankTester):
         assert not controllers.print_charges_list.calls
     
     def test_project_admin_users (self):
-        charges = Session().query(Charge).filter(Charge.id.in_([25, 29]))
+        charges = Session.query(Charge).filter(Charge.id.in_([25, 29]))
         code, stdout, stderr = run(list_charges_main,
             "-u user1 -p project4".split())
         assert_equal(code, 0)
@@ -2851,7 +2851,7 @@ class TestChargesList (CbankTester):
         assert_equal(set(args[0]), set(charges))
     
     def test_self_users (self):
-        charges = Session().query(Charge).filter(
+        charges = Session.query(Charge).filter(
             Charge.id.in_([11, 12, 15, 16, 19, 20, 23, 24]))
         code, stdout, stderr = run(list_charges_main,
             ("-u %s" % current_user()).split())
@@ -2860,7 +2860,7 @@ class TestChargesList (CbankTester):
         assert_equal(set(args[0]), set(charges))
     
     def test_member_projects (self):
-        charges = Session().query(Charge).filter(
+        charges = Session.query(Charge).filter(
             Charge.id.in_([11, 12, 15, 16]))
         code, stdout, stderr = run(list_charges_main, "-p project2".split())
         assert_equal(code, 0)
@@ -2868,7 +2868,7 @@ class TestChargesList (CbankTester):
         assert_equal(set(args[0]), set(charges))
     
     def test_project_admin_projects (self):
-        charges = Session().query(Charge).filter(
+        charges = Session.query(Charge).filter(
             Charge.id.in_([25, 26, 27, 28, 29, 30, 31, 32]))
         code, stdout, stderr = run(list_charges_main, "-p project4".split())
         assert_equal(code, 0)
@@ -2876,7 +2876,7 @@ class TestChargesList (CbankTester):
         assert_equal(set(args[0]), set(charges))
     
     def test_other_projects (self):
-        charges = Session().query(Charge).filter(
+        charges = Session.query(Charge).filter(
             Charge.id.in_([3, 4, 7, 8]))
         code, stdout, stderr = run(list_charges_main, "-p project1".split())
         assert_equal(code, 0)
@@ -2884,7 +2884,7 @@ class TestChargesList (CbankTester):
         assert_equal(set(args[0]), set(charges))
     
     def test_resources (self):
-        charges = Session().query(Charge).filter(
+        charges = Session.query(Charge).filter(
             Charge.id.in_([11, 12, 19, 20]))
         code, stdout, stderr = run(list_charges_main, "-r resource1".split())
         assert_equal(code, 0)
@@ -2892,7 +2892,7 @@ class TestChargesList (CbankTester):
         assert_equal(set(args[0]), set(charges))
     
     def test_after (self):
-        charges = Session().query(Charge).filter(
+        charges = Session.query(Charge).filter(
             Charge.id.in_([12, 16, 20, 24]))
         code, stdout, stderr = run(list_charges_main,
             "-a 2000-01-01".split())
@@ -2901,7 +2901,7 @@ class TestChargesList (CbankTester):
         assert_equal(set(args[0]), set(charges))
     
     def test_before (self):
-        charges = Session().query(Charge).filter(
+        charges = Session.query(Charge).filter(
             Charge.id.in_([11, 15, 19, 23]))
         code, stdout, stderr = run(
             list_charges_main, "-b 2000-01-01".split())
@@ -2932,7 +2932,7 @@ class TestChargesList_Admin (TestChargesList):
         be_admin()
     
     def test_self_users (self):
-        charges = Session().query(Charge).filter(Charge.id.in_([
+        charges = Session.query(Charge).filter(Charge.id.in_([
             20, 4, 11, 27, 24, 15, 8, 31, 3, 12, 19, 16, 23, 32, 28, 7]))
         code, stdout, stderr = run(list_charges_main,
             ("-u %s" % current_user()).split())
@@ -2941,7 +2941,7 @@ class TestChargesList_Admin (TestChargesList):
         assert_equal(set(args[0]), set(charges))
     
     def test_resources (self):
-        charges = Session().query(Charge).filter(Charge.id.in_([
+        charges = Session.query(Charge).filter(Charge.id.in_([
             3, 2, 26, 28, 19, 9, 20, 10, 25, 1, 27, 11, 18, 12, 17, 4]))
         code, stdout, stderr = run(
             list_charges_main, "-r resource1".split())
@@ -2950,7 +2950,7 @@ class TestChargesList_Admin (TestChargesList):
         assert_equal(set(args[0]), set(charges))
     
     def test_other_users (self):
-        charges = Session().query(Charge).filter(
+        charges = Session.query(Charge).filter(
             Charge.id.in_([1, 5]))
         code, stdout, stderr = run(list_charges_main,
             "-p project1 -u user1".split())
@@ -2959,7 +2959,7 @@ class TestChargesList_Admin (TestChargesList):
         assert_equal(set(args[0]), set(charges))
     
     def test_other_projects (self):
-        charges = Session().query(Charge).filter(
+        charges = Session.query(Charge).filter(
             Charge.id.in_([8, 2, 7, 1, 3, 5, 4, 6]))
         code, stdout, stderr = run(list_charges_main, "-p project1".split())
         assert_equal(code, 0)
@@ -2967,7 +2967,7 @@ class TestChargesList_Admin (TestChargesList):
         assert_equal(set(args[0]), set(charges))
     
     def test_member_users (self):
-        charges = Session().query(Charge).filter(
+        charges = Session.query(Charge).filter(
             Charge.id.in_([9, 13]))
         code, stdout, stderr = run(list_charges_main,
             "-p project2 -u user1".split())
@@ -2976,7 +2976,7 @@ class TestChargesList_Admin (TestChargesList):
         assert_equal(set(args[0]), set(charges))
      
     def test_member_projects (self):
-        charges = Session().query(Charge).filter(
+        charges = Session.query(Charge).filter(
             Charge.id.in_([10, 16, 14, 13, 9, 15, 11, 12]))
         code, stdout, stderr = run(list_charges_main, "-p project2".split())
         assert_equal(code, 0)
@@ -2984,14 +2984,14 @@ class TestChargesList_Admin (TestChargesList):
         assert_equal(set(args[0]), set(charges))
     
     def test_default (self):
-        charges = Session().query(Charge)
+        charges = Session.query(Charge)
         code, stdout, stderr = run(list_charges_main)
         assert_equal(code, 0)
         args, kwargs = controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_after (self):
-        charges = Session().query(Charge).filter(Charge.id.in_([
+        charges = Session.query(Charge).filter(Charge.id.in_([
             28, 4, 25, 24, 21, 16, 9, 29, 8, 13, 1, 20, 5, 12, 32, 17]))
         code, stdout, stderr = run(
             list_charges_main, "-a 2000-01-01".split())
@@ -3000,7 +3000,7 @@ class TestChargesList_Admin (TestChargesList):
         assert_equal(set(args[0]), set(charges))
     
     def test_before (self):
-        charges = Session().query(Charge).filter(Charge.id.in_([
+        charges = Session.query(Charge).filter(Charge.id.in_([
             3, 11, 18, 10, 31, 15, 23, 2, 27, 6, 7, 26, 19, 14, 22, 30]))
         code, stdout, stderr = run(
             list_charges_main, "-b 2000-01-01".split())
