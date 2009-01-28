@@ -133,7 +133,6 @@ class User (UpstreamEntity):
         id_ -- the user's upstream id
         """
         UpstreamEntity.__init__(self, id_)
-        self.holds = []
         self.jobs = []
     
     def _get_name (self):
