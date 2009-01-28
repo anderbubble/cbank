@@ -101,7 +101,6 @@ mapper(Hold, holds, properties={
     'id':holds.c.id,
     'allocation':relation(Allocation, backref="holds"),
     'datetime':holds.c.datetime,
-    'user':relation(User, backref="holds"),
     'amount':holds.c.amount,
     'comment':holds.c.comment,
     'active':holds.c.active,

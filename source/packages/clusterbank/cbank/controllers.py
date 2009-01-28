@@ -687,8 +687,8 @@ def list_holds_main ():
     holds = Session().query(Hold)
     holds = holds.filter(Hold.active==True)
     if users:
-        holds = holds.filter(Hold.user.has(User.id.in_(
-            user_.id for user_ in users)))
+        holds = holds.filter(Hold.job.has(Job.user.has(User.id.in_(
+            user_.id for user_ in users))))
     if projects:
         holds = holds.filter(Hold.allocation.has(Allocation.project.has(
             Project.id.in_(project.id for project in projects))))

@@ -416,22 +416,22 @@ def print_holds_list (holds, comments=False, truncate=True):
     comments -- list hold comments
     """
     
-    fields = ["Hold", "Date", "Resource", "Project", "User", "Held"]
+    fields = ["Hold", "Date", "Resource", "Project", "Held"]
     if comments:
         fields.append("Comment")
     format = Formatter(fields)
     format.headers = {'Hold':"#"}
     format.widths = {
-        'Hold':6, 'User':8, 'Project':15, 'Held':13, 'Date':10}
+        'Hold':6, 'Project':15, 'Held':13, 'Date':10}
     if truncate:
-        format.truncate = {'User':True, 'Project':True, 'Resource':True}
+        format.truncate = {'Project':True, 'Resource':True}
     format.aligns = {'Held':"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
     
     query = Session().query(Hold)
     query = query.options(eagerload(
-        Hold.user, Hold.allocation, Allocation.project, Allocation.resource))
+        Hold.allocation, Allocation.project, Allocation.resource))
     query = query.filter(Hold.id.in_(hold.id for hold in holds))
     query = query.order_by(Hold.datetime, Hold.id)
     
@@ -440,7 +440,6 @@ def print_holds_list (holds, comments=False, truncate=True):
         hold_sum += hold.amount
         print format({
             'Hold':hold.id,
-            'User':hold.user,
             'Project':hold.allocation.project,
             'Resource':hold.allocation.resource,
             'Date':format_datetime(hold.datetime),

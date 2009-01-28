@@ -352,7 +352,6 @@ class Hold (Entity):
         self.comment = None
         self.active = True
         self.amount = amount
-        self.user = None
         self.job = None
     
     @classmethod

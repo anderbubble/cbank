@@ -164,7 +164,6 @@ class TestHold (EntityTester):
         assert hold.allocation is allocation
         assert hold.amount == 600
         assert hold.comment is None
-        assert hold.user is None
         assert hold.active
         assert hold.job is None
     

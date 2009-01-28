@@ -2216,15 +2216,15 @@ class TestHoldsList (CbankTester):
             h2.datetime = datetime(1999, 1, 1)
             h3.datetime = datetime(1999, 1, 1)
             h4.datetime = datetime(2001, 1, 1)
-            h1.user = user1
-            h2.user = user2
             h3.active = False
-            h2.user = current_user()
-            h2.user = current_user()
             h1.job = Job("1.%i.%s" % (allocation.id, allocation.resource))
             h2.job = Job("2.%i.%s" % (allocation.id, allocation.resource))
             h3.job = Job("3.%i.%s" % (allocation.id, allocation.resource))
             h4.job = Job("4.%i.%s" % (allocation.id, allocation.resource))
+            h1.job.user = user1
+            h2.job.user = user2
+            h2.job.user = current_user()
+            h2.job.user = current_user()
         Session.flush()
     
     def teardown (self):
@@ -2232,8 +2232,9 @@ class TestHoldsList (CbankTester):
         controllers.print_holds_list = self._print_holds_list
     
     def test_default (self):
-        holds = Session().query(Hold).filter_by(
-            user=current_user(), active=True).filter(Hold.allocation.has(
+        holds = Session.query(Hold).filter_by(active=True)
+        holds = holds.filter(Hold.job.has(user=current_user()))
+        holds = holds.filter(Hold.allocation.has(
             Allocation.project.has(Project.id.in_(project.id for project in
             current_user().projects))))
         code, stdout, stderr = run(list_holds_main)
@@ -2272,9 +2273,10 @@ class TestHoldsList (CbankTester):
         assert not controllers.print_holds_list.calls
     
     def test_project_admin_users (self):
-        holds = Session().query(Hold).filter_by(active=True,
-            user=user_by_name("user1")).filter(Hold.allocation.has(
-            Allocation.project == project_by_name("project4")))
+        holds = Session.query(Hold).filter_by(active=True).filter(
+            Hold.allocation.has(
+                Allocation.project == project_by_name("project4")))
+        holds = holds.filter(Hold.job.has(user=user_by_name("user1")))
         code, stdout, stderr = run(list_holds_main,
             "-u user1 -p project4".split())
         assert_equal(code, 0)
@@ -2283,18 +2285,20 @@ class TestHoldsList (CbankTester):
     
     def test_self_users (self):
         user = current_user()
-        holds = Session().query(Hold).filter_by(
-            user=user, active=True).filter(Hold.allocation.has(
+        holds = Session.query(Hold).filter_by(active=True)
+        holds = holds.filter(Hold.allocation.has(
             Allocation.project.has(Project.id.in_(project.id
                 for project in user.projects))))
+        holds = holds.filter(Hold.job.has(user=user))
         code, stdout, stderr = run(list_holds_main, ("-u %s" % user).split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_member_projects (self):
-        holds = Session().query(Hold).filter_by(
-            user=current_user(), active=True).filter(Hold.allocation.has(
+        holds = Session.query(Hold).filter_by(active=True)
+        holds = holds.filter(Hold.job.has(user=current_user()))
+        holds = holds.filter(Hold.allocation.has(
             Allocation.project==project_by_name("project2")))
         code, stdout, stderr = run(list_holds_main, "-p project2".split())
         assert_equal(code, 0)
@@ -2311,8 +2315,9 @@ class TestHoldsList (CbankTester):
         assert_equal(set(args[0]), set(holds))
     
     def test_other_projects (self):
-        holds = Session().query(Hold).filter_by(
-            user=current_user(), active=True).filter(Hold.allocation.has(
+        holds = Session().query(Hold).filter_by(active=True)
+        holds = holds.filter(Hold.job.has(user=current_user()))
+        holds = holds.filter(Hold.allocation.has(
             Allocation.project==project_by_name("project1")))
         code, stdout, stderr = run(list_holds_main, "-p project1".split())
         assert_equal(code, 0)
@@ -2320,8 +2325,9 @@ class TestHoldsList (CbankTester):
         assert_equal(set(args[0]), set(holds))
     
     def test_resources (self):
-        holds = Session().query(Hold).filter_by(
-            user=current_user(), active=True).filter(Hold.allocation.has(
+        holds = Session.query(Hold).filter_by(active=True)
+        holds = holds.filter(Hold.job.has(user=current_user()))
+        holds = holds.filter(Hold.allocation.has(
             Allocation.project.has(Project.id.in_(project.id for project in
             current_user().projects)))).filter(Hold.allocation.has(
             Allocation.resource == resource_by_name("resource1")))
@@ -2331,8 +2337,9 @@ class TestHoldsList (CbankTester):
         assert_equal(set(args[0]), set(holds))
     
     def test_after (self):
-        holds = Session().query(Hold).filter_by(
-            user=current_user(), active=True).filter(Hold.allocation.has(
+        holds = Session.query(Hold).filter_by(active=True)
+        holds = holds.filter(Hold.job.has(user=current_user()))
+        holds = holds.filter(Hold.allocation.has(
             Allocation.project.has(Project.id.in_(project.id for project in
             current_user().projects)))).filter(
             Hold.datetime >= datetime(2000, 1, 1))
@@ -2342,8 +2349,9 @@ class TestHoldsList (CbankTester):
         assert_equal(set(args[0]), set(holds))
     
     def test_before (self):
-        holds = Session().query(Hold).filter_by(
-            user=current_user(), active=True).filter(Hold.allocation.has(
+        holds = Session.query(Hold).filter_by(active=True)
+        holds = holds.filter(Hold.job.has(user=current_user()))
+        holds = holds.filter(Hold.allocation.has(
             Allocation.project.has(Project.id.in_(project.id for project in
             current_user().projects)))).filter(
             Hold.datetime < datetime(2000, 1, 1))
@@ -2375,7 +2383,8 @@ class TestHoldsList_Admin (TestHoldsList):
     
     def test_self_users (self):
         user = current_user()
-        holds = Session().query(Hold).filter_by(user=user, active=True)
+        holds = Session.query(Hold).filter_by(active=True).filter(
+            Hold.job.has(user=user))
         code, stdout, stderr = run(list_holds_main, ("-u %s" % user).split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_holds_list.calls[0]
@@ -2391,8 +2400,9 @@ class TestHoldsList_Admin (TestHoldsList):
         assert_equal(set(args[0]), set(holds))
     
     def test_other_users (self):
-        holds = Session().query(Hold).filter_by(active=True,
-            user=user_by_name("user1")).filter(Hold.allocation.has(
+        holds = Session.query(Hold).filter_by(active=True)
+        holds = holds.filter(Hold.job.has(user=user("user1")))
+        holds = holds.filter(Hold.allocation.has(
             Allocation.project == project_by_name("project1")))
         code, stdout, stderr = run(list_holds_main,
             "-p project1 -u user1".split())
@@ -2410,8 +2420,9 @@ class TestHoldsList_Admin (TestHoldsList):
         assert_equal(set(args[0]), set(holds))
     
     def test_member_users (self):
-        holds = Session().query(Hold).filter_by(user=user_by_name("user1"),
-            active=True).filter(Hold.allocation.has(
+        holds = Session.query(Hold).filter_by(active=True)
+        holds = holds.filter(Hold.job.has(user=user("user1")))
+        holds = holds.filter(Hold.allocation.has(
             Allocation.project==project_by_name("project2")))
         code, stdout, stderr = run(list_holds_main,
             "-p project2 -u user1".split())

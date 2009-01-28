@@ -1261,16 +1261,14 @@ class TestHoldsList (CbankViewTester):
         assert_eq_output(stdout.getvalue(), dedent("""\
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
-            #      Date       Resource Project         User              Held
-            ------ ---------- -------- --------------- -------- -------------
-                                                                -------------
-                                                                          0.0
+            #      Date       Resource Project                  Held
+            ------ ---------- -------- --------------- -------------
+                                                       -------------
+                                                                 0.0
             Units are undefined.
             """))
 
     def test_holds (self):
-        user1 = user("user1")
-        user2 = user("user2")
         project1 = project("project1")
         project2 = project("project2")
         res1 = resource("res1")
@@ -1286,27 +1284,23 @@ class TestHoldsList (CbankViewTester):
         h3 = Hold(a2, 5)
         h4 = Hold(a4, 9)
         h5 = Hold(a4, 8)
-        for hold in (h1, h2, h3):
-            hold.user = user1
-        for hold in (h4, h5):
-            hold.user = user2
         for hold in (h1, h2, h3, h4, h5):
             hold.datetime = datetime(2000, 1, 1)
         Session.flush() # assign hold ids
         stdout, stderr = capture(lambda:
             print_holds_list([h1, h2, h3, h4, h5]))
         assert_eq_output(stdout.getvalue(), dedent("""\
-            1      2000-01-01 res1     project1        user1             10.0
-            2      2000-01-01 res1     project1        user1             15.0
-            3      2000-01-01 res1     project1        user1              5.0
-            4      2000-01-01 res2     project2        user2              9.0
-            5      2000-01-01 res2     project2        user2              8.0
+            1      2000-01-01 res1     project1                 10.0
+            2      2000-01-01 res1     project1                 15.0
+            3      2000-01-01 res1     project1                  5.0
+            4      2000-01-01 res2     project2                  9.0
+            5      2000-01-01 res2     project2                  8.0
             """))
         assert_eq_output(stderr.getvalue(), dedent("""\
-            #      Date       Resource Project         User              Held
-            ------ ---------- -------- --------------- -------- -------------
-                                                                -------------
-                                                                         47.0
+            #      Date       Resource Project                  Held
+            ------ ---------- -------- --------------- -------------
+                                                       -------------
+                                                                47.0
             Units are undefined.
             """))
 
