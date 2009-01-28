@@ -1,4 +1,4 @@
-.Dd 21 January 2009
+.Dd 28 January 2009
 .Os Python 2.x
 .Dt CBANK 7 USD
 .Sh NAME
@@ -6,12 +6,16 @@
 .Nd clusterbank command-line interface
 .Sh SYNOPSIS
 .Nm
-<
+.Op options
 .Ar log
 .Sh DESCRIPTION
 Import jobs from a PBS accounting
 .Ar log
-into clusterbank.
+into clusterbank. The log is read from stdin.
+.Sh OPTIONS
+.Bl -tag
+.It Fl v
+Print the job ids for jobs that are successfully imported.
 .Sh FILES
 .Bl -item
 .It

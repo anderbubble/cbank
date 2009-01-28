@@ -1,4 +1,4 @@
-.Dd 21 January 2009
+.Dd 29 January 2009
 .Os Python 2.x
 .Dt CBANK 7 USD
 .Sh NAME
@@ -14,7 +14,7 @@ For each applicable charge list the associated date, resource, project, and user
 .It Fl u Ar user
 Report charges associated with
 .Ar user .
-.Ar If no
+If no
 .Ar project
 is specified, projects that
 .Ar user
@@ -25,8 +25,9 @@ Report charges to
 .It Fl r Ar resource
 Report charges for
 .Ar resource .
-(default specified in
-.Pa /etc/clusterbank.conf )
+.It Fl j Ar job
+Report charges for
+.Ar job .
 .It Fl a Ar date
 Report charges created after (and including)
 .Ar date .
