@@ -7,6 +7,15 @@ except ImportError:
     use_setuptools()
     from setuptools import setup, find_packages
 
+manpages = ["doc/man/man7/%s.7" % page for page in [
+    "cbank-detail", "cbank-edit-allocation", "cbank-edit-charge",
+    "cbank-edit-hold", "cbank-edit-refund", "cbank-edit", "cbank-import-jobs",
+    "cbank-import", "cbank-list-allocations", "cbank-list-charges",
+    "cbank-list-holds", "cbank-list-jobs", "cbank-list-projects",
+    "cbank-list-users", "cbank-list", "cbank-new-allocation",
+    "cbank-new-charge", "cbank-new-hold", "cbank-new-refund", "cbank-new",
+    "cbank"]]
+
 setup(
     name="clusterbank",
     version="trunk",
@@ -44,4 +53,5 @@ setup(
         "cbank-detail-allocations = clusterbank.cbank.controllers:detail_allocations_main",
         "cbank-detail-holds = clusterbank.cbank.controllers:detail_holds_main",
         "cbank-detail-charges = clusterbank.cbank.controllers:detail_charges_main",
-        "cbank-detail-refunds = clusterbank.cbank.controllers:detail_refunds_main"]})
+        "cbank-detail-refunds = clusterbank.cbank.controllers:detail_refunds_main"]},
+    data_files=[("/usr/share/man/man7", manpages)])
