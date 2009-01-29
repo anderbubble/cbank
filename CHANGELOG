@@ -1,51 +1,77 @@
-api
+== 0.4.0 ==
 
- * cleaned up imports (#143)
+=== cbank ===
+ * renamed --with-comments to --comments (#247)
+ * removed deprecated -m, --message option (#244)
+ * supported specifying entities by id (#246)
+ * added "cbank new hold" (#215)
+ * "cbank list charges" now shows all charges by default (#257)
+ * cbank headers and footers are printed on stderr (#260)
+ * added "cbank list jobs" (#234)
+ * changed "Datetime" headers to "Date" (#255)
+ * long string columns are now truncated, -l, --long disables (#263)
+ * "cbank import jobs" creates job entities from a PBS accounting log (#234)
+ * removed commas from table output (#268)
+ * replaced "charges" columns with "jobs" columns (#270)
+ * the relationship between holds, charges, and users is via jobs (#279)
+ * added a -j, --jobs filter where appropriate (#271)
+ * renamed "cbank report" to "cbank list" (#278)
+ * expired allocations are never "available" (#243)
+ * fixed a bug where charges to expired allocations were counted against new allocations (#243)
+ * added a series of "cbank edit *" commands to edit entities (#188)
+
+=== upstream ===
+ * rewrote default (testing) upstream module as memory-only (#227)
+ * project owners are now known as project admins (#251)
+
+=== api ===
  * fixed a bug where dates that were too old crashed the sql generator (#229)
- * additional mapped queries (#209)
  * redesigned model init interfaces (#236)
- * added (experimental) job objects to the model (#234)
+ * added job objects to the model (#234)
+ * general code cleanup (#236, #143, #231, #241, #242, #207)
+ * moved functions from model base to clusterbank.controllers (#252)
+ * upgraded to SQLAlchemy 0.5.x (#239)
+ * removed credit limits (#249)
+ * removed requests (#248)
+ * converted computationally expensive operations to methods. (#250)
+ * monkeypatched upstream relationships onto upstream entities (#259)
+ * project owners are now known as project admins (#251)
+ * improved efficiency of upstream retrieve controllers (#261)
+ * holds are no longer directly related to charges (#279, #289)
+ * charges are no longer directly related to charges (#279)
 
-upstream
 
- * rewrote default (testing) upstream module in pure Python (#227)
+== 0.3.3 ==
 
--- 0.3.3 --
-
-api
-
- * defined several aggregates as mapped queries on entities (#209)
-
-cbank
-
+=== cbank ===
  * fixed a bug where old dates crashed the sql generator (#229)
 
-misc.
+=== api ===
+ * defined several aggregates as mapped queries on entities (#209)
 
+=== misc ===
  * updated ez_setup.py
  * pylint fixes
 
--- 0.3.2 --
 
-cbank (cli)
+== 0.3.2 ==
 
+=== cbank (cli) ===
  * modified report columns to maintain consistency with 0.2 reports (#220)
  * admins and project owners can see all charges to a project with -p (#218)
  * improved report option behavior based on admin feedback (#219)
  * added help messages to metacommands (#221)
  * improved manpages and help messages (#224)
 
--- 0.3.1 --
+== 0.3.1 ==
 
-clusterbank (api)
-
+=== clusterbank (api) ===
  * mapped Allocation.amount_charged to a query
  * Project.charge performs a distributed charge
  * Charge.transfer refunds a charge and re-applies it as charges to a project
  * fixed a bug where clusterbank.model configured independently
 
-cbank (cli)
-
+=== cbank (cli) ===
  * date options can now accept times
  * restored ability to display comments inline
  * charge report reflects refunds in charge amount
@@ -54,10 +80,10 @@ cbank (cli)
  * deprecated '-m' in favor of '-c' in cbank-new scripts
  * fixed implementation of admin permissions (#216)
 
--- 0.3.0 --
 
-api
+== 0.3.0 ==
 
+=== api ===
  * removed _table suffix from table objects in clusterbank.model.database
  * consolidated configuration at clusterbank.config
  * user, project, and resource __str__ returns entity name
@@ -66,8 +92,7 @@ api
  * <Entity>.by_name has become clusterbank.model.<entity>_by_name
  * moved from Session.mapper to mapper
 
-cbank
-
+=== cbank ===
  * added commands to create a new allocation, hold, charge, or refund
  * adopted a formal metacommand dispatch architecture (new, report, detail)
  * removed usage report
@@ -81,12 +106,12 @@ cbank
  * changed multi-value options from comma-separated lists to multi-options
  * added shell-level entry points for all cbank commands
 
--- 0.2.15.1 --
 
+== 0.2.15.1 ==
  * fixed a refund accounting bug in the cbank project report (r459)
 
--- 0.2.15 --
 
+== 0.2.15 ==
  * moved SQLAlchemy version dependency to 0.4.5
  * fixed date ranges in the projects report
  * require charges to exist within their allocation
@@ -102,8 +127,8 @@ cbank
  * removed cbank_old
  * added a new report, "usage" (also available as "use")
 
--- 0.2.14 --
 
+== 0.2.14 ==
  * corrected cbank error handling for unknown user
  * made project report the default cbank report
  * removed old cbank testsuite
@@ -116,13 +141,13 @@ cbank
  * documented cbank in a manpage
  * documented the upstream interface
 
--- 0.2.13 --
 
+== 0.2.13 ==
  * updated the upstream example for the new upstream interface
  * replaced cbank2 with a more user-friendly version
 
--- 0.2.12 --
 
+== 0.2.12 ==
  * cbank can transform displayed and interpreted units
  * config file can specify a default recource for cbank
  * fixed bugs in cbank filters
@@ -136,8 +161,8 @@ cbank
  * simplified the upstream interface
  * changed upstream module interface to functions only (#133)
 
--- 0.2.11 --
 
+== 0.2.11 ==
  * cbank displays amount remaining in allocation
  * cbank enters the current time (by default) when creating an allocation (#126)
  * removed the default datetime from the credit_limits table
@@ -152,8 +177,8 @@ cbank
  * (very) minor testsuite cleanup (still needs a lot more)
  * removed legacy upstream data from clusterbank.conf.sample
 
--- 0.2.10 --
 
+== 0.2.10 ==
  * simplified upstream module loading (#116)
  * userbase module replaced with upstream_example (not distributed)
  * remove inner-class exception stupidness (#119)
@@ -163,8 +188,8 @@ cbank
  * fix two broken tests around RemainingAmount (#120)
  * use nose tools to test exceptions (#110)
 
--- 0.2.9 --
- 
+
+== 0.2.9 ==
  * cbank listing with a specified id accounts for other options (#111)
  * correctly handled internal SystemExit in cbank (#109)
  * stop using repr in str (#107)
@@ -177,5 +202,4 @@ cbank
  * removed a debugging raise from upstream module importing
  * began tracking changes in CHANGELOG
 
--- 0.2.8 --
-
+== 0.2.8 ==
