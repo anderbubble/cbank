@@ -1,0 +1,34 @@
+.Dd 21 January 2009
+.Os Python 2.x
+.Dt CBANK 7 USD
+.Sh NAME
+.Nm cbank-edit-refund
+.Nd clusterbank command-line interface
+.Sh SYNOPSIS
+.Nm
+.Op options
+.Sh DESCRIPTION
+Edit an existing refund.
+.Sh OPTIONS
+.Bl -tag
+.It Fl c
+Edit the comment.
+.It Fl D
+Delete the refund.
+.It Fl n
+Do not save any changes to the refund.
+.El
+.Sh FILES
+.Bl -tag
+.It /etc/clusterbank.conf
+Global configuration and defaults.
+.El
+.Sh SEE ALSO
+.Xr cbank 7 ,
+.Xr cbank-edit 7
+.Sh AUTHORS
+.An Jonathon Anderson
+.Ad janderso@alcf.anl.gov
+.Sh BUGS
+Submit bug reports to the clusterbank trac at
+.Ad http://trac.mcs.anl.gov/projects/clusterbank

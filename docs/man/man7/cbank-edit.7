@@ -1,0 +1,50 @@
+.Dd 21 January 2009
+.Os Python 2.x
+.Dt CBANK 7 USD
+.Sh NAME
+.Nm cbank-edit
+.Nd clusterbank command-line interface
+.Sh SYNOPSIS
+.Nm
+.Ar entity
+.Sh DESCRIPTION
+Edit an existing clusterbank
+.Ar entity :
+allocation, hold, charge, or refund.
+Additional arguments are passed to the specific
+.Ar entity
+command.
+.Sh EXAMPLES
+Any non-ambiguous value for
+.Ar entity
+is valid. Therefore, the following commands are equivalent:
+.Bd -filled -offset indent
+.Nm
+allocation
+.Ed
+.Bd -filled -offset indent -compact
+.Nm
+all
+.Ed
+.Bd -filled -offset indent -compact
+.Nm
+a
+.Ed
+.Sh FILES
+.Bl -item
+.It
+.Pa /etc/clusterbank.conf
+Global configuration and defaults.
+.El
+.Sh SEE ALSO
+.Xr cbank 7 ,
+.Xr cbank-edit-allocation 7 ,
+.Xr cbank-edit-hold 7 ,
+.Xr cbank-edit-charge 7 ,
+.Xr cbank-edit-refund 7
+.Sh AUTHORS
+.An Jonathon Anderson
+.Ad janderso@alcf.anl.gov
+.Sh BUGS
+Submit bug reports to the clusterbank trac at
+.Ad http://trac.mcs.anl.gov/projects/clusterbank
