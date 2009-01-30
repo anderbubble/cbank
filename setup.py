@@ -7,7 +7,7 @@ except ImportError:
     use_setuptools()
     from setuptools import setup, find_packages
 
-manpages = ["doc/man/man7/%s.7" % page for page in [
+manpages = ["docs/man/man7/%s.7" % page for page in [
     "cbank-detail", "cbank-edit-allocation", "cbank-edit-charge",
     "cbank-edit-hold", "cbank-edit-refund", "cbank-edit", "cbank-import-jobs",
     "cbank-import", "cbank-list-allocations", "cbank-list-charges",
