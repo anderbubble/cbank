@@ -7,15 +7,6 @@ except ImportError:
     use_setuptools()
     from setuptools import setup, find_packages
 
-manpages = ["docs/man/man7/%s.7" % page for page in [
-    "cbank-detail", "cbank-edit-allocation", "cbank-edit-charge",
-    "cbank-edit-hold", "cbank-edit-refund", "cbank-edit", "cbank-import-jobs",
-    "cbank-import", "cbank-list-allocations", "cbank-list-charges",
-    "cbank-list-holds", "cbank-list-jobs", "cbank-list-projects",
-    "cbank-list-users", "cbank-list", "cbank-new-allocation",
-    "cbank-new-charge", "cbank-new-hold", "cbank-new-refund", "cbank-new",
-    "cbank"]]
-
 setup(
     name="clusterbank",
     version="trunk",
@@ -23,7 +14,7 @@ setup(
     author="Jonathon Anderson",
     author_email="janderso@alcf.anl.gov",
     url="http://trac.mcs.anl.gov/projects/clusterbank",
-    install_requires=["SQLAlchemy>=0.5.0rc1"],
+    install_requires=["SQLAlchemy>=0.5.0"],
     packages=find_packages("source/packages", exclude=['ez_setup']),
     package_dir={'':"source/packages"},
     test_suite="nose.collector",
@@ -54,4 +45,5 @@ setup(
         "cbank-detail-holds = clusterbank.cbank.controllers:detail_holds_main",
         "cbank-detail-charges = clusterbank.cbank.controllers:detail_charges_main",
         "cbank-detail-refunds = clusterbank.cbank.controllers:detail_refunds_main"]},
-    data_files=[("/usr/share/man/man7", manpages)])
+    data_files=[("/etc", ["etc/clusterbank.conf"]),
+        ("/usr/share/man/man7", ["docs/man/man7/cbank-new-charge.7", "docs/man/man7/cbank-detail.7", "docs/man/man7/cbank-list-projects.7", "docs/man/man7/cbank.7", "docs/man/man7/cbank-import-jobs.7", "docs/man/man7/cbank-list-charges.7", "docs/man/man7/cbank-list-users.7", "docs/man/man7/cbank-list-allocations.7", "docs/man/man7/cbank-list-jobs.7", "docs/man/man7/cbank-new.7", "docs/man/man7/cbank-import.7", "docs/man/man7/cbank-new-refund.7", "docs/man/man7/cbank-list-holds.7", "docs/man/man7/cbank-list.7", "docs/man/man7/cbank-new-allocation.7", "docs/man/man7/cbank-edit-refund.7", "docs/man/man7/cbank-edit-allocation.7", "docs/man/man7/cbank-edit-hold.7", "docs/man/man7/cbank-edit-charge.7", "docs/man/man7/cbank-new-hold.7", "docs/man/man7/cbank-edit.7"])])
