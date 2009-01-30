@@ -93,7 +93,7 @@ mapper(Allocation, allocations, properties={
     'datetime':allocations.c.datetime,
     'amount':allocations.c.amount,
     'start':allocations.c.start,
-    'end':allocations.c.expiration,
+    'end':allocations.c.end,
     'comment':allocations.c.comment})
 
 

@@ -106,7 +106,7 @@ allocations = Table("allocations", metadata,
     Column("datetime", DateTime, nullable=False, default=datetime.now),
     Column("amount", Integer, nullable=False),
     Column("start", DateTime, nullable=False),
-    Column("expiration", DateTime, nullable=False),
+    Column("end", DateTime, nullable=False),
     Column("comment", Text),
     mysql_engine="InnoDB")
 
