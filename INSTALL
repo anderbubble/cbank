@@ -1,0 +1,8 @@
+To install clusterbank, simply run:
+
+python setup.py install
+
+Post-installation notes:
+
+If you have installed via an rpm, you will need to symlink (or copy) the
+appropriate manpages into your manpath.
