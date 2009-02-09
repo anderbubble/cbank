@@ -1,3 +1,6 @@
+== cbank ==
+ * fixed a bug that created charges against expired allocations (#296)
+
 == 0.4.0 ==
 
 === cbank ===

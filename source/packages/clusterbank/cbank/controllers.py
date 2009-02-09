@@ -6,6 +6,7 @@ list_main -- metacontroller that dispatches to list controllers
 import_main -- metacontroller that dispatches to import controllers
 edit_main -- metacontroller that dispatches to edit controllers
 new_allocation_main -- creates new allocations
+new_hold_main -- creates new holds
 new_charge_main -- creates new charges
 new_refund_main -- creates new refunds
 import_jobs_main -- imports pbs jobs
@@ -248,6 +249,10 @@ def new_charge_main ():
     s = Session()
     allocations = s.query(Allocation).filter_by(
         project=project_, resource=options.resource)
+    now = datetime.now()
+    allocations = allocations.filter(and_(
+        Allocation.start <= now, Allocation.end > now))
+    allocations = allocations.order_by(Allocation.end)
     try:
         charges = Charge.distributed(allocations, amount)
     except ValueError, ex:

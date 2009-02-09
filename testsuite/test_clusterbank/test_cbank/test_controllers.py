@@ -63,8 +63,13 @@ class FakeFunc (object):
 
 
 def run (func, args=None, stdin=None):
-    if args is None:
-        args = []
+    try:
+        args = args.split()
+    except AttributeError:
+        if args is None:
+            args = []
+        else:
+            args = args
     if stdin is None:
         stdin = sys.stdin
     real_argv = sys.argv
@@ -688,7 +693,7 @@ class TestNewChargeMain (CbankTester):
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), end=now+timedelta(days=1))
@@ -706,13 +711,70 @@ class TestNewChargeMain (CbankTester):
         assert charge.comment == "test", \
             "incorrect comment: %s" % charge.comment
     
+    def test_some_expired_allocation (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        now = datetime(2000, 1, 1)
+        expired = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=2), end=now-timedelta(days=1))
+        unexpired = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
+        Session.add_all([expired, unexpired])
+        Session.commit()
+        code, stdout, stderr = run(new_charge_main,
+            "project1 100 -r resource1")
+        assert_equal(code, 0)
+        charges = Session.query(Charge)
+        assert_equal(charges.count(), 1)
+        charge = charges.one()
+        assert_identical(charge.allocation, unexpired)
+    
+    def test_multiple_allocations (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        now = datetime(2000, 1, 1)
+        later = Allocation(
+            project=project, resource=resource, amount=100,
+            start=now-timedelta(days=1), end=now+timedelta(days=2))
+        earlier = Allocation(
+            project=project, resource=resource, amount=49,
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
+        Session.add_all([later, earlier])
+        Session.commit()
+        code, stdout, stderr = run(new_charge_main,
+            "project1 100 -r resource1")
+        assert_equal(code, 0)
+        charges = Session.query(Charge)
+        assert_equal(charges.count(), 2)
+        assert_equal(earlier.charges[0].amount, 49)
+        assert_equal(later.charges[0].amount, 51)
+    
+    def test_expired_allocation (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        now = datetime(2000, 1, 1)
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=2), end=now-timedelta(days=1))
+        Session.add(allocation)
+        Session.commit()
+        args = "project1 100 -r resource1"
+        code, stdout, stderr = run(new_charge_main, args.split())
+        assert_equal(code, ValueError_.exit_code)
+        assert_equal(Session.query(Charge).count(), 0)
+    
     def test_unknown_arguments (self):
         project = project_by_name("project1")
         resource = resource_by_name("resource1")
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), end=now+timedelta(days=1))
@@ -730,7 +792,7 @@ class TestNewChargeMain (CbankTester):
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), end=now+timedelta(days=1))
@@ -754,7 +816,7 @@ class TestNewChargeMain (CbankTester):
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), end=now+timedelta(days=1))
@@ -772,7 +834,7 @@ class TestNewChargeMain (CbankTester):
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), end=now+timedelta(days=1))
@@ -791,7 +853,7 @@ class TestNewChargeMain (CbankTester):
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), end=now+timedelta(days=1))
@@ -808,7 +870,7 @@ class TestNewChargeMain (CbankTester):
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), end=now+timedelta(days=1))
@@ -825,7 +887,7 @@ class TestNewChargeMain (CbankTester):
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), end=now+timedelta(days=1))
@@ -845,7 +907,7 @@ class TestNewChargeMain (CbankTester):
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         allocation = Allocation(
             project=project, resource=resource, amount=1000,
             start=now-timedelta(days=1), end=now+timedelta(days=1))
@@ -853,7 +915,8 @@ class TestNewChargeMain (CbankTester):
         Session.commit()
         args = "project1 100 -r resource1"
         code, stdout, stderr = run(new_charge_main, args.split())
-        assert code == 0
+        print stdout.getvalue()
+        assert_equal(code, 0)
         assert charges.count() == 1, "didn't create a charge"
         charge = charges.one()
         assert charge.allocation is allocation, \
@@ -869,7 +932,7 @@ class TestNewChargeMain (CbankTester):
         resource = resource_by_name("resource1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         allocation = Allocation(project=project, resource=resource,
             amount=1000, start=now-timedelta(days=1),
             end=now+timedelta(days=1))
@@ -895,7 +958,7 @@ class TestNewRefundMain (CbankTester):
             "new_refund_main is not callable"
     
     def test_complete (self):
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         project = project_by_name("project1")
         resource = resource_by_name("resource1")
         refunds = Session.query(Refund)
@@ -917,7 +980,7 @@ class TestNewRefundMain (CbankTester):
         assert refund.comment == "test", refund.comment
     
     def test_unknown_arguments (self):
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         project = project_by_name("project1")
         resource = resource_by_name("resource1")
         refunds = Session.query(Refund)
@@ -936,7 +999,7 @@ class TestNewRefundMain (CbankTester):
     
     def test_with_defined_units (self):
         clusterbank.config.set("cbank", "unit_factor", "1/2")
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         project = project_by_name("project1")
         resource = resource_by_name("resource1")
         refunds = Session.query(Refund)
@@ -958,7 +1021,7 @@ class TestNewRefundMain (CbankTester):
         assert refund.comment == "test", refund.comment
     
     def test_without_comment (self):
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         project = project_by_name("project1")
         resource = resource_by_name("resource1")
         refunds = Session.query(Refund)
@@ -980,7 +1043,7 @@ class TestNewRefundMain (CbankTester):
         assert refund.comment is None, refund.comment
     
     def test_without_charge (self):
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         project = project_by_name("project1")
         resource = resource_by_name("resource1")
         refunds = Session.query(Refund)
@@ -1001,7 +1064,7 @@ class TestNewRefundMain (CbankTester):
             UnknownCharge.exit_code), code
     
     def test_without_amount (self):
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         project = project_by_name("project1")
         resource = resource_by_name("resource1")
         refunds = Session.query(Refund)
@@ -1023,7 +1086,7 @@ class TestNewRefundMain (CbankTester):
         assert code == 0, code
     
     def test_without_amount_with_existing_refund (self):
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         project = project_by_name("project1")
         resource = resource_by_name("resource1")
         refunds = Session.query(Refund)
@@ -1047,7 +1110,7 @@ class TestNewRefundMain (CbankTester):
     
     def test_non_admin (self):
         clusterbank.config.set("cbank", "admins", "")
-        now = datetime.now()
+        now = datetime(2000, 1, 1)
         project = project_by_name("project1")
         resource = resource_by_name("resource1")
         refunds = Session.query(Refund)
