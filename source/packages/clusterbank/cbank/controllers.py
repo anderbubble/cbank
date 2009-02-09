@@ -284,7 +284,14 @@ def new_hold_main ():
     s = Session()
     allocations = s.query(Allocation).filter_by(
         project=project_, resource=options.resource)
-    holds = Hold.distributed(allocations, amount)
+    now = datetime.now()
+    allocations = allocations.filter(and_(
+        Allocation.start <= now, Allocation.end > now))
+    allocations = allocations.order_by(Allocation.end)
+    try:
+        holds = Hold.distributed(allocations, amount)
+    except ValueError, ex:
+        raise ValueError_(ex)
     for hold in holds:
         hold.user = options.user
         hold.comment = options.comment

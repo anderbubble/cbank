@@ -669,6 +669,280 @@ class TestNewAllocationMain (CbankTester):
         assert code == NotPermitted.exit_code, code
 
 
+class TestNewHoldMain (CbankTester):
+    
+    def setup (self):
+        CbankTester.setup(self)
+        be_admin()
+    
+    def test_exists_and_callable (self):
+        assert hasattr(controllers, "new_hold_main"), \
+            "new_hold_main does not exist"
+        assert callable(controllers.new_hold_main), \
+            "new_hold_main is not callable"
+    
+    def test_no_allocation (self):
+        args = "project1 100 -r resource1"
+        code, stdout, stderr = run(new_hold_main, args.split())
+        assert_equal(code, ValueError_.exit_code)
+        assert_equal(Session.query(Hold).count(), 0)
+    
+    def test_complete (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        holds = Session.query(Hold)
+        assert_equal(holds.count(), 0)
+        now = datetime(2000, 1, 1)
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
+        Session.add(allocation)
+        Session.commit()
+        args = "project1 100 -r resource1 -c test"
+        code, stdout, stderr = run(new_hold_main, args.split())
+        assert_equal(code, 0)
+        assert_equal(holds.count(), 1)
+        hold = holds.one()
+        assert_identical(hold.allocation, allocation)
+        assert_equal(hold.amount, 100)
+        assert_equal(hold.comment, "test")
+    
+    def test_some_expired_allocation (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        now = datetime(2000, 1, 1)
+        expired = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=2), end=now-timedelta(days=1))
+        unexpired = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
+        Session.add_all([expired, unexpired])
+        Session.commit()
+        code, stdout, stderr = run(new_hold_main,
+            "project1 100 -r resource1")
+        assert_equal(code, 0)
+        holds = Session.query(Hold)
+        assert_equal(holds.count(), 1)
+        hold = holds.one()
+        assert_identical(hold.allocation, unexpired)
+    
+    def test_multiple_allocations (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        now = datetime(2000, 1, 1)
+        later = Allocation(
+            project=project, resource=resource, amount=100,
+            start=now-timedelta(days=1), end=now+timedelta(days=2))
+        earlier = Allocation(
+            project=project, resource=resource, amount=49,
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
+        Session.add_all([later, earlier])
+        Session.commit()
+        code, stdout, stderr = run(new_hold_main,
+            "project1 100 -r resource1")
+        assert_equal(code, 0)
+        holds = Session.query(Hold)
+        assert_equal(holds.count(), 2)
+        assert_equal(earlier.holds[0].amount, 49)
+        assert_equal(later.holds[0].amount, 51)
+    
+    def test_expired_allocation (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        now = datetime(2000, 1, 1)
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=2), end=now-timedelta(days=1))
+        Session.add(allocation)
+        Session.commit()
+        args = "project1 100 -r resource1"
+        code, stdout, stderr = run(new_hold_main, args.split())
+        assert_equal(code, ValueError_.exit_code)
+        assert_equal(Session.query(Hold).count(), 0)
+    
+    def test_unknown_arguments (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        holds = Session.query(Hold)
+        assert not holds.count(), "started with existing holds"
+        now = datetime(2000, 1, 1)
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
+        Session.add(allocation)
+        Session.commit()
+        args = "project1 100 -r resource1 -c test asdf"
+        code, stdout, stderr = run(new_hold_main, args.split())
+        assert not holds.count()
+        assert code == UnexpectedArguments.exit_code, code
+    
+    def test_with_defined_units (self):
+        clusterbank.config.set("cbank", "unit_factor", "1/2")
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        holds = Session.query(Hold)
+        assert not holds.count(), "started with existing holds"
+        now = datetime(2000, 1, 1)
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
+        Session.add(allocation)
+        Session.commit()
+        args = "project1 100 -r resource1 -c test"
+        code, stdout, stderr = run(new_hold_main, args.split())
+        assert code == 0
+        assert holds.count() == 1, "didn't create a hold"
+        hold = holds.one()
+        assert hold.allocation is allocation, \
+            "incorrect allocation: %r" % hold.allocation
+        assert hold.amount == 200, \
+            "incorrect hold amount: %i" % hold.amount
+        assert hold.comment == "test", \
+            "incorrect comment: %s" % hold.comment
+    
+    def test_without_resource (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        holds = Session.query(Hold)
+        assert not holds.count(), "started with existing holds"
+        now = datetime(2000, 1, 1)
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
+        Session.add(allocation)
+        Session.commit()
+        args = "project1 100 -c test"
+        code, stdout, stderr = run(new_hold_main, args.split())
+        assert code == MissingResource.exit_code, code
+        assert not holds.count(), "created a hold"
+    
+    def test_with_configured_resource (self):
+        clusterbank.config.set("cbank", "resource", "resource1")
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        holds = Session.query(Hold)
+        assert not holds.count(), "started with existing holds"
+        now = datetime(2000, 1, 1)
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
+        Session.add(allocation)
+        Session.commit()
+        args = "project1 100 -c test"
+        code, stdout, stderr = run(new_hold_main, args.split())
+        assert code == 0, code
+        assert holds.count(), "didn't create a hold"
+        hold = holds.one()
+        assert hold.allocation.resource is resource
+
+    def test_without_project (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        holds = Session.query(Hold)
+        assert not holds.count(), "started with existing holds"
+        now = datetime(2000, 1, 1)
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
+        Session.add(allocation)
+        Session.commit()
+        args = "100 -r resource1 -c test"
+        code, stdout, stderr = run(new_hold_main, args.split())
+        assert code == UnknownProject.exit_code, code
+        assert not holds.count(), "created a hold"
+    
+    def test_without_amount (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        holds = Session.query(Hold)
+        assert not holds.count(), "started with existing holds"
+        now = datetime(2000, 1, 1)
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
+        Session.add(allocation)
+        Session.commit()
+        args = "project1 -r resource1 -c test"
+        code, stdout, stderr = run(new_hold_main, args.split())
+        assert code == MissingArgument.exit_code, code
+        assert not holds.count(), "created a hold"
+    
+    def test_with_negative_amount (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        holds = Session.query(Hold)
+        assert not holds.count(), "started with existing holds"
+        now = datetime(2000, 1, 1)
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
+        Session.add(allocation)
+        Session.commit()
+        args = "project1 '-100' -r resource1 -c test"
+        code, stdout, stderr = run(new_hold_main, args.split())
+        Session.remove()
+        assert not holds.count(), \
+            "created a hold with negative amount: %s" % [
+                (hold, hold.amount) for hold in holds]
+        assert code == ValueError_.exit_code, code
+    
+    def test_without_comment (self):
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        user = user_by_name("user1")
+        holds = Session.query(Hold)
+        assert not holds.count(), "started with existing holds"
+        now = datetime(2000, 1, 1)
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
+        Session.add(allocation)
+        Session.commit()
+        args = "project1 100 -r resource1"
+        code, stdout, stderr = run(new_hold_main, args.split())
+        print stdout.getvalue()
+        assert_equal(code, 0)
+        assert holds.count() == 1, "didn't create a hold"
+        hold = holds.one()
+        assert hold.allocation is allocation, \
+            "incorrect allocation: %r" % hold.allocation
+        assert hold.amount == 100, \
+            "incorrect hold amount: %i" % hold.amount
+        assert hold.comment is None, \
+            "incorrect comment: %s" % hold.comment
+    
+    def test_non_admin (self):
+        clusterbank.config.set("cbank", "admins", "")
+        project = project_by_name("project1")
+        resource = resource_by_name("resource1")
+        holds = Session.query(Hold)
+        assert not holds.count(), "started with existing holds"
+        now = datetime(2000, 1, 1)
+        allocation = Allocation(project=project, resource=resource,
+            amount=1000, start=now-timedelta(days=1),
+            end=now+timedelta(days=1))
+        Session.add(allocation)
+        Session.commit()
+        args = "project1 100 -r resource1 -c test"
+        code, stdout, stderr = run(new_hold_main, args.split())
+        Session.remove()
+        assert not holds.count(), "created a hold without admin privileges"
+        assert code == NotPermitted.exit_code, code
+
+
+
 class TestNewChargeMain (CbankTester):
     
     def setup (self):
