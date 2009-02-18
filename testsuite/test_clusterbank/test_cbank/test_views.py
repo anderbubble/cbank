@@ -550,6 +550,7 @@ class TestProjectsList (CbankViewTester):
             Units are undefined.
             """))
     
+    
     def test_charges (self):
         project1 = project("project1")
         project2 = project("project2")
