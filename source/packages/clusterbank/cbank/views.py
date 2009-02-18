@@ -142,7 +142,7 @@ def print_users_list (users, projects=None, resources=None,
 
 
 def print_projects_list (projects, users=None, resources=None,
-                           before=None, after=None, truncate=True):
+                         before=None, after=None, truncate=True):
     
     """Projects list.
     
@@ -186,7 +186,7 @@ def print_projects_list (projects, users=None, resources=None,
     jobs_q = s.query(
         Project.id.label("project_id"),
         func.count(Job.id).label("job_count")).group_by(Project.id)
-    jobs_q = jobs_q.join(Job.account)
+    jobs_q = jobs_q.outerjoin(Job.account, Job.charges, Charge.allocation)
     charges_q = s.query(
         Project.id.label("project_id"),
         func.sum(Charge.amount).label("charge_sum")).group_by(Project.id)
@@ -203,6 +203,7 @@ def print_projects_list (projects, users=None, resources=None,
         allocations_q = allocations_q.filter(resources_)
         charges_q = charges_q.filter(resources_)
         refunds_q = refunds_q.filter(resources_)
+        jobs_q = jobs_q.filter(resources_)
     
     allocations_ = and_(Allocation.start <= now, Allocation.end > now)
     charges_ = Charge.allocation.has(allocations_)

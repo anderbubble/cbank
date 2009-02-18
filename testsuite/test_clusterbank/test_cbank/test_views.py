@@ -549,7 +549,7 @@ class TestProjectsList (CbankViewTester):
                                   5             0.0             0.0
             Units are undefined.
             """))
-
+    
     def test_charges (self):
         project1 = project("project1")
         project2 = project("project2")
@@ -833,6 +833,36 @@ class TestProjectsList (CbankViewTester):
             """)
         assert_eq_output(stdout.getvalue(), stdout_)
         assert_eq_output(stderr.getvalue(), stderr_)
+    
+    def test_resources (self):
+        project1 = project("project1")
+        res1 = resource("res1")
+        res2 = resource("res2")
+        a1 = Allocation(project1, res1, 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        a2 = Allocation(project1, res2, 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        j1 = Job("res1.1")
+        j2 = Job("res1.2")
+        j3 = Job("res2.1")
+        j1.account = project1
+        j2.account = project1
+        j3.account = project1
+        j1.charges = [Charge(a1, 0)]
+        j2.charges = [Charge(a1, 0)]
+        j3.charges = [Charge(a2, 0)]
+        stdout, stderr = capture(lambda:
+            print_projects_list([project1], resources=[res1]))
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            project1              2             0.0             0.0
+            """))
+        assert_eq_output(stderr.getvalue(), dedent("""\
+            Name               Jobs         Charged       Available
+            --------------- ------- --------------- ---------------
+                            ------- --------------- ---------------
+                                  2             0.0             0.0
+            Units are undefined.
+            """))
 
 
 class TestAllocationsList (CbankViewTester):
