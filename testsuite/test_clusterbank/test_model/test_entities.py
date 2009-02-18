@@ -287,7 +287,7 @@ class TestJob (EntityTester):
         s.add(job)
         s.flush()
         charge_ids = [charge.id for charge in charges]
-        s.clear()
+        s.expunge_all()
         job = s.query(Job).filter_by(id="www.example.com.123").one()
         # check the job's attributes for persistence
         assert_equal(job.id, "www.example.com.123")
@@ -324,7 +324,7 @@ class TestJob (EntityTester):
         s = Session()
         s.add(job)
         s.flush()
-        s.clear()
+        s.expunge_all()
         job = s.query(Job).filter_by(id="www.example.com.123").one()
         # check the job's attributes for persistence
         assert_equal(job.resource_list, {'afloat':1.1})
@@ -339,7 +339,7 @@ class TestJob (EntityTester):
         s = Session()
         s.add(job)
         s.flush()
-        s.clear()
+        s.expunge_all()
         job = s.query(Job).filter_by(id="www.example.com.123").one()
         # check the job's attributes for persistence
         assert_equal(job.resource_list, {'walltime':timedelta(days=1)})
@@ -354,7 +354,7 @@ class TestJob (EntityTester):
         s = Session()
         s.add(job)
         s.flush()
-        s.clear()
+        s.expunge_all()
         job = s.query(Job).filter_by(id="www.example.com.123").one()
         # check the job's attributes for persistence
         assert_equal(job.resource_list, {'walltime':timedelta(microseconds=1)})
