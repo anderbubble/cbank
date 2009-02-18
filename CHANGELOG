@@ -2,6 +2,9 @@
  * fixed a bug that created charges against expired allocations (#296)
  * fixed a bug that did not filter jobs by resource (#298)
 
+== clusterbank ==
+ * removed warning when importing clusterbank with no database config (#299)
+
 == 0.4.0 ==
 
 === cbank ===

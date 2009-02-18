@@ -42,7 +42,6 @@ def configured_engine ():
     try:
         uri = config.get("main", "database")
     except ConfigParser.Error:
-        warnings.warn("no database specified", UserWarning)
         engine = None
     else:
         try:
