@@ -133,7 +133,7 @@ def print_users_list (users, projects=None, resources=None,
     for user, job_count, charge_sum in query:
         job_count_total += job_count
         charge_sum_total += charge_sum
-        print format({'Name':user.name, 'Jobs':job_count,
+        print format({'Name':user, 'Jobs':job_count,
             'Charged':display_units(charge_sum)})
     print >> sys.stderr, format.separator(["Jobs", "Charged"])
     print >> sys.stderr, format({'Jobs':job_count_total,
@@ -262,7 +262,7 @@ def print_projects_list (projects, users=None, resources=None,
         job_count_total += job_count
         charge_sum_total += charge_sum
         allocation_sum_total += allocation_sum
-        print format({'Name':project.name,
+        print format({'Name':project,
             'Jobs':job_count,
             'Charged':display_units(charge_sum),
             'Available':display_units(allocation_sum)})
@@ -274,8 +274,8 @@ def print_projects_list (projects, users=None, resources=None,
 
 
 def print_allocations_list (allocations, users=None,
-                              before=None, after=None,
-                              comments=False, truncate=True):
+                            before=None, after=None,
+                            comments=False, truncate=True):
     
     """Allocations list.
     

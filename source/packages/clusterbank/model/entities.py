@@ -69,10 +69,9 @@ class Entity (object):
     
     def __str__ (self):
         if self.id is not None:
-            id_ = self.id
+            return str(self.id)
         else:
-            id_ = "?"
-        return "#%s" % id_
+            return "?"
 
 
 class UpstreamEntity (Entity):
@@ -107,6 +106,8 @@ class UpstreamEntity (Entity):
     def __str__ (self):
         if self.name is not None:
             return str(self.name)
+        elif self.id is not None:
+            return str(self.id)
         else:
             return "?"
 

@@ -880,6 +880,17 @@ class TestAllocationsList (CbankViewTester):
             Units are undefined.
             """))
     
+    def test_upstream_ids (self):
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        a1 = Allocation(Project(-1), Resource(-1), 0, start, end)
+        Session.add(a1)
+        Session.flush() # assign allocation ids
+        stdout, stderr = capture(lambda: print_allocations_list([a1]))
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            1    2000-01-08 -1       -1                    0           0.0           0.0
+            """))
+    
     def test_allocations (self):
         project1 = project("project1")
         project2 = project("project2")
@@ -1298,7 +1309,21 @@ class TestHoldsList (CbankViewTester):
                                                                  0.0
             Units are undefined.
             """))
-
+    
+    def test_upstream_ids (self):
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        a1 = Allocation(Project(-1), Resource(-1), 0, start, end)
+        h1 = Hold(a1, 0)
+        h1.datetime = datetime(2000, 1, 1)
+        Session.add(h1)
+        Session.flush() # assign hold ids
+        stdout, stderr = capture(lambda:
+            print_holds_list([h1]))
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            1      2000-01-01 -1       -1                        0.0
+            """))
+    
     def test_holds (self):
         project1 = project("project1")
         project2 = project("project2")
@@ -1354,6 +1379,16 @@ class TestJobsList (CbankViewTester):
                                                                     --------- -------------
                                                                       0:00:00           0.0
             Units are undefined.
+            """))
+    
+    def test_upstream_ids (self):
+        s = Session()
+        job = Job("res1.1")
+        job.account = Project(-1)
+        s.add(job)
+        stdout, stderr = capture(lambda: print_jobs_list([job]))
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            res1.1                                  -1                                  0.0
             """))
     
     def test_bare_jobs (self):
@@ -1444,6 +1479,20 @@ class TestChargesList (CbankViewTester):
                                                        -------------
                                                                  0.0
             Units are undefined.
+            """))
+    
+    def test_upstream_ids (self):
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        a1 = Allocation(Project(-1), Resource(-1), 0, start, end)
+        c1 = Charge(a1, 0)
+        c1.datetime = datetime(2000, 1, 1)
+        Session.add(c1)
+        Session.flush() # assign charge ids
+        stdout, stderr = capture(lambda:
+            print_charges_list([c1]))
+        assert_eq_output(stdout.getvalue(), dedent("""\
+            1      2000-01-01 -1       -1                        0.0
             """))
 
     def test_charges (self):
@@ -1542,10 +1591,10 @@ class TestPrintHolds (CbankViewTester):
         stdout, stderr = capture(lambda:
             print_holds([hold]))
         assert_eq_output(stdout.getvalue(), dedent("""\
-            Hold #1 -- 0.0
+            Hold 1 -- 0.0
              * Datetime: 2000-01-01 00:00:00
              * Active: True
-             * Allocation: #1
+             * Allocation: 1
              * Project: project1
              * Resource: res1
              * Comment: None
@@ -1566,10 +1615,10 @@ class TestPrintHolds (CbankViewTester):
         stdout, stderr = capture(lambda:
             print_holds([hold]))
         assert_eq_output(stdout.getvalue(), dedent("""\
-            Hold #1 -- 0.0
+            Hold 1 -- 0.0
              * Datetime: 2000-01-01 00:00:00
              * Active: True
-             * Allocation: #1
+             * Allocation: 1
              * Project: project1
              * Resource: res1
              * Comment: None
@@ -1658,9 +1707,9 @@ class TestPrintCharges (CbankViewTester):
         stdout, stderr = capture(lambda:
             print_charges([charge]))
         assert_eq_output(stdout.getvalue(), dedent("""\
-            Charge #1 -- 0.0
+            Charge 1 -- 0.0
              * Datetime: 2000-01-01 00:00:00
-             * Allocation: #1
+             * Allocation: 1
              * Project: project1
              * Resource: res1
              * Comment: None
@@ -1681,9 +1730,9 @@ class TestPrintCharges (CbankViewTester):
         stdout, stderr = capture(lambda:
             print_charges([charge]))
         assert_eq_output(stdout.getvalue(), dedent("""\
-            Charge #1 -- 0.0
+            Charge 1 -- 0.0
              * Datetime: 2000-01-01 00:00:00
-             * Allocation: #1
+             * Allocation: 1
              * Project: project1
              * Resource: res1
              * Comment: None
@@ -1707,10 +1756,10 @@ class TestPrintRefunds (CbankViewTester):
         stdout, stderr = capture(lambda:
             print_refunds([refund]))
         assert_eq_output(stdout.getvalue(), dedent("""\
-            Refund #1 -- 0.0
+            Refund 1 -- 0.0
              * Datetime: 2000-01-01 00:00:00
-             * Charge: #1
-             * Allocation: #1
+             * Charge: 1
+             * Allocation: 1
              * Project: project1
              * Resource: res1
              * Comment: None
@@ -1732,10 +1781,10 @@ class TestPrintRefunds (CbankViewTester):
         stdout, stderr = capture(lambda:
             print_refunds([refund]))
         assert_eq_output(stdout.getvalue(), dedent("""\
-            Refund #1 -- 0.0
+            Refund 1 -- 0.0
              * Datetime: 2000-01-01 00:00:00
-             * Charge: #1
-             * Allocation: #1
+             * Charge: 1
+             * Allocation: 1
              * Project: project1
              * Resource: res1
              * Comment: None
