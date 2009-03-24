@@ -1,6 +1,8 @@
 == cbank ==
  * fixed a bug that created charges against expired allocations (#296)
  * fixed a bug that did not filter jobs by resource (#298)
+ * unknown upstream entities are represented as the id (#303)
+ * entity ids are not prefixed with the number ("#") sign
 
 == clusterbank ==
  * removed warning when importing clusterbank with no database config (#299)
