@@ -1371,8 +1371,7 @@ def new_charge_parser ():
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save the charge"))
-    parser.set_defaults(user=get_current_user(),
-        commit=True, resource=configured_resource())
+    parser.set_defaults(commit=True, resource=configured_resource())
     return parser
 
 
@@ -1389,8 +1388,7 @@ def new_hold_parser ():
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save the hold"))
-    parser.set_defaults(user=get_current_user(),
-        commit=True, resource=configured_resource())
+    parser.set_defaults(commit=True, resource=configured_resource())
     return parser
 
 
