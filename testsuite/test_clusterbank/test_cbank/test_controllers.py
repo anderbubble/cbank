@@ -1831,10 +1831,10 @@ class TestImportJobs (CbankTester):
         assert_identical(job_.account, project("project1"))
         assert_equal(job_.name, "myjob")
         assert_equal(job_.queue, "shared")
-        assert_equal(job_.ctime, datetime(2008, 4, 18, 2, 10, 12))
-        assert_equal(job_.qtime, datetime(2008, 4, 18, 2, 10, 12))
-        assert_equal(job_.etime, datetime(2008, 4, 18, 2, 10, 12))
-        assert_equal(job_.start, datetime(2008, 4, 18, 2, 10, 12))
+        assert_equal(job_.ctime, datetime.fromtimestamp(1208502612))
+        assert_equal(job_.qtime, datetime.fromtimestamp(1208502612))
+        assert_equal(job_.etime, datetime.fromtimestamp(1208502612))
+        assert_equal(job_.start, datetime.fromtimestamp(1208502612))
         assert_equal(job_.exec_host,
             "j340/0+j341/0+j342/0+j343/0+j344/0+j345/0+j346/0+j347/0")
         assert_equal(job_.resource_list, {'ncpus':8, 'neednodes':8,
@@ -1856,10 +1856,10 @@ class TestImportJobs (CbankTester):
         assert_identical(job_.account, project("project1"))
         assert_equal(job_.name, "myjob")
         assert_equal(job_.queue, "pri4")
-        assert_equal(job_.ctime, datetime(2008, 4, 16, 15, 34, 26))
-        assert_equal(job_.qtime, datetime(2008, 4, 16, 15, 34, 26))
-        assert_equal(job_.etime, datetime(2008, 4, 16, 15, 34, 26))
-        assert_equal(job_.start, datetime(2008, 4, 16, 15, 34, 26))
+        assert_equal(job_.ctime, datetime.fromtimestamp(1208378066))
+        assert_equal(job_.qtime, datetime.fromtimestamp(1208378066))
+        assert_equal(job_.etime, datetime.fromtimestamp(1208378066))
+        assert_equal(job_.start, datetime.fromtimestamp(1208378066))
         assert_equal(job_.exec_host, "j75/0+j76/0+j77/0+j78/0+j79/0+j86/0+j87/0+j88/0+j89/0+j90/0+j91/0+j93/0+j94/0+j100/0+j101/0+j102/0+j103/0+j104/0+j105/0+j106/0+j107/0+j108/0+j109/0+j110/0")
         assert_equal(job_.resource_list, {'ncpus':24, 'neednodes':24,
             'nodect':24, 'nodes':24, 'walltime':timedelta(hours=36)})
@@ -1868,7 +1868,7 @@ class TestImportJobs (CbankTester):
             'cput':timedelta(seconds=8), 'cpupercent':0, 'vmem':"95988kb",
             'ncpus':24, 'mem':"41684kb"})
         assert_equal(job_.session, 23061)
-        assert_equal(job_.end, datetime(2008, 4, 18, 3, 35, 28))
+        assert_equal(job_.end, datetime.fromtimestamp(1208507728))
         assert_equal(job_.exit_status, 265)
     
     def test_job_from_pbs_q_updated (self):
