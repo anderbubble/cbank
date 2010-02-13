@@ -8,7 +8,7 @@ import ConfigParser
 __all__ = ["config", "__version__", "exceptions", "model", "controllers",
     "cbank", "upstreams"]
 
-__version__ = "trunk"
+__version__ = "1.0"
 
 config = ConfigParser.SafeConfigParser()
 config.read(["/etc/clusterbank.conf"])

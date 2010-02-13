@@ -9,7 +9,7 @@ except ImportError:
 
 setup(
     name="clusterbank",
-    version="trunk",
+    version="1.0",
     description="Accounting software for networked resources.",
     author="Jonathon Anderson",
     author_email="janderso@alcf.anl.gov",
