@@ -21,35 +21,35 @@ def get_project_id (name):
 def get_project_name (gid):
     """Given a gid, return the group name, or None."""
     try:
-        return getgrgid(gid)[0]
+        return getgrgid(int(gid))[0]
     except KeyError:
         return None
 
 def get_project_members (gid):
     """Given a gid, return the group member uids."""
     try:
-        return [getpwnam(name)[2] for name in getgrgid(gid)[3]]
+        return [str(getpwnam(name)[2]) for name in getgrgid(int(gid))[3]]
     except KeyError:
         return []
 
 def get_project_admins (gid):
     """Given a gid, return the uids of users with that default group."""
     try:
-        return [user[2] for user in getpwall() if user[3] == getgrgid(gid)[0]]
+        return [user[2] for user in getpwall() if user[3] == getgrgid(int(gid))[0]]
     except KeyError:
         return []
 
 def get_member_projects (uid):
     """Given a uid, return the gids of that user's projects."""
     try:
-        return [group[2] for group in getgrall()
-            if getpwuid(uid)[0] in group[3]]
+        return [str(group[2]) for group in getgrall()
+            if getpwuid(int(uid))[0] in group[3]]
     except KeyError:
         return []
 
 def get_admin_projects (uid):
     """Given a uid, return a list containing that user's default group."""
-    return [getgrgid(getpwuid(uid)[3])[2]]
+    return [str(getgrgid(getpwuid(int(uid))[3])[2])]
 
 def get_resource_id (name):
     """Given a group name, return the gid, or None."""
@@ -72,4 +72,3 @@ def get_user_name (uid):
         return getpwuid(uid)[0]
     except KeyError:
         return None
-
