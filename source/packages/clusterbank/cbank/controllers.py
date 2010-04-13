@@ -652,8 +652,7 @@ def list_allocations_main ():
     comments = options.comments
     allocations = Session.query(Allocation)
     if resources:
-        allocations = allocations.filter(Allocation.resource.has(
-            Resource.id.in_(resource.id for resource in resources)))
+        allocations = allocations.filter(Allocation.resource.in_(resources))
     if projects:
         allocations = allocations.filter(Allocation.project.has(
             Project.id.in_(project.id for project in projects)))
@@ -705,8 +704,7 @@ def list_holds_main ():
         holds = holds.filter(Hold.allocation.has(Allocation.project.has(
             Project.id.in_(project.id for project in projects))))
     if resources:
-        holds = holds.filter(Hold.allocation.has(Allocation.resource.has(
-            Resource.id.in_(resource.id for resource in resources))))
+        holds = holds.filter(Hold.allocation.has(Allocation.resource.in_(resources)))
     if options.after:
         holds = holds.filter(Hold.datetime >= options.after)
     if options.before:
@@ -753,8 +751,7 @@ def list_jobs_main ():
             Job.end <= options.before))
     if resources:
         jobs = jobs.filter(Job.charges.any(Charge.allocation.has(
-            Allocation.resource.has(Resource.id.in_(
-            resource.id for resource in resources)))))
+            Allocation.resource.in_(resources))))
     print_jobs_list(jobs, truncate=(not options.long))
 
 
@@ -788,8 +785,8 @@ def list_charges_main ():
         charges = charges.filter(Charge.allocation.has(Allocation.project.has(
             Project.id.in_(project.id for project in projects))))
     if resources:
-        charges = charges.filter(Charge.allocation.has(Allocation.resource.has(
-            Resource.id.in_(resource.id for resource in resources))))
+        charges = charges.filter(Charge.allocation.has(
+            Allocation.resource.in_(resources)))
     if options.after:
         charges = charges.filter(Charge.datetime >= options.after)
     if options.before:
@@ -1128,11 +1125,9 @@ def normalize (command, commands):
 def configured_resource ():
     """Return the configured resource."""
     try:
-        name = config.get("cbank", "resource")
+        return config.get("cbank", "resource")
     except ConfigParser.Error:
         return None
-    else:
-        return resource(name)
 
 
 def configured_resources ():
@@ -1534,7 +1529,7 @@ class Option (optparse.Option):
     def check_resource (self, opt, value):
         """Parse a resource from its name or id."""
         try:
-            return resource(value)
+            return value
         except NotFound:
             raise optparse.OptionValueError(
                 "option %s: unknown resource: %s" % (opt, value))

@@ -170,7 +170,7 @@ class TestHold (EntityTester):
     def test_persistence (self):
         user = User(1)
         project = Project(1)
-        resource = Resource(1)
+        resource = "1"
         allocation = Allocation(project, resource, 10,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         hold = Hold(allocation, 2)
@@ -255,7 +255,7 @@ class TestJob (EntityTester):
         # create an example job
         user1 = User(1)
         project1 = Project(1)
-        resource1 = Resource(1)
+        resource1 = "1"
         allocation1 = Allocation(project1, resource1, 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         charges = [Charge(allocation1, 0), Charge(allocation1, 0)]

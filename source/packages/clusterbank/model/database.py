@@ -6,7 +6,6 @@ is layed out, so that it can map local classes to a relational database.
 Objects:
 metadata -- master metadata object
 projects -- projects
-resources -- resources
 allocations -- allocations
 holds -- holds
 jobs -- jobs run on a resource
@@ -24,7 +23,7 @@ from sqlalchemy.types import TypeDecorator, Integer, DateTime, \
 
 __all__ = [
     "metadata",
-    "users", "projects", "resources",
+    "users", "projects",
     "allocations", "holds", "jobs", "charges", "refunds",
 ]
 
@@ -94,15 +93,10 @@ projects = Table("projects", metadata,
     mysql_engine="InnoDB")
 
 
-resources = Table("resources", metadata,
-    Column("id", Integer, primary_key=True),
-    mysql_engine="InnoDB")
-
-
 allocations = Table("allocations", metadata,
     Column("id", Integer, primary_key=True),
     Column("project_id", None, ForeignKey("projects.id"), nullable=False),
-    Column("resource_id", None, ForeignKey("resources.id"), nullable=False),
+    Column("resource", String(255), nullable=False),
     Column("datetime", DateTime, nullable=False, default=datetime.now),
     Column("amount", Integer, nullable=False),
     Column("start", DateTime, nullable=False),

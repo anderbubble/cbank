@@ -76,14 +76,6 @@ class TestDBFunctions (object):
     @raises(NotFound)
     def test_get_invalid_project (self):
         user = project_by_name("doesnotexist")
-    
-    def test_get_valid_resource (self):
-        resource = resource_by_name("spam")
-        assert resource.id == 1
-    
-    @raises(NotFound)
-    def test_get_invalid_resource (self):
-        resource = resource_by_name("doesnotexist")
 
 
 class TestJobFunctions (object):

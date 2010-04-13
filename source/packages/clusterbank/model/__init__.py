@@ -1,7 +1,7 @@
 """The clusterbank model.
 
-This package contains the local data model, including reflected projects
-and resources from upstream, along with allocations, charges, etc.
+This package contains the local data model, including reflected users,
+projects, and resources from upstream, along with allocations, charges, etc.
 
 Classes:
 User -- a user that can charge
@@ -29,7 +29,7 @@ from clusterbank import config
 from clusterbank.model.entities import upstream, User, Project, \
     Resource, Allocation, Hold, Job, Charge, Refund
 from clusterbank.model.database import metadata, \
-    users, projects, resources, \
+    users, projects, \
     allocations, holds, jobs, charges, refunds
 
 
@@ -81,14 +81,10 @@ mapper(Project, projects, properties={
     'id':projects.c.id})
 
 
-mapper(Resource, resources, properties={
-    'id':resources.c.id})
-
-
 mapper(Allocation, allocations, properties={
     'id':allocations.c.id,
     'project':relation(Project, backref="allocations"),
-    'resource':relation(Resource, backref="allocations"),
+    'resource':allocations.c.resource,
     'datetime':allocations.c.datetime,
     'amount':allocations.c.amount,
     'start':allocations.c.start,

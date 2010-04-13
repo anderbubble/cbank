@@ -96,8 +96,7 @@ def print_users_list (users, projects=None, resources=None,
         charges_q = charges_q.filter(charges_)
         refunds_q = refunds_q.filter(charges_)
     if resources:
-        charges_ = Charge.allocation.has(Allocation.resource.has(
-            Resource.id.in_(resource.id for resource in resources)))
+        charges_ = Charge.allocation.has(Allocation.resource.in_(resources))
         jobs_q = jobs_q.filter(Job.charges.any(charges_))
         charges_q = charges_q.filter(charges_)
         refunds_q = refunds_q.filter(charges_)
@@ -198,8 +197,7 @@ def print_projects_list (projects, users=None, resources=None,
         Refund.charge, Charge.allocation, Allocation.project)
     
     if resources:
-        resources_ = Allocation.resource.has(Resource.id.in_(
-            resource.id for resource in resources))
+        resources_ = Allocation.resource.in_(resources)
         allocations_q = allocations_q.filter(resources_)
         charges_q = charges_q.filter(resources_)
         refunds_q = refunds_q.filter(resources_)
