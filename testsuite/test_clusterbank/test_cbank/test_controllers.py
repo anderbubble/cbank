@@ -10,8 +10,8 @@ from sqlalchemy import create_engine
 import clusterbank
 from clusterbank.model import upstream, metadata, User, Project, Allocation, \
     Hold, Job, Charge, Refund
-from clusterbank.controllers import user, project, resource, user_by_name, \
-    project_by_name, resource_by_name, Session
+from clusterbank.controllers import user, project, user_by_name, \
+    project_by_name, Session
 import clusterbank.upstreams.default as upstream_
 import clusterbank.cbank.controllers as controllers
 from clusterbank.cbank.controllers import (main, list_main, new_main,

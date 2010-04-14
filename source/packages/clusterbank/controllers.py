@@ -13,8 +13,6 @@ user_by_name -- retrieve an upstream user by name
 user_by_id -- retrieve an upstream user by id
 project_by_name -- retrieve an upstream project by name
 project_by_id -- retrieve an upstream project by id
-resource_by_name -- retrieve an upstream resource by name
-resource_by_id -- retrieve an upstream resource by id
 users_property -- property decorator that produces user objects
 projects_property -- property decorator that produces project objects
 resource_property -- property decorator that produces a resource object
@@ -35,7 +33,6 @@ from sqlalchemy.orm.session import SessionExtension
 
 __all__ = ["Session", "user", "user_by_id", "user_by_name",
     "project", "project_by_id", "project_by_name",
-    "resource", "resource_by_id", "resource_by_name",
     "users_property", "projects_property", "resource_property",
     "job_from_pbs"]
 
@@ -127,22 +124,6 @@ def project_by_id (id_):
 def project_by_name (name):
     """Construct a project from its name."""
     return entity_by_name(Project, name, upstream.get_project_id)
-
-
-def resource (name_or_id):
-    """Construct a resource from its name or id."""
-    return entity(Resource, name_or_id,
-        upstream.get_resource_id, upstream.get_resource_name)
-
-
-def resource_by_id (id_):
-    """Construct a resource from its id."""
-    return entity_by_name(Resource, id_, upstream.get_resource_name)
-
-
-def resource_by_name (name):
-    """Construct a resource from its name."""
-    return entity_by_name(Resource, name, upstream.get_resource_id)
 
 
 def entity (cls, name_or_id, get_id, get_name):

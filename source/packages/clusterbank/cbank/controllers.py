@@ -40,8 +40,7 @@ import clusterbank
 from clusterbank import config
 from clusterbank.model import User, Project, Resource, Allocation, Hold, \
     Job, Charge, Refund
-from clusterbank.controllers import (Session, user, project, resource,
-    job_from_pbs)
+from clusterbank.controllers import (Session, user, project, job_from_pbs)
 from clusterbank.cbank.views import (print_allocation, print_charge,
     print_charges, print_hold, print_holds, print_refund, print_users_list,
     print_projects_list, print_allocations_list, print_holds_list,

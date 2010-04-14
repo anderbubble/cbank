@@ -8,7 +8,7 @@ from clusterbank.upstreams import default as upstream_
 from clusterbank.upstreams.default import User, Project, Resource
 import clusterbank.controllers
 from clusterbank.controllers import (Session, user, project, user_by_name,
-    project_by_name, resource, resource_by_name, job_from_pbs)
+    project_by_name, job_from_pbs)
 from clusterbank.exceptions import NotFound
 from clusterbank.model import metadata, Allocation, Charge
 

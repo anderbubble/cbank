@@ -14,7 +14,7 @@ import clusterbank.model
 from clusterbank.model import User, Resource, Project, Allocation, Hold, \
     Job, Charge, Refund
 from clusterbank.controllers import user_by_name, project_by_name, \
-    resource_by_name, Session, user, project, resource
+    Session, user, project
 from clusterbank.model.database import metadata
 import clusterbank.upstreams.default as upstream
 import clusterbank.cbank.views
