@@ -10,7 +10,7 @@ User -- upstream user
 __all__ = [
     "get_project_id", "get_project_name",
     "get_project_members", "get_project_admins",
-    "get_resource_id", "get_resource_name",
+    "resource_in", "resource_out",
     "get_user_id", "get_user_name",
     "get_member_projects", "get_admin_projects",
 ]
@@ -94,15 +94,18 @@ def get_project_name (id_):
     return None
 
 
-def get_resource_id (name):
-    """Given a resource name, return the resource id."""
+def resource_in (name_or_id):
+    """Given a resource name or id, return the resource id."""
     for resource in resources:
-        if resource.name == name:
+        if str(resource.id).lower() == str(name_or_id).lower():
+            return resource.id
+    for resource in resources:
+        if str(resource.name).lower() == str(name_or_id).lower():
             return resource.id
     return None
 
 
-def get_resource_name (id_):
+def resource_out (id_):
     """Given a resource id, return the resource name."""
     for resource in resources:
         if resource.id == id_:

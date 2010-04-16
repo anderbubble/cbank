@@ -63,7 +63,7 @@ def configured_upstream ():
         module = __import__(module_name, locals(), globals(), [
             "get_user_name", "get_user_id",
             "get_project_name", "get_project_id",
-            "get_resource_name", "get_resource_id",
+            "resource_in", "resource_out",
             "get_project_members", "get_project_admins",
             "get_member_projects", "get_admin_projects"])
     except ImportError:
@@ -143,5 +143,7 @@ mapper(Refund, refunds, properties={
 
 
 metadata.bind = configured_engine()
-upstream.use = configured_upstream()
-
+upstream_ = configured_upstream()
+upstream.use = upstream_
+Resource._in = staticmethod(upstream_.resource_in)
+Resource._out = staticmethod(upstream_.resource_out)

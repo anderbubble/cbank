@@ -3,7 +3,7 @@ from nose.tools import raises
 import clusterbank.upstreams.default
 from clusterbank.upstreams.default import \
     get_admin_projects, get_member_projects, get_user_name, \
-    get_user_id, get_resource_name, get_resource_id, \
+    get_user_id, resource_in, resource_out, \
     get_project_admins, get_project_name, \
     get_project_members, get_project_id, \
     User, Project, Resource
@@ -50,15 +50,15 @@ class TestResource (UpstreamTester):
             Resource(1, "Spam"),
             Resource(3, "Life")]
             
-    def test_id (self):
-        assert get_resource_name(1) == "Spam"
-        assert get_resource_name(2) is None
-        assert get_resource_name(3) == "Life"
+    def test_out (self):
+        assert resource_out(1) == "Spam"
+        assert resource_out(2) is None
+        assert resource_out(3) == "Life"
     
-    def test_name (self):
-        assert get_resource_id("Spam") == 1
-        assert get_resource_id("more spam") is None
-        assert get_resource_id("Life") == 3
+    def test_in (self):
+        assert resource_in("Spam") == 1
+        assert resource_in("more spam") is None
+        assert resource_in("Life") == 3
 
 
 class TestUser (UpstreamTester):

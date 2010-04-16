@@ -59,9 +59,9 @@ class TestResource (EntityTester):
         resource = Resource(1)
         assert resource.id == 1
     
-    def test_name (self):
+    def test_str (self):
         resource = Resource(1)
-        assert resource.name == "spam"
+        assert_equal(str(resource), "spam")
 
 
 class TestAllocation (EntityTester):

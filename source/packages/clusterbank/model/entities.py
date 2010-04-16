@@ -112,6 +112,19 @@ class UpstreamEntity (Entity):
             return "?"
 
 
+class NewUpstreamEntity (Entity):
+
+    def __init__ (self, id_):
+        Entity.__init__(self)
+        self.id = id_
+
+    _in = None
+    _out = None
+
+    def __str__ (self):
+        return str(self._out(self.id))
+
+
 class User (UpstreamEntity):
     
     """User associated with a hold or charge.
@@ -228,31 +241,13 @@ class Project (UpstreamEntity):
         return charges
 
 
-class Resource (UpstreamEntity):
+class Resource (NewUpstreamEntity):
     
     """Resource that can be allocated to a project.
     
     Attributes:
     allocations -- allocations of the resource
-    
-    Properties:
-    name -- upstream name of the resource
     """
-    
-    def __init__ (self, id_):
-        """Initialize an upstream-backed resource.
-        
-        Arguments:
-        id_ -- the id of the resource
-        """
-        UpstreamEntity.__init__(self, id_)
-        self.allocations = []
-
-    def _get_name (self):
-        """Retrieve the resource's name from upstream."""
-        return upstream.get_resource_name(self.id)
-    
-    name = property(_get_name)
 
 
 class Allocation (Entity):

@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+XFfrom sqlalchemy import create_engine
 
 import clusterbank.model.database
 from clusterbank.upstreams import default as upstream
@@ -20,4 +20,3 @@ def teardown ():
     upstream.resources = []
     clusterbank.model.upstream.use = None
     clusterbank.model.metadata.bind = None
-
