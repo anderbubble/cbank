@@ -96,7 +96,8 @@ def print_users_list (users, projects=None, resources=None,
         charges_q = charges_q.filter(charges_)
         refunds_q = refunds_q.filter(charges_)
     if resources:
-        charges_ = Charge.allocation.has(Allocation.resource.in_(resources))
+        charges_ = Charge.allocation.has(Allocation.resource_id.in_(
+            resource.id for resource in resources))
         jobs_q = jobs_q.filter(Job.charges.any(charges_))
         charges_q = charges_q.filter(charges_)
         refunds_q = refunds_q.filter(charges_)
@@ -197,7 +198,8 @@ def print_projects_list (projects, users=None, resources=None,
         Refund.charge, Charge.allocation, Allocation.project)
     
     if resources:
-        resources_ = Allocation.resource.in_(resources)
+        resources_ = Allocation.resource_id.in_(
+            resource.id for resource in resources)
         allocations_q = allocations_q.filter(resources_)
         charges_q = charges_q.filter(resources_)
         refunds_q = refunds_q.filter(resources_)
@@ -430,7 +432,7 @@ def print_holds_list (holds, comments=False, truncate=True):
     
     query = Session.query(Hold)
     query = query.options(eagerload(
-        Hold.allocation, Allocation.project, Allocation.resource))
+        Hold.allocation, Allocation.project, Allocation.resource_id))
     query = query.filter(Hold.id.in_(hold.id for hold in holds))
     query = query.order_by(Hold.datetime, Hold.id)
     
@@ -533,7 +535,7 @@ def print_charges_list (charges, comments=False, truncate=True):
         ).group_by(Charge.id)
     query = query.outerjoin(Charge.refunds)
     query = query.options(eagerload(Charge.allocation,
-        Allocation.project, Allocation.resource))
+        Allocation.project, Allocation.resource_id))
     query = query.filter(Charge.id.in_(charge.id for charge in charges))
     query = query.order_by(Charge.datetime, Charge.id)
     

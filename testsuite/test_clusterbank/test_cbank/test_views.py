@@ -130,7 +130,7 @@ class TestUsersList (CbankViewTester):
         user2 = user("user2")
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
+        res1 = Resource.fetch("res1")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 100, start, end)
@@ -161,7 +161,7 @@ class TestUsersList (CbankViewTester):
         user2 = user("user2")
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
+        res1 = Resource.fetch("res1")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 100, start, end)
@@ -196,7 +196,7 @@ class TestUsersList (CbankViewTester):
         user2 = user("user2")
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
+        res1 = Resource.fetch("res1")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 100, start, end)
@@ -235,7 +235,7 @@ class TestUsersList (CbankViewTester):
         user2 = user("user2")
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
+        res1 = Resource.fetch("res1")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 100, start, end)
@@ -275,8 +275,8 @@ class TestUsersList (CbankViewTester):
         user2 = user("user2")
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 100, start, end)
@@ -316,8 +316,8 @@ class TestUsersList (CbankViewTester):
         user2 = user("user2")
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 100, start, end)
@@ -365,8 +365,8 @@ class TestUsersList (CbankViewTester):
         user2 = user("user2")
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 100, start, end)
@@ -444,8 +444,8 @@ class TestProjectsList (CbankViewTester):
     def test_allocations (self):
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         Allocation(project1, res1, 10, start, end)
@@ -469,8 +469,8 @@ class TestProjectsList (CbankViewTester):
     def test_expired_allocations (self):
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         Allocation(project1, res1, 10, start, start)
@@ -494,8 +494,8 @@ class TestProjectsList (CbankViewTester):
     def test_holds (self):
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -554,8 +554,8 @@ class TestProjectsList (CbankViewTester):
     def test_charges (self):
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -594,8 +594,8 @@ class TestProjectsList (CbankViewTester):
     def test_expired_charges (self):
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, start)
@@ -634,8 +634,8 @@ class TestProjectsList (CbankViewTester):
     def test_refunds (self):
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -678,8 +678,8 @@ class TestProjectsList (CbankViewTester):
     def test_after (self):
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -733,8 +733,8 @@ class TestProjectsList (CbankViewTester):
     def test_before (self):
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -789,8 +789,8 @@ class TestProjectsList (CbankViewTester):
         user1 = user("user1")
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -837,8 +837,8 @@ class TestProjectsList (CbankViewTester):
     
     def test_resources (self):
         project1 = project("project1")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         a1 = Allocation(project1, res1, 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         a2 = Allocation(project1, res2, 0,
@@ -879,11 +879,11 @@ class TestAllocationsList (CbankViewTester):
                                                            0           0.0           0.0
             Units are undefined.
             """))
-    
+
     def test_upstream_ids (self):
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
-        a1 = Allocation(Project(-1), "-1", 0, start, end)
+        a1 = Allocation(Project(-1), Resource.fetch("-1"), 0, start, end)
         Session.add(a1)
         Session.flush() # assign allocation ids
         stdout, stderr = capture(lambda: print_allocations_list([a1]))
@@ -894,8 +894,8 @@ class TestAllocationsList (CbankViewTester):
     def test_allocations (self):
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -922,8 +922,8 @@ class TestAllocationsList (CbankViewTester):
     def test_expired (self):
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, start)
@@ -950,8 +950,8 @@ class TestAllocationsList (CbankViewTester):
     def test_holds (self):
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -985,8 +985,8 @@ class TestAllocationsList (CbankViewTester):
     def test_charges (self):
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -1018,8 +1018,8 @@ class TestAllocationsList (CbankViewTester):
     def test_expired_charges (self):
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, start)
@@ -1051,8 +1051,8 @@ class TestAllocationsList (CbankViewTester):
     def test_refunds (self):
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -1088,8 +1088,8 @@ class TestAllocationsList (CbankViewTester):
     def test_jobs (self):
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -1132,8 +1132,8 @@ class TestAllocationsList (CbankViewTester):
         user2 = user("user2")
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -1184,8 +1184,8 @@ class TestAllocationsList (CbankViewTester):
         user2 = user("user2")
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -1242,8 +1242,8 @@ class TestAllocationsList (CbankViewTester):
         user2 = user("user2")
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -1309,11 +1309,11 @@ class TestHoldsList (CbankViewTester):
                                                                  0.0
             Units are undefined.
             """))
-    
+
     def test_upstream_ids (self):
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
-        a1 = Allocation(Project(-1), "-1", 0, start, end)
+        a1 = Allocation(Project(-1), Resource.fetch("-1"), 0, start, end)
         h1 = Hold(a1, 0)
         h1.datetime = datetime(2000, 1, 1)
         Session.add(h1)
@@ -1327,8 +1327,8 @@ class TestHoldsList (CbankViewTester):
     def test_holds (self):
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -1480,11 +1480,11 @@ class TestChargesList (CbankViewTester):
                                                                  0.0
             Units are undefined.
             """))
-    
+
     def test_upstream_ids (self):
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
-        a1 = Allocation(Project(-1), "-1", 0, start, end)
+        a1 = Allocation(Project(-1), Resource.fetch("-1"), 0, start, end)
         c1 = Charge(a1, 0)
         c1.datetime = datetime(2000, 1, 1)
         Session.add(c1)
@@ -1494,14 +1494,14 @@ class TestChargesList (CbankViewTester):
         assert_eq_output(stdout.getvalue(), dedent("""\
             1      2000-01-01 -1       -1                        0.0
             """))
-
+    
     def test_charges (self):
         user1 = user("user1")
         user2 = user("user2")
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -1538,8 +1538,8 @@ class TestChargesList (CbankViewTester):
         user2 = user("user2")
         project1 = project("project1")
         project2 = project("project2")
-        res1 = "res1"
-        res2 = "res2"
+        res1 = Resource.fetch("res1")
+        res2 = Resource.fetch("res2")
         start = datetime(2000, 1, 1)
         end = start + timedelta(weeks=1)
         a1 = Allocation(project1, res1, 10, start, end)
@@ -1581,7 +1581,7 @@ class TestPrintHolds (CbankViewTester):
     def test_hold (self):
         user1 = user_by_name("user1")
         project1 = project_by_name("project1")
-        res1 = "res1"
+        res1 = Resource.fetch("res1")
         allocation1 = Allocation(project1, res1, 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         hold = Hold(allocation1, 0)
@@ -1604,7 +1604,7 @@ class TestPrintHolds (CbankViewTester):
     def test_job_hold (self):
         user1 = user_by_name("user1")
         project1 = project_by_name("project1")
-        res1 = "res1"
+        res1 = Resource.fetch("res1")
         allocation1 = Allocation(project1, res1, 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         hold = Hold(allocation1, 0)
@@ -1631,7 +1631,7 @@ class TestPrintJobs (CbankViewTester):
     def test_job (self):
         user1 = user_by_name("user1")
         project1 = project_by_name("project1")
-        res1 = "res1"
+        res1 = Resource.fetch("res1")
         allocation1 = Allocation(project1, res1, 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         charges = [Charge(allocation1, 0), Charge(allocation1, 0)]
@@ -1697,7 +1697,7 @@ class TestPrintCharges (CbankViewTester):
     def test_charge (self):
         user1 = user_by_name("user1")
         project1 = project_by_name("project1")
-        res1 = "res1"
+        res1 = Resource.fetch("res1")
         allocation1 = Allocation(project1, res1, 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         charge = Charge(allocation1, 0)
@@ -1719,7 +1719,7 @@ class TestPrintCharges (CbankViewTester):
     def test_job_charge (self):
         user1 = user_by_name("user1")
         project1 = project_by_name("project1")
-        res1 = "res1"
+        res1 = Resource.fetch("res1")
         allocation1 = Allocation(project1, res1, 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         charge = Charge(allocation1, 0)
@@ -1745,7 +1745,7 @@ class TestPrintRefunds (CbankViewTester):
     def test_refund (self):
         user1 = user_by_name("user1")
         project1 = project_by_name("project1")
-        res1 = "res1"
+        res1 = Resource.fetch("res1")
         allocation1 = Allocation(project1, res1, 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         charge = Charge(allocation1, 0)
@@ -1769,7 +1769,7 @@ class TestPrintRefunds (CbankViewTester):
     def test_job_refund (self):
         user1 = user_by_name("user1")
         project1 = project_by_name("project1")
-        res1 = "res1"
+        res1 = Resource.fetch("res1")
         allocation1 = Allocation(project1, res1, 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         charge = Charge(allocation1, 0)

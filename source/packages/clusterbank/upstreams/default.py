@@ -108,7 +108,7 @@ def resource_in (name_or_id):
 def resource_out (id_):
     """Given a resource id, return the resource name."""
     for resource in resources:
-        if resource.id == id_:
+        if str(resource.id) == str(id_):
             return resource.name
     return None
 

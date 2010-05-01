@@ -247,7 +247,7 @@ def new_charge_main ():
         raise MissingResource("resource")
     s = Session()
     allocations = s.query(Allocation).filter_by(
-        project=project_, resource=options.resource)
+        project=project_, resource_id=options.resource.id)
     now = datetime.now()
     allocations = allocations.filter(and_(
         Allocation.start <= now, Allocation.end > now))
@@ -282,7 +282,7 @@ def new_hold_main ():
         raise MissingResource("resource")
     s = Session()
     allocations = s.query(Allocation).filter_by(
-        project=project_, resource=options.resource)
+        project=project_, resource_id=options.resource.id)
     now = datetime.now()
     allocations = allocations.filter(and_(
         Allocation.start <= now, Allocation.end > now))
@@ -651,7 +651,8 @@ def list_allocations_main ():
     comments = options.comments
     allocations = Session.query(Allocation)
     if resources:
-        allocations = allocations.filter(Allocation.resource.in_(resources))
+        allocations = allocations.filter(
+            Allocation.resource_id.in_(resource.id for resource in resources))
     if projects:
         allocations = allocations.filter(Allocation.project.has(
             Project.id.in_(project.id for project in projects)))
@@ -703,7 +704,8 @@ def list_holds_main ():
         holds = holds.filter(Hold.allocation.has(Allocation.project.has(
             Project.id.in_(project.id for project in projects))))
     if resources:
-        holds = holds.filter(Hold.allocation.has(Allocation.resource.in_(resources)))
+        holds = holds.filter(Hold.allocation.has(
+            Allocation.resource_id.in_(resource.id for resource in resources)))
     if options.after:
         holds = holds.filter(Hold.datetime >= options.after)
     if options.before:
@@ -750,7 +752,7 @@ def list_jobs_main ():
             Job.end <= options.before))
     if resources:
         jobs = jobs.filter(Job.charges.any(Charge.allocation.has(
-            Allocation.resource.in_(resources))))
+            Allocation.resource_id.in_(resource.id for resource in resources))))
     print_jobs_list(jobs, truncate=(not options.long))
 
 
@@ -785,7 +787,7 @@ def list_charges_main ():
             Project.id.in_(project.id for project in projects))))
     if resources:
         charges = charges.filter(Charge.allocation.has(
-            Allocation.resource.in_(resources)))
+            Allocation.resource_id.in_(resource.id for resource in resources)))
     if options.after:
         charges = charges.filter(Charge.datetime >= options.after)
     if options.before:
@@ -1528,7 +1530,7 @@ class Option (optparse.Option):
     def check_resource (self, opt, value):
         """Parse a resource from its name or id."""
         try:
-            return value
+            return Resource.fetch(value)
         except NotFound:
             raise optparse.OptionValueError(
                 "option %s: unknown resource: %s" % (opt, value))

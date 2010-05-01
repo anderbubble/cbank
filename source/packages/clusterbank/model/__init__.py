@@ -84,7 +84,7 @@ mapper(Project, projects, properties={
 mapper(Allocation, allocations, properties={
     'id':allocations.c.id,
     'project':relation(Project, backref="allocations"),
-    'resource':allocations.c.resource,
+    'resource_id':allocations.c.resource_id,
     'datetime':allocations.c.datetime,
     'amount':allocations.c.amount,
     'start':allocations.c.start,

@@ -8,8 +8,8 @@ from textwrap import dedent
 from sqlalchemy import create_engine
 
 import clusterbank
-from clusterbank.model import upstream, metadata, User, Project, Allocation, \
-    Hold, Job, Charge, Refund
+from clusterbank.model import upstream, metadata, User, Project, Resource, \
+    Allocation, Hold, Job, Charge, Refund
 from clusterbank.controllers import user, project, user_by_name, \
     project_by_name, Session
 import clusterbank.upstreams.default as upstream_
@@ -183,7 +183,7 @@ class TestDetailCharges (CbankTester):
         controllers.print_charges = self._print_charges
     
     def test_user (self):
-        a = Allocation(project("project1"), "resource1", 0,
+        a = Allocation(project("project1"), Resource.fetch("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
         c.job = Job("resource1.1")
@@ -195,7 +195,7 @@ class TestDetailCharges (CbankTester):
         assert_equal(list(args[0]), [c])
     
     def test_non_user (self):
-        a = Allocation(project("project1"), "resource1", 0,
+        a = Allocation(project("project1"), Resource.fetch("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
         Session.add(c)
@@ -205,7 +205,7 @@ class TestDetailCharges (CbankTester):
         assert_equal(list(args[0]), [])
     
     def test_project_admin (self):
-        a = Allocation(project("project3"), "resource1", 0,
+        a = Allocation(project("project3"), Resource.fetch("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
         Session.add(c)
@@ -222,7 +222,7 @@ class TestAdminDetailCharges (TestDetailCharges):
         be_admin()
     
     def test_non_user (self):
-        a = Allocation(project("project1"), "resource1", 0,
+        a = Allocation(project("project1"), Resource.fetch("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
         Session.add(c)
@@ -244,7 +244,7 @@ class TestDetailRefunds (CbankTester):
         controllers.print_refunds = self._print_refunds
     
     def test_user (self):
-        a = Allocation(project("project1"), "resource1", 0,
+        a = Allocation(project("project1"), Resource.fetch("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
         c.job = Job("resource1.1")
@@ -257,7 +257,7 @@ class TestDetailRefunds (CbankTester):
         assert_equal(list(args[0]), [r])
     
     def test_non_user (self):
-        a = Allocation(project("project1"), "resource1", 0,
+        a = Allocation(project("project1"), Resource.fetch("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
         r = Refund(c)
@@ -268,7 +268,7 @@ class TestDetailRefunds (CbankTester):
         assert_equal(list(args[0]), [])
     
     def test_project_admin (self):
-        a = Allocation(project("project3"), "resource1", 0,
+        a = Allocation(project("project3"), Resource.fetch("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
         r = Refund(c)
@@ -286,7 +286,7 @@ class TestAdminDetailRefunds (TestDetailRefunds):
         be_admin()
     
     def test_non_user (self):
-        a = Allocation(project("project1"), "resource1", 0,
+        a = Allocation(project("project1"), Resource.fetch("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
         r = Refund(c)
@@ -456,9 +456,9 @@ class TestNewAllocationMain (CbankTester):
     
     def test_complete (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         query = Session.query(Allocation).filter_by(
-            project=project, resource=resource)
+            project=project, resource_id=resource.id)
         assert not query.count(), "started with existing allocations"
         args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
@@ -475,9 +475,9 @@ class TestNewAllocationMain (CbankTester):
     
     def test_unknown_arguments (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         query = Session.query(Allocation).filter_by(
-            project=project, resource=resource)
+            project=project, resource_id=resource.id)
         assert not query.count(), "started with existing allocations"
         args = """project1 1000 -r resource1 -s 2008-01-01 \
             -e 2009-01-01 -c test asdf"""
@@ -490,9 +490,9 @@ class TestNewAllocationMain (CbankTester):
     def test_with_defined_units (self):
         clusterbank.config.set("cbank", "unit_factor", "1/2")
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         query = Session.query(Allocation).filter_by(
-            project=project, resource=resource)
+            project=project, resource_id=resource.id)
         assert not query.count(), "started with existing allocations"
         args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
@@ -509,9 +509,9 @@ class TestNewAllocationMain (CbankTester):
     
     def test_with_bad_start (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         query = Session.query(Allocation).filter_by(
-            project=project, resource=resource)
+            project=project, resource_id=resource.id)
         assert not query.count(), "started with existing allocations"
         args = "project1 1000 -r resource1 -s bad_start -e 2009-01-01 -c test"
         code, stdout, stderr = run(
@@ -522,9 +522,9 @@ class TestNewAllocationMain (CbankTester):
     
     def test_with_bad_end (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         query = Session.query(Allocation).filter_by(
-            project=project, resource=resource)
+            project=project, resource_id=resource.id)
         assert not query.count(), "started with existing allocations"
         args = "project1 1000 -r resource1 -s 2008-01-01 -e bad_end -c test"
         code, stdout, stderr = run(
@@ -535,9 +535,9 @@ class TestNewAllocationMain (CbankTester):
     
     def test_with_bad_amount (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         query = Session.query(Allocation).filter_by(
-            project=project, resource=resource)
+            project=project, resource_id=resource.id)
         assert not query.count(), "started with existing allocations"
         args = """project1 bad_amount -r resource1 -s 2008-01-01 \
             -e 2009-01-01 -c test"""
@@ -549,9 +549,9 @@ class TestNewAllocationMain (CbankTester):
 
     def test_without_comment (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         query = Session.query(Allocation).filter_by(
-            project=project, resource=resource)
+            project=project, resource_id=resource.id)
         assert not query.count(), "started with existing allocations"
         args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01"
         code, stdout, stderr = run(
@@ -564,9 +564,9 @@ class TestNewAllocationMain (CbankTester):
     
     def test_without_project (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         query = Session.query(Allocation).filter_by(
-            project=project, resource=resource)
+            project=project, resource_id=resource.id)
         assert not query.count(), "started with existing allocations"
         args = "1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
@@ -578,9 +578,9 @@ class TestNewAllocationMain (CbankTester):
     
     def test_without_amount (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         query = Session.query(Allocation).filter_by(
-            project=project, resource=resource)
+            project=project, resource_id=resource.id)
         assert not query.count(), "started with existing allocations"
         args = "project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
@@ -591,9 +591,9 @@ class TestNewAllocationMain (CbankTester):
     
     def test_without_start (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         query = Session.query(Allocation).filter_by(
-            project=project, resource=resource)
+            project=project, resource_id=resource.id)
         assert not query.count(), "started with existing allocations"
         args = "project1 1000 -r resource1 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
@@ -606,9 +606,9 @@ class TestNewAllocationMain (CbankTester):
     
     def test_without_end (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         query = Session.query(Allocation).filter_by(
-            project=project, resource=resource)
+            project=project, resource_id=resource.id)
         assert not query.count(), "started with existing allocations"
         args = "project1 1000 -r resource1 -s 2000-01-01 -c test"
         code, stdout, stderr = run(
@@ -624,9 +624,9 @@ class TestNewAllocationMain (CbankTester):
 
     def test_without_resource (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         query = Session.query(Allocation).filter_by(
-            project=project, resource=resource)
+            project=project, resource_id=resource.id)
         assert not query.count(), "started with existing allocations"
         args = "project1 1000 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
@@ -639,9 +639,9 @@ class TestNewAllocationMain (CbankTester):
     def test_with_configured_resource (self):
         clusterbank.config.set("cbank", "resource", "resource1")
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         query = Session.query(Allocation).filter_by(
-            project=project, resource=resource)
+            project=project, resource_id=resource.id)
         assert not query.count(), "started with existing allocations"
         args = "project1 1000 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
@@ -654,9 +654,9 @@ class TestNewAllocationMain (CbankTester):
     def test_non_admin (self):
         clusterbank.config.set("cbank", "admins", "")
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         query = Session.query(Allocation).filter_by(
-            project=project, resource=resource)
+            project=project, resource_id=resource.id)
         assert not query.count(), "started with existing allocations"
         args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
@@ -687,7 +687,7 @@ class TestNewHoldMain (CbankTester):
     
     def test_complete (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         holds = Session.query(Hold)
         assert_equal(holds.count(), 0)
@@ -708,7 +708,7 @@ class TestNewHoldMain (CbankTester):
     
     def test_some_expired_allocation (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         now = datetime(2000, 1, 1)
         expired = Allocation(
@@ -729,7 +729,7 @@ class TestNewHoldMain (CbankTester):
     
     def test_multiple_allocations (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         now = datetime(2000, 1, 1)
         later = Allocation(
@@ -750,7 +750,7 @@ class TestNewHoldMain (CbankTester):
     
     def test_expired_allocation (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         now = datetime(2000, 1, 1)
         allocation = Allocation(
@@ -765,7 +765,7 @@ class TestNewHoldMain (CbankTester):
     
     def test_unknown_arguments (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         holds = Session.query(Hold)
         assert not holds.count(), "started with existing holds"
@@ -783,7 +783,7 @@ class TestNewHoldMain (CbankTester):
     def test_with_defined_units (self):
         clusterbank.config.set("cbank", "unit_factor", "1/2")
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         holds = Session.query(Hold)
         assert not holds.count(), "started with existing holds"
@@ -807,7 +807,7 @@ class TestNewHoldMain (CbankTester):
     
     def test_without_resource (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         holds = Session.query(Hold)
         assert not holds.count(), "started with existing holds"
@@ -825,7 +825,7 @@ class TestNewHoldMain (CbankTester):
     def test_with_configured_resource (self):
         clusterbank.config.set("cbank", "resource", "resource1")
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         holds = Session.query(Hold)
         assert not holds.count(), "started with existing holds"
@@ -844,7 +844,7 @@ class TestNewHoldMain (CbankTester):
 
     def test_without_project (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         holds = Session.query(Hold)
         assert not holds.count(), "started with existing holds"
@@ -861,7 +861,7 @@ class TestNewHoldMain (CbankTester):
     
     def test_without_amount (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         holds = Session.query(Hold)
         assert not holds.count(), "started with existing holds"
@@ -878,7 +878,7 @@ class TestNewHoldMain (CbankTester):
     
     def test_with_negative_amount (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         holds = Session.query(Hold)
         assert not holds.count(), "started with existing holds"
@@ -898,7 +898,7 @@ class TestNewHoldMain (CbankTester):
     
     def test_without_comment (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         holds = Session.query(Hold)
         assert not holds.count(), "started with existing holds"
@@ -924,7 +924,7 @@ class TestNewHoldMain (CbankTester):
     def test_non_admin (self):
         clusterbank.config.set("cbank", "admins", "")
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         holds = Session.query(Hold)
         assert not holds.count(), "started with existing holds"
         now = datetime(2000, 1, 1)
@@ -961,7 +961,7 @@ class TestNewChargeMain (CbankTester):
     
     def test_complete (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
@@ -985,7 +985,7 @@ class TestNewChargeMain (CbankTester):
     
     def test_some_expired_allocation (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         now = datetime(2000, 1, 1)
         expired = Allocation(
@@ -1006,7 +1006,7 @@ class TestNewChargeMain (CbankTester):
     
     def test_multiple_allocations (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         now = datetime(2000, 1, 1)
         later = Allocation(
@@ -1027,7 +1027,7 @@ class TestNewChargeMain (CbankTester):
     
     def test_expired_allocation (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         now = datetime(2000, 1, 1)
         allocation = Allocation(
@@ -1042,7 +1042,7 @@ class TestNewChargeMain (CbankTester):
     
     def test_unknown_arguments (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
@@ -1060,7 +1060,7 @@ class TestNewChargeMain (CbankTester):
     def test_with_defined_units (self):
         clusterbank.config.set("cbank", "unit_factor", "1/2")
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
@@ -1084,7 +1084,7 @@ class TestNewChargeMain (CbankTester):
     
     def test_without_resource (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
@@ -1102,7 +1102,7 @@ class TestNewChargeMain (CbankTester):
     def test_with_configured_resource (self):
         clusterbank.config.set("cbank", "resource", "resource1")
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
@@ -1121,7 +1121,7 @@ class TestNewChargeMain (CbankTester):
 
     def test_without_project (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
@@ -1138,7 +1138,7 @@ class TestNewChargeMain (CbankTester):
     
     def test_without_amount (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
@@ -1155,7 +1155,7 @@ class TestNewChargeMain (CbankTester):
     
     def test_with_negative_amount (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
@@ -1175,7 +1175,7 @@ class TestNewChargeMain (CbankTester):
     
     def test_without_comment (self):
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         user = user_by_name("user1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
@@ -1201,7 +1201,7 @@ class TestNewChargeMain (CbankTester):
     def test_non_admin (self):
         clusterbank.config.set("cbank", "admins", "")
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         charges = Session.query(Charge)
         assert not charges.count(), "started with existing charges"
         now = datetime(2000, 1, 1)
@@ -1232,7 +1232,7 @@ class TestNewRefundMain (CbankTester):
     def test_complete (self):
         now = datetime(2000, 1, 1)
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         refunds = Session.query(Refund)
         assert not refunds.count(), "started with existing refunds"
         allocation = Allocation(project=project, resource=resource,
@@ -1254,7 +1254,7 @@ class TestNewRefundMain (CbankTester):
     def test_unknown_arguments (self):
         now = datetime(2000, 1, 1)
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         refunds = Session.query(Refund)
         assert not refunds.count(), "started with existing refunds"
         allocation = Allocation(project=project, resource=resource,
@@ -1273,7 +1273,7 @@ class TestNewRefundMain (CbankTester):
         clusterbank.config.set("cbank", "unit_factor", "1/2")
         now = datetime(2000, 1, 1)
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         refunds = Session.query(Refund)
         assert not refunds.count(), "started with existing refunds"
         allocation = Allocation(project=project, resource=resource,
@@ -1295,7 +1295,7 @@ class TestNewRefundMain (CbankTester):
     def test_without_comment (self):
         now = datetime(2000, 1, 1)
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         refunds = Session.query(Refund)
         assert not refunds.count(), "started with existing refunds"
         allocation = Allocation(project=project, resource=resource,
@@ -1317,7 +1317,7 @@ class TestNewRefundMain (CbankTester):
     def test_without_charge (self):
         now = datetime(2000, 1, 1)
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         refunds = Session.query(Refund)
         assert not refunds.count(), "started with existing refunds"
         allocation = Allocation(project=project, resource=resource,
@@ -1338,7 +1338,7 @@ class TestNewRefundMain (CbankTester):
     def test_without_amount (self):
         now = datetime(2000, 1, 1)
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         refunds = Session.query(Refund)
         assert not refunds.count(), "started with existing refunds"
         allocation = Allocation(project=project, resource=resource,
@@ -1360,7 +1360,7 @@ class TestNewRefundMain (CbankTester):
     def test_without_amount_with_existing_refund (self):
         now = datetime(2000, 1, 1)
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         refunds = Session.query(Refund)
         assert not refunds.count(), "started with existing refunds"
         allocation = Allocation(project=project, resource=resource,
@@ -1384,7 +1384,7 @@ class TestNewRefundMain (CbankTester):
         clusterbank.config.set("cbank", "admins", "")
         now = datetime(2000, 1, 1)
         project = project_by_name("project1")
-        resource = "resource1"
+        resource = Resource.fetch("resource1")
         refunds = Session.query(Refund)
         assert not refunds.count(), "started with existing refunds"
         allocation = Allocation(project=project, resource=resource,
@@ -1473,7 +1473,7 @@ class TestEditAllocationMain (CbankTester):
     def setup (self):
         CbankTester.setup(self)
         be_admin()
-        a = Allocation(project("project1"), "resource1", 100,
+        a = Allocation(project("project1"), Resource.fetch("resource1"), 100,
             datetime(2008, 1, 1), datetime(2009, 1, 1))
         a.id = 1
         Session.add(a)
@@ -1539,7 +1539,7 @@ class TestEditAllocationMain (CbankTester):
         assert_equal(code, 0)
         a = Session.query(Allocation).filter_by(id=1).one()
         assert_identical(a.project, project("project1"))
-        assert_equal(a.resource, "resource1")
+        assert_equal(a.resource, Resource.fetch("resource1"))
         assert_identical(a.comment, None)
         assert_equal(a.start, datetime(2008, 1, 1))
         assert_equal(a.end, datetime(2009, 1, 1))
@@ -1558,7 +1558,7 @@ class TestEditHoldMain (CbankTester):
     def setup (self):
         CbankTester.setup(self)
         be_admin()
-        a = Allocation(project("project1"), "resource1", 100,
+        a = Allocation(project("project1"), Resource.fetch("resource1"), 100,
             datetime(2008, 1, 1), datetime(2009, 1, 1))
         h = Hold(a, 10)
         h.id = 1
@@ -1613,9 +1613,9 @@ class TestEditChargeMain (CbankTester):
     def setup (self):
         CbankTester.setup(self)
         be_admin()
-        a1 = Allocation(project("project1"), "resource1", 100,
+        a1 = Allocation(project("project1"), Resource.fetch("resource1"), 100,
             datetime(2008, 1, 1), datetime(2009, 1, 1))
-        a2 = Allocation(project("project1"), "resource1", 100,
+        a2 = Allocation(project("project1"), Resource.fetch("resource1"), 100,
             datetime(2008, 1, 1), datetime(2009, 1, 1))
         a1.id = 1
         a2.id = 2
@@ -1695,7 +1695,7 @@ class TestEditRefundMain (CbankTester):
     def setup (self):
         CbankTester.setup(self)
         be_admin()
-        a = Allocation(project("project1"), "resource1", 100,
+        a = Allocation(project("project1"), Resource.fetch("resource1"), 100,
             datetime(2008, 1, 1), datetime(2009, 1, 1))
         c = Charge(a, 10)
         r = Refund(c, 5)
@@ -1921,7 +1921,7 @@ class TestImportJobs (CbankTester):
         # import the job once
         code, stdout, stderr = run(import_jobs_main, [], stdin)
         # charge the job to an allocation
-        allocation = Allocation(project("project1"), "resource1", 0,
+        allocation = Allocation(project("project1"), Resource.fetch("resource1"), 0,
             datetime(2008, 1, 1), datetime(2009, 1, 1))
         charge = Charge(allocation, 0)
         job = Session.query(Job).one()
@@ -2132,7 +2132,7 @@ class TestUsersList (CbankTester):
         assert_equal(code, 0)
         args, kwargs = controllers.print_users_list.calls[0]
         assert_equal(set(kwargs['resources']),
-            set(["resource1"]))
+            set([Resource.fetch("resource1")]))
         
     def test_after (self):
         code, stdout, stderr = run(list_users_main, "-a 2000-01-01".split())
@@ -2256,7 +2256,7 @@ class TestProjectsList (CbankTester):
         assert_equal(code, 0)
         args, kwargs = controllers.print_projects_list.calls[0]
         assert_equal(set(kwargs['resources']),
-            set(["resource1"]))
+            set([Resource.fetch("resource1")]))
         
     def test_after (self):
         code, stdout, stderr = run(
@@ -2277,7 +2277,7 @@ class TestProjectsList (CbankTester):
         assert_equal(code, 0)
         args, kwargs = controllers.print_projects_list.calls[0]
         assert_equal(set(kwargs['resources']),
-            set(["resource1"]))
+            set([Resource.fetch("resource1")]))
         
     def test_after (self):
         code, stdout, stderr = run(
@@ -2351,13 +2351,13 @@ class TestAllocationsList (CbankTester):
         self._print_allocations_list = controllers.print_allocations_list
         controllers.print_allocations_list = FakeFunc()
         for project in Session.query(Project):
-            Allocation(project, "resource1", 0,
+            Allocation(project, Resource.fetch("resource1"), 0,
                 datetime(1999, 1, 1), datetime(2000, 1, 1))
-            Allocation(project, "resource1", 0,
+            Allocation(project, Resource.fetch("resource1"), 0,
                 datetime(1999, 1, 1), datetime(2001, 1, 1))
-            Allocation(project, "resource2", 0,
+            Allocation(project, Resource.fetch("resource2"), 0,
                 datetime(2000, 1, 1), datetime(2001, 1, 1))
-            Allocation(project, "resource2", 0,
+            Allocation(project, Resource.fetch("resource2"), 0,
                 datetime(2001, 1, 1), datetime(2002, 1, 1))
         Session.flush()
     
@@ -2424,7 +2424,7 @@ class TestAllocationsList (CbankTester):
     def test_resources (self):
         allocations_ = active([allocation
             for allocation in allocations(current_user().projects)
-            if allocation.resource == "resource1"])
+            if allocation.resource == Resource.fetch("resource1")])
         code, stdout, stderr = run(
             list_allocations_main, "-r resource1".split())
         assert_equal(code, 0)
@@ -2502,7 +2502,7 @@ class TestAllocationsList_Admin (TestAllocationsList):
     def test_resources (self):
         allocations_ = active([allocation
             for allocation in Session.query(Allocation).all()
-            if allocation.resource == "resource1"])
+            if allocation.resource == Resource.fetch("resource1")])
         code, stdout, stderr = run(
             list_allocations_main, "-r resource1".split())
         assert_equal(code, 0)
@@ -2538,9 +2538,9 @@ class TestHoldsList (CbankTester):
         controllers.print_holds_list = FakeFunc()
         user1, user2 = [user_by_name(user) for user in ["user1", "user2"]]
         for project in Session.query(Project):
-            Allocation(project, "resource1", 0,
+            Allocation(project, Resource.fetch("resource1"), 0,
                 datetime(2000, 1, 1), datetime(2001, 1, 1))
-            Allocation(project, "resource2", 0,
+            Allocation(project, Resource.fetch("resource2"), 0,
                 datetime(2000, 1, 1), datetime(2001, 1, 1))
         for allocation in Session.query(Allocation):
             h1 = Hold(allocation, 0)
@@ -2665,7 +2665,7 @@ class TestHoldsList (CbankTester):
         holds = holds.filter(Hold.allocation.has(
             Allocation.project.has(Project.id.in_(project.id for project in
             current_user().projects)))).filter(Hold.allocation.has(
-            Allocation.resource == "resource1"))
+            Allocation.resource_id == Resource.fetch("resource1").id))
         code, stdout, stderr = run(list_holds_main, "-r resource1".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_holds_list.calls[0]
@@ -2728,7 +2728,7 @@ class TestHoldsList_Admin (TestHoldsList):
     def test_resources (self):
         holds = Session.query(Hold).filter_by(
             active=True).filter(Hold.allocation.has(
-            Allocation.resource == "resource1"))
+            Allocation.resource_id == Resource.fetch("resource1").id))
         code, stdout, stderr = run(list_holds_main, "-r resource1".split())
         assert_equal(code, 0)
         args, kwargs = controllers.print_holds_list.calls[0]
@@ -2805,13 +2805,13 @@ class TestJobsList (CbankTester):
         self._print_jobs_list = controllers.print_jobs_list
         controllers.print_jobs_list = FakeFunc()
         current_user_ = current_user()
-        p1r1 = Allocation(project("project1"), "resource1", 0,
+        p1r1 = Allocation(project("project1"), Resource.fetch("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
-        p2r1 = Allocation(project("project2"), "resource1", 0,
+        p2r1 = Allocation(project("project2"), Resource.fetch("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
-        p4r1 = Allocation(project("project4"), "resource1", 0,
+        p4r1 = Allocation(project("project4"), Resource.fetch("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
-        p2r2 = Allocation(project("project2"), "resource2", 0,
+        p2r2 = Allocation(project("project2"), Resource.fetch("resource2"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         j1 = Job("resource1.1")
         j1.user = current_user_
@@ -3112,9 +3112,9 @@ class TestChargesList (CbankTester):
         controllers.print_charges_list = FakeFunc()
         user1, user2 = [user_by_name(user) for user in ["user1", "user2"]]
         for project in Session.query(Project):
-            Allocation(project, "resource1", 0,
+            Allocation(project, Resource.fetch("resource1"), 0,
                 datetime(2000, 1, 1), datetime(2001, 1, 1))
-            Allocation(project, "resource2", 0,
+            Allocation(project, Resource.fetch("resource2"), 0,
                 datetime(2000, 1, 1), datetime(2001, 1, 1))
         for allocation in Session.query(Allocation):
             c1 = Charge(allocation, 0)

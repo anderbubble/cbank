@@ -112,6 +112,26 @@ class UpstreamEntity (Entity):
             return "?"
 
 
+class memoized(object):
+   """Decorator that caches a function's return value each time it is called.
+   If called later with the same arguments, the cached value is returned, and
+   not re-evaluated.
+   """
+   def __init__(self, func):
+      self.func = func
+      self.cache = {}
+   def __call__(self, *args):
+      try:
+         return self.cache.setdefault(args,self.func(*args))
+      except TypeError:
+         # uncachable -- for instance, passing a list as an argument.
+         # Better to not cache than to blow up entirely.
+         return self.func(*args)
+   def __repr__(self):
+      """Return the function's docstring."""
+      return self.func.__doc__
+
+
 class NewUpstreamEntity (Entity):
 
     def __init__ (self, id_):
@@ -122,7 +142,27 @@ class NewUpstreamEntity (Entity):
     _out = None
 
     def __str__ (self):
-        return str(self._out(self.id))
+        str_ = self._out(self.id)
+        if str_ is None:
+            return str(self.id)
+        else:
+            return str(str_)
+
+    @classmethod
+    def fetch (cls, input):
+        id_ = cls._in(input)
+        if id_ is None:
+            return cls.cached(input)
+        else:
+            return cls.cached(id_)
+
+    @classmethod
+    @memoized
+    def cached (cls, *args):
+        return cls(*args)
+
+    def __eq__ (self, other):
+        return type(self) is type(other) and (str(self.id) == str(other.id))
 
 
 class User (UpstreamEntity):
@@ -294,6 +334,20 @@ class Allocation (Entity):
         self.comment = None
         self.holds = []
         self.charges = []
+
+    def _set_resource (self, resource):
+        if resource is None:
+            self.resource_id = None
+        else:
+            self.resource_id = resource.id
+
+    def _get_resource (self):
+        if self.resource_id is None:
+            return None
+        else:
+            return Resource.cached(self.resource_id)
+
+    resource = property(_get_resource, _set_resource)
     
     def amount_charged (self):
         """Compute the sum of effective charges (after refunds)."""
