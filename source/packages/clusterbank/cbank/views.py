@@ -532,7 +532,7 @@ def print_charges_list (charges, comments=False, truncate=True):
     query = s.query(Charge,
         (Charge.amount
             - func.coalesce(func.sum(Refund.amount), 0))
-        ).group_by(Charge.id)
+        ).group_by(Charge)
     query = query.outerjoin(Charge.refunds)
     query = query.options(eagerload(Charge.allocation,
         Allocation.project, Allocation.resource))
