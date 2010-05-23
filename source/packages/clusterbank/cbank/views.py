@@ -30,6 +30,7 @@ import sys
 import locale
 import ConfigParser
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from sqlalchemy.sql import and_, func
 from sqlalchemy.orm import eagerload
@@ -683,7 +684,7 @@ def display_units (amount):
 def convert_units (amount):
     """Convert an amount to the configured units."""
     mul, div = get_unit_factor()
-    return amount * mul / div
+    return Decimal(str(amount)) * Decimal(str(mul)) / Decimal(str(div))
 
 
 def format_datetime (datetime_):
