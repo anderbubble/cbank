@@ -31,8 +31,7 @@ import locale
 import ConfigParser
 from datetime import datetime, timedelta
 
-from sqlalchemy.sql import and_, cast, func
-from sqlalchemy.types import Integer
+from sqlalchemy.sql import and_, func
 from sqlalchemy.orm import eagerload
 
 from clusterbank import config
@@ -118,8 +117,8 @@ def print_users_list (users, projects=None, resources=None,
     query = s.query(
         User,
         func.coalesce(jobs_q.c.job_count, 0),
-        cast(func.coalesce(charges_q.c.charge_sum, 0)
-            - func.coalesce(refunds_q.c.refund_sum, 0), Integer)
+        (func.coalesce(charges_q.c.charge_sum, 0)
+            - func.coalesce(refunds_q.c.refund_sum, 0))
         ).group_by(User.id)
     query = query.outerjoin(
         (jobs_q, User.id == jobs_q.c.user_id),
@@ -236,12 +235,12 @@ def print_projects_list (projects, users=None, resources=None,
     query = s.query(
         Project,
         func.coalesce(jobs_q.c.job_count, 0),
-        cast(func.coalesce(charges_q.c.charge_sum, 0)
-            - func.coalesce(refunds_q.c.refund_sum, 0), Integer),
-        cast(func.coalesce(allocations_q.c.allocation_sum, 0)
+        (func.coalesce(charges_q.c.charge_sum, 0)
+            - func.coalesce(refunds_q.c.refund_sum, 0)),
+        (func.coalesce(allocations_q.c.allocation_sum, 0)
             - func.coalesce(holds_q.c.hold_sum, 0)
             - func.coalesce(allocation_charges_q.c.charge_sum, 0)
-            + func.coalesce(allocation_refunds_q.c.refund_sum, 0), Integer))
+            + func.coalesce(allocation_refunds_q.c.refund_sum, 0)))
     query = query.outerjoin(
         (jobs_q, Project.id == jobs_q.c.project_id),
         (charges_q, Project.id == charges_q.c.project_id),
@@ -358,12 +357,12 @@ def print_allocations_list (allocations, users=None,
     query = s.query(
         Allocation,
         func.coalesce(jobs_q.c.job_count, 0),
-        cast(func.coalesce(charges_q.c.charge_sum, 0)
-            - func.coalesce(refunds_q.c.refund_sum, 0), Integer),
-        cast(Allocation.amount
+        (func.coalesce(charges_q.c.charge_sum, 0)
+            - func.coalesce(refunds_q.c.refund_sum, 0)),
+        (Allocation.amount
             - func.coalesce(holds_q.c.hold_sum, 0)
             - func.coalesce(allocation_charges_q.c.charge_sum, 0)
-            + func.coalesce(allocation_refunds_q.c.refund_sum, 0), Integer))
+            + func.coalesce(allocation_refunds_q.c.refund_sum, 0)))
     query = query.outerjoin(
         (jobs_q, Allocation.id == jobs_q.c.allocation_id),
         (charges_q, Allocation.id == charges_q.c.allocation_id),
@@ -530,8 +529,8 @@ def print_charges_list (charges, comments=False, truncate=True):
     
     s = Session()
     query = s.query(Charge,
-        cast(Charge.amount
-            - func.coalesce(func.sum(Refund.amount), 0), Integer)
+        (Charge.amount
+            - func.coalesce(func.sum(Refund.amount), 0))
         ).group_by(Charge.id)
     query = query.outerjoin(Charge.refunds)
     query = query.options(eagerload(Charge.allocation,
