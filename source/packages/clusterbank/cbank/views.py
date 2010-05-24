@@ -112,19 +112,19 @@ def print_users_list (users, projects=None, resources=None,
         charges_q = charges_q.filter(charges_)
         refunds_q = refunds_q.filter(charges_)
     
-    jobs_q = jobs_q.subquery()
-    charges_q = charges_q.subquery()
-    refunds_q = refunds_q.subquery()
+    jobs_q = jobs_q.group_by(User.id).subquery()
+    charges_q = charges_q.group_by(User.id).subquery()
+    refunds_q = refunds_q.group_by(User.id).subquery()
     query = s.query(
         User,
         func.coalesce(jobs_q.c.job_count, 0),
         (func.coalesce(charges_q.c.charge_sum, 0)
             - func.coalesce(refunds_q.c.refund_sum, 0))
-        ).group_by(User.id)
+        )
     query = query.outerjoin(
         (jobs_q, User.id == jobs_q.c.user_id),
         (charges_q, User.id == charges_q.c.user_id),
-        (refunds_q, User.id == refunds_q.c.user_id)).group_by(User.id)
+        (refunds_q, User.id == refunds_q.c.user_id))
     query = query.filter(User.id.in_(user.id for user in users))
     query = query.order_by(User.id)
     
