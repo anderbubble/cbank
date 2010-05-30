@@ -1,3 +1,5 @@
 *.egg-info
 *.pyc
 /build
+ez_setup.py
+dist

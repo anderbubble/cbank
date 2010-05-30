@@ -30,9 +30,9 @@ import sys
 import locale
 import ConfigParser
 from datetime import datetime, timedelta
+from decimal import Decimal
 
-from sqlalchemy.sql import and_, cast, func
-from sqlalchemy.types import Integer
+from sqlalchemy.sql import and_, func
 from sqlalchemy.orm import eagerload
 
 from clusterbank import config
@@ -112,19 +112,19 @@ def print_users_list (users, projects=None, resources=None,
         charges_q = charges_q.filter(charges_)
         refunds_q = refunds_q.filter(charges_)
     
-    jobs_q = jobs_q.subquery()
-    charges_q = charges_q.subquery()
-    refunds_q = refunds_q.subquery()
+    jobs_q = jobs_q.group_by(User.id).subquery()
+    charges_q = charges_q.group_by(User.id).subquery()
+    refunds_q = refunds_q.group_by(User.id).subquery()
     query = s.query(
         User,
         func.coalesce(jobs_q.c.job_count, 0),
-        cast(func.coalesce(charges_q.c.charge_sum, 0)
-            - func.coalesce(refunds_q.c.refund_sum, 0), Integer)
-        ).group_by(User.id)
+        (func.coalesce(charges_q.c.charge_sum, 0)
+            - func.coalesce(refunds_q.c.refund_sum, 0))
+        )
     query = query.outerjoin(
         (jobs_q, User.id == jobs_q.c.user_id),
         (charges_q, User.id == charges_q.c.user_id),
-        (refunds_q, User.id == refunds_q.c.user_id)).group_by(User.id)
+        (refunds_q, User.id == refunds_q.c.user_id))
     query = query.filter(User.id.in_(user.id for user in users))
     query = query.order_by(User.id)
     
@@ -236,12 +236,12 @@ def print_projects_list (projects, users=None, resources=None,
     query = s.query(
         Project,
         func.coalesce(jobs_q.c.job_count, 0),
-        cast(func.coalesce(charges_q.c.charge_sum, 0)
-            - func.coalesce(refunds_q.c.refund_sum, 0), Integer),
-        cast(func.coalesce(allocations_q.c.allocation_sum, 0)
+        (func.coalesce(charges_q.c.charge_sum, 0)
+            - func.coalesce(refunds_q.c.refund_sum, 0)),
+        (func.coalesce(allocations_q.c.allocation_sum, 0)
             - func.coalesce(holds_q.c.hold_sum, 0)
             - func.coalesce(allocation_charges_q.c.charge_sum, 0)
-            + func.coalesce(allocation_refunds_q.c.refund_sum, 0), Integer))
+            + func.coalesce(allocation_refunds_q.c.refund_sum, 0)))
     query = query.outerjoin(
         (jobs_q, Project.id == jobs_q.c.project_id),
         (charges_q, Project.id == charges_q.c.project_id),
@@ -358,12 +358,12 @@ def print_allocations_list (allocations, users=None,
     query = s.query(
         Allocation,
         func.coalesce(jobs_q.c.job_count, 0),
-        cast(func.coalesce(charges_q.c.charge_sum, 0)
-            - func.coalesce(refunds_q.c.refund_sum, 0), Integer),
-        cast(Allocation.amount
+        (func.coalesce(charges_q.c.charge_sum, 0)
+            - func.coalesce(refunds_q.c.refund_sum, 0)),
+        (Allocation.amount
             - func.coalesce(holds_q.c.hold_sum, 0)
             - func.coalesce(allocation_charges_q.c.charge_sum, 0)
-            + func.coalesce(allocation_refunds_q.c.refund_sum, 0), Integer))
+            + func.coalesce(allocation_refunds_q.c.refund_sum, 0)))
     query = query.outerjoin(
         (jobs_q, Allocation.id == jobs_q.c.allocation_id),
         (charges_q, Allocation.id == charges_q.c.allocation_id),
@@ -530,9 +530,9 @@ def print_charges_list (charges, comments=False, truncate=True):
     
     s = Session()
     query = s.query(Charge,
-        cast(Charge.amount
-            - func.coalesce(func.sum(Refund.amount), 0), Integer)
-        ).group_by(Charge.id)
+        (Charge.amount
+            - func.coalesce(func.sum(Refund.amount), 0))
+        ).group_by(Charge)
     query = query.outerjoin(Charge.refunds)
     query = query.options(eagerload(Charge.allocation,
         Allocation.project, Allocation.resource))
@@ -684,7 +684,7 @@ def display_units (amount):
 def convert_units (amount):
     """Convert an amount to the configured units."""
     mul, div = get_unit_factor()
-    return amount * mul / div
+    return Decimal(str(amount)) * Decimal(str(mul)) / Decimal(str(div))
 
 
 def format_datetime (datetime_):
