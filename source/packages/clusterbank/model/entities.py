@@ -13,42 +13,16 @@ Refund -- refund of a charge
 
 
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 import ConfigParser
 
 from clusterbank import config
 
 
 __all__ = [
-    "upstream", "User", "Project", "Resource",
+    "User", "Project", "Resource",
     "Allocation", "Hold", "Charge", "Refund"
 ]
-
-
-class UpstreamProxy (object):
-    
-    """A proxy for upstream modules.
-    
-    An upstream proxy provides a mechanism for  generic coupling with
-    upstream modules.
-    
-    Attributes:
-    use -- the upstream module to proxy to
-    """
-
-    def __init__ (self, use=None):
-        """Initialize an UpstreamProxy.
-        
-        Arguments:
-        use -- the upstream module to proxy to
-        """
-        self.use = use
-
-    def __getattr__ (self, name):
-        return getattr(self.use, name)
-
-
-upstream = UpstreamProxy()
 
 
 class Entity (object):
@@ -74,44 +48,6 @@ class Entity (object):
             return "?"
 
 
-class UpstreamEntity (Entity):
-    
-    """A generic upstream entity.
-    
-    Subclasses of this class represent the organizational entities
-    defined elsewhere.
-    
-    Attributes:
-    id -- the entity id (used to locate the entity in the upstream module)
-    
-    Properties:
-    name -- override in a subclass
-    """
-    
-    name = property(lambda:None)
-    
-    def __init__ (self, id_):
-        """Initialize an UpstreamEntity.
-        
-        Arguments:
-        id_ -- the id of the upstream entity
-        """
-        Entity.__init__(self)
-        self.id = id_
-    
-    def __repr__ (self):
-        return "<%s name=%r id=%r>" % (
-            self.__class__.__name__, self.name, self.id)
-    
-    def __str__ (self):
-        if self.name is not None:
-            return str(self.name)
-        elif self.id is not None:
-            return str(self.id)
-        else:
-            return "?"
-
-
 class memoized(object):
    """Decorator that caches a function's return value each time it is called.
    If called later with the same arguments, the cached value is returned, and
@@ -132,7 +68,7 @@ class memoized(object):
       return self.func.__doc__
 
 
-class NewUpstreamEntity (Entity):
+class UpstreamEntity (Entity):
 
     def __init__ (self, id_):
         Entity.__init__(self)
@@ -166,104 +102,25 @@ class NewUpstreamEntity (Entity):
 
 
 class User (UpstreamEntity):
-    
-    """User associated with a hold or charge.
-    
-    Attributes:
-    holds -- holds associated with the user
-    jobs -- jobs the user has run
-    
-    Properties:
-    name -- upstream name of the user
-    projects -- upstream projects the user is a member of
-    admin_projects -- upstream projects the user admins
-    is_admin -- whether the user has admin privileges
-    """
-    
-    def __init__ (self, id_):
-        """Initialize an upstream-backed user.
-        
-        Arguments:
-        id_ -- the user's upstream id
-        """
-        UpstreamEntity.__init__(self, id_)
-        self.jobs = []
-    
-    def _get_name (self):
-        """Retrieve the user's name from upstream."""
-        return upstream.get_user_name(self.id)
-    
-    name = property(_get_name)
-    
-    def _get_projects (self):
-        """Retrieve the ids of the user's projects from upstream."""
-        return upstream.get_member_projects(self.id)
-    
-    projects = property(_get_projects)
-    
-    def _get_admin_projects (self):
-        """Retrieve the ids of the projects admined by the upstream user."""
-        return upstream.get_admin_projects(self.id)
-    
-    admin_projects = property(_get_admin_projects)
-    
-    def _get_is_admin (self):
-        """Whether or not the user is configured as an admin."""
-        try:
-            admins = config.get("cbank", "admins")
-        except ConfigParser.Error:
-            admins = []
-        else:
-            admins = admins.split(",")
-        return self.name in admins
-    
-    is_admin = property(_get_is_admin)
+    """User that can run jobs and commands."""
+
+    _member = None
+    _manager = None
+
+    def is_member (self, project):
+        return self._member(project.id, self.id)
+
+    def is_manager (self, project):
+        return self._manager(project.id, self.id)
 
 
 class Project (UpstreamEntity):
     
     """Project to which resources can be allocated.
     
-    Attributes:
-    allocations -- allocations to the project
-    jobs -- jobs run for the project
-    
-    Properties:
-    name -- upstream name of the project
-    members -- upstream members of the project
-    admins -- upstream admins of the project
-    
     Methods:
     charge -- charge the project's active allocations
     """
-    
-    def __init__ (self, id_):
-        """Initialize an upstream-backed project.
-        
-        Arguments:
-        id_ -- the id of the project
-        """
-        UpstreamEntity.__init__(self, id_)
-        self.allocations = []
-        self.jobs = []
-    
-    def _get_name (self):
-        """Retrieve the project's name from upstream."""
-        return upstream.get_project_name(self.id)
-    
-    name = property(_get_name)
-
-    def _get_members (self):
-        """Retrieve the ids of the project's users from upstream."""
-        return upstream.get_project_members(self.id)
-    
-    members = property(_get_members)
-    
-    def _get_admins (self):
-        """Retrieve the ids of the project's admins from upstream."""
-        return upstream.get_project_admins(self.id)
-    
-    admins = property(_get_admins)
     
     def charge (self, resource, amount):
         """Charge any available allocation to the project for a given amount
@@ -281,13 +138,8 @@ class Project (UpstreamEntity):
         return charges
 
 
-class Resource (NewUpstreamEntity):
-    
-    """Resource that can be allocated to a project.
-    
-    Attributes:
-    allocations -- allocations of the resource
-    """
+class Resource (UpstreamEntity):
+    """Resource that can be allocated to a project."""
 
 
 class Allocation (Entity):
@@ -348,6 +200,20 @@ class Allocation (Entity):
             return Resource.cached(self.resource_id)
 
     resource = property(_get_resource, _set_resource)
+
+    def _set_project (self, project):
+        if project is None:
+            self.project_id = None
+        else:
+            self.project_id = project.id
+
+    def _get_project (self):
+        if self.project_id is None:
+            return None
+        else:
+            return Project.cached(self.project_id)
+
+    project = property(_get_project, _set_project)
     
     def amount_charged (self):
         """Compute the sum of effective charges (after refunds)."""
@@ -361,11 +227,13 @@ class Allocation (Entity):
         """Compute the amount available for charges."""
         return self.amount - (self.amount_charged() + self.amount_held())
     
-    def _get_active (self):
+    def active (self, now=datetime.now):
         """Determine whether or not this allocation is still active."""
-        return self.start <= datetime.now() < self.end
-    
-    active = property(_get_active)
+        try:
+            now_ = now()
+        except TypeError:
+            now_ = now
+        return self.start <= now_ < self.end
 
 
 class Hold (Entity):
@@ -510,7 +378,69 @@ class Job (Entity):
         self.accounting_id = None
         self.charges = []
         self.holds = []
-    
+
+    def _set_user (self, user):
+        if user is None:
+            self.user_id = None
+        else:
+            self.user_id = user.id
+
+    def _get_user (self):
+        if self.user_id is None:
+            return None
+        else:
+            return User.cached(self.user_id)
+
+    user = property(_get_user, _set_user)
+
+    def _set_account (self, account):
+        if account is None:
+            self.account_id = None
+        else:
+            self.account_id = account.id
+
+    def _get_account (self):
+        if self.account_id is None:
+            return None
+        else:
+            return Project.cached(self.account_id)
+
+    account = property(_get_account, _set_account)
+
+    @classmethod
+    def from_pbs (cls, entry):
+        """Construct a job given a PBS accounting log entry."""
+        _, id_, _ = parse_pbs(entry)
+        job = cls(id_)
+        job.update_from_pbs(entry)
+        return job
+
+    def update_from_pbs (self, entry):
+        _, _, attributes = parse_pbs(entry)
+        if "user" in attributes:
+            self.user = User.fetch(attributes['user'])
+        if "account" in attributes:
+            self.account = Project.fetch(attributes['account'])
+        for attribute in ("queue", "group", "exec_host"):
+            if attribute in attributes:
+                setattr(self, attribute, attributes[attribute])
+        for attribute in ("ctime", "qtime", "etime", "start", "end"):
+            if attribute in attributes:
+                setattr(self, attribute,
+                        datetime.fromtimestamp(float(attributes[attribute])))
+        if "jobname" in attributes:
+            self.name = attributes["jobname"]
+        if "Exit_status" in attributes:
+            self.exit_status = int(attributes["Exit_status"])
+        if "session" in attributes:
+            self.session = int(attributes['session'])
+        self.resource_list = dict_parser(dict_parser(
+                subdict(attributes, "Resource_List."),
+            int), parse_timedelta)
+        self.resources_used = dict_parser(dict_parser(
+                subdict(attributes, "resources_used."),
+            int), parse_timedelta)
+
     def __str__ (self):
         return str(self.id)
 
@@ -660,3 +590,58 @@ class Refund (Entity):
             self.amount = charge.effective_amount()
         self.comment = None
 
+
+def parse_pbs (entry):
+    try:
+        entry_type, id_, message_text = entry.split(";", 3)[1:]
+    except ValueError:
+        raise ValueError("Invalid job record: %s" % entry)
+    if entry_type not in ("Q", "S", "E"):
+        raise ValueError("Invalid job record: %s" % entry)
+    attributes = dict(attribute.split("=", 1)
+                      for attribute in message_text.split(" ") if "=" in attribute)
+    return entry_type, id_, attributes
+
+
+def parse_timedelta (timedelta_string):
+    """Parse a HH:MM:SS as a timedelta object."""
+    try:
+        hours, minutes, seconds = timedelta_string.split(":")
+    except AttributeError:
+        raise ValueError(timedelta_string)
+    hours, minutes, seconds = [int(each) for each in (hours, minutes, seconds)]
+    return timedelta(hours=hours, minutes=minutes, seconds=seconds)
+
+
+def dict_parser (dict_, func):
+    """Parse values of a dict using a parsing function.
+    
+    Arguments:
+    dict_ -- the source dictionary
+    func -- the function used to parse values
+    
+    ValueErrors generated by func are silently ignored.
+    """
+    newdict = {}
+    for (key, value) in dict_.iteritems():
+        try:
+            value = func(value)
+        except ValueError:
+            pass
+        newdict[key] = value
+    return newdict
+
+
+def subdict (dict_, keyroot):
+    """Build a subset dict of a dict based on some root key string.
+    
+    Arguments:
+    dict_ -- the primary dict
+    keyroot -- the common root string
+    
+    Example:
+    >>> subdict({"key1":1, "key2":2, "otherkey":3}, "key")
+    {"1":1, "2":2}
+    """
+    return dict((key[len(keyroot):], value)
+        for (key, value) in dict_.iteritems() if key.startswith(keyroot))

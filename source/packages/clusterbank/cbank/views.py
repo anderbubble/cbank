@@ -77,22 +77,22 @@ def print_users_list (users, projects=None, resources=None,
     
     s = Session()
     jobs_q = s.query(
-        User.id.label("user_id"),
-        func.count(Job.id).label("job_count")).group_by(User.id)
-    jobs_q = jobs_q.join(Job.user)
+        Job.user_id.label("user_id"),
+        func.count(Job.id).label("job_count"))
     charges_q = s.query(
-        User.id.label("user_id"),
-        func.sum(Charge.amount).label("charge_sum")).group_by(User.id)
-    charges_q = charges_q.join(Charge.job, Job.user)
+        Job.user_id.label("user_id"),
+        func.sum(Charge.amount).label("charge_sum"))
+    charges_q = charges_q.join(Charge.job)
     refunds_q = s.query(
-        User.id.label("user_id"),
-        func.sum(Refund.amount).label("refund_sum")).group_by(User.id)
-    refunds_q = refunds_q.join(Refund.charge, Charge.job, Job.user)
-    
+        Job.user_id.label("user_id"),
+        func.sum(Refund.amount).label("refund_sum"))
+    refunds_q = refunds_q.join(Refund.charge, Charge.job)
+
+    jobs_q.filter(Job.user_id.in_(user.id for user in users))
     if projects:
-        projects_ = Project.id.in_(project.id for project in projects)
-        jobs_q = jobs_q.filter(Job.account.has(projects_))
-        charges_ = Charge.allocation.has(Allocation.project.has(projects_))
+        jobs_q = jobs_q.filter(Job.account_id.in_(project.id for project in projects))
+        charges_ = Charge.allocation.has(
+            Allocation.project_id.in_(project.id for project in projects))
         charges_q = charges_q.filter(charges_)
         refunds_q = refunds_q.filter(charges_)
     if resources:
@@ -111,30 +111,36 @@ def print_users_list (users, projects=None, resources=None,
         charges_ = Charge.datetime < before
         charges_q = charges_q.filter(charges_)
         refunds_q = refunds_q.filter(charges_)
-    
-    jobs_q = jobs_q.subquery()
-    charges_q = charges_q.subquery()
-    refunds_q = refunds_q.subquery()
+
+    jobs_q = jobs_q.group_by(Job.user_id).subquery()
+    charges_q = charges_q.group_by(Job.user_id).subquery()
+    refunds_q = refunds_q.group_by(Job.user_id).subquery()
     query = s.query(
-        User,
+        Job.user_id,
         func.coalesce(jobs_q.c.job_count, 0),
         cast(func.coalesce(charges_q.c.charge_sum, 0)
-            - func.coalesce(refunds_q.c.refund_sum, 0), Integer)
-        ).group_by(User.id)
+            - func.coalesce(refunds_q.c.refund_sum, 0), Integer))
     query = query.outerjoin(
-        (jobs_q, User.id == jobs_q.c.user_id),
-        (charges_q, User.id == charges_q.c.user_id),
-        (refunds_q, User.id == refunds_q.c.user_id)).group_by(User.id)
-    query = query.filter(User.id.in_(user.id for user in users))
-    query = query.order_by(User.id)
+        (jobs_q, Job.user_id == jobs_q.c.user_id),
+        (charges_q, Job.user_id == charges_q.c.user_id),
+        (refunds_q, Job.user_id == refunds_q.c.user_id))
+    query = query.filter(Job.user_id.in_(user.id for user in users))
+    query = query.distinct().order_by(Job.user_id)
     
     job_count_total = 0
     charge_sum_total = 0
-    for user, job_count, charge_sum in query:
+    users_printed = []
+    for user_id, job_count, charge_sum in query:
+        user = User.cached(user_id)
+        users_printed.append(user)
         job_count_total += job_count
         charge_sum_total += charge_sum
         print format({'Name':user, 'Jobs':job_count,
             'Charged':display_units(charge_sum)})
+    for user in users:
+        if user not in users_printed:
+            print format({'Name':user, 'Jobs':0,
+                          'Charged':display_units(0)})
     print >> sys.stderr, format.separator(["Jobs", "Charged"])
     print >> sys.stderr, format({'Jobs':job_count_total,
         'Charged':display_units(charge_sum_total)})
@@ -171,31 +177,29 @@ def print_projects_list (projects, users=None, resources=None,
     
     s = Session()
     allocations_q = s.query(
-        Project.id.label("project_id"),
+        Allocation.project_id,
         func.sum(Allocation.amount).label("allocation_sum")
-        ).group_by(Project.id)
-    allocations_q = allocations_q.join(Allocation.project)
+        ).group_by(Allocation.project_id)
     now = datetime.now()
     allocations_q = allocations_q.filter(
         and_(Allocation.start<=now, Allocation.end>now))
     holds_q = s.query(
-        Project.id.label("project_id"),
-        func.sum(Hold.amount).label("hold_sum")).group_by(Project.id)
-    holds_q = holds_q.join(Hold.allocation, Allocation.project)
+        Allocation.project_id,
+        func.sum(Hold.amount).label("hold_sum")).group_by(Allocation.project_id)
+    holds_q = holds_q.join(Hold.allocation)
     holds_q = holds_q.filter(Hold.active == True)
     jobs_q = s.query(
-        Project.id.label("project_id"),
-        func.count(Job.id).label("job_count")).group_by(Project.id)
-    jobs_q = jobs_q.outerjoin(Job.account, Job.charges, Charge.allocation)
+        Allocation.project_id,
+        func.count(Job.id).label("job_count")).group_by(Allocation.project_id)
+    jobs_q = jobs_q.outerjoin(Job.charges, Charge.allocation)
     charges_q = s.query(
-        Project.id.label("project_id"),
-        func.sum(Charge.amount).label("charge_sum")).group_by(Project.id)
-    charges_q = charges_q.join(Charge.allocation, Allocation.project)
+        Allocation.project_id,
+        func.sum(Charge.amount).label("charge_sum")).group_by(Allocation.project_id)
+    charges_q = charges_q.join(Charge.allocation)
     refunds_q = s.query(
-        Project.id.label("project_id"),
-        func.sum(Refund.amount).label("refund_sum")).group_by(Project.id)
-    refunds_q = refunds_q.join(
-        Refund.charge, Charge.allocation, Allocation.project)
+        Allocation.project_id,
+        func.sum(Refund.amount).label("refund_sum")).group_by(Allocation.project_id)
+    refunds_q = refunds_q.join(Refund.charge, Charge.allocation)
     
     if resources:
         resources_ = Allocation.resource_id.in_(
@@ -210,8 +214,8 @@ def print_projects_list (projects, users=None, resources=None,
     allocation_charges_q = charges_q.filter(charges_)
     allocation_refunds_q = refunds_q.filter(Refund.charge.has(charges_))
     if users:
-        users_ = Job.user.has(User.id.in_(user.id for user in users))
-        jobs_q = jobs_q.filter(Job.user.has(users_))
+        users_ = Job.user_id.in_(user.id for user in users)
+        jobs_q = jobs_q.filter(users_)
         charges_ = Charge.job.has(users_)
         charges_q = charges_q.filter(charges_)
         refunds_q = refunds_q.filter(charges_)
@@ -234,31 +238,34 @@ def print_projects_list (projects, users=None, resources=None,
     charges_q = charges_q.subquery()
     refunds_q = refunds_q.subquery()
     query = s.query(
-        Project,
+        Allocation.project_id,
         func.coalesce(jobs_q.c.job_count, 0),
         cast(func.coalesce(charges_q.c.charge_sum, 0)
             - func.coalesce(refunds_q.c.refund_sum, 0), Integer),
         cast(func.coalesce(allocations_q.c.allocation_sum, 0)
             - func.coalesce(holds_q.c.hold_sum, 0)
             - func.coalesce(allocation_charges_q.c.charge_sum, 0)
-            + func.coalesce(allocation_refunds_q.c.refund_sum, 0), Integer))
+            + func.coalesce(allocation_refunds_q.c.refund_sum, 0), Integer)).group_by(Allocation.project_id)
     query = query.outerjoin(
-        (jobs_q, Project.id == jobs_q.c.project_id),
-        (charges_q, Project.id == charges_q.c.project_id),
-        (refunds_q, Project.id == refunds_q.c.project_id),
-        (allocations_q, Project.id == allocations_q.c.project_id),
-        (holds_q, Project.id == holds_q.c.project_id),
+        (jobs_q, Allocation.project_id == jobs_q.c.project_id),
+        (charges_q, Allocation.project_id == charges_q.c.project_id),
+        (refunds_q, Allocation.project_id == refunds_q.c.project_id),
+        (allocations_q, Allocation.project_id == allocations_q.c.project_id),
+        (holds_q, Allocation.project_id == holds_q.c.project_id),
         (allocation_charges_q,
-            Project.id == allocation_charges_q.c.project_id),
+            Allocation.project_id == allocation_charges_q.c.project_id),
         (allocation_refunds_q,
-            Project.id == allocation_refunds_q.c.project_id))
-    query = query.order_by(Project.id)
-    query = query.filter(Project.id.in_(project.id for project in projects))
+            Allocation.project_id == allocation_refunds_q.c.project_id))
+    query = query.order_by(Allocation.project_id)
+    query = query.filter(Allocation.project_id.in_(project.id for project in projects))
     
     allocation_sum_total = 0
     job_count_total = 0
     charge_sum_total = 0
-    for project, job_count, charge_sum, allocation_sum in query:
+    projects_displayed = []
+    for project_id, job_count, charge_sum, allocation_sum in query:
+        project = Project.cached(project_id)
+        projects_displayed.append(project)
         job_count_total += job_count
         charge_sum_total += charge_sum
         allocation_sum_total += allocation_sum
@@ -266,6 +273,12 @@ def print_projects_list (projects, users=None, resources=None,
             'Jobs':job_count,
             'Charged':display_units(charge_sum),
             'Available':display_units(allocation_sum)})
+    for project in projects:
+        if project not in projects_displayed:
+            print format({'Name':project,
+                          'Jobs':0,
+                          'Charged':display_units(0),
+                          'Available':display_units(0)})
     print >> sys.stderr, format.separator(["Jobs", "Charged", "Available"])
     print >> sys.stderr, format({'Jobs':job_count_total,
         'Charged':display_units(charge_sum_total),
@@ -333,7 +346,7 @@ def print_allocations_list (allocations, users=None,
     allocation_refunds_q = refunds_q.filter(Refund.charge.has(charges_))
     
     if users:
-        jobs_ = Job.user.has(User.id.in_(user.id for user in users))
+        jobs_ = Job.user_id.in_(str(user.id) for user in users)
         jobs_q = jobs_q.filter(jobs_)
         charges_ = Charge.job.has(jobs_)
         charges_q = charges_q.filter(charges_)
@@ -431,8 +444,7 @@ def print_holds_list (holds, comments=False, truncate=True):
     print >> sys.stderr, format.separator()
     
     query = Session.query(Hold)
-    query = query.options(eagerload(
-        Hold.allocation, Allocation.project, Allocation.resource_id))
+    query = query.options(eagerload(Hold.allocation))
     query = query.filter(Hold.id.in_(hold.id for hold in holds))
     query = query.order_by(Hold.datetime, Hold.id)
     
@@ -534,8 +546,7 @@ def print_charges_list (charges, comments=False, truncate=True):
             - func.coalesce(func.sum(Refund.amount), 0), Integer)
         ).group_by(Charge.id)
     query = query.outerjoin(Charge.refunds)
-    query = query.options(eagerload(Charge.allocation,
-        Allocation.project, Allocation.resource_id))
+    query = query.options(eagerload(Charge.allocation))
     query = query.filter(Charge.id.in_(charge.id for charge in charges))
     query = query.order_by(Charge.datetime, Charge.id)
     

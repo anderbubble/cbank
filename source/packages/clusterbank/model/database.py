@@ -23,7 +23,7 @@ from sqlalchemy.types import TypeDecorator, Integer, DateTime, \
 
 __all__ = [
     "metadata",
-    "users", "projects",
+    "projects",
     "allocations", "holds", "jobs", "charges", "refunds",
 ]
 
@@ -83,19 +83,9 @@ class Dictionary (TypeDecorator):
 metadata = MetaData()
 
 
-users = Table("users", metadata,
-    Column("id", Integer, primary_key=True),
-    mysql_engine="InnoDB")
-
-
-projects = Table("projects", metadata,
-    Column("id", Integer, primary_key=True),
-    mysql_engine="InnoDB")
-
-
 allocations = Table("allocations", metadata,
     Column("id", Integer, primary_key=True),
-    Column("project_id", None, ForeignKey("projects.id"), nullable=False),
+    Column("project_id", String(255), nullable=False),
     Column("resource_id", String(255), nullable=False),
     Column("datetime", DateTime, nullable=False, default=datetime.now),
     Column("amount", Integer, nullable=False),
@@ -118,9 +108,9 @@ holds = Table("holds", metadata,
 
 jobs = Table("jobs", metadata,
     Column("id", String(255), primary_key=True, autoincrement=False),
-    Column("user_id", None, ForeignKey("users.id"), nullable=True),
+    Column("user", String(255), nullable=True),
     Column("group", String(255), nullable=True),
-    Column("account_id", None, ForeignKey("projects.id"), nullable=True),
+    Column("account", String(255), nullable=True),
     Column("name", String(255), nullable=True),
     Column("queue", String(255), nullable=True),
     Column("reservation_name", String(255), nullable=True),

@@ -38,9 +38,10 @@ from sqlalchemy.orm import eagerload
 
 import clusterbank
 from clusterbank import config
-from clusterbank.model import User, Project, Resource, Allocation, Hold, \
-    Job, Charge, Refund
-from clusterbank.controllers import (Session, user, project, job_from_pbs)
+from clusterbank.model import (
+    User, Project, Resource,
+    Allocation, Hold, Job, Charge, Refund)
+from clusterbank.controllers import Session, get_projects, get_users, import_job
 from clusterbank.cbank.views import (print_allocation, print_charge,
     print_charges, print_hold, print_holds, print_refund, print_users_list,
     print_projects_list, print_allocations_list, print_holds_list,
@@ -85,7 +86,7 @@ def require_admin (func):
     """Decorate a function to require administrator rights."""
     def decorated_func (*args, **kwargs):
         current_user = get_current_user()
-        if not current_user.is_admin:
+        if not current_user in configured_admins():
             raise NotPermitted(current_user)
         else:
             return func(*args, **kwargs)
@@ -213,14 +214,14 @@ def new_allocation_main ():
     """Create a new allocation."""
     parser = new_allocation_parser()
     options, args = parser.parse_args()
-    project_ = pop_project(args, 0)
+    project = pop_project(args, 0)
     amount = pop_amount(args, 0)
     if args:
         raise UnexpectedArguments(args)
     if not options.resource:
         raise MissingResource()
     comment = options.comment
-    allocation = Allocation(project_, options.resource, amount,
+    allocation = Allocation(project, options.resource, amount,
         options.start, options.end)
     allocation.comment = comment
     if options.commit:
@@ -239,7 +240,7 @@ def new_charge_main ():
     """Create a new charge."""
     parser = new_charge_parser()
     options, args = parser.parse_args()
-    project_ = pop_project(args, 0)
+    project = pop_project(args, 0)
     amount = pop_amount(args, 0)
     if args:
         raise UnexpectedArguments(args)
@@ -247,7 +248,7 @@ def new_charge_main ():
         raise MissingResource("resource")
     s = Session()
     allocations = s.query(Allocation).filter_by(
-        project=project_, resource_id=options.resource.id)
+        project_id=project.id, resource_id=options.resource.id)
     now = datetime.now()
     allocations = allocations.filter(and_(
         Allocation.start <= now, Allocation.end > now))
@@ -274,7 +275,7 @@ def new_hold_main ():
     """Create a new hold."""
     parser = new_hold_parser()
     options, args = parser.parse_args()
-    project_ = pop_project(args, 0)
+    project = pop_project(args, 0)
     amount = pop_amount(args, 0)
     if args:
         raise UnexpectedArguments(args)
@@ -282,7 +283,7 @@ def new_hold_main ():
         raise MissingResource("resource")
     s = Session()
     allocations = s.query(Allocation).filter_by(
-        project=project_, resource_id=options.resource.id)
+        project_id=project.id, resource_id=options.resource.id)
     now = datetime.now()
     allocations = allocations.filter(and_(
         Allocation.start <= now, Allocation.end > now))
@@ -359,17 +360,17 @@ def import_jobs_main ():
     counter = 0
     for line in read(sys.stdin):
         try:
-            job = job_from_pbs(line)
+            job = import_job(line)
         except ValueError, e:
             print >> sys.stderr, e
             continue
-        else:
-            if options.verbose:
-                print >> sys.stderr, job
-            counter += 1
-            if counter >= 100:
-                s.commit()
-                counter = 0
+        if options.verbose:
+            print >> sys.stderr, job
+        Session.add(job)
+        counter += 1
+        if counter >= 100:
+            s.commit()
+            counter = 0
     if counter != 0:
         s.commit()
 
@@ -388,10 +389,7 @@ def pop_project (args, index):
         project_name = args.pop(index)
     except IndexError:
         raise MissingArgument("project")
-    try:
-        return project(project_name)
-    except NotFound:
-        raise UnknownProject(project_name)
+    return Project.fetch(project_name)
 
 
 def pop_allocation (args, index):
@@ -542,18 +540,20 @@ def print_list_main_help ():
 
 def user_admins_all (user_, projects):
     """Check that the user is an admin of all of a list of projects."""
-    admin_projects = set(user_.admin_projects)
-    return set(projects).issubset(admin_projects)
+    for project in projects:
+        if not user_.is_manager(project):
+            return False
+    return True
 
 
 def project_members_all (projects):
     """Get a list of all the members of all of a list of projects."""
-    return set(sum([project_.members for project_ in projects], []))
+    return set(sum([get_users(project) for project in projects], []))
 
 
 def user_projects_all (users):
     """Get a list of all projects that have users in a list of users."""
-    return set(sum([user_.projects for user_ in users], []))
+    return set(sum([get_projects(user) for user in users], []))
 
 
 @handle_exceptions
@@ -566,15 +566,15 @@ def list_users_main ():
     current_user = get_current_user()
     users = options.users
     projects = options.projects
-    if current_user.is_admin:
+    if current_user in configured_admins():
         if not users:
             if projects:
                 users = project_members_all(projects)
             else:
-                users = Session.query(User).all()
+                users = get_users()
     else:
         if not projects:
-            projects = current_user.projects
+            projects = get_projects(current_user)
         if projects and user_admins_all(current_user, projects):
             if not users:
                 users = project_members_all(projects)
@@ -599,17 +599,17 @@ def list_projects_main ():
     current_user = get_current_user()
     projects = options.projects
     users = options.users
-    if current_user.is_admin:
+    if current_user in configured_admins():
         if not projects:
             if users:
                 projects = user_projects_all(users)
             else:
-                projects = Session.query(Project).all()
+                projects = get_projects()
     else:
         if not projects:
-            projects = current_user.projects
-        allowed_projects = set(current_user.projects
-            + current_user.admin_projects)
+            projects = get_projects(current_user)
+        allowed_projects = set(get_projects(current_user)
+            + get_projects(manager=current_user))
         if not set(projects).issubset(allowed_projects):
             raise NotPermitted(current_user)
         if not (projects and user_admins_all(current_user, projects)):
@@ -631,19 +631,18 @@ def list_allocations_main ():
     current_user = get_current_user()
     projects = options.projects
     users = options.users
-    if current_user.is_admin:
+    if current_user in configured_admins():
         if not projects:
             if users:
                 projects = user_projects_all(users)
             else:
-                projects = Session.query(Project).all()
+                projects = [Project.cached(project_id) for (project_id, ) in Session.query(Allocation.project_id)]
     else:
         if not projects:
-            projects = current_user.projects
-        allowed_projects = set(
-            current_user.projects + current_user.admin_projects)
-        if not set(projects).issubset(allowed_projects):
-            raise NotPermitted(current_user)
+            projects = get_projects(member=current_user)
+        for project in projects:
+            if not (current_user.is_member(project) or current_user.is_manager(project)):
+                raise NotPermitted(current_user)
         if not (projects and user_admins_all(current_user, projects)):
             if not set(users).issubset(set([current_user])):
                 raise NotPermitted(current_user)
@@ -654,8 +653,7 @@ def list_allocations_main ():
         allocations = allocations.filter(
             Allocation.resource_id.in_(resource.id for resource in resources))
     if projects:
-        allocations = allocations.filter(Allocation.project.has(
-            Project.id.in_(project.id for project in projects)))
+        allocations = allocations.filter(Allocation.project_id.in_(project.id for project in projects))
     if not (options.after or options.before):
         now = datetime.now()
         allocations = allocations.filter(and_(
@@ -683,9 +681,9 @@ def list_holds_main ():
     current_user = get_current_user()
     users = options.users
     projects = options.projects
-    if not current_user.is_admin:
+    if not current_user in configured_admins():
         if not projects:
-            projects = current_user.projects
+            projects = get_projects(current_user)
         if projects and user_admins_all(current_user, projects):
             pass
         else:
@@ -698,11 +696,10 @@ def list_holds_main ():
     holds = Session.query(Hold)
     holds = holds.filter(Hold.active==True)
     if users:
-        holds = holds.filter(Hold.job.has(Job.user.has(User.id.in_(
-            user_.id for user_ in users))))
+        holds = holds.filter(Hold.job.has(Job.user_id.in_(
+            user_.id for user_ in users)))
     if projects:
-        holds = holds.filter(Hold.allocation.has(Allocation.project.has(
-            Project.id.in_(project.id for project in projects))))
+        holds = holds.filter(Hold.allocation.has(Allocation.project_id.in_(project.id for project in projects)))
     if resources:
         holds = holds.filter(Hold.allocation.has(
             Allocation.resource_id.in_(resource.id for resource in resources)))
@@ -725,9 +722,9 @@ def list_jobs_main ():
     current_user = get_current_user()
     users = options.users
     projects = options.projects
-    if not current_user.is_admin:
+    if not current_user in configured_admins():
         if not projects:
-            projects = current_user.projects
+            projects = get_projects(current_user)
         if projects and user_admins_all(current_user, projects):
             pass
         else:
@@ -739,11 +736,11 @@ def list_jobs_main ():
     jobs = Session.query(Job).order_by(Job.ctime).options(
         eagerload(Job.charges, Charge.refunds))
     if users:
-        jobs = jobs.filter(Job.user.has(User.id.in_(
-            user_.id for user_ in users)))
+        jobs = jobs.filter(Job.user_id.in_(
+            user.id for user in users))
     if projects:
-        jobs = jobs.filter(Job.account.has(Project.id.in_(
-            project_.id for project_ in projects)))
+        jobs = jobs.filter(Job.account_id.in_(
+            project_.id for project_ in projects))
     if options.after:
         jobs = jobs.filter(or_(Job.start >= options.after,
             Job.end > options.after))
@@ -766,9 +763,9 @@ def list_charges_main ():
     current_user = get_current_user()
     users = options.users
     projects = options.projects
-    if not current_user.is_admin:
+    if not current_user in configured_admins():
         if not projects:
-            projects = current_user.projects
+            projects = get_projects(current_user)
         if projects and user_admins_all(current_user, projects):
             pass
         else:
@@ -780,11 +777,11 @@ def list_charges_main ():
     comments = options.comments
     charges = Session.query(Charge)
     if users:
-        charges = charges.filter(Charge.job.has(Job.user.has(User.id.in_(
-            user_.id for user_ in users))))
+        charges = charges.filter(Charge.job.has(Job.user_id.in_(
+            user.id for user in users)))
     if projects:
-        charges = charges.filter(Charge.allocation.has(Allocation.project.has(
-            Project.id.in_(project.id for project in projects))))
+        charges = charges.filter(Charge.allocation.has(
+            Allocation.project_id.in_(project.id for project in projects)))
     if resources:
         charges = charges.filter(Charge.allocation.has(
             Allocation.resource_id.in_(resource.id for resource in resources)))
@@ -855,8 +852,8 @@ def detail_allocations_main ():
     s = Session()
     allocations = \
         s.query(Allocation).filter(Allocation.id.in_(sys.argv[1:]))
-    if not current_user.is_admin:
-        projects = current_user.projects + current_user.admin_projects
+    if not current_user in configured_admins():
+        projects = get_projects(current_user) + get_projects(manager=current_user)
         permitted_allocations = []
         for allocation in allocations:
             if not allocation.project in projects:
@@ -874,8 +871,8 @@ def detail_holds_main ():
     current_user = get_current_user()
     s = Session()
     holds = s.query(Hold).filter(Hold.id.in_(sys.argv[1:]))
-    if not current_user.is_admin:
-        admin_projects = current_user.admin_projects
+    if not current_user in configured_admins():
+        admin_projects = get_projects(manager=current_user)
         permitted_holds = []
         for hold in holds:
             allowed = hold.user is current_user \
@@ -895,8 +892,8 @@ def detail_jobs_main ():
     current_user = get_current_user()
     s = Session()
     jobs = s.query(Job).filter(Job.id.in_(sys.argv[1:]))
-    if not current_user.is_admin:
-        admin_projects = current_user.admin_projects
+    if not current_user in configured_admins():
+        admin_projects = get_projects(manager=current_user)
         permitted_jobs = []
         for job in jobs:
             allowed = (job.user is current_user
@@ -916,13 +913,12 @@ def detail_charges_main ():
     current_user = get_current_user()
     s = Session()
     charges = s.query(Charge).filter(Charge.id.in_(sys.argv[1:]))
-    if not current_user.is_admin:
-        admin_projects = current_user.admin_projects
+    if not current_user in configured_admins():
         permitted_charges = []
         for charge in charges:
             allowed = ((
                 charge.job and charge.job.user is current_user)
-                or charge.allocation.project in admin_projects)
+                or current_user.is_manager(charge.allocation.project))
             if not allowed:
                 print >> sys.stderr, "%s: not permitted: %s" % (
                     charge.id, current_user)
@@ -938,8 +934,8 @@ def detail_refunds_main ():
     current_user = get_current_user()
     s = Session()
     refunds = s.query(Refund).filter(Refund.id.in_(sys.argv[1:]))
-    if not current_user.is_admin:
-        admin_projects = current_user.admin_projects
+    if not current_user in configured_admins():
+        admin_projects = get_projects(manager=current_user)
         permitted_refunds = []
         for refund in refunds:
             
@@ -1150,9 +1146,17 @@ def get_current_user ():
         raise UnknownUser("not in passwd")
     username = passwd_entry[0]
     try:
-        return user(username)
+        return User.fetch(username)
     except NotFound:
         raise UnknownUser(username)
+
+
+def configured_admins ():
+    """Return the configured resource."""
+    try:
+        return [User.fetch(user) for user in config.get("cbank", "admins").split(",")]
+    except ConfigParser.Error:
+        return []
 
 
 def parse_units (units):
@@ -1522,7 +1526,7 @@ class Option (optparse.Option):
     def check_project (self, opt, value):
         """Parse a project from its name or id."""
         try:
-            return project(value)
+            return Project.fetch(value)
         except NotFound:
             raise optparse.OptionValueError(
                 "option %s: unknown project: %s" % (opt, value))
@@ -1538,7 +1542,7 @@ class Option (optparse.Option):
     def check_user (self, opt, value):
         """Parse a user from its name or id."""
         try:
-            return user(value)
+            return User.fetch(value)
         except NotFound:
             raise optparse.OptionValueError(
                 "option %s: unknown user: %s" % (opt, value))
