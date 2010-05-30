@@ -69,6 +69,6 @@ def get_user_id (username):
 def get_user_name (uid):
     """Given a uid, return the username, or None."""
     try:
-        return getpwuid(uid)[0]
+        return getpwuid(int(uid))[0]
     except KeyError:
         return None

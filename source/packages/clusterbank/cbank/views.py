@@ -30,9 +30,9 @@ import sys
 import locale
 import ConfigParser
 from datetime import datetime, timedelta
+from decimal import Decimal
 
-from sqlalchemy.sql import and_, cast, func
-from sqlalchemy.types import Integer
+from sqlalchemy.sql import and_, func
 from sqlalchemy.orm import eagerload
 
 from clusterbank import config
@@ -118,8 +118,8 @@ def print_users_list (users, projects=None, resources=None,
     query = s.query(
         Job.user_id,
         func.coalesce(jobs_q.c.job_count, 0),
-        cast(func.coalesce(charges_q.c.charge_sum, 0)
-            - func.coalesce(refunds_q.c.refund_sum, 0), Integer))
+        (func.coalesce(charges_q.c.charge_sum, 0)
+            - func.coalesce(refunds_q.c.refund_sum, 0)))
     query = query.outerjoin(
         (jobs_q, Job.user_id == jobs_q.c.user_id),
         (charges_q, Job.user_id == charges_q.c.user_id),
@@ -240,12 +240,12 @@ def print_projects_list (projects, users=None, resources=None,
     query = s.query(
         Allocation.project_id,
         func.coalesce(jobs_q.c.job_count, 0),
-        cast(func.coalesce(charges_q.c.charge_sum, 0)
-            - func.coalesce(refunds_q.c.refund_sum, 0), Integer),
-        cast(func.coalesce(allocations_q.c.allocation_sum, 0)
+        (func.coalesce(charges_q.c.charge_sum, 0)
+            - func.coalesce(refunds_q.c.refund_sum, 0)),
+        (func.coalesce(allocations_q.c.allocation_sum, 0)
             - func.coalesce(holds_q.c.hold_sum, 0)
             - func.coalesce(allocation_charges_q.c.charge_sum, 0)
-            + func.coalesce(allocation_refunds_q.c.refund_sum, 0), Integer)).group_by(Allocation.project_id)
+            + func.coalesce(allocation_refunds_q.c.refund_sum, 0))).group_by(Allocation.project_id)
     query = query.outerjoin(
         (jobs_q, Allocation.project_id == jobs_q.c.project_id),
         (charges_q, Allocation.project_id == charges_q.c.project_id),
@@ -371,12 +371,12 @@ def print_allocations_list (allocations, users=None,
     query = s.query(
         Allocation,
         func.coalesce(jobs_q.c.job_count, 0),
-        cast(func.coalesce(charges_q.c.charge_sum, 0)
-            - func.coalesce(refunds_q.c.refund_sum, 0), Integer),
-        cast(Allocation.amount
+        (func.coalesce(charges_q.c.charge_sum, 0)
+            - func.coalesce(refunds_q.c.refund_sum, 0)),
+        (Allocation.amount
             - func.coalesce(holds_q.c.hold_sum, 0)
             - func.coalesce(allocation_charges_q.c.charge_sum, 0)
-            + func.coalesce(allocation_refunds_q.c.refund_sum, 0), Integer))
+            + func.coalesce(allocation_refunds_q.c.refund_sum, 0)))
     query = query.outerjoin(
         (jobs_q, Allocation.id == jobs_q.c.allocation_id),
         (charges_q, Allocation.id == charges_q.c.allocation_id),
@@ -542,9 +542,9 @@ def print_charges_list (charges, comments=False, truncate=True):
     
     s = Session()
     query = s.query(Charge,
-        cast(Charge.amount
-            - func.coalesce(func.sum(Refund.amount), 0), Integer)
-        ).group_by(Charge.id)
+        (Charge.amount
+            - func.coalesce(func.sum(Refund.amount), 0))
+        ).group_by(Charge)
     query = query.outerjoin(Charge.refunds)
     query = query.options(eagerload(Charge.allocation))
     query = query.filter(Charge.id.in_(charge.id for charge in charges))
@@ -695,7 +695,7 @@ def display_units (amount):
 def convert_units (amount):
     """Convert an amount to the configured units."""
     mul, div = get_unit_factor()
-    return amount * mul / div
+    return Decimal(str(amount)) * Decimal(str(mul)) / Decimal(str(div))
 
 
 def format_datetime (datetime_):
