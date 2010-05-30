@@ -95,9 +95,9 @@ mapper(Hold, holds, properties={
 
 mapper(Job, jobs, properties={
     'id':jobs.c.id,
-    'user_id':jobs.c.user,
+    'user_id':jobs.c.user_id,
     'group':jobs.c.group,
-    'account_id':jobs.c.account,
+    'account_id':jobs.c.account_id,
     'name':jobs.c.name,
     'queue':jobs.c.queue,
     'reservation_name':jobs.c.reservation_name,
