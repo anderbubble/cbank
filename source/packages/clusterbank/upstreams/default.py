@@ -5,7 +5,7 @@ __all__ = [
     "user_in", "user_out",
     "project_in", "project_out",
     "resource_in", "resource_out",
-    "project_members", "project_managers",
+    "project_member", "project_manager",
 ]
 
 
