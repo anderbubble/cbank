@@ -1122,9 +1122,10 @@ def normalize (command, commands):
 def configured_resource ():
     """Return the configured resource."""
     try:
-        return config.get("cbank", "resource")
+        resource_string = config.get("cbank", "resource")
     except ConfigParser.Error:
         return None
+    return Resource.fetch(resource_string)
 
 
 def configured_resources ():
