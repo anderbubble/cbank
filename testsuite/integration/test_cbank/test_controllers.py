@@ -117,6 +117,7 @@ def not_admin ():
 def setup ():
     metadata.bind = create_engine("sqlite:///:memory:")
     current_user = current_username()
+    clusterbank.model.use_upstream(clusterbank.upstreams.default)
     clusterbank.upstreams.default.users = [
         clusterbank.upstreams.default.User("1", "user1"),
         clusterbank.upstreams.default.User("2", "user2"),
@@ -148,6 +149,7 @@ def setup ():
 
 
 def teardown ():
+    clusterbank.model.clear_upstream()
     clusterbank.upstreams.default.users = []
     clusterbank.upstreams.default.projects = []
     clusterbank.upstreams.default.resources = []
