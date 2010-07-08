@@ -245,7 +245,7 @@ def print_projects_list (projects, users=None, resources=None,
         (func.coalesce(allocations_q.c.allocation_sum, 0)
             - func.coalesce(holds_q.c.hold_sum, 0)
             - func.coalesce(allocation_charges_q.c.charge_sum, 0)
-            + func.coalesce(allocation_refunds_q.c.refund_sum, 0))).group_by(Allocation.project_id)
+            + func.coalesce(allocation_refunds_q.c.refund_sum, 0))).distinct()
     query = query.outerjoin(
         (jobs_q, Allocation.project_id == jobs_q.c.project_id),
         (charges_q, Allocation.project_id == charges_q.c.project_id),
