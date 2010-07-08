@@ -45,8 +45,8 @@ def setup ():
         clusterbank.upstreams.default.Resource("1", "res1"),
         clusterbank.upstreams.default.Resource("2", "res2")]
     clusterbank.upstreams.default.users = [
-        clusterbank.upstreams.default.User(1, "user1"),
-        clusterbank.upstreams.default.User(2, "user2")]
+        clusterbank.upstreams.default.User("1", "user1"),
+        clusterbank.upstreams.default.User("2", "user2")]
     clusterbank.cbank.views.datetime = FakeDateTime(datetime(2000, 1, 1))
 
 
