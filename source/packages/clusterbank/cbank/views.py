@@ -33,7 +33,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy.sql import and_, func
-from sqlalchemy.orm import eagerload
+from sqlalchemy.orm import eagerload, contains_eager
 
 from clusterbank import config
 from clusterbank.cbank.common import get_unit_factor
@@ -545,8 +545,8 @@ def print_charges_list (charges, comments=False, truncate=True):
         (Charge.amount
             - func.coalesce(func.sum(Refund.amount), 0))
         ).group_by(Charge)
-    query = query.outerjoin(Charge.refunds)
-    query = query.options(eagerload(Charge.allocation))
+    query = query.outerjoin(Charge.refunds, Charge.allocation).group_by(Allocation)
+    query = query.options(contains_eager(Charge.allocation))
     query = query.filter(Charge.id.in_(charge.id for charge in charges))
     query = query.order_by(Charge.datetime, Charge.id)
     
