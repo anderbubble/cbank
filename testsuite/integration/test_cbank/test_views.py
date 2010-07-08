@@ -45,13 +45,13 @@ def setup ():
         clusterbank.upstreams.default.Resource("1", "res1"),
         clusterbank.upstreams.default.Resource("2", "res2")]
     clusterbank.upstreams.default.users = [
-        clusterbank.upstreams.default.User(1, "user1"),
-        clusterbank.upstreams.default.User(2, "user2")]
+        clusterbank.upstreams.default.User("1", "user1"),
+        clusterbank.upstreams.default.User("2", "user2")]
     clusterbank.cbank.views.datetime = FakeDateTime(datetime(2000, 1, 1))
 
 
 def teardown ():
-    clusterbank.model.database.metadata.bind = create_engine("sqlite:///:memory:")
+    clusterbank.model.database.metadata.bind = None
     clusterbank.model.clear_upstream()
     clusterbank.upstreams.default.users = []
     clusterbank.upstreams.default.projects = []
@@ -85,8 +85,8 @@ class CbankViewTester (object):
         clusterbank.model.database.metadata.create_all()
     
     def teardown (self):
-        clusterbank.model.database.metadata.drop_all()
         Session.remove()
+        clusterbank.model.database.metadata.drop_all()
 
 
 class TestUsersList (CbankViewTester):
@@ -1467,9 +1467,9 @@ class TestJobsList (CbankViewTester):
         s = Session()
         project1 = Project("1")
         project2 = Project("2")
-        user1 = User(1)
-        user2 = User(2)
-        res1 = Resource(1)
+        user1 = User("1")
+        user2 = User("2")
+        res1 = Resource("1")
         a = Allocation(project1, res1, 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         j1 = Job("res1.1")
