@@ -85,8 +85,8 @@ class CbankViewTester (object):
         clusterbank.model.database.metadata.create_all()
     
     def teardown (self):
-        clusterbank.model.database.metadata.drop_all()
         Session.remove()
+        clusterbank.model.database.metadata.drop_all()
 
 
 class TestUsersList (CbankViewTester):
