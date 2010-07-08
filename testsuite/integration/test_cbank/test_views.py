@@ -1467,9 +1467,9 @@ class TestJobsList (CbankViewTester):
         s = Session()
         project1 = Project("1")
         project2 = Project("2")
-        user1 = User(1)
-        user2 = User(2)
-        res1 = Resource(1)
+        user1 = User("1")
+        user2 = User("2")
+        res1 = Resource("1")
         a = Allocation(project1, res1, 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         j1 = Job("res1.1")
