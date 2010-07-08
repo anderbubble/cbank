@@ -51,7 +51,7 @@ def setup ():
 
 
 def teardown ():
-    clusterbank.model.database.metadata.bind = create_engine("sqlite:///:memory:")
+    clusterbank.model.database.metadata.bind = None
     clusterbank.model.clear_upstream()
     clusterbank.upstreams.default.users = []
     clusterbank.upstreams.default.projects = []
