@@ -2,47 +2,47 @@ from nose.tools import assert_equal, assert_true
 
 from ConfigParser import ConfigParser
 
-import clusterbank.cbank.common
-from clusterbank.cbank.common import get_unit_factor
+import clusterbank.cli.common
+from clusterbank.cli.common import get_unit_factor
 
 
 class ConfigTester (object):
 
     def setup (self):
         self.saved_config = clusterbank.config
-        clusterbank.cbank.common.config = ConfigParser()
-        clusterbank.cbank.common.config.add_section("cbank")
+        clusterbank.cli.common.config = ConfigParser()
+        clusterbank.cli.common.config.add_section("cli")
 
     def teardown (self):
-        clusterbank.cbank.common.config = self.saved_config
+        clusterbank.cli.common.config = self.saved_config
 
 
 class TestGetUnitFactor (ConfigTester):
     
     def setup (self):
         ConfigTester.setup(self)
-        self.warnings = clusterbank.cbank.common.warnings
-        clusterbank.cbank.common.warnings = WarningsFake()
+        self.warnings = clusterbank.cli.common.warnings
+        clusterbank.cli.common.warnings = WarningsFake()
     
     def teardown (self):
         ConfigTester.teardown(self)
-        clusterbank.cbank.common.warnings = self.warnings
+        clusterbank.cli.common.warnings = self.warnings
     
     def test_not_configured (self):
         assert_equal(get_unit_factor(), (1, 1))
     
     def test_max (self):
-        clusterbank.cbank.common.config.set("cbank", "unit_factor", "5/6")
+        clusterbank.cli.common.config.set("cli", "unit_factor", "5/6")
         assert_equal(get_unit_factor(), (5, 6))
     
     def test_no_divisor (self):
-        clusterbank.cbank.common.config.set("cbank", "unit_factor", "7")
+        clusterbank.cli.common.config.set("cli", "unit_factor", "7")
         assert_equal(get_unit_factor(), (7, 1))
     
     def test_unit_factor_invalid (self):
-        clusterbank.cbank.common.config.set("cbank", "unit_factor", "asdf")
+        clusterbank.cli.common.config.set("cli", "unit_factor", "asdf")
         assert_equal(get_unit_factor(), (1, 1))
-        assert_true(clusterbank.cbank.common.warnings.called)
+        assert_true(clusterbank.cli.common.warnings.called)
 
 
 class WarningsFake (object):

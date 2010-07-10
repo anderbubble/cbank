@@ -1,4 +1,4 @@
-"""Common utilities for cbank.
+"""Common utilities for the command-line interface.
 
 get_unit_factor -- get the configured unit factor
 """
@@ -15,7 +15,7 @@ __all__ = ["get_unit_factor"]
 def get_unit_factor ():
     """Get the configured unit factor as a (multiplier, divisor) tuple."""
     try:
-        factor = config.get("cbank", "unit_factor")
+        factor = config.get("cli", "unit_factor")
     except ConfigParser.Error:
         factor = "1"
     try:

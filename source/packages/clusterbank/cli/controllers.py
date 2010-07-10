@@ -1,4 +1,4 @@
-"""Controllers for the cbank interface.
+"""Controllers for the command-line interface.
 
 main -- metacontroller that dispatches to list_main and new_main
 new_main -- metacontroller that dispatches to creation controllers
@@ -42,14 +42,14 @@ from clusterbank.model import (
     User, Project, Resource,
     Allocation, Hold, Job, Charge, Refund)
 from clusterbank.controllers import Session, get_projects, get_users, import_job
-from clusterbank.cbank.views import (print_allocation, print_charge,
+from clusterbank.cli.views import (print_allocation, print_charge,
     print_charges, print_hold, print_holds, print_refund, print_users_list,
     print_projects_list, print_allocations_list, print_holds_list,
     print_jobs_list, print_charges_list, print_allocations, print_refunds,
     print_jobs)
-from clusterbank.cbank.common import get_unit_factor
+from clusterbank.cli.common import get_unit_factor
 from clusterbank.exceptions import NotFound
-from clusterbank.cbank.exceptions import (CbankException, NotPermitted,
+from clusterbank.cli.exceptions import (CbankException, NotPermitted,
     UnknownCommand, MissingArgument, UnexpectedArguments, MissingResource,
     UnknownAllocation, UnknownCharge, UnknownProject, ValueError_,
     UnknownUser, MissingCommand, HasChildren)
@@ -104,7 +104,7 @@ def help_requested ():
 
 @handle_exceptions
 def main ():
-    """Primary cbank metacommand.
+    """Primary cli metacommand.
     
     Commands:
     new -- new_main
@@ -136,7 +136,7 @@ def main ():
 
 
 def print_main_help ():
-    """Print help for the primary cbank metacommand."""
+    """Print help for the primary cli metacommand."""
     command = os.path.basename(sys.argv[0])
     message = """\
         usage: %(command)s <subcommand>
@@ -157,7 +157,7 @@ def print_main_help ():
 @handle_exceptions
 @require_admin
 def new_main ():
-    """Secondary cbank metacommand for creating new entities.
+    """Secondary cli metacommand for creating new entities.
     
     Commands:
     allocation -- new_allocation_main
@@ -308,7 +308,7 @@ def new_hold_main ():
 @handle_exceptions
 @require_admin
 def import_main ():
-    """Secondary cbank metacommand for importing entities.
+    """Secondary cli metacommand for importing entities.
     
     Commands:
     jobs -- import_jobs_main
@@ -483,7 +483,7 @@ def new_refund_main ():
 
 @handle_exceptions
 def list_main ():
-    """Secondary cbank metacommand for lists.
+    """Secondary cli metacommand for lists.
     
     Commands:
     users -- list_users_main
@@ -961,7 +961,7 @@ def detail_refunds_main ():
 @handle_exceptions
 @require_admin
 def edit_main ():
-    """Secondary cbank metacommand for editing existing entities.
+    """Secondary cli metacommand for editing existing entities.
     
     Commands:
     allocation -- new_allocation_main
@@ -1128,7 +1128,7 @@ def normalize (command, commands):
 def configured_resource ():
     """Return the configured resource."""
     try:
-        resource_string = config.get("cbank", "resource")
+        resource_string = config.get("cli", "resource")
     except ConfigParser.Error:
         return None
     return Resource.fetch(resource_string)
@@ -1163,7 +1163,7 @@ def configured_admins ():
     try:
         return [
             User.fetch(user)
-            for user in config.get("cbank", "admins").split(",")]
+            for user in config.get("cli", "admins").split(",")]
     except ConfigParser.Error:
         return []
 

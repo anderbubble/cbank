@@ -4,7 +4,7 @@ computational resources.
 == features ==
 
  * plugin architecture for accessing existing directory services
- * complete user- and admin-level command-line interface (cbank)
+ * complete user- and admin-level command-line interface
  * clean SQLAlchemy-based API
 
 == upstream plugins ==

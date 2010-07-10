@@ -16,8 +16,8 @@ from clusterbank.model import (
 from clusterbank.controllers import Session
 import clusterbank.model.database
 import clusterbank.upstreams.default
-import clusterbank.cbank.views
-from clusterbank.cbank.views import (
+import clusterbank.cli.views
+from clusterbank.cli.views import (
     print_users_list, print_projects_list, print_allocations_list,
     print_holds_list, print_jobs_list, print_charges_list,
     print_charges, print_jobs, print_refunds, print_holds, display_units)
@@ -47,7 +47,7 @@ def setup ():
     clusterbank.upstreams.default.users = [
         clusterbank.upstreams.default.User("1", "user1"),
         clusterbank.upstreams.default.User("2", "user2")]
-    clusterbank.cbank.views.datetime = FakeDateTime(datetime(2000, 1, 1))
+    clusterbank.cli.views.datetime = FakeDateTime(datetime(2000, 1, 1))
 
 
 def teardown ():
@@ -56,26 +56,26 @@ def teardown ():
     clusterbank.upstreams.default.users = []
     clusterbank.upstreams.default.projects = []
     clusterbank.upstreams.default.resources = []
-    clusterbank.cbank.views.datetime = datetime
+    clusterbank.cli.views.datetime = datetime
 
 
 class TestDisplayUnits (object):
     
     def setup (self):
-        clusterbank.cbank.views.config.add_section("cbank")
+        clusterbank.cli.views.config.add_section("cli")
     
     def teardown (self):
-        clusterbank.cbank.views.config.remove_section("cbank")
+        clusterbank.cli.views.config.remove_section("cli")
     
     def test_no_unit_factor (self):
         assert_equal(display_units(1000), "1000.0")
     
     def test_unit_factor_simple (self):
-        clusterbank.cbank.views.config.set("cbank", "unit_factor", "10")
+        clusterbank.cli.views.config.set("cli", "unit_factor", "10")
         assert_equal(display_units(1000), "10000.0")
     
     def test_unit_factor_fraction (self):
-        clusterbank.cbank.views.config.set("cbank", "unit_factor", "1/10")
+        clusterbank.cli.views.config.set("cli", "unit_factor", "1/10")
         assert_equal(display_units(1000), "100.0")
 
 

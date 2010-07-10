@@ -13,17 +13,17 @@ from clusterbank.model import (
     User, Project, Resource,
     Allocation, Hold, Job, Charge, Refund)
 from clusterbank.controllers import get_projects, get_users
-from clusterbank.cbank.controllers import Session
+from clusterbank.cli.controllers import Session
 import clusterbank.upstreams.default
-import clusterbank.cbank.controllers
-from clusterbank.cbank.controllers import (
+import clusterbank.cli.controllers
+from clusterbank.cli.controllers import (
     main, list_main, new_main,
     edit_main, list_users_main, list_projects_main, list_allocations_main,
     list_holds_main, list_jobs_main, list_charges_main, new_allocation_main,
     new_charge_main, new_hold_main, new_refund_main, handle_exceptions,
     detail_jobs_main, import_main, import_jobs_main, detail_charges_main,
     detail_refunds_main)
-from clusterbank.cbank.exceptions import (
+from clusterbank.cli.exceptions import (
     UnknownCommand, UnexpectedArguments,
     UnknownProject, MissingArgument, MissingResource, NotPermitted,
     ValueError_, UnknownCharge, HasChildren)
@@ -107,11 +107,11 @@ def run (func, args=None, stdin=None):
 
 def be_admin ():
     current_user = current_username()
-    clusterbank.config.set("cbank", "admins", current_user)
+    clusterbank.config.set("cli", "admins", current_user)
 
 
 def not_admin ():
-    clusterbank.config.remove_option("cbank", "admins")
+    clusterbank.config.remove_option("cli", "admins")
 
 
 def setup ():
@@ -145,7 +145,7 @@ def setup ():
         clusterbank.upstreams.default.Resource("1", "resource1"),
         clusterbank.upstreams.default.Resource("2", "resource2")]
     fake_dt = FakeDateTime(datetime(2000, 1, 1))
-    clusterbank.cbank.controllers.datetime = fake_dt
+    clusterbank.cli.controllers.datetime = fake_dt
 
 
 def teardown ():
@@ -155,12 +155,12 @@ def teardown ():
     clusterbank.upstreams.default.resources = []
     clusterbank.model.clear_upstream()
     Session.bind = None
-    clusterbank.cbank.controllers.datetime = datetime
+    clusterbank.cli.controllers.datetime = datetime
 
 
 class TestHandleExceptionsDecorator (object):
     
-    def test_cbank_exception (self):
+    def test_cli_exception (self):
         exceptions = [UnknownCommand, UnexpectedArguments, UnknownProject,
             MissingArgument, MissingResource, NotPermitted, ValueError_,
             UnknownCharge]
@@ -176,11 +176,11 @@ class CbankTester (object):
 
     def setup (self):
         metadata.create_all()
-        clusterbank.config.add_section("cbank")
+        clusterbank.config.add_section("cli")
     
     def teardown (self):
         Session.remove()
-        clusterbank.config.remove_section("cbank")
+        clusterbank.config.remove_section("cli")
         metadata.drop_all()
 
 
@@ -188,12 +188,12 @@ class TestDetailCharges (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._print_charges = clusterbank.cbank.controllers.print_charges
-        clusterbank.cbank.controllers.print_charges = FakeFunc()
+        self._print_charges = clusterbank.cli.controllers.print_charges
+        clusterbank.cli.controllers.print_charges = FakeFunc()
     
     def teardown (self):
         CbankTester.teardown(self)
-        clusterbank.cbank.controllers.print_charges = self._print_charges
+        clusterbank.cli.controllers.print_charges = self._print_charges
     
     def test_user (self):
         a = Allocation(Project.fetch("project1"), Resource.fetch("resource1"), 0,
@@ -204,7 +204,7 @@ class TestDetailCharges (CbankTester):
         Session.add(c)
         Session.flush()
         run(detail_charges_main, ["%i" % c.id])
-        args, kwargs = clusterbank.cbank.controllers.print_charges.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges.calls[0]
         assert_equal(list(args[0]), [c])
     
     def test_non_user (self):
@@ -214,7 +214,7 @@ class TestDetailCharges (CbankTester):
         Session.add(c)
         Session.flush()
         run(detail_charges_main, ["%i" % c.id])
-        args, kwargs = clusterbank.cbank.controllers.print_charges.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges.calls[0]
         assert_equal(list(args[0]), [])
     
     def test_project_admin (self):
@@ -224,7 +224,7 @@ class TestDetailCharges (CbankTester):
         Session.add(c)
         Session.flush()
         run(detail_charges_main, ["%i" % c.id])
-        args, kwargs = clusterbank.cbank.controllers.print_charges.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges.calls[0]
         assert_equal(list(args[0]), [c])
 
 
@@ -241,7 +241,7 @@ class TestAdminDetailCharges (TestDetailCharges):
         Session.add(c)
         Session.flush()
         _, stdout, stderr = run(detail_charges_main, ["%i" % c.id])
-        args, kwargs = clusterbank.cbank.controllers.print_charges.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges.calls[0]
         assert_equal(list(args[0]), [c])
 
 
@@ -249,12 +249,12 @@ class TestDetailRefunds (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._print_refunds = clusterbank.cbank.controllers.print_refunds
-        clusterbank.cbank.controllers.print_refunds = FakeFunc()
+        self._print_refunds = clusterbank.cli.controllers.print_refunds
+        clusterbank.cli.controllers.print_refunds = FakeFunc()
     
     def teardown (self):
         CbankTester.teardown(self)
-        clusterbank.cbank.controllers.print_refunds = self._print_refunds
+        clusterbank.cli.controllers.print_refunds = self._print_refunds
     
     def test_user (self):
         a = Allocation(Project.fetch("project1"), Resource.fetch("resource1"), 0,
@@ -266,7 +266,7 @@ class TestDetailRefunds (CbankTester):
         Session.add(r)
         Session.flush()
         run(detail_refunds_main, ["%i" % r.id])
-        args, kwargs = clusterbank.cbank.controllers.print_refunds.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_refunds.calls[0]
         assert_equal(list(args[0]), [r])
     
     def test_non_user (self):
@@ -277,7 +277,7 @@ class TestDetailRefunds (CbankTester):
         Session.add(r)
         Session.flush()
         run(detail_refunds_main, ["%i" % r.id])
-        args, kwargs = clusterbank.cbank.controllers.print_refunds.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_refunds.calls[0]
         assert_equal(list(args[0]), [])
     
     def test_project_admin (self):
@@ -288,7 +288,7 @@ class TestDetailRefunds (CbankTester):
         Session.add(r)
         Session.flush()
         run(detail_refunds_main, ["%i" % r.id])
-        args, kwargs = clusterbank.cbank.controllers.print_refunds.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_refunds.calls[0]
         assert_equal(list(args[0]), [r])
 
 
@@ -306,7 +306,7 @@ class TestAdminDetailRefunds (TestDetailRefunds):
         Session.add(r)
         Session.flush()
         run(detail_refunds_main, ["%i" % r.id])
-        args, kwargs = clusterbank.cbank.controllers.print_refunds.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_refunds.calls[0]
         assert_equal(list(args[0]), [r])
 
 
@@ -314,21 +314,21 @@ class TestMain (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._list_main = clusterbank.cbank.controllers.list_main
-        self._new_main = clusterbank.cbank.controllers.new_main
-        self._detail_main = clusterbank.cbank.controllers.detail_main
-        self._edit_main = clusterbank.cbank.controllers.edit_main
-        clusterbank.cbank.controllers.list_main = FakeFunc()
-        clusterbank.cbank.controllers.new_main = FakeFunc()
-        clusterbank.cbank.controllers.detail_main = FakeFunc()
-        clusterbank.cbank.controllers.edit_main = FakeFunc()
+        self._list_main = clusterbank.cli.controllers.list_main
+        self._new_main = clusterbank.cli.controllers.new_main
+        self._detail_main = clusterbank.cli.controllers.detail_main
+        self._edit_main = clusterbank.cli.controllers.edit_main
+        clusterbank.cli.controllers.list_main = FakeFunc()
+        clusterbank.cli.controllers.new_main = FakeFunc()
+        clusterbank.cli.controllers.detail_main = FakeFunc()
+        clusterbank.cli.controllers.edit_main = FakeFunc()
     
     def teardown (self):
         CbankTester.teardown(self)
-        clusterbank.cbank.controllers.list_main = self._list_main
-        clusterbank.cbank.controllers.new_main = self._new_main
-        clusterbank.cbank.controllers.detail_main = self._detail_main
-        clusterbank.cbank.controllers.edit_main = self._edit_main
+        clusterbank.cli.controllers.list_main = self._list_main
+        clusterbank.cli.controllers.new_main = self._new_main
+        clusterbank.cli.controllers.detail_main = self._detail_main
+        clusterbank.cli.controllers.edit_main = self._edit_main
     
     def test_callable (self):
         assert callable(main), "main is not callable"
@@ -337,55 +337,55 @@ class TestMain (CbankTester):
         def test_ ():
             assert sys.argv[0] == "main list"
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.list_main.func = test_
+        clusterbank.cli.controllers.list_main.func = test_
         args = "list 1 2 3"
         run(main, args.split())
-        assert clusterbank.cbank.controllers.list_main.calls
+        assert clusterbank.cli.controllers.list_main.calls
     
     def test_new (self):
         def test_ ():
             assert sys.argv[0] == "main new", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.new_main.func = test_
+        clusterbank.cli.controllers.new_main.func = test_
         args = "new 1 2 3"
         run(main, args.split())
-        assert clusterbank.cbank.controllers.new_main.calls
+        assert clusterbank.cli.controllers.new_main.calls
     
     def test_detail (self):
         def test_ ():
             assert sys.argv[0] == "main detail", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.detail_main.func = test_
+        clusterbank.cli.controllers.detail_main.func = test_
         args = "detail 1 2 3"
         run(main, args.split())
-        assert clusterbank.cbank.controllers.detail_main.calls
+        assert clusterbank.cli.controllers.detail_main.calls
     
     def test_edit (self):
         def test_ ():
             assert sys.argv[0] == "main edit", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.edit_main.func = test_
+        clusterbank.cli.controllers.edit_main.func = test_
         args = "edit 1 2 3"
         run(main, args.split())
-        assert clusterbank.cbank.controllers.edit_main.calls
+        assert clusterbank.cli.controllers.edit_main.calls
     
     def test_default (self):
         def test_ ():
             assert sys.argv[0] == "main"
             assert sys.argv[1:] == args.split(), sys.argv
-        clusterbank.cbank.controllers.list_main.func = test_
+        clusterbank.cli.controllers.list_main.func = test_
         args = "1 2 3"
         run(main, args.split())
-        assert clusterbank.cbank.controllers.list_main.calls
+        assert clusterbank.cli.controllers.list_main.calls
     
     def test_invalid (self):
         def test_ ():
             assert sys.argv[0] == "main"
             assert sys.argv[1:] == args.split(), sys.argv
-        clusterbank.cbank.controllers.list_main.func = test_
+        clusterbank.cli.controllers.list_main.func = test_
         args = "invalid_command 1 2 3"
         run(main, args.split())
-        assert clusterbank.cbank.controllers.list_main.calls
+        assert clusterbank.cli.controllers.list_main.calls
 
 
 class TestNewMain (CbankTester):
@@ -393,61 +393,61 @@ class TestNewMain (CbankTester):
     def setup (self):
         CbankTester.setup(self)
         be_admin()
-        self._new_allocation_main = clusterbank.cbank.controllers.new_allocation_main
-        self._new_hold_main = clusterbank.cbank.controllers.new_hold_main
-        self._new_charge_main = clusterbank.cbank.controllers.new_charge_main
-        self._new_refund_main = clusterbank.cbank.controllers.new_refund_main
-        clusterbank.cbank.controllers.new_allocation_main = FakeFunc()
-        clusterbank.cbank.controllers.new_hold_main = FakeFunc()
-        clusterbank.cbank.controllers.new_charge_main = FakeFunc()
-        clusterbank.cbank.controllers.new_refund_main = FakeFunc()
+        self._new_allocation_main = clusterbank.cli.controllers.new_allocation_main
+        self._new_hold_main = clusterbank.cli.controllers.new_hold_main
+        self._new_charge_main = clusterbank.cli.controllers.new_charge_main
+        self._new_refund_main = clusterbank.cli.controllers.new_refund_main
+        clusterbank.cli.controllers.new_allocation_main = FakeFunc()
+        clusterbank.cli.controllers.new_hold_main = FakeFunc()
+        clusterbank.cli.controllers.new_charge_main = FakeFunc()
+        clusterbank.cli.controllers.new_refund_main = FakeFunc()
     
     def teardown (self):
         CbankTester.teardown(self)
-        clusterbank.cbank.controllers.new_allocation_main = self._new_allocation_main
-        clusterbank.cbank.controllers.new_hold_main = self._new_hold_main
-        clusterbank.cbank.controllers.new_charge_main = self._new_charge_main
-        clusterbank.cbank.controllers.new_refund_main = self._new_refund_main
+        clusterbank.cli.controllers.new_allocation_main = self._new_allocation_main
+        clusterbank.cli.controllers.new_hold_main = self._new_hold_main
+        clusterbank.cli.controllers.new_charge_main = self._new_charge_main
+        clusterbank.cli.controllers.new_refund_main = self._new_refund_main
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "new_main"), "new_main does not exist"
-        assert callable(clusterbank.cbank.controllers.new_main), "new_main is not callable"
+        assert hasattr(clusterbank.cli.controllers, "new_main"), "new_main does not exist"
+        assert callable(clusterbank.cli.controllers.new_main), "new_main is not callable"
     
     def test_allocation (self):
         args = "allocation 1 2 3"
         def test_ ():
             assert sys.argv[0] == "new_main allocation", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.new_allocation_main.func = test_
+        clusterbank.cli.controllers.new_allocation_main.func = test_
         run(new_main, args.split())
-        assert clusterbank.cbank.controllers.new_allocation_main.calls
+        assert clusterbank.cli.controllers.new_allocation_main.calls
     
     def test_hold (self):
         args = "hold 1 2 3"
         def test_ ():
             assert sys.argv[0] == "new_main hold", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.new_hold_main.func = test_
+        clusterbank.cli.controllers.new_hold_main.func = test_
         run(new_main, args.split())
-        assert clusterbank.cbank.controllers.new_hold_main.calls
+        assert clusterbank.cli.controllers.new_hold_main.calls
     
     def test_charge (self):
         args = "charge 1 2 3"
         def test_ ():
             assert sys.argv[0] == "new_main charge", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.new_charge_main.func = test_
+        clusterbank.cli.controllers.new_charge_main.func = test_
         run(new_main, args.split())
-        assert clusterbank.cbank.controllers.new_charge_main.calls
+        assert clusterbank.cli.controllers.new_charge_main.calls
     
     def test_refund (self):
         args = "refund 1 2 3"
         def test_ ():
             assert sys.argv[0] == "new_main refund", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.new_refund_main.func = test_
+        clusterbank.cli.controllers.new_refund_main.func = test_
         run(new_main, args.split())
-        assert clusterbank.cbank.controllers.new_refund_main.calls
+        assert clusterbank.cli.controllers.new_refund_main.calls
     
     def test_invalid (self):
         args = "invalid 1 2 3"
@@ -462,9 +462,9 @@ class TestNewAllocationMain (CbankTester):
         be_admin()
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "new_allocation_main"), \
+        assert hasattr(clusterbank.cli.controllers, "new_allocation_main"), \
             "new_allocation_main does not exist"
-        assert callable(clusterbank.cbank.controllers.new_allocation_main), \
+        assert callable(clusterbank.cli.controllers.new_allocation_main), \
             "new_allocation_main is not callable"
     
     def test_complete (self):
@@ -475,7 +475,7 @@ class TestNewAllocationMain (CbankTester):
         assert not query().count(), "started with existing allocations"
         args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.new_allocation_main, args.split())
+            clusterbank.cli.controllers.new_allocation_main, args.split())
         Session.remove()
         assert query().count() == 1, "didn't create an allocation"
         allocation = query().one()
@@ -495,13 +495,13 @@ class TestNewAllocationMain (CbankTester):
         args = """project1 1000 -r resource1 -s 2008-01-01 \
             -e 2009-01-01 -c test asdf"""
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.new_allocation_main, args.split())
+            clusterbank.cli.controllers.new_allocation_main, args.split())
         Session.remove()
         assert not query().count()
         assert code == UnexpectedArguments.exit_code, code
     
     def test_with_defined_units (self):
-        clusterbank.config.set("cbank", "unit_factor", "1/2")
+        clusterbank.config.set("cli", "unit_factor", "1/2")
         project = Project.fetch("project1")
         resource = Resource.fetch("resource1")
         query = lambda: Session.query(Allocation).filter_by(
@@ -509,7 +509,7 @@ class TestNewAllocationMain (CbankTester):
         assert not query().count(), "started with existing allocations"
         args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.new_allocation_main, args.split())
+            clusterbank.cli.controllers.new_allocation_main, args.split())
         Session.remove()
         assert query().count() == 1, "didn't create an allocation"
         allocation = query().one()
@@ -528,7 +528,7 @@ class TestNewAllocationMain (CbankTester):
         assert not query().count(), "started with existing allocations"
         args = "project1 1000 -r resource1 -s bad_start -e 2009-01-01 -c test"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.new_allocation_main, args.split())
+            clusterbank.cli.controllers.new_allocation_main, args.split())
         Session.remove()
         assert not query().count(), "created an allocation with bad start"
         assert code != 0, code
@@ -541,7 +541,7 @@ class TestNewAllocationMain (CbankTester):
         assert not query().count(), "started with existing allocations"
         args = "project1 1000 -r resource1 -s 2008-01-01 -e bad_end -c test"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.new_allocation_main, args.split())
+            clusterbank.cli.controllers.new_allocation_main, args.split())
         Session.remove()
         assert not query().count(), "created an allocation with bad end"
         assert code != 0, code
@@ -555,7 +555,7 @@ class TestNewAllocationMain (CbankTester):
         args = """project1 bad_amount -r resource1 -s 2008-01-01 \
             -e 2009-01-01 -c test"""
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.new_allocation_main, args.split())
+            clusterbank.cli.controllers.new_allocation_main, args.split())
         Session.remove()
         assert not query().count(), "created an allocation with bad amount"
         assert code != 0, code
@@ -568,7 +568,7 @@ class TestNewAllocationMain (CbankTester):
         assert not query().count(), "started with existing allocations"
         args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.new_allocation_main, args.split())
+            clusterbank.cli.controllers.new_allocation_main, args.split())
         Session.remove()
         assert query().count() == 1, "didn't create an allocation"
         allocation = query().one()
@@ -583,7 +583,7 @@ class TestNewAllocationMain (CbankTester):
         assert not query().count(), "started with existing allocations"
         args = "1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.new_allocation_main, args.split())
+            clusterbank.cli.controllers.new_allocation_main, args.split())
         Session.remove()
         assert not query().count(), \
             "created allocation without project: %s" % new_allocations
@@ -597,7 +597,7 @@ class TestNewAllocationMain (CbankTester):
         assert not query().count(), "started with existing allocations"
         args = "project1 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.new_allocation_main, args.split())
+            clusterbank.cli.controllers.new_allocation_main, args.split())
         Session.remove()
         assert not query().count(), "created allocation without amount"
         assert code == MissingArgument.exit_code, code
@@ -610,7 +610,7 @@ class TestNewAllocationMain (CbankTester):
         assert not query().count(), "started with existing allocations"
         args = "project1 1000 -r resource1 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.new_allocation_main, args.split())
+            clusterbank.cli.controllers.new_allocation_main, args.split())
         Session.remove()
         assert query().count() == 1, "didn't create an allocation"
         allocation = query().one()
@@ -625,7 +625,7 @@ class TestNewAllocationMain (CbankTester):
         assert not query().count(), "started with existing allocations"
         args = "project1 1000 -r resource1 -s 2000-01-01 -c test"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.new_allocation_main, args.split())
+            clusterbank.cli.controllers.new_allocation_main, args.split())
         Session.remove()
         assert query().count() == 1, "didn't create an allocation"
         allocation = query().one()
@@ -643,14 +643,14 @@ class TestNewAllocationMain (CbankTester):
         assert not query().count(), "started with existing allocations"
         args = "project1 1000 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.new_allocation_main, args.split())
+            clusterbank.cli.controllers.new_allocation_main, args.split())
         Session.remove()
         assert not query().count(), \
             "created allocation without resource: %s" % new_allocations
         assert code == MissingResource.exit_code, code
     
     def test_with_configured_resource (self):
-        clusterbank.config.set("cbank", "resource", "resource1")
+        clusterbank.config.set("cli", "resource", "resource1")
         project = Project.fetch("project1")
         resource = Resource.fetch("resource1")
         query = lambda: Session.query(Allocation).filter_by(
@@ -658,14 +658,14 @@ class TestNewAllocationMain (CbankTester):
         assert not query().count(), "started with existing allocations"
         args = "project1 1000 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.new_allocation_main, args.split())
+            clusterbank.cli.controllers.new_allocation_main, args.split())
         assert query().count() == 1, "didn't create an allocation"
         allocation = query().one()
         assert_equal(allocation.resource, resource)
         assert code == 0, code
 
     def test_non_admin (self):
-        clusterbank.config.set("cbank", "admins", "")
+        clusterbank.config.set("cli", "admins", "")
         project = Project.fetch("project1")
         resource = Resource.fetch("resource1")
         query = lambda: Session.query(Allocation).filter_by(
@@ -673,7 +673,7 @@ class TestNewAllocationMain (CbankTester):
         assert not query().count(), "started with existing allocations"
         args = "project1 1000 -r resource1 -s 2008-01-01 -e 2009-01-01 -c test"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.new_allocation_main, args.split())
+            clusterbank.cli.controllers.new_allocation_main, args.split())
         Session.remove()
         assert not query().count(), \
             "created allocation when not admin: %s" % new_allocations
@@ -687,9 +687,9 @@ class TestNewHoldMain (CbankTester):
         be_admin()
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "new_hold_main"), \
+        assert hasattr(clusterbank.cli.controllers, "new_hold_main"), \
             "new_hold_main does not exist"
-        assert callable(clusterbank.cbank.controllers.new_hold_main), \
+        assert callable(clusterbank.cli.controllers.new_hold_main), \
             "new_hold_main is not callable"
     
     def test_no_allocation (self):
@@ -794,7 +794,7 @@ class TestNewHoldMain (CbankTester):
         assert code == UnexpectedArguments.exit_code, code
     
     def test_with_defined_units (self):
-        clusterbank.config.set("cbank", "unit_factor", "1/2")
+        clusterbank.config.set("cli", "unit_factor", "1/2")
         project = Project.fetch("project1")
         resource = Resource.fetch("resource1")
         user = User.fetch("user1")
@@ -836,7 +836,7 @@ class TestNewHoldMain (CbankTester):
         assert not holds.count(), "created a hold"
     
     def test_with_configured_resource (self):
-        clusterbank.config.set("cbank", "resource", "resource1")
+        clusterbank.config.set("cli", "resource", "resource1")
         project = Project.fetch("project1")
         resource = Resource.fetch("resource1")
         user = User.fetch("user1")
@@ -934,7 +934,7 @@ class TestNewHoldMain (CbankTester):
             "incorrect comment: %s" % hold.comment
     
     def test_non_admin (self):
-        clusterbank.config.set("cbank", "admins", "")
+        clusterbank.config.set("cli", "admins", "")
         project = Project.fetch("project1")
         resource = Resource.fetch("resource1")
         holds = lambda: Session.query(Hold)
@@ -960,9 +960,9 @@ class TestNewChargeMain (CbankTester):
         be_admin()
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "new_charge_main"), \
+        assert hasattr(clusterbank.cli.controllers, "new_charge_main"), \
             "new_charge_main does not exist"
-        assert callable(clusterbank.cbank.controllers.new_charge_main), \
+        assert callable(clusterbank.cli.controllers.new_charge_main), \
             "new_charge_main is not callable"
     
     def test_no_allocation (self):
@@ -1070,7 +1070,7 @@ class TestNewChargeMain (CbankTester):
         assert code == UnexpectedArguments.exit_code, code
     
     def test_with_defined_units (self):
-        clusterbank.config.set("cbank", "unit_factor", "1/2")
+        clusterbank.config.set("cli", "unit_factor", "1/2")
         project = Project.fetch("project1")
         resource = Resource.fetch("resource1")
         user = User.fetch("user1")
@@ -1112,7 +1112,7 @@ class TestNewChargeMain (CbankTester):
         assert not charges.count(), "created a charge"
     
     def test_with_configured_resource (self):
-        clusterbank.config.set("cbank", "resource", "resource1")
+        clusterbank.config.set("cli", "resource", "resource1")
         project = Project.fetch("project1")
         resource = Resource.fetch("resource1")
         user = User.fetch("user1")
@@ -1210,7 +1210,7 @@ class TestNewChargeMain (CbankTester):
             "incorrect comment: %s" % charge.comment
     
     def test_non_admin (self):
-        clusterbank.config.set("cbank", "admins", "")
+        clusterbank.config.set("cli", "admins", "")
         project = Project.fetch("project1")
         resource = Resource.fetch("resource1")
         charges = lambda: Session.query(Charge)
@@ -1235,9 +1235,9 @@ class TestNewRefundMain (CbankTester):
         be_admin()
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "new_refund_main"), \
+        assert hasattr(clusterbank.cli.controllers, "new_refund_main"), \
             "new_refund_main does not exist"
-        assert callable(clusterbank.cbank.controllers.new_refund_main), \
+        assert callable(clusterbank.cli.controllers.new_refund_main), \
             "new_refund_main is not callable"
     
     def test_complete (self):
@@ -1281,7 +1281,7 @@ class TestNewRefundMain (CbankTester):
         assert code == UnexpectedArguments.exit_code, code
     
     def test_with_defined_units (self):
-        clusterbank.config.set("cbank", "unit_factor", "1/2")
+        clusterbank.config.set("cli", "unit_factor", "1/2")
         now = datetime(2000, 1, 1)
         project = Project.fetch("project1")
         resource = Resource.fetch("resource1")
@@ -1392,7 +1392,7 @@ class TestNewRefundMain (CbankTester):
         assert sum(refund.amount for refund in refunds()) == 100
     
     def test_non_admin (self):
-        clusterbank.config.set("cbank", "admins", "")
+        clusterbank.config.set("cli", "admins", "")
         now = datetime(2000, 1, 1)
         project = Project.fetch("project1")
         resource = Resource.fetch("resource1")
@@ -1417,61 +1417,61 @@ class TestEditMain (CbankTester):
     def setup (self):
         CbankTester.setup(self)
         be_admin()
-        self._edit_allocation_main = clusterbank.cbank.controllers.edit_allocation_main
-        self._edit_hold_main = clusterbank.cbank.controllers.edit_hold_main
-        self._edit_charge_main = clusterbank.cbank.controllers.edit_charge_main
-        self._edit_refund_main = clusterbank.cbank.controllers.edit_refund_main
-        clusterbank.cbank.controllers.edit_allocation_main = FakeFunc()
-        clusterbank.cbank.controllers.edit_hold_main = FakeFunc()
-        clusterbank.cbank.controllers.edit_charge_main = FakeFunc()
-        clusterbank.cbank.controllers.edit_refund_main = FakeFunc()
+        self._edit_allocation_main = clusterbank.cli.controllers.edit_allocation_main
+        self._edit_hold_main = clusterbank.cli.controllers.edit_hold_main
+        self._edit_charge_main = clusterbank.cli.controllers.edit_charge_main
+        self._edit_refund_main = clusterbank.cli.controllers.edit_refund_main
+        clusterbank.cli.controllers.edit_allocation_main = FakeFunc()
+        clusterbank.cli.controllers.edit_hold_main = FakeFunc()
+        clusterbank.cli.controllers.edit_charge_main = FakeFunc()
+        clusterbank.cli.controllers.edit_refund_main = FakeFunc()
     
     def teardown (self):
         CbankTester.teardown(self)
-        clusterbank.cbank.controllers.edit_allocation_main = self._edit_allocation_main
-        clusterbank.cbank.controllers.edit_hold_main = self._edit_hold_main
-        clusterbank.cbank.controllers.edit_charge_main = self._edit_charge_main
-        clusterbank.cbank.controllers.edit_refund_main = self._edit_refund_main
+        clusterbank.cli.controllers.edit_allocation_main = self._edit_allocation_main
+        clusterbank.cli.controllers.edit_hold_main = self._edit_hold_main
+        clusterbank.cli.controllers.edit_charge_main = self._edit_charge_main
+        clusterbank.cli.controllers.edit_refund_main = self._edit_refund_main
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "edit_main"), "edit_main does not exist"
-        assert callable(clusterbank.cbank.controllers.edit_main), "edit_main is not callable"
+        assert hasattr(clusterbank.cli.controllers, "edit_main"), "edit_main does not exist"
+        assert callable(clusterbank.cli.controllers.edit_main), "edit_main is not callable"
     
     def test_allocation (self):
         args = "allocation 1 2 3"
         def test_ ():
             assert sys.argv[0] == "edit_main allocation", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.edit_allocation_main.func = test_
+        clusterbank.cli.controllers.edit_allocation_main.func = test_
         run(edit_main, args.split())
-        assert clusterbank.cbank.controllers.edit_allocation_main.calls
+        assert clusterbank.cli.controllers.edit_allocation_main.calls
     
     def test_hold (self):
         args = "hold 1 2 3"
         def test_ ():
             assert sys.argv[0] == "edit_main hold", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.edit_hold_main.func = test_
+        clusterbank.cli.controllers.edit_hold_main.func = test_
         run(edit_main, args.split())
-        assert clusterbank.cbank.controllers.edit_hold_main.calls
+        assert clusterbank.cli.controllers.edit_hold_main.calls
     
     def test_charge (self):
         args = "charge 1 2 3"
         def test_ ():
             assert sys.argv[0] == "edit_main charge", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.edit_charge_main.func = test_
+        clusterbank.cli.controllers.edit_charge_main.func = test_
         run(edit_main, args.split())
-        assert clusterbank.cbank.controllers.edit_charge_main.calls
+        assert clusterbank.cli.controllers.edit_charge_main.calls
     
     def test_refund (self):
         args = "refund 1 2 3"
         def test_ ():
             assert sys.argv[0] == "edit_main refund", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.edit_refund_main.func = test_
+        clusterbank.cli.controllers.edit_refund_main.func = test_
         run(edit_main, args.split())
-        assert clusterbank.cbank.controllers.edit_refund_main.calls
+        assert clusterbank.cli.controllers.edit_refund_main.calls
     
     def test_invalid (self):
         args = "invalid 1 2 3"
@@ -1491,15 +1491,15 @@ class TestEditAllocationMain (CbankTester):
         Session.commit()
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "edit_allocation_main"), \
+        assert hasattr(clusterbank.cli.controllers, "edit_allocation_main"), \
             "edit_allocation_main does not exist"
-        assert callable(clusterbank.cbank.controllers.edit_allocation_main), \
+        assert callable(clusterbank.cli.controllers.edit_allocation_main), \
             "edit_allocation_main is not callable"
     
     def test_delete (self):
         args = "-D 1"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_allocation_main, args.split())
+            clusterbank.cli.controllers.edit_allocation_main, args.split())
         assert_equal(code, 0)
         assert_equal(list(Session.query(Allocation).filter_by(id=1)), [])
     
@@ -1510,7 +1510,7 @@ class TestEditAllocationMain (CbankTester):
         Session.commit()
         args = "-D 1"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_allocation_main, args.split())
+            clusterbank.cli.controllers.edit_allocation_main, args.split())
         Session.remove()
         assert_equal(code, HasChildren.exit_code)
         assert_equal(len(list(Session.query(Allocation).filter_by(id=1))), 1)
@@ -1518,7 +1518,7 @@ class TestEditAllocationMain (CbankTester):
     def test_start (self):
         args = "-s 2009-01-01 1"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_allocation_main, args.split())
+            clusterbank.cli.controllers.edit_allocation_main, args.split())
         Session.remove()
         assert_equal(code, 0)
         a = Session.query(Allocation).filter_by(id=1).one()
@@ -1527,7 +1527,7 @@ class TestEditAllocationMain (CbankTester):
     def test_end (self):
         args = "-e 2010-01-01 1"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_allocation_main, args.split())
+            clusterbank.cli.controllers.edit_allocation_main, args.split())
         Session.remove()
         assert_equal(code, 0)
         a = Session.query(Allocation).filter_by(id=1).one()
@@ -1536,7 +1536,7 @@ class TestEditAllocationMain (CbankTester):
     def test_comment (self):
         args = "-c newcomment 1"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_allocation_main, args.split())
+            clusterbank.cli.controllers.edit_allocation_main, args.split())
         Session.remove()
         assert_equal(code, 0)
         a = Session.query(Allocation).filter_by(id=1).one()
@@ -1545,7 +1545,7 @@ class TestEditAllocationMain (CbankTester):
     def test_no_commit (self):
         args = "1 -n -c newcomment -s 2009-01-01 -e 2010-01-01"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_allocation_main, args.split())
+            clusterbank.cli.controllers.edit_allocation_main, args.split())
         Session.remove()
         assert_equal(code, 0)
         a = Session.query(Allocation).filter_by(id=1).one()
@@ -1557,10 +1557,10 @@ class TestEditAllocationMain (CbankTester):
         assert_equal(a.amount, 100)
     
     def test_non_admin (self):
-        clusterbank.config.set("cbank", "admins", "")
+        clusterbank.config.set("cli", "admins", "")
         args = ""
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_allocation_main, args.split())
+            clusterbank.cli.controllers.edit_allocation_main, args.split())
         assert_equal(code, NotPermitted.exit_code)
 
 
@@ -1577,15 +1577,15 @@ class TestEditHoldMain (CbankTester):
         Session.commit()
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "edit_hold_main"), \
+        assert hasattr(clusterbank.cli.controllers, "edit_hold_main"), \
             "edit_hold_main does not exist"
-        assert callable(clusterbank.cbank.controllers.edit_hold_main), \
+        assert callable(clusterbank.cli.controllers.edit_hold_main), \
             "edit_hold_main is not callable"
     
     def test_comment (self):
         args = "-c newcomment 1"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_hold_main, args.split())
+            clusterbank.cli.controllers.edit_hold_main, args.split())
         Session.remove()
         assert_equal(code, 0)
         h = Session.query(Hold).filter_by(id=1).one()
@@ -1594,7 +1594,7 @@ class TestEditHoldMain (CbankTester):
     def test_deactivate (self):
         args = "-d 1"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_hold_main, args.split())
+            clusterbank.cli.controllers.edit_hold_main, args.split())
         Session.remove()
         assert_equal(code, 0)
         h = Session.query(Hold).filter_by(id=1).one()
@@ -1603,7 +1603,7 @@ class TestEditHoldMain (CbankTester):
     def test_no_commit (self):
         args = "1 -n -d -c newcomment"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_hold_main, args.split())
+            clusterbank.cli.controllers.edit_hold_main, args.split())
         Session.remove()
         assert_equal(code, 0)
         h = Session.query(Hold).filter_by(id=1).one()
@@ -1612,10 +1612,10 @@ class TestEditHoldMain (CbankTester):
         assert_true(h.active)
     
     def test_non_admin (self):
-        clusterbank.config.set("cbank", "admins", "")
+        clusterbank.config.set("cli", "admins", "")
         args = ""
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_hold_main, args.split())
+            clusterbank.cli.controllers.edit_hold_main, args.split())
         assert_equal(code, NotPermitted.exit_code)
 
 
@@ -1638,7 +1638,7 @@ class TestEditChargeMain (CbankTester):
     def test_delete (self):
         args = "-D 1"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_charge_main, args.split())
+            clusterbank.cli.controllers.edit_charge_main, args.split())
         assert_equal(code, 0)
         assert_equal(list(Session.query(Charge).filter_by(id=1)), [])
     
@@ -1650,22 +1650,22 @@ class TestEditChargeMain (CbankTester):
         Session.commit()
         args = "-D 1"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_charge_main, args.split())
+            clusterbank.cli.controllers.edit_charge_main, args.split())
         Session.remove()
         assert_equal(code, 0)
         assert_equal(list(Session.query(Charge).filter_by(id=1)), [])
         assert_equal(list(Session.query(Refund).filter_by(id=1)), [])
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "edit_charge_main"), \
+        assert hasattr(clusterbank.cli.controllers, "edit_charge_main"), \
             "edit_charge_main does not exist"
-        assert callable(clusterbank.cbank.controllers.edit_charge_main), \
+        assert callable(clusterbank.cli.controllers.edit_charge_main), \
             "edit_charge_main is not callable"
     
     def test_allocation (self):
         args = "1 -A 2"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_charge_main, args.split())
+            clusterbank.cli.controllers.edit_charge_main, args.split())
         Session.remove()
         assert_equal(code, 0)
         c = Session.query(Charge).filter_by(id=1).one()
@@ -1675,7 +1675,7 @@ class TestEditChargeMain (CbankTester):
     def test_comment (self):
         args = "-c newcomment 1"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_charge_main, args.split())
+            clusterbank.cli.controllers.edit_charge_main, args.split())
         Session.remove()
         assert_equal(code, 0)
         c = Session.query(Charge).filter_by(id=1).one()
@@ -1684,7 +1684,7 @@ class TestEditChargeMain (CbankTester):
     def test_no_commit (self):
         args = "1 -n -A 2 -c newcomment"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_charge_main, args.split())
+            clusterbank.cli.controllers.edit_charge_main, args.split())
         Session.remove()
         assert_equal(code, 0)
         c = Session.query(Charge).filter_by(id=1).one()
@@ -1694,10 +1694,10 @@ class TestEditChargeMain (CbankTester):
         assert_identical(c.allocation, a)
     
     def test_non_admin (self):
-        clusterbank.config.set("cbank", "admins", "")
+        clusterbank.config.set("cli", "admins", "")
         args = ""
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_charge_main, args.split())
+            clusterbank.cli.controllers.edit_charge_main, args.split())
         assert_equal(code, NotPermitted.exit_code)
 
 
@@ -1715,22 +1715,22 @@ class TestEditRefundMain (CbankTester):
         Session.commit()
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "edit_refund_main"), \
+        assert hasattr(clusterbank.cli.controllers, "edit_refund_main"), \
             "edit_refund_main does not exist"
-        assert callable(clusterbank.cbank.controllers.edit_refund_main), \
+        assert callable(clusterbank.cli.controllers.edit_refund_main), \
             "edit_refund_main is not callable"
     
     def test_delete (self):
         args = "-D 1"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_refund_main, args.split())
+            clusterbank.cli.controllers.edit_refund_main, args.split())
         assert_equal(code, 0)
         assert_equal(list(Session.query(Refund).filter_by(id=1)), [])
     
     def test_comment (self):
         args = "-c newcomment 1"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_refund_main, args.split())
+            clusterbank.cli.controllers.edit_refund_main, args.split())
         Session.remove()
         assert_equal(code, 0)
         refund = Session.query(Refund).filter_by(id=1).one()
@@ -1739,17 +1739,17 @@ class TestEditRefundMain (CbankTester):
     def test_no_commit (self):
         args = "1 -n -c newcomment"
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_refund_main, args.split())
+            clusterbank.cli.controllers.edit_refund_main, args.split())
         Session.remove()
         assert_equal(code, 0)
         refund = Session.query(Refund).filter_by(id=1).one()
         assert_identical(refund.comment, None)
     
     def test_non_admin (self):
-        clusterbank.config.set("cbank", "admins", "")
+        clusterbank.config.set("cli", "admins", "")
         args = ""
         code, stdout, stderr = run(
-            clusterbank.cbank.controllers.edit_refund_main, args.split())
+            clusterbank.cli.controllers.edit_refund_main, args.split())
         assert_equal(code, NotPermitted.exit_code)
 
 
@@ -1972,117 +1972,117 @@ class TestListMain (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._list_users_main = clusterbank.cbank.controllers.list_users_main
-        self._list_projects_main = clusterbank.cbank.controllers.list_projects_main
-        self._list_allocations_main = clusterbank.cbank.controllers.list_allocations_main
-        self._list_holds_main = clusterbank.cbank.controllers.list_holds_main
-        self._list_jobs_main = clusterbank.cbank.controllers.list_jobs_main
-        self._list_charges_main = clusterbank.cbank.controllers.list_charges_main
-        clusterbank.cbank.controllers.list_users_main = FakeFunc()
-        clusterbank.cbank.controllers.list_projects_main = FakeFunc()
-        clusterbank.cbank.controllers.list_allocations_main = FakeFunc()
-        clusterbank.cbank.controllers.list_holds_main = FakeFunc()
-        clusterbank.cbank.controllers.list_jobs_main = FakeFunc()
-        clusterbank.cbank.controllers.list_charges_main = FakeFunc()
+        self._list_users_main = clusterbank.cli.controllers.list_users_main
+        self._list_projects_main = clusterbank.cli.controllers.list_projects_main
+        self._list_allocations_main = clusterbank.cli.controllers.list_allocations_main
+        self._list_holds_main = clusterbank.cli.controllers.list_holds_main
+        self._list_jobs_main = clusterbank.cli.controllers.list_jobs_main
+        self._list_charges_main = clusterbank.cli.controllers.list_charges_main
+        clusterbank.cli.controllers.list_users_main = FakeFunc()
+        clusterbank.cli.controllers.list_projects_main = FakeFunc()
+        clusterbank.cli.controllers.list_allocations_main = FakeFunc()
+        clusterbank.cli.controllers.list_holds_main = FakeFunc()
+        clusterbank.cli.controllers.list_jobs_main = FakeFunc()
+        clusterbank.cli.controllers.list_charges_main = FakeFunc()
     
     def teardown (self):
         CbankTester.teardown(self)
-        clusterbank.cbank.controllers.list_users_main = self._list_users_main
-        clusterbank.cbank.controllers.list_projects_main = self._list_projects_main
-        clusterbank.cbank.controllers.list_allocations_main = self._list_allocations_main
-        clusterbank.cbank.controllers.list_holds_main = self._list_holds_main
-        clusterbank.cbank.controllers.list_jobs_main = self._list_jobs_main
-        clusterbank.cbank.controllers.list_charges_main = self._list_charges_main
+        clusterbank.cli.controllers.list_users_main = self._list_users_main
+        clusterbank.cli.controllers.list_projects_main = self._list_projects_main
+        clusterbank.cli.controllers.list_allocations_main = self._list_allocations_main
+        clusterbank.cli.controllers.list_holds_main = self._list_holds_main
+        clusterbank.cli.controllers.list_jobs_main = self._list_jobs_main
+        clusterbank.cli.controllers.list_charges_main = self._list_charges_main
     
     def test_exists_and_callable (self):
-        assert hasattr(clusterbank.cbank.controllers, "list_main"), \
+        assert hasattr(clusterbank.cli.controllers, "list_main"), \
             "list_main does not exist"
-        assert callable(clusterbank.cbank.controllers.list_main), \
+        assert callable(clusterbank.cli.controllers.list_main), \
             "list_main is not callable"
     
     def test_users (self):
         def test_ ():
             assert sys.argv[0] == "list_main users", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.list_users_main.func = test_
+        clusterbank.cli.controllers.list_users_main.func = test_
         args = "users 1 2 3"
         run(list_main, args.split())
-        assert clusterbank.cbank.controllers.list_users_main.calls
+        assert clusterbank.cli.controllers.list_users_main.calls
     
     def test_projects (self):
         def test_ ():
             assert sys.argv[0] == "list_main projects", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.list_projects_main.func = test_
+        clusterbank.cli.controllers.list_projects_main.func = test_
         args = "projects 1 2 3"
         run(list_main, args.split())
-        assert clusterbank.cbank.controllers.list_projects_main.calls
+        assert clusterbank.cli.controllers.list_projects_main.calls
     
     def test_allocations (self):
         def test_ ():
             assert sys.argv[0] == "list_main allocations", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.list_allocations_main.func = test_
+        clusterbank.cli.controllers.list_allocations_main.func = test_
         args = "allocations 1 2 3"
         run(list_main, args.split())
-        assert clusterbank.cbank.controllers.list_allocations_main.calls
+        assert clusterbank.cli.controllers.list_allocations_main.calls
     
     def test_holds (self):
         def test_ ():
             assert sys.argv[0] == "list_main holds", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.list_holds_main.func = test_
+        clusterbank.cli.controllers.list_holds_main.func = test_
         args = "holds 1 2 3"
         run(list_main, args.split())
-        assert clusterbank.cbank.controllers.list_holds_main.calls
+        assert clusterbank.cli.controllers.list_holds_main.calls
     
     def test_holds (self):
         def test_ ():
             assert sys.argv[0] == "list_main jobs", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.list_jobs_main.func = test_
+        clusterbank.cli.controllers.list_jobs_main.func = test_
         args = "jobs 1 2 3"
         run(list_main, args.split())
-        assert clusterbank.cbank.controllers.list_jobs_main.calls
+        assert clusterbank.cli.controllers.list_jobs_main.calls
     
     def test_charges (self):
         def test_ ():
             assert sys.argv[0] == "list_main charges", sys.argv
             assert sys.argv[1:] == args.split()[1:], sys.argv
-        clusterbank.cbank.controllers.list_charges_main.func = test_
+        clusterbank.cli.controllers.list_charges_main.func = test_
         args = "charges 1 2 3"
         run(list_main, args.split())
-        assert clusterbank.cbank.controllers.list_charges_main.calls
+        assert clusterbank.cli.controllers.list_charges_main.calls
     
     def test_default (self):
         def test_ ():
             assert sys.argv[0] == "list_main", sys.argv
             assert sys.argv[1:] == args.split(), sys.argv
-        clusterbank.cbank.controllers.list_projects_main.func = test_
+        clusterbank.cli.controllers.list_projects_main.func = test_
         args = "1 2 3"
         run(list_main, args.split())
-        assert clusterbank.cbank.controllers.list_projects_main.calls
+        assert clusterbank.cli.controllers.list_projects_main.calls
     
     def test_invalid (self):
         def test_ ():
             assert sys.argv[0] == "list_main", sys.argv
             assert sys.argv[1:] == args.split(), sys.argv
-        clusterbank.cbank.controllers.list_projects_main.func = test_
+        clusterbank.cli.controllers.list_projects_main.func = test_
         args = "invalid 1 2 3"
         run(list_main, args.split())
-        assert clusterbank.cbank.controllers.list_projects_main.calls
+        assert clusterbank.cli.controllers.list_projects_main.calls
 
 
 class TestUsersList (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._print_users_list = clusterbank.cbank.controllers.print_users_list
-        clusterbank.cbank.controllers.print_users_list = FakeFunc()
+        self._print_users_list = clusterbank.cli.controllers.print_users_list
+        clusterbank.cli.controllers.print_users_list = FakeFunc()
     
     def teardown (self):
         CbankTester.teardown(self)
-        clusterbank.cbank.controllers.print_users_list = self._print_users_list
+        clusterbank.cli.controllers.print_users_list = self._print_users_list
     
     def test_default (self):
         """Current user's charges filtered by user's projects."""
@@ -2090,7 +2090,7 @@ class TestUsersList (CbankTester):
         projects = get_projects(user)
         code, stdout, stderr = run(list_users_main)
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_users_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_users_list.calls[0]
         assert_equal(set(args[0]), set([user]))
         assert_equal(set(kwargs['projects']), set(projects))
     
@@ -2100,7 +2100,7 @@ class TestUsersList (CbankTester):
         code, stdout, stderr = run(list_users_main,
             ("-u %s" % user).split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_users_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_users_list.calls[0]
         assert_equal(set(args[0]), set([user]))
         assert_equal(set(kwargs['projects']), set(projects))
     
@@ -2108,14 +2108,14 @@ class TestUsersList (CbankTester):
         """cannot specify other users."""
         code, stdout, stderr = run(list_users_main, "-u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not clusterbank.cbank.controllers.print_users_list.calls
+        assert not clusterbank.cli.controllers.print_users_list.calls
     
     def test_other_projects (self):
         """anyone can specify any project filters"""
         code, stdout, stderr = run(
             list_users_main, "-p project1 -p project2".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_users_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_users_list.calls[0]
         projects = [Project.fetch(project)
             for project in ["project1", "project2"]]
         assert_equal(set(kwargs['projects']), set(projects))
@@ -2125,7 +2125,7 @@ class TestUsersList (CbankTester):
         users = get_users(project)
         code, stdout, stderr = run(list_users_main, "-p project3".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_users_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_users_list.calls[0]
         assert_equal(set(args[0]), set(users))
         assert_equal(set(kwargs['projects']), set([project]))
     
@@ -2133,7 +2133,7 @@ class TestUsersList (CbankTester):
         code, stdout, stderr = run(
             list_users_main, "-p project3 -u user1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_users_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_users_list.calls[0]
         assert_equal(set(args[0]), set([User.fetch("user1")]))
         assert_equal(set(kwargs['projects']),
             set([Project.fetch("project3")]))
@@ -2141,27 +2141,27 @@ class TestUsersList (CbankTester):
     def test_resources (self):
         code, stdout, stderr = run(list_users_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_users_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_users_list.calls[0]
         assert_equal(set(kwargs['resources']),
             set([Resource.fetch("resource1")]))
         
     def test_after (self):
         code, stdout, stderr = run(list_users_main, "-a 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_users_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_users_list.calls[0]
         assert_equal(kwargs['after'], datetime(2000, 1, 1))
     
     def test_before (self):
         code, stdout, stderr = run(list_users_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_users_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_users_list.calls[0]
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
     
     def test_long (self):
         code, stdout, stderr = run(
             list_users_main, ["-l"])
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_users_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_users_list.calls[0]
         assert_false(kwargs['truncate'])
 
 
@@ -2176,7 +2176,7 @@ class TestUsersList_Admin (TestUsersList):
         users = get_users()
         code, stdout, stderr = run(list_users_main)
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_users_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_users_list.calls[0]
         assert_equal(set(args[0]), set(users))
         assert_equal(kwargs['projects'], [])
     
@@ -2185,7 +2185,7 @@ class TestUsersList_Admin (TestUsersList):
         code, stdout, stderr = run(
             list_users_main, "-u user1 -u user2".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_users_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_users_list.calls[0]
         users = [User.fetch(user) for user in ["user1", "user2"]]
         assert_equal(set(args[0]), set(users))
         assert_equal(kwargs['projects'], [])
@@ -2196,7 +2196,7 @@ class TestUsersList_Admin (TestUsersList):
         code, stdout, stderr = run(list_users_main,
             ("-u %s" % user).split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_users_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_users_list.calls[0]
         assert_equal(set(args[0]), set([user]))
         assert_equal(set(kwargs['projects']), set([]))
 
@@ -2205,19 +2205,19 @@ class TestProjectsList (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._print_projects_list = clusterbank.cbank.controllers.print_projects_list
-        clusterbank.cbank.controllers.print_projects_list = FakeFunc()
+        self._print_projects_list = clusterbank.cli.controllers.print_projects_list
+        clusterbank.cli.controllers.print_projects_list = FakeFunc()
     
     def teardown (self):
         CbankTester.teardown(self)
-        clusterbank.cbank.controllers.print_projects_list = self._print_projects_list
+        clusterbank.cli.controllers.print_projects_list = self._print_projects_list
     
     def test_default (self):
         """Current user's projects"""
         projects = get_projects(current_user())
         code, stdout, stderr = run(list_projects_main)
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_projects_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_projects_list.calls[0]
         assert_equal(set(args[0]), set(projects))
     
     def test_member_projects (self):
@@ -2227,7 +2227,7 @@ class TestProjectsList (CbankTester):
             0, datetime(2000, 1, 1), datetime(2000, 1, 1)))
         code, stdout, stderr = run(list_projects_main, "-p project2".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_projects_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_projects_list.calls[0]
         assert_equal(set(args[0]), set([Project.fetch("project2")]))
         
     def test_project_admin_projects (self):
@@ -2237,19 +2237,19 @@ class TestProjectsList (CbankTester):
             0, datetime(2000, 1, 1), datetime(2000, 1, 1)))
         code, stdout, stderr = run(list_projects_main, "-p project3".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_projects_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_projects_list.calls[0]
         assert_equal(set(args[0]), set([Project.fetch("project3")]))
     
     def test_other_projects (self):
         """cannot see other projects (not member, not admin)"""
         code, stdout, stderr = run(list_projects_main, "-p project1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not clusterbank.cbank.controllers.print_projects_list.calls
+        assert not clusterbank.cli.controllers.print_projects_list.calls
     
     def test_other_users (self):
         code, stdout, stderr = run(list_projects_main, "-u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not clusterbank.cbank.controllers.print_projects_list.calls
+        assert not clusterbank.cli.controllers.print_projects_list.calls
 
     def test_project_admin_users (self):
         Session.add(Allocation(
@@ -2258,7 +2258,7 @@ class TestProjectsList (CbankTester):
         code, stdout, stderr = run(
             list_projects_main, "-p project3 -u user1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_projects_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_projects_list.calls[0]
         assert_equal(set(args[0]), set([Project.fetch("project3")]))
         assert_equal(set(kwargs['users']), set([User.fetch("user1")]))
     
@@ -2268,13 +2268,13 @@ class TestProjectsList (CbankTester):
         code, stdout, stderr = run(
             list_projects_main, ("-u %s" % user).split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_projects_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_projects_list.calls[0]
         assert_equal(set(kwargs['users']), set([user]))
     
     def test_resources (self):
         code, stdout, stderr = run(list_projects_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_projects_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_projects_list.calls[0]
         assert_equal(set(kwargs['resources']),
             set([Resource.fetch("resource1")]))
         
@@ -2282,20 +2282,20 @@ class TestProjectsList (CbankTester):
         code, stdout, stderr = run(
             list_projects_main, "-a 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_projects_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_projects_list.calls[0]
         assert_equal(kwargs['after'], datetime(2000, 1, 1))
     
     def test_before (self):
         code, stdout, stderr = run(
             list_projects_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_projects_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_projects_list.calls[0]
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
 
     def test_resources (self):
         code, stdout, stderr = run(list_projects_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_projects_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_projects_list.calls[0]
         assert_equal(set(kwargs['resources']),
             set([Resource.fetch("resource1")]))
         
@@ -2303,21 +2303,21 @@ class TestProjectsList (CbankTester):
         code, stdout, stderr = run(
             list_projects_main, "-a 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_projects_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_projects_list.calls[0]
         assert_equal(kwargs['after'], datetime(2000, 1, 1))
     
     def test_before (self):
         code, stdout, stderr = run(
             list_projects_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_projects_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_projects_list.calls[0]
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
     
     def test_long (self):
         code, stdout, stderr = run(
             list_projects_main, ["-l"])
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_projects_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_projects_list.calls[0]
         assert_false(kwargs['truncate'])
 
 
@@ -2332,20 +2332,20 @@ class TestProjectsList_Admin (TestProjectsList):
         projects = get_projects()
         code, stdout, stderr = run(list_projects_main)
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_projects_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_projects_list.calls[0]
         assert_equal(set(args[0]), set(projects))
 
     def test_other_projects (self):
         code, stdout, stderr = run(list_projects_main, "-p project3".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_projects_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_projects_list.calls[0]
         assert_equal(set(args[0]), set([Project.fetch("project3")]))
     
     def test_other_users (self):
         user = User.fetch("user1")
         code, stdout, stderr = run(list_projects_main, "-u user1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_projects_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_projects_list.calls[0]
         assert_equal(set(kwargs['users']), set([User.fetch("user1")]))
         assert_equal(set(args[0]), set(get_projects(user)))
 
@@ -2368,8 +2368,8 @@ class TestAllocationsList (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._print_allocations_list = clusterbank.cbank.controllers.print_allocations_list
-        clusterbank.cbank.controllers.print_allocations_list = FakeFunc()
+        self._print_allocations_list = clusterbank.cli.controllers.print_allocations_list
+        clusterbank.cli.controllers.print_allocations_list = FakeFunc()
         for (project_id, ) in Session.query(Allocation.project_id):
             project = Project.cached(project_id)
             Allocation(project, Resource.fetch("resource1"), 0,
@@ -2384,14 +2384,14 @@ class TestAllocationsList (CbankTester):
     
     def teardown (self):
         CbankTester.teardown(self)
-        clusterbank.cbank.controllers.print_allocations_list = self._print_allocations_list
+        clusterbank.cli.controllers.print_allocations_list = self._print_allocations_list
     
     def test_default (self):
         """Current user's allocations"""
         projects = get_projects(member=current_user())
         code, stdout, stderr = run(list_allocations_main)
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_allocations_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]), set(active(allocations(projects))))
     
     def test_member_projects (self):
@@ -2399,7 +2399,7 @@ class TestAllocationsList (CbankTester):
         code, stdout, stderr = run(
             list_allocations_main, "-p project2".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_allocations_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]),
             set(active(allocations([Project.fetch("project2")]))))
         
@@ -2408,7 +2408,7 @@ class TestAllocationsList (CbankTester):
         code, stdout, stderr = run(
             list_allocations_main, "-p project3".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_allocations_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]),
             set(active(allocations([Project.fetch("project3")]))))
     
@@ -2417,18 +2417,18 @@ class TestAllocationsList (CbankTester):
         code, stdout, stderr = run(
             list_allocations_main, "-p project1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not clusterbank.cbank.controllers.print_allocations_list.calls
+        assert not clusterbank.cli.controllers.print_allocations_list.calls
     
     def test_other_users (self):
         code, stdout, stderr = run(list_allocations_main, "-u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not clusterbank.cbank.controllers.print_allocations_list.calls
+        assert not clusterbank.cli.controllers.print_allocations_list.calls
 
     def test_project_admin_users (self):
         code, stdout, stderr = run(
             list_allocations_main, "-p project3 -u user1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_allocations_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]),
             set(active(allocations([Project.fetch("project3")]))))
         assert_equal(set(kwargs['users']), set([User.fetch("user1")]))
@@ -2439,7 +2439,7 @@ class TestAllocationsList (CbankTester):
         code, stdout, stderr = run(
             list_allocations_main, ("-u %s" % user).split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_allocations_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_allocations_list.calls[0]
         assert_equal(set(kwargs['users']), set([user]))
     
     def test_resources (self):
@@ -2449,7 +2449,7 @@ class TestAllocationsList (CbankTester):
         code, stdout, stderr = run(
             list_allocations_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_allocations_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]), set(allocations_))
         
     def test_after (self):
@@ -2461,7 +2461,7 @@ class TestAllocationsList (CbankTester):
         code, stdout, stderr = run(
             list_allocations_main, "-a 2001-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_allocations_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]), set(allocations_))
         assert_equal(kwargs['after'], datetime(2001, 1, 1))
     
@@ -2474,7 +2474,7 @@ class TestAllocationsList (CbankTester):
         code, stdout, stderr = run(
             list_allocations_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_allocations_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]), set(allocations_))
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
     
@@ -2482,14 +2482,14 @@ class TestAllocationsList (CbankTester):
         code, stdout, stderr = run(
             list_allocations_main, ["-c"])
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_allocations_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_allocations_list.calls[0]
         assert_true(kwargs['comments'])
     
     def test_long (self):
         code, stdout, stderr = run(
             list_allocations_main, ["-l"])
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_allocations_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_allocations_list.calls[0]
         assert_false(kwargs['truncate'])
 
 
@@ -2504,14 +2504,14 @@ class TestAllocationsList_Admin (TestAllocationsList):
         allocations = active(Session.query(Allocation))
         code, stdout, stderr = run(list_allocations_main)
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_allocations_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]), set(allocations))
 
     def test_other_projects (self):
         code, stdout, stderr = run(
             list_allocations_main, "-p project3".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_allocations_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]),
             set(active(project_allocations(Project.fetch("project3")))))
     
@@ -2519,7 +2519,7 @@ class TestAllocationsList_Admin (TestAllocationsList):
         user = User.fetch("user1")
         code, stdout, stderr = run(list_allocations_main, "-u user1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_allocations_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_allocations_list.calls[0]
         assert_equal(set(kwargs['users']), set([User.fetch("user1")]))
         assert_equal(set(args[0]),
             set(active(allocations(get_projects(user)))))
@@ -2531,7 +2531,7 @@ class TestAllocationsList_Admin (TestAllocationsList):
         code, stdout, stderr = run(
             list_allocations_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_allocations_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]), set(allocations_))
 
     def test_after (self):
@@ -2540,7 +2540,7 @@ class TestAllocationsList_Admin (TestAllocationsList):
         code, stdout, stderr = run(
             list_allocations_main, "-a 2001-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_allocations_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]), set(allocations_))
         assert_equal(kwargs['after'], datetime(2001, 1, 1))
     
@@ -2550,7 +2550,7 @@ class TestAllocationsList_Admin (TestAllocationsList):
         code, stdout, stderr = run(
             list_allocations_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_allocations_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_allocations_list.calls[0]
         assert_equal(set(args[0]), set(allocations_))
         assert_equal(kwargs['before'], datetime(2000, 1, 1))
 
@@ -2559,8 +2559,8 @@ class TestHoldsList (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._print_holds_list = clusterbank.cbank.controllers.print_holds_list
-        clusterbank.cbank.controllers.print_holds_list = FakeFunc()
+        self._print_holds_list = clusterbank.cli.controllers.print_holds_list
+        clusterbank.cli.controllers.print_holds_list = FakeFunc()
         user1, user2 = [User.fetch(user) for user in ["user1", "user2"]]
         for project in [Project.cached(id_) for id_ in ["1", "2", "3", "4"]]:
             Session.add_all([
@@ -2592,7 +2592,7 @@ class TestHoldsList (CbankTester):
     
     def teardown (self):
         CbankTester.teardown(self)
-        clusterbank.cbank.controllers.print_holds_list = self._print_holds_list
+        clusterbank.cli.controllers.print_holds_list = self._print_holds_list
     
     def test_default (self):
         holds = Session.query(Hold).filter_by(active=True)
@@ -2602,7 +2602,7 @@ class TestHoldsList (CbankTester):
             get_projects(current_user()))))
         code, stdout, stderr = run(list_holds_main)
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_job (self):
@@ -2611,7 +2611,7 @@ class TestHoldsList (CbankTester):
         code, stdout, stderr = run(list_holds_main,
             "-j 2.4.resource2".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_jobs (self):
@@ -2620,20 +2620,20 @@ class TestHoldsList (CbankTester):
         code, stdout, stderr = run(list_holds_main,
             "-j 2.4.resource2 -j 2.5.resource1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_other_users (self):
         code, stdout, stderr = run(list_holds_main,
             "-p project1 -u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not clusterbank.cbank.controllers.print_holds_list.calls
+        assert not clusterbank.cli.controllers.print_holds_list.calls
 
     def test_member_users (self):
         code, stdout, stderr = run(list_holds_main,
             "-p project2 -u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not clusterbank.cbank.controllers.print_holds_list.calls
+        assert not clusterbank.cli.controllers.print_holds_list.calls
     
     def test_project_admin_users (self):
         holds = Session.query(Hold).filter_by(active=True).filter(
@@ -2643,7 +2643,7 @@ class TestHoldsList (CbankTester):
         code, stdout, stderr = run(list_holds_main,
             "-u user1 -p project4".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_self_users (self):
@@ -2655,7 +2655,7 @@ class TestHoldsList (CbankTester):
         holds = holds.filter(Hold.job.has(user_id=user.id))
         code, stdout, stderr = run(list_holds_main, ("-u %s" % user).split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_member_projects (self):
@@ -2665,7 +2665,7 @@ class TestHoldsList (CbankTester):
             Allocation.project_id==Project.fetch("project2").id))
         code, stdout, stderr = run(list_holds_main, "-p project2".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_project_admin_projects (self):
@@ -2674,7 +2674,7 @@ class TestHoldsList (CbankTester):
             Allocation.project_id == Project.fetch("project4").id))
         code, stdout, stderr = run(list_holds_main, "-p project4".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_other_projects (self):
@@ -2684,7 +2684,7 @@ class TestHoldsList (CbankTester):
             Allocation.project_id==Project.fetch("project1").id))
         code, stdout, stderr = run(list_holds_main, "-p project1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_resources (self):
@@ -2696,7 +2696,7 @@ class TestHoldsList (CbankTester):
             Allocation.resource_id == Resource.fetch("resource1").id))
         code, stdout, stderr = run(list_holds_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_after (self):
@@ -2707,7 +2707,7 @@ class TestHoldsList (CbankTester):
             Hold.datetime >= datetime(2000, 1, 1))
         code, stdout, stderr = run(list_holds_main, "-a 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_before (self):
@@ -2719,21 +2719,21 @@ class TestHoldsList (CbankTester):
             Hold.datetime < datetime(2000, 1, 1))
         code, stdout, stderr = run(list_holds_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_comments (self):
         code, stdout, stderr = run(
             list_holds_main, ["-c"])
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_true(kwargs['comments'])
     
     def test_long (self):
         code, stdout, stderr = run(
             list_holds_main, ["-l"])
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_false(kwargs['truncate'])
 
 
@@ -2749,7 +2749,7 @@ class TestHoldsList_Admin (TestHoldsList):
             Hold.job.has(user_id=user.id))
         code, stdout, stderr = run(list_holds_main, ("-u %s" % user).split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_resources (self):
@@ -2758,7 +2758,7 @@ class TestHoldsList_Admin (TestHoldsList):
             Allocation.resource_id == Resource.fetch("resource1").id))
         code, stdout, stderr = run(list_holds_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_other_users (self):
@@ -2769,7 +2769,7 @@ class TestHoldsList_Admin (TestHoldsList):
         code, stdout, stderr = run(list_holds_main,
             "-p project1 -u user1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_other_projects (self):
@@ -2778,7 +2778,7 @@ class TestHoldsList_Admin (TestHoldsList):
             Allocation.project_id==Project.fetch("project1").id))
         code, stdout, stderr = run(list_holds_main, "-p project1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_member_users (self):
@@ -2789,7 +2789,7 @@ class TestHoldsList_Admin (TestHoldsList):
         code, stdout, stderr = run(list_holds_main,
             "-p project2 -u user1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
      
     def test_member_projects (self):
@@ -2798,14 +2798,14 @@ class TestHoldsList_Admin (TestHoldsList):
             Allocation.project_id==Project.fetch("project2").id))
         code, stdout, stderr = run(list_holds_main, "-p project2".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_default (self):
         holds = Session.query(Hold).filter_by(active=True)
         code, stdout, stderr = run(list_holds_main)
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_after (self):
@@ -2813,7 +2813,7 @@ class TestHoldsList_Admin (TestHoldsList):
             active=True).filter(Hold.datetime >= datetime(2000, 1, 1))
         code, stdout, stderr = run(list_holds_main, "-a 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
     
     def test_before (self):
@@ -2821,7 +2821,7 @@ class TestHoldsList_Admin (TestHoldsList):
             active=True).filter(Hold.datetime < datetime(2000, 1, 1))
         code, stdout, stderr = run(list_holds_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_holds_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_holds_list.calls[0]
         assert_equal(set(args[0]), set(holds))
 
 
@@ -2829,8 +2829,8 @@ class TestJobsList (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._print_jobs_list = clusterbank.cbank.controllers.print_jobs_list
-        clusterbank.cbank.controllers.print_jobs_list = FakeFunc()
+        self._print_jobs_list = clusterbank.cli.controllers.print_jobs_list
+        clusterbank.cli.controllers.print_jobs_list = FakeFunc()
         current_user_ = current_user()
         p1r1 = Allocation(Project.fetch("project1"), Resource.fetch("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
@@ -2929,12 +2929,12 @@ class TestJobsList (CbankTester):
     
     def teardown (self):
         CbankTester.teardown(self)
-        clusterbank.cbank.controllers.print_jobs_list = self._print_jobs_list
+        clusterbank.cli.controllers.print_jobs_list = self._print_jobs_list
     
     def test_default (self):
         code, stdout, stderr = run(list_jobs_main)
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         jobs = Session.query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.3", "resource1.7", "resource2.1"]))
         assert_equal(set(args[0]), set(jobs))
@@ -2942,7 +2942,7 @@ class TestJobsList (CbankTester):
     def test_default_order (self):
         code, stdout, stderr = run(list_jobs_main)
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         s = Session()
         jobs = [s.query(Job).filter_by(id="resource1.1").one(),
             s.query(Job).filter_by(id="resource1.2").one(),
@@ -2956,7 +2956,7 @@ class TestJobsList (CbankTester):
         assert_equal(code, 0)
         jobs = Session.query(Job).filter(Job.id.in_([
             "resource1.2", "resource1.3"]))
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_before (self):
@@ -2964,20 +2964,20 @@ class TestJobsList (CbankTester):
         assert_equal(code, 0)
         jobs = Session.query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2"]))
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_other_users (self):
         code, stdout, stderr = run(list_jobs_main,
             "-p project1 -u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not clusterbank.cbank.controllers.print_jobs_list.calls
+        assert not clusterbank.cli.controllers.print_jobs_list.calls
 
     def test_member_users (self):
         code, stdout, stderr = run(list_jobs_main,
             "-p project2 -u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not clusterbank.cbank.controllers.print_jobs_list.calls
+        assert not clusterbank.cli.controllers.print_jobs_list.calls
     
     def test_project_admin_users (self):
         code, stdout, stderr = run(list_jobs_main,
@@ -2985,7 +2985,7 @@ class TestJobsList (CbankTester):
         assert_equal(code, 0)
         jobs = Session.query(Job).filter(Job.id.in_([
             "resource1.5", "resource1.11"]))
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
      
     def test_self_users (self):
@@ -2994,7 +2994,7 @@ class TestJobsList (CbankTester):
         assert_equal(code, 0)
         jobs = Session.query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.3", "resource1.7", "resource2.1"]))
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_member_projects (self):
@@ -3002,7 +3002,7 @@ class TestJobsList (CbankTester):
         assert_equal(code, 0)
         jobs = Session.query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.3", "resource1.7", "resource2.1"]))
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_project_admin_projects (self):
@@ -3010,28 +3010,28 @@ class TestJobsList (CbankTester):
         assert_equal(code, 0)
         jobs = Session.query(Job).filter(Job.id.in_(["resource1.5",
             "resource1.10", "resource1.11", "resource1.12"]))
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_other_projects (self):
         code, stdout, stderr = run(list_jobs_main, "-p project1".split())
         assert_equal(code, 0)
         jobs = Session.query(Job).filter(Job.id.in_(["resource1.13"]))
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_resources (self):
         code, stdout, stderr = run(list_jobs_main, "-r resource2".split())
         assert_equal(code, 0)
         jobs = Session.query(Job).filter(Job.id.in_(["resource2.1"]))
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_long (self):
         code, stdout, stderr = run(
             list_jobs_main, ["-l"])
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         assert_false(kwargs['truncate'])
 
 
@@ -3044,14 +3044,14 @@ class TestJobsList_Admin (TestJobsList):
     def test_default (self):
         code, stdout, stderr = run(list_jobs_main)
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         jobs = Session.query(Job)
         assert_equal(set(args[0]), set(jobs))
     
     def test_default_order (self):
         code, stdout, stderr = run(list_jobs_main)
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         s = Session()
         jobs = [s.query(Job).filter_by(id="resource1.1").one(),
             s.query(Job).filter_by(id="resource1.2").one(),
@@ -3078,7 +3078,7 @@ class TestJobsList_Admin (TestJobsList):
         jobs = Session.query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.3", "resource1.4", "resource1.7",
             "resource1.10", "resource1.13", "resource2.1"]))
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_member_projects (self):
@@ -3087,7 +3087,7 @@ class TestJobsList_Admin (TestJobsList):
         jobs = Session.query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.3", "resource1.7", "resource1.8",
             "resource1.9", "resource1.15", "resource2.1"]))
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_after (self):
@@ -3095,7 +3095,7 @@ class TestJobsList_Admin (TestJobsList):
         assert_equal(code, 0)
         jobs = Session.query(Job).filter(Job.id.in_(["resource1.2",
             "resource1.3", "resource1.5", "resource1.6"]))
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_before (self):
@@ -3103,7 +3103,7 @@ class TestJobsList_Admin (TestJobsList):
         assert_equal(code, 0)
         jobs = Session.query(Job).filter(Job.id.in_(["resource1.1",
             "resource1.2", "resource1.5"]))
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
 
     def test_member_users (self):
@@ -3111,7 +3111,7 @@ class TestJobsList_Admin (TestJobsList):
             "-p project2 -u user1".split())
         assert_equal(code, 0)
         jobs = Session.query(Job).filter(Job.id.in_(["resource1.15"]))
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_other_users (self):
@@ -3119,7 +3119,7 @@ class TestJobsList_Admin (TestJobsList):
             "-p project1 -u user1".split())
         assert_equal(code, 0)
         jobs = Session.query(Job).filter(Job.id.in_(["resource1.14"]))
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
     
     def test_other_projects (self):
@@ -3127,7 +3127,7 @@ class TestJobsList_Admin (TestJobsList):
         assert_equal(code, 0)
         jobs = Session.query(Job).filter(Job.id.in_(["resource1.13",
             "resource1.14"]))
-        args, kwargs = clusterbank.cbank.controllers.print_jobs_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs_list.calls[0]
         assert_equal(set(args[0]), set(jobs))
 
 
@@ -3135,8 +3135,8 @@ class TestChargesList (CbankTester):
     
     def setup (self):
         CbankTester.setup(self)
-        self._print_charges_list = clusterbank.cbank.controllers.print_charges_list
-        clusterbank.cbank.controllers.print_charges_list = FakeFunc()
+        self._print_charges_list = clusterbank.cli.controllers.print_charges_list
+        clusterbank.cli.controllers.print_charges_list = FakeFunc()
         user1, user2 = [User.fetch(user) for user in ["user1", "user2"]]
         for project in [Project.cached(id_) for id_ in ["1", "2", "3", "4"]]:
             Session.add_all([
@@ -3167,14 +3167,14 @@ class TestChargesList (CbankTester):
     
     def teardown (self):
         CbankTester.teardown(self)
-        clusterbank.cbank.controllers.print_charges_list = self._print_charges_list
+        clusterbank.cli.controllers.print_charges_list = self._print_charges_list
     
     def test_default (self):
         charges = Session.query(Charge).filter(
             Charge.id.in_([11, 12, 15, 16, 19, 20, 23, 24]))
         code, stdout, stderr = run(list_charges_main)
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_job (self):
@@ -3183,7 +3183,7 @@ class TestChargesList (CbankTester):
         code, stdout, stderr = run(list_charges_main,
             "-j 3.5.resource1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_jobs (self):
@@ -3192,27 +3192,27 @@ class TestChargesList (CbankTester):
         code, stdout, stderr = run(list_charges_main,
             "-j 3.5.resource1 -j 3.6.resource2".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_other_users (self):
         code, stdout, stderr = run(list_charges_main,
             "-p project1 -u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not clusterbank.cbank.controllers.print_charges_list.calls
+        assert not clusterbank.cli.controllers.print_charges_list.calls
 
     def test_member_users (self):
         code, stdout, stderr = run(list_charges_main,
             "-p project2 -u user1".split())
         assert_equal(code, NotPermitted.exit_code)
-        assert not clusterbank.cbank.controllers.print_charges_list.calls
+        assert not clusterbank.cli.controllers.print_charges_list.calls
     
     def test_project_admin_users (self):
         charges = Session.query(Charge).filter(Charge.id.in_([25, 29]))
         code, stdout, stderr = run(list_charges_main,
             "-u user1 -p project4".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_self_users (self):
@@ -3221,7 +3221,7 @@ class TestChargesList (CbankTester):
         code, stdout, stderr = run(list_charges_main,
             ("-u %s" % current_user()).split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_member_projects (self):
@@ -3229,7 +3229,7 @@ class TestChargesList (CbankTester):
             Charge.id.in_([11, 12, 15, 16]))
         code, stdout, stderr = run(list_charges_main, "-p project2".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_project_admin_projects (self):
@@ -3237,7 +3237,7 @@ class TestChargesList (CbankTester):
             Charge.id.in_([25, 26, 27, 28, 29, 30, 31, 32]))
         code, stdout, stderr = run(list_charges_main, "-p project4".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_other_projects (self):
@@ -3245,7 +3245,7 @@ class TestChargesList (CbankTester):
             Charge.id.in_([3, 4, 7, 8]))
         code, stdout, stderr = run(list_charges_main, "-p project1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_resources (self):
@@ -3253,7 +3253,7 @@ class TestChargesList (CbankTester):
             Charge.id.in_([11, 12, 19, 20]))
         code, stdout, stderr = run(list_charges_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_after (self):
@@ -3262,7 +3262,7 @@ class TestChargesList (CbankTester):
         code, stdout, stderr = run(list_charges_main,
             "-a 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_before (self):
@@ -3271,21 +3271,21 @@ class TestChargesList (CbankTester):
         code, stdout, stderr = run(
             list_charges_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_comments (self):
         code, stdout, stderr = run(
             list_charges_main, ["-c"])
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_true(kwargs['comments'])
     
     def test_long (self):
         code, stdout, stderr = run(
             list_charges_main, ["-l"])
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_false(kwargs['truncate'])
 
 
@@ -3302,7 +3302,7 @@ class TestChargesList_Admin (TestChargesList):
         code, stdout, stderr = run(list_charges_main,
             ("-u %s" % current_user()).split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_resources (self):
@@ -3311,7 +3311,7 @@ class TestChargesList_Admin (TestChargesList):
         code, stdout, stderr = run(
             list_charges_main, "-r resource1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_other_users (self):
@@ -3320,7 +3320,7 @@ class TestChargesList_Admin (TestChargesList):
         code, stdout, stderr = run(list_charges_main,
             "-p project1 -u user1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_other_projects (self):
@@ -3328,7 +3328,7 @@ class TestChargesList_Admin (TestChargesList):
             Charge.id.in_([8, 2, 7, 1, 3, 5, 4, 6]))
         code, stdout, stderr = run(list_charges_main, "-p project1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_member_users (self):
@@ -3337,7 +3337,7 @@ class TestChargesList_Admin (TestChargesList):
         code, stdout, stderr = run(list_charges_main,
             "-p project2 -u user1".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
      
     def test_member_projects (self):
@@ -3345,14 +3345,14 @@ class TestChargesList_Admin (TestChargesList):
             Charge.id.in_([10, 16, 14, 13, 9, 15, 11, 12]))
         code, stdout, stderr = run(list_charges_main, "-p project2".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_default (self):
         charges = Session.query(Charge)
         code, stdout, stderr = run(list_charges_main)
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_after (self):
@@ -3361,7 +3361,7 @@ class TestChargesList_Admin (TestChargesList):
         code, stdout, stderr = run(
             list_charges_main, "-a 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
     
     def test_before (self):
@@ -3370,7 +3370,7 @@ class TestChargesList_Admin (TestChargesList):
         code, stdout, stderr = run(
             list_charges_main, "-b 2000-01-01".split())
         assert_equal(code, 0)
-        args, kwargs = clusterbank.cbank.controllers.print_charges_list.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_charges_list.calls[0]
         assert_equal(set(args[0]), set(charges))
 
 
@@ -3381,18 +3381,18 @@ class TestDetailJobs (CbankTester):
         be_admin()
         job_ = Job("resource1.1")
         Session.add(job_)
-        self._print_jobs = clusterbank.cbank.controllers.print_jobs
-        clusterbank.cbank.controllers.print_jobs = FakeFunc()
+        self._print_jobs = clusterbank.cli.controllers.print_jobs
+        clusterbank.cli.controllers.print_jobs = FakeFunc()
     
     def teardown (self):
         CbankTester.teardown(self)
-        clusterbank.cbank.controllers.print_jobs = self._print_jobs
+        clusterbank.cli.controllers.print_jobs = self._print_jobs
     
     def test_jobs_list (self):
         code, stdout, stderr = run(
             detail_jobs_main, "resource1.1".split())
         assert_equal(code, 0)
         jobs = Session.query(Job).filter(Job.id.in_(["resource1.1"]))
-        args, kwargs = clusterbank.cbank.controllers.print_jobs.calls[0]
+        args, kwargs = clusterbank.cli.controllers.print_jobs.calls[0]
         assert_equal(set(args[0]), set(jobs))
  

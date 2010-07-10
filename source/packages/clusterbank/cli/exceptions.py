@@ -1,6 +1,6 @@
-"""Exceptional cases and errors in the cbank interface.
+"""Exceptional cases and errors in the command-line interface.
 
-Each cbank exception has an associated exit_code class attribute.
+Each cli exception has an associated exit_code class attribute.
 
 Exceptions:
 CbankException -- a generic exception (0)
@@ -28,7 +28,7 @@ __all__ = ["CbankException", "CbankError", "UnknownEntity", "UnknownUser",
 
 class CbankException (Exception):
     
-    """Base class for exceptions in the cbank interface."""
+    """Base class for exceptions in the command-line interface."""
     
     exit_code = 0
     

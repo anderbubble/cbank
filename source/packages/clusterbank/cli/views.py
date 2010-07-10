@@ -1,4 +1,4 @@
-"""Views of the model provided by cbank.
+"""Views of the model provided by the cli.
 
 Classes:
 Formatter -- a tabular formatter for lists
@@ -36,7 +36,7 @@ from sqlalchemy.sql import and_, func
 from sqlalchemy.orm import eagerload, contains_eager
 
 from clusterbank import config
-from clusterbank.cbank.common import get_unit_factor
+from clusterbank.cli.common import get_unit_factor
 from clusterbank.model import (User, Project, Resource, Allocation, Hold,
     Job, Charge, Refund)
 from clusterbank.controllers import Session
@@ -685,7 +685,7 @@ def print_refund (refund):
 def unit_definition ():
     """A configured unit description."""
     try:
-        unit_label = config.get("cbank", "unit_label")
+        unit_label = config.get("cli", "unit_label")
     except ConfigParser.Error:
         return "Units are undefined."
     else:
