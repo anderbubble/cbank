@@ -599,7 +599,8 @@ def parse_pbs (entry):
     if entry_type not in ("Q", "S", "E"):
         raise ValueError("Invalid job record: %s" % entry)
     attributes = dict(attribute.split("=", 1)
-                      for attribute in message_text.split(" ") if "=" in attribute)
+                      for attribute in message_text.split(" ")
+                      if "=" in attribute)
     return entry_type, id_, attributes
 
 

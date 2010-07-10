@@ -636,12 +636,15 @@ def list_allocations_main ():
             if users:
                 projects = user_projects_all(users)
             else:
-                projects = [Project.cached(project_id) for (project_id, ) in Session.query(Allocation.project_id)]
+                projects = [
+                    Project.cached(project_id)
+                    for (project_id, ) in Session.query(Allocation.project_id)]
     else:
         if not projects:
             projects = get_projects(member=current_user)
         for project in projects:
-            if not (current_user.is_member(project) or current_user.is_manager(project)):
+            if not (current_user.is_member(project)
+                    or current_user.is_manager(project)):
                 raise NotPermitted(current_user)
         if not (projects and user_admins_all(current_user, projects)):
             if not set(users).issubset(set([current_user])):
@@ -653,7 +656,8 @@ def list_allocations_main ():
         allocations = allocations.filter(
             Allocation.resource_id.in_(resource.id for resource in resources))
     if projects:
-        allocations = allocations.filter(Allocation.project_id.in_(project.id for project in projects))
+        allocations = allocations.filter(
+            Allocation.project_id.in_(project.id for project in projects))
     if not (options.after or options.before):
         now = datetime.now()
         allocations = allocations.filter(and_(
@@ -699,7 +703,8 @@ def list_holds_main ():
         holds = holds.filter(Hold.job.has(Job.user_id.in_(
             user_.id for user_ in users)))
     if projects:
-        holds = holds.filter(Hold.allocation.has(Allocation.project_id.in_(project.id for project in projects)))
+        holds = holds.filter(Hold.allocation.has(
+            Allocation.project_id.in_(project.id for project in projects)))
     if resources:
         holds = holds.filter(Hold.allocation.has(
             Allocation.resource_id.in_(resource.id for resource in resources)))
@@ -853,7 +858,8 @@ def detail_allocations_main ():
     allocations = \
         s.query(Allocation).filter(Allocation.id.in_(sys.argv[1:]))
     if not current_user in configured_admins():
-        projects = get_projects(current_user) + get_projects(manager=current_user)
+        projects = (
+            get_projects(current_user) + get_projects(manager=current_user))
         permitted_allocations = []
         for allocation in allocations:
             if not allocation.project in projects:
@@ -1155,7 +1161,9 @@ def get_current_user ():
 def configured_admins ():
     """Return the configured resource."""
     try:
-        return [User.fetch(user) for user in config.get("cbank", "admins").split(",")]
+        return [
+            User.fetch(user)
+            for user in config.get("cbank", "admins").split(",")]
     except ConfigParser.Error:
         return []
 
