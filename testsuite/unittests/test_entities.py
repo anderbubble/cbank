@@ -4,32 +4,32 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import create_engine
 
-from clusterbank import config
-from clusterbank.controllers import Session
-from clusterbank.model import (
+from cbank import config
+from cbank.controllers import Session
+from cbank.model import (
     metadata, User, Project, Resource,
     Allocation, Hold, Job, Charge, Refund)
-import clusterbank.upstreams.default
+import cbank.upstreams.default
 
 
 def setup ():
-    clusterbank.model.metadata.bind = \
+    cbank.model.metadata.bind = \
         create_engine("sqlite:///:memory:")
-    clusterbank.model.use_upstream(clusterbank.upstreams.default)
-    clusterbank.upstreams.default.users = [
-        clusterbank.upstreams.default.User("1", "monty")]
-    clusterbank.upstreams.default.projects = [
-        clusterbank.upstreams.default.Project("1", "grail")]
-    clusterbank.upstreams.default.resources = [
-        clusterbank.upstreams.default.Resource("1", "spam")]
+    cbank.model.use_upstream(cbank.upstreams.default)
+    cbank.upstreams.default.users = [
+        cbank.upstreams.default.User("1", "monty")]
+    cbank.upstreams.default.projects = [
+        cbank.upstreams.default.Project("1", "grail")]
+    cbank.upstreams.default.resources = [
+        cbank.upstreams.default.Resource("1", "spam")]
 
 
 def teardown ():
-    clusterbank.upstreams.default.users = []
-    clusterbank.upstreams.default.projects = []
-    clusterbank.upstreams.default.resources = []
-    clusterbank.model.clear_upstream()
-    clusterbank.model.metadata.bind = None
+    cbank.upstreams.default.users = []
+    cbank.upstreams.default.projects = []
+    cbank.upstreams.default.resources = []
+    cbank.model.clear_upstream()
+    cbank.model.metadata.bind = None
 
 
 class MappedEntityTester (object):

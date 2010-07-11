@@ -1,4 +1,4 @@
-"""The clusterbank model.
+"""The cbank model.
 
 This package contains the local data model, including reflected users,
 projects, and resources from upstream, along with allocations,
@@ -25,11 +25,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import mapper, relation
 from sqlalchemy.exceptions import ArgumentError
 
-from clusterbank import config
-from clusterbank.model.entities import (
+from cbank import config
+from cbank.model.entities import (
     User, Project, Resource,
     Allocation, Hold, Job, Charge, Refund)
-from clusterbank.model.database import (metadata,
+from cbank.model.database import (metadata,
     allocations, holds, jobs, charges, refunds)
 
 
@@ -58,7 +58,7 @@ def configured_upstream ():
     try:
         module_name = config.get("upstream", "module")
     except ConfigParser.Error:
-        module_name = "clusterbank.upstreams.default"
+        module_name = "cbank.upstreams.default"
     try:
         module = __import__(module_name, locals(), globals(), [
             "user_in", "user_out",

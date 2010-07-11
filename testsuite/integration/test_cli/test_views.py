@@ -8,16 +8,16 @@ from textwrap import dedent
 
 from sqlalchemy import create_engine
 
-import clusterbank
-import clusterbank.model
-from clusterbank.model import (
+import cbank
+import cbank.model
+from cbank.model import (
     User, Resource, Project, Allocation, Hold,
     Job, Charge, Refund)
-from clusterbank.controllers import Session
-import clusterbank.model.database
-import clusterbank.upstreams.default
-import clusterbank.cli.views
-from clusterbank.cli.views import (
+from cbank.controllers import Session
+import cbank.model.database
+import cbank.upstreams.default
+import cbank.cli.views
+from cbank.cli.views import (
     print_users_list, print_projects_list, print_allocations_list,
     print_holds_list, print_jobs_list, print_charges_list,
     print_charges, print_jobs, print_refunds, print_holds, display_units)
@@ -36,57 +36,57 @@ class FakeDateTime (object):
 
 
 def setup ():
-    clusterbank.model.database.metadata.bind = create_engine("sqlite:///:memory:")
-    clusterbank.model.use_upstream(clusterbank.upstreams.default)
-    clusterbank.upstreams.default.projects = [
-        clusterbank.upstreams.default.Project("1", "project1"),
-        clusterbank.upstreams.default.Project("2", "project2")]
-    clusterbank.upstreams.default.resources = [
-        clusterbank.upstreams.default.Resource("1", "res1"),
-        clusterbank.upstreams.default.Resource("2", "res2")]
-    clusterbank.upstreams.default.users = [
-        clusterbank.upstreams.default.User("1", "user1"),
-        clusterbank.upstreams.default.User("2", "user2")]
-    clusterbank.cli.views.datetime = FakeDateTime(datetime(2000, 1, 1))
+    cbank.model.database.metadata.bind = create_engine("sqlite:///:memory:")
+    cbank.model.use_upstream(cbank.upstreams.default)
+    cbank.upstreams.default.projects = [
+        cbank.upstreams.default.Project("1", "project1"),
+        cbank.upstreams.default.Project("2", "project2")]
+    cbank.upstreams.default.resources = [
+        cbank.upstreams.default.Resource("1", "res1"),
+        cbank.upstreams.default.Resource("2", "res2")]
+    cbank.upstreams.default.users = [
+        cbank.upstreams.default.User("1", "user1"),
+        cbank.upstreams.default.User("2", "user2")]
+    cbank.cli.views.datetime = FakeDateTime(datetime(2000, 1, 1))
 
 
 def teardown ():
-    clusterbank.model.database.metadata.bind = None
-    clusterbank.model.clear_upstream()
-    clusterbank.upstreams.default.users = []
-    clusterbank.upstreams.default.projects = []
-    clusterbank.upstreams.default.resources = []
-    clusterbank.cli.views.datetime = datetime
+    cbank.model.database.metadata.bind = None
+    cbank.model.clear_upstream()
+    cbank.upstreams.default.users = []
+    cbank.upstreams.default.projects = []
+    cbank.upstreams.default.resources = []
+    cbank.cli.views.datetime = datetime
 
 
 class TestDisplayUnits (object):
     
     def setup (self):
-        clusterbank.cli.views.config.add_section("cli")
+        cbank.cli.views.config.add_section("cli")
     
     def teardown (self):
-        clusterbank.cli.views.config.remove_section("cli")
+        cbank.cli.views.config.remove_section("cli")
     
     def test_no_unit_factor (self):
         assert_equal(display_units(1000), "1000.0")
     
     def test_unit_factor_simple (self):
-        clusterbank.cli.views.config.set("cli", "unit_factor", "10")
+        cbank.cli.views.config.set("cli", "unit_factor", "10")
         assert_equal(display_units(1000), "10000.0")
     
     def test_unit_factor_fraction (self):
-        clusterbank.cli.views.config.set("cli", "unit_factor", "1/10")
+        cbank.cli.views.config.set("cli", "unit_factor", "1/10")
         assert_equal(display_units(1000), "100.0")
 
 
 class CbankViewTester (object):
 
     def setup (self):
-        clusterbank.model.database.metadata.create_all()
+        cbank.model.database.metadata.create_all()
     
     def teardown (self):
         Session.remove()
-        clusterbank.model.database.metadata.drop_all()
+        cbank.model.database.metadata.drop_all()
 
 
 class TestUsersList (CbankViewTester):

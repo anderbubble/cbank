@@ -1,4 +1,4 @@
-"""Common clusterbank controllers.
+"""Common cbank controllers.
 
 Objects:
 Session -- sessionmaker (and default session)
@@ -6,9 +6,9 @@ Session -- sessionmaker (and default session)
 
 from datetime import datetime, timedelta
 
-from clusterbank.model import (User, Project,
+from cbank.model import (User, Project,
     Allocation, Hold, Job, Charge, Refund)
-from clusterbank.model.entities import parse_pbs
+from cbank.model.entities import parse_pbs
 
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.orm.session import SessionExtension

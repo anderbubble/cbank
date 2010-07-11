@@ -4,21 +4,21 @@ from datetime import datetime
 
 from sqlalchemy import create_engine
 
-import clusterbank.model
-import clusterbank.upstreams.default
-from clusterbank.model import (
+import cbank.model
+import cbank.upstreams.default
+from cbank.model import (
     User, Project, Resource, Allocation, Hold, Job, Charge, Refund)
-from clusterbank.controllers import Session, get_projects
+from cbank.controllers import Session, get_projects
 
 
 def setup ():
-    clusterbank.model.metadata.bind = create_engine("sqlite:///:memory:")
-    clusterbank.model.use_upstream(clusterbank.upstreams.default)
+    cbank.model.metadata.bind = create_engine("sqlite:///:memory:")
+    cbank.model.use_upstream(cbank.upstreams.default)
 
 
 def teardown ():
-    clusterbank.model.clear_upstream()
-    clusterbank.model.metadata.bind = None
+    cbank.model.clear_upstream()
+    cbank.model.metadata.bind = None
 
 
 def assert_identical (obj1, obj2):
@@ -29,28 +29,28 @@ class DatabaseEnabledTester (object):
 
     def setup (self):
         """Create the tables before each test."""
-        clusterbank.model.metadata.create_all()
+        cbank.model.metadata.create_all()
     
     def teardown (self):
         """drop the database after each test."""
         Session.remove()
-        clusterbank.model.metadata.drop_all()
+        cbank.model.metadata.drop_all()
 
 
 class TestGetProjects (DatabaseEnabledTester):
 
     def setup (self):
         DatabaseEnabledTester.setup(self)
-        p1 = clusterbank.upstreams.default.Project("1", "one")
-        p2 = clusterbank.upstreams.default.Project("2", "two")
-        u1 = clusterbank.upstreams.default.Project("1", "one")
-        u2 = clusterbank.upstreams.default.Project("2", "two")
+        p1 = cbank.upstreams.default.Project("1", "one")
+        p2 = cbank.upstreams.default.Project("2", "two")
+        u1 = cbank.upstreams.default.Project("1", "one")
+        u2 = cbank.upstreams.default.Project("2", "two")
         p1.members = [u1]
         p1.managers = [u2]
         p2.members = [u2]
         p2.managers = [u1]
-        clusterbank.upstreams.default.projects = [p1, p2]
-        clusterbank.upstreams.default.users = [u1, u2]
+        cbank.upstreams.default.projects = [p1, p2]
+        cbank.upstreams.default.users = [u1, u2]
         a1 = Allocation(Project.cached("1"), Resource.cached("1"), 1,
                        datetime.now(), datetime.now())
         a2 = Allocation(Project.cached("2"), Resource.cached("1"), 1,
@@ -60,8 +60,8 @@ class TestGetProjects (DatabaseEnabledTester):
 
     def teardown (self):
         DatabaseEnabledTester.teardown(self)
-        clusterbank.upstreams.default.projects = []
-        clusterbank.upstreams.default.users = []
+        cbank.upstreams.default.projects = []
+        cbank.upstreams.default.users = []
 
     def test_all_projects (self):
         assert_equal(set(get_projects()),

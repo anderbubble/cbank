@@ -35,11 +35,11 @@ from decimal import Decimal
 from sqlalchemy.sql import and_, func
 from sqlalchemy.orm import eagerload, contains_eager
 
-from clusterbank import config
-from clusterbank.cli.common import get_unit_factor
-from clusterbank.model import (User, Project, Resource, Allocation, Hold,
+from cbank import config
+from cbank.cli.common import get_unit_factor
+from cbank.model import (User, Project, Resource, Allocation, Hold,
     Job, Charge, Refund)
-from clusterbank.controllers import Session
+from cbank.controllers import Session
 
 __all__ = ["unit_definition", "convert_units", "display_units",
     "print_users_list", "print_projects_list", "print_allocations_list",

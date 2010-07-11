@@ -36,20 +36,20 @@ from sqlalchemy import and_, or_
 from sqlalchemy.exceptions import InvalidRequestError, IntegrityError
 from sqlalchemy.orm import eagerload
 
-import clusterbank
-from clusterbank import config
-from clusterbank.model import (
+import cbank
+from cbank import config
+from cbank.model import (
     User, Project, Resource,
     Allocation, Hold, Job, Charge, Refund)
-from clusterbank.controllers import Session, get_projects, get_users, import_job
-from clusterbank.cli.views import (print_allocation, print_charge,
+from cbank.controllers import Session, get_projects, get_users, import_job
+from cbank.cli.views import (print_allocation, print_charge,
     print_charges, print_hold, print_holds, print_refund, print_users_list,
     print_projects_list, print_allocations_list, print_holds_list,
     print_jobs_list, print_charges_list, print_allocations, print_refunds,
     print_jobs)
-from clusterbank.cli.common import get_unit_factor
-from clusterbank.exceptions import NotFound
-from clusterbank.cli.exceptions import (CbankException, NotPermitted,
+from cbank.cli.common import get_unit_factor
+from cbank.exceptions import NotFound
+from cbank.cli.exceptions import (CbankException, NotPermitted,
     UnknownCommand, MissingArgument, UnexpectedArguments, MissingResource,
     UnknownAllocation, UnknownCharge, UnknownProject, ValueError_,
     UnknownUser, MissingCommand, HasChildren)
@@ -197,7 +197,7 @@ def print_new_main_help ():
     message = """\
         usage: %(command)s <entity>
         
-        Create clusterbank entities:
+        Create cbank entities:
           allocation
           charge
           refund
@@ -339,7 +339,7 @@ def print_import_main_help ():
     message = """\
         usage: %(command)s <entity>
         
-        Import clusterbank entities:
+        Import cbank entities:
           jobs
         
         Each entity has its own set of options. For help with a specific
@@ -522,7 +522,7 @@ def print_list_main_help ():
     message = """\
         usage: %(command)s <list>
         
-        Generate clusterbank lists:
+        Generate cbank lists:
           users
           projects (default)
           allocations
@@ -839,7 +839,7 @@ def print_detail_main_help ():
     message = """\
         usage: %(command)s <entity> <id> ...
         
-        Retrieve details of clusterbank entities:
+        Retrieve details of cbank entities:
           allocations
           holds
           jobs
@@ -1001,7 +1001,7 @@ def print_edit_main_help ():
     message = """\
         usage: %(command)s <entity>
         
-        Edit clusterbank entities:
+        Edit cbank entities:
           allocation
           charge
           refund
@@ -1182,7 +1182,7 @@ def parse_units (units):
 
 def list_users_parser ():
     """An optparse parser for the users list."""
-    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser = optparse.OptionParser(version=cbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
         help="list charges by USER", metavar="USER"))
@@ -1207,7 +1207,7 @@ def list_users_parser ():
 
 def list_projects_parser ():
     """An optparse parser for the projects list."""
-    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser = optparse.OptionParser(version=cbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
         help="list charges by USER", metavar="USER"))
@@ -1232,7 +1232,7 @@ def list_projects_parser ():
 
 def list_allocations_parser ():
     """An optparse parser for the allocations list."""
-    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser = optparse.OptionParser(version=cbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
         help="charges by USER", metavar="USER"))
@@ -1261,7 +1261,7 @@ def list_allocations_parser ():
 
 def list_holds_parser ():
     """An optparse parser for the holds list."""
-    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser = optparse.OptionParser(version=cbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
         help="list holds by USER", metavar="USER"))
@@ -1293,7 +1293,7 @@ def list_holds_parser ():
 
 def list_jobs_parser ():
     """An optparse parser for the jobs list."""
-    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser = optparse.OptionParser(version=cbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
         help="list jobs by USER", metavar="USER"))
@@ -1318,7 +1318,7 @@ def list_jobs_parser ():
 
 def list_charges_parser ():
     """An optparse parser for the charges list."""
-    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser = optparse.OptionParser(version=cbank.__version__)
     parser.add_option(Option("-u", "--user",
         dest="users", type="user", action="append",
         help="list charges by USER", metavar="USER"))
@@ -1350,7 +1350,7 @@ def list_charges_parser ():
 
 def new_allocation_parser ():
     """An optparse parser for creating new allocations."""
-    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser = optparse.OptionParser(version=cbank.__version__)
     parser.add_option(Option("-r", "--resource",
         type="resource", dest="resource",
         help="allocate for RESOURCE", metavar="RESOURCE"))
@@ -1372,7 +1372,7 @@ def new_allocation_parser ():
 
 def new_charge_parser ():
     """An optparse parser for creating new charges."""
-    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser = optparse.OptionParser(version=cbank.__version__)
     parser.add_option(Option("-r", "--resource",
         type="resource", dest="resource",
         help="charge for RESOURCE", metavar="RESOURCE"))
@@ -1386,7 +1386,7 @@ def new_charge_parser ():
 
 def new_hold_parser ():
     """An optparse parser for creating new holds."""
-    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser = optparse.OptionParser(version=cbank.__version__)
     parser.add_option(Option("-u", "--user",
         type="user", dest="user",
         help="hold for USER", metavar="USER"))
@@ -1403,7 +1403,7 @@ def new_hold_parser ():
 
 def new_refund_parser ():
     """An optparse parser for creating new refunds."""
-    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser = optparse.OptionParser(version=cbank.__version__)
     parser.add_option(Option("-n", dest="commit", action="store_false",
         help="do not save the refund"))
     parser.add_option("-c", "--comment", dest="comment",
@@ -1414,7 +1414,7 @@ def new_refund_parser ():
 
 def edit_allocation_parser ():
     """An optparse parser for editing existing allocations."""
-    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser = optparse.OptionParser(version=cbank.__version__)
     parser.add_option(Option("-D", "--delete",
         dest="delete", action="store_true",
         help="delete the allcation"))
@@ -1434,7 +1434,7 @@ def edit_allocation_parser ():
 
 def edit_hold_parser ():
     """An optparse parser for editing existing holds."""
-    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser = optparse.OptionParser(version=cbank.__version__)
     parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option("-d", "--deactivate", action="store_false",
@@ -1447,7 +1447,7 @@ def edit_hold_parser ():
 
 def edit_charge_parser ():
     """An optparse parser for editing existing charges."""
-    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser = optparse.OptionParser(version=cbank.__version__)
     parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option(Option("-n", dest="commit", action="store_false",
@@ -1464,7 +1464,7 @@ def edit_charge_parser ():
 
 def edit_refund_parser ():
     """An optparse parser for editing existing refunds."""
-    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser = optparse.OptionParser(version=cbank.__version__)
     parser.add_option("-c", "--comment", dest="comment",
         help="arbitrary COMMENT", metavar="COMMENT")
     parser.add_option(Option("-n", dest="commit", action="store_false",
@@ -1478,7 +1478,7 @@ def edit_refund_parser ():
 
 def import_jobs_parser ():
     """An optparse parser for importing jobs."""
-    parser = optparse.OptionParser(version=clusterbank.__version__)
+    parser = optparse.OptionParser(version=cbank.__version__)
     parser.add_option(Option("-v", "--verbose", dest="verbose",
         action="store_true", help="display each imported job"))
     parser.set_defaults(verbose=False)

@@ -8,17 +8,17 @@ except ImportError:
     from setuptools import setup, find_packages
 
 setup(
-    name="clusterbank",
+    name="cbank",
     version="trunk",
     description="Accounting software for networked resources.",
     author="Jonathon Anderson",
-    author_email="janderso@alcf.anl.gov",
-    url="http://trac.mcs.anl.gov/projects/clusterbank",
+    author_email="anderbubble@gmail.com",
+    url="http://www.civilfritz.net/wiki/projects/cbank",
     install_requires=["SQLAlchemy>=0.5.0"],
     packages=find_packages("source/packages", exclude=['ez_setup']),
     package_dir={'':"source/packages"},
     test_suite="nose.collector",
     zip_safe = True,
     entry_points = {'console_scripts': [
-        "cbank = clusterbank.cli.controllers:main"]},
-    data_files=[("/etc", ["etc/clusterbank.conf"])])
+        "cbank = cbank.cli.controllers:main"]},
+    data_files=[("/etc", ["etc/cbank.conf"])])

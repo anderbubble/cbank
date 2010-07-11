@@ -1,4 +1,4 @@
-"""The command-line interface to clusterbank.
+"""The command-line interface to cbank.
 
 Modules:
 common -- common utility functions

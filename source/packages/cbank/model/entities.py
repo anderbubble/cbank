@@ -16,7 +16,7 @@ import re
 from datetime import datetime, timedelta
 import ConfigParser
 
-from clusterbank import config
+from cbank import config
 
 
 __all__ = [

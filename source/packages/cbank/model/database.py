@@ -1,4 +1,4 @@
-"""clusterbank data model metadata.
+"""cbank data model metadata.
 
 The metadata provides sqlalchemy with information as to how the database
 is layed out, so that it can map local classes to a relational database.

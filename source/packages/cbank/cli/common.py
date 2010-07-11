@@ -6,7 +6,7 @@ get_unit_factor -- get the configured unit factor
 import ConfigParser
 import warnings
 
-from clusterbank import config
+from cbank import config
 
 
 __all__ = ["get_unit_factor"]

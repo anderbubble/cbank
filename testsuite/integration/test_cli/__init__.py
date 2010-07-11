@@ -1,15 +1,15 @@
 import ConfigParser
 
-import clusterbank
+import cbank
 
 __all__ = ["test_model", "test_controllers", "test_cli", "test_upstreams"]
 
 _config = None
 
 def setup ():
-    for section in clusterbank.config.sections():
-        clusterbank.config.remove_section(section)
-    if clusterbank.config.has_section("DEFAULT"):
-        for option in clusterbank.config.options("DEFAULT"):
-            clusterbank.config.remove_option("DEFAULT", option)
+    for section in cbank.config.sections():
+        cbank.config.remove_section(section)
+    if cbank.config.has_section("DEFAULT"):
+        for option in cbank.config.options("DEFAULT"):
+            cbank.config.remove_option("DEFAULT", option)
 
