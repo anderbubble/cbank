@@ -5,7 +5,6 @@ is layed out, so that it can map local classes to a relational database.
 
 Objects:
 metadata -- master metadata object
-projects -- projects
 allocations -- allocations
 holds -- holds
 jobs -- jobs run on a resource
@@ -23,7 +22,6 @@ from sqlalchemy.types import TypeDecorator, Integer, DateTime, \
 
 __all__ = [
     "metadata",
-    "projects",
     "allocations", "holds", "jobs", "charges", "refunds",
 ]
 
