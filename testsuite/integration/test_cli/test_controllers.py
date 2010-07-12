@@ -2370,16 +2370,16 @@ class TestAllocationsList (CbankTester):
         CbankTester.setup(self)
         self._print_allocations_list = cbank.cli.controllers.print_allocations_list
         cbank.cli.controllers.print_allocations_list = FakeFunc()
-        for (project_id, ) in Session.query(Allocation.project_id):
+        for project_id in ['1', '2', '3', '4']:
             project = Project.cached(project_id)
-            Allocation(project, Resource.fetch("resource1"), 0,
-                datetime(1999, 1, 1), datetime(2000, 1, 1))
-            Allocation(project, Resource.fetch("resource1"), 0,
-                datetime(1999, 1, 1), datetime(2001, 1, 1))
-            Allocation(project, Resource.fetch("resource2"), 0,
-                datetime(2000, 1, 1), datetime(2001, 1, 1))
-            Allocation(project, Resource.fetch("resource2"), 0,
-                datetime(2001, 1, 1), datetime(2002, 1, 1))
+            Session.add(Allocation(project, Resource.fetch("resource1"), 0,
+                datetime(1999, 1, 1), datetime(2000, 1, 1)))
+            Session.add(Allocation(project, Resource.fetch("resource1"), 0,
+                datetime(1999, 1, 1), datetime(2001, 1, 1)))
+            Session.add(Allocation(project, Resource.fetch("resource2"), 0,
+                datetime(2000, 1, 1), datetime(2001, 1, 1)))
+            Session.add(Allocation(project, Resource.fetch("resource2"), 0,
+                datetime(2001, 1, 1), datetime(2002, 1, 1)))
         Session.flush()
     
     def teardown (self):
