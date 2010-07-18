@@ -1,30 +1,4 @@
-"""Views of the model provided by the cli.
-
-Classes:
-Formatter -- a tabular formatter for lists
-
-Functions:
-print_users_list -- charges for users
-print_projects_list -- allocations and charges for projects
-print_allocations_list -- allocation and charges for allocations
-print_holds_list -- a table of holds
-print_jobs_list -- a table of jobs
-print_charges_list -- a table of charges
-print_allocations -- print multiple allocations
-print_allocation -- print a single allocation
-print_holds -- print multiple holds
-print_hold -- print a single hold
-print_jobs -- print multiple jobs
-print_job -- print a single job
-print_charges -- print multiple charges
-print_charge -- print a single charge
-print_refunds -- print multiple refunds
-print_refund -- print a single refund
-unit_definition -- a configured unit description
-display_units -- print units in a locale-specific format
-convert_units -- convert an amount to the specified units
-format_datetime -- convert a datetime to a string
-"""
+"""Views of the model provided by the cli."""
 
 import sys
 import locale
@@ -40,8 +14,10 @@ from cbank.cli.common import get_unit_factor
 from cbank.model import (
     Session, User, Project, Resource,
     Allocation, Hold, Job, Charge, Refund)
+import cbank.model.queries
 
-__all__ = ["unit_definition", "convert_units", "display_units",
+__all__ = [
+    "unit_definition", "convert_units", "display_units",
     "print_users_list", "print_projects_list", "print_allocations_list",
     "print_holds_list", "print_jobs_list", "print_charges_list"]
 
@@ -49,22 +25,12 @@ __all__ = ["unit_definition", "convert_units", "display_units",
 locale.setlocale(locale.LC_ALL, locale.getdefaultlocale()[0])
 
 
-def print_users_list (users, projects=None, resources=None,
-                        after=None, before=None, truncate=True):
+def print_users_list (users, truncate=True, **kwargs):
     
     """Users list.
     
     The users list lists the number of charges and total amount charged
     for each specified user.
-    
-    Arguments:
-    users -- users to list
-    
-    Keyword arguments:
-    projects -- only show charges for these projects
-    resources -- only show charges for these resources
-    after -- only show charges after this datetime (inclusive)
-    before -- only show charges before this datetime (exclusive)
     """
     
     format = Formatter(["Name", "Jobs", "Charged"])
@@ -74,64 +40,14 @@ def print_users_list (users, projects=None, resources=None,
     format.aligns = {'Jobs':"right", 'Charged':"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
-    
-    s = Session()
-    jobs_q = s.query(
-        Job.user_id.label("user_id"),
-        func.count(Job.id).label("job_count"))
-    charges_q = s.query(
-        Job.user_id.label("user_id"),
-        func.sum(Charge.amount).label("charge_sum"))
-    charges_q = charges_q.join(Charge.job)
-    refunds_q = s.query(
-        Job.user_id.label("user_id"),
-        func.sum(Refund.amount).label("refund_sum"))
-    refunds_q = refunds_q.join(Refund.charge, Charge.job)
-
-    jobs_q.filter(Job.user_id.in_(user.id for user in users))
-    if projects:
-        jobs_q = jobs_q.filter(
-            Job.account_id.in_(project.id for project in projects))
-        charges_ = Charge.allocation.has(
-            Allocation.project_id.in_(project.id for project in projects))
-        charges_q = charges_q.filter(charges_)
-        refunds_q = refunds_q.filter(charges_)
-    if resources:
-        charges_ = Charge.allocation.has(Allocation.resource_id.in_(
-            resource.id for resource in resources))
-        jobs_q = jobs_q.filter(Job.charges.any(charges_))
-        charges_q = charges_q.filter(charges_)
-        refunds_q = refunds_q.filter(charges_)
-    if after:
-        jobs_q = jobs_q.filter(Job.end > after)
-        charges_ = Charge.datetime >= after
-        charges_q = charges_q.filter(charges_)
-        refunds_q = refunds_q.filter(charges_)
-    if before:
-        jobs_q = jobs_q.filter(Job.start < before)
-        charges_ = Charge.datetime < before
-        charges_q = charges_q.filter(charges_)
-        refunds_q = refunds_q.filter(charges_)
-
-    jobs_q = jobs_q.group_by(Job.user_id).subquery()
-    charges_q = charges_q.group_by(Job.user_id).subquery()
-    refunds_q = refunds_q.group_by(Job.user_id).subquery()
-    query = s.query(
-        Job.user_id,
-        func.coalesce(jobs_q.c.job_count, 0),
-        (func.coalesce(charges_q.c.charge_sum, 0)
-            - func.coalesce(refunds_q.c.refund_sum, 0)))
-    query = query.outerjoin(
-        (jobs_q, Job.user_id == jobs_q.c.user_id),
-        (charges_q, Job.user_id == charges_q.c.user_id),
-        (refunds_q, Job.user_id == refunds_q.c.user_id))
-    query = query.filter(Job.user_id.in_(user.id for user in users))
-    query = query.distinct().order_by(Job.user_id)
-    
     job_count_total = 0
     charge_sum_total = 0
     users_printed = []
-    for user_id, job_count, charge_sum in query:
+    if users:
+        data = cbank.model.queries.user_summary(users, **kwargs)
+    else:
+        data = []
+    for user_id, job_count, charge_sum in data:
         user = User.cached(user_id)
         users_printed.append(user)
         job_count_total += job_count

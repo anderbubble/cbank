@@ -3,6 +3,7 @@ from cbank.model import (
     Allocation, Hold, Job, Charge, Refund)
 from cbank.model.entities import parse_pbs
 
+from sqlalchemy.sql import func
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.orm.session import SessionExtension
 from sqlalchemy.orm.exc import NoResultFound
@@ -107,3 +108,60 @@ def import_job (entry):
     else:
         job.update_from_pbs(entry)
     return job
+
+
+def user_summary (users, projects=None, resources=None,
+                  after=None, before=None):
+    s = Session()
+    jobs_q = s.query(
+        Job.user_id.label("user_id"),
+        func.count(Job.id).label("job_count"))
+    charges_q = s.query(
+        Job.user_id.label("user_id"),
+        func.sum(Charge.amount).label("charge_sum"))
+    charges_q = charges_q.join(Charge.job)
+    refunds_q = s.query(
+        Job.user_id.label("user_id"),
+        func.sum(Refund.amount).label("refund_sum"))
+    refunds_q = refunds_q.join(Refund.charge, Charge.job)
+
+    jobs_q.filter(Job.user_id.in_(user.id for user in users))
+    if projects:
+        jobs_q = jobs_q.filter(
+            Job.account_id.in_(project.id for project in projects))
+        charges_ = Charge.allocation.has(
+            Allocation.project_id.in_(project.id for project in projects))
+        charges_q = charges_q.filter(charges_)
+        refunds_q = refunds_q.filter(charges_)
+    if resources:
+        charges_ = Charge.allocation.has(Allocation.resource_id.in_(
+            resource.id for resource in resources))
+        jobs_q = jobs_q.filter(Job.charges.any(charges_))
+        charges_q = charges_q.filter(charges_)
+        refunds_q = refunds_q.filter(charges_)
+    if after:
+        jobs_q = jobs_q.filter(Job.end > after)
+        charges_ = Charge.datetime >= after
+        charges_q = charges_q.filter(charges_)
+        refunds_q = refunds_q.filter(charges_)
+    if before:
+        jobs_q = jobs_q.filter(Job.start < before)
+        charges_ = Charge.datetime < before
+        charges_q = charges_q.filter(charges_)
+        refunds_q = refunds_q.filter(charges_)
+
+    jobs_q = jobs_q.group_by(Job.user_id).subquery()
+    charges_q = charges_q.group_by(Job.user_id).subquery()
+    refunds_q = refunds_q.group_by(Job.user_id).subquery()
+    query = s.query(
+        Job.user_id,
+        func.coalesce(jobs_q.c.job_count, 0),
+        (func.coalesce(charges_q.c.charge_sum, 0)
+            - func.coalesce(refunds_q.c.refund_sum, 0)))
+    query = query.outerjoin(
+        (jobs_q, Job.user_id == jobs_q.c.user_id),
+        (charges_q, Job.user_id == charges_q.c.user_id),
+        (refunds_q, Job.user_id == refunds_q.c.user_id))
+    query = query.filter(Job.user_id.in_(user.id for user in users))
+    query = query.distinct().order_by(Job.user_id)
+    return query
