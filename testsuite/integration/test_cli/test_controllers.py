@@ -889,6 +889,26 @@ class TestNewHoldMain (CbankTester):
         assert code == MissingArgument.exit_code, code
         assert not holds.count(), "created a hold"
     
+    def test_extra_amount (self):
+        project = Project.fetch("project1")
+        resource = Resource.fetch("resource1")
+        user = User.fetch("user1")
+        holds = lambda: Session.query(Hold)
+        assert not holds().count(), "started with existing holds"
+        now = datetime(2000, 1, 1)
+        allocation = Allocation(
+            project=project, resource=resource, amount=1000,
+            start=now-timedelta(days=1), end=now+timedelta(days=1))
+        Session.add(allocation)
+        Session.commit()
+        args = "project1 '1100' -r resource1 -c test"
+        code, stdout, stderr = run(new_hold_main, args.split())
+        Session.remove()
+        assert not holds().count(), \
+            "created a hold for an unavailable amount: %s" % [
+                (hold, hold.amount) for hold in holds]
+        assert code == ValueError_.exit_code, code
+    
     def test_with_negative_amount (self):
         project = Project.fetch("project1")
         resource = Resource.fetch("resource1")
