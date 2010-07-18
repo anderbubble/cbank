@@ -261,8 +261,11 @@ def print_projects_list (projects, users=None, resources=None,
         (allocation_refunds_q,
             Allocation.project_id == allocation_refunds_q.c.project_id))
     query = query.order_by(Allocation.project_id)
-    query = query.filter(
-        Allocation.project_id.in_(project.id for project in projects))
+    if projects:
+        query = query.filter(
+            Allocation.project_id.in_(project.id for project in projects))
+    else:
+        query = []
     
     allocation_sum_total = 0
     job_count_total = 0
@@ -391,9 +394,12 @@ def print_allocations_list (allocations, users=None,
             Allocation.id == allocation_charges_q.c.allocation_id),
         (allocation_refunds_q,
             Allocation.id == allocation_refunds_q.c.allocation_id))
-    query = query.filter(Allocation.id.in_(
-        allocation.id for allocation in allocations))
     query = query.order_by(Allocation.id)
+    if allocations:
+        query = query.filter(Allocation.id.in_(
+            allocation.id for allocation in allocations))
+    else:
+        query = []
     
     job_count_total = 0
     charge_sum_total = 0
@@ -450,8 +456,11 @@ def print_holds_list (holds, comments=False, truncate=True):
     
     query = Session.query(Hold)
     query = query.options(eagerload(Hold.allocation))
-    query = query.filter(Hold.id.in_(hold.id for hold in holds))
     query = query.order_by(Hold.datetime, Hold.id)
+    if holds:
+        query = query.filter(Hold.id.in_(hold.id for hold in holds))
+    else:
+        query = []
     
     hold_sum = 0
     for hold in holds:
@@ -553,8 +562,11 @@ def print_charges_list (charges, comments=False, truncate=True):
     query = query.outerjoin(Charge.refunds, Charge.allocation)
     query = query.group_by(Allocation)
     query = query.options(contains_eager(Charge.allocation))
-    query = query.filter(Charge.id.in_(charge.id for charge in charges))
     query = query.order_by(Charge.datetime, Charge.id)
+    if charges:
+        query = query.filter(Charge.id.in_(charge.id for charge in charges))
+    else:
+        query = []
     
     total_charged = 0
     for charge, charge_amount in query:
