@@ -8,7 +8,7 @@ import cbank.model
 import cbank.upstreams.default
 from cbank.model import (
     User, Project, Resource, Allocation, Hold, Job, Charge, Refund)
-from cbank.controllers import Session, get_projects
+from cbank.model.queries import Session, get_projects
 
 
 def setup ():

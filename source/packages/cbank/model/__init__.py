@@ -1,23 +1,3 @@
-"""The cbank model.
-
-This package contains the local data model, including reflected users,
-projects, and resources from upstream, along with allocations,
-charges, etc.
-
-Classes:
-User -- a user that can charge
-Project -- a project that can use a resource
-Resource -- a resource that can be allocated
-Allocation -- allocation of a resource to a project
-Hold -- hold of funds from an account
-Job -- job run on a resource
-Charge -- charge against an account
-Refund -- refund of a charge
-
-Objects:
-metadata -- metadata collection
-"""
-
 import warnings
 import ConfigParser
 
@@ -29,12 +9,16 @@ from cbank import config
 from cbank.model.entities import (
     User, Project, Resource,
     Allocation, Hold, Job, Charge, Refund)
-from cbank.model.database import (metadata,
-    allocations, holds, jobs, charges, refunds)
+from cbank.model.database import (
+    metadata, allocations, holds, jobs, charges, refunds)
+from cbank.model.queries import (
+    Session, get_projects, get_users, import_job)
 
 
-__all__ = ["User", "Project", "Resource",
-    "Allocation", "Hold", "Job", "Charge", "Refund"]
+__all__ = [
+    "User", "Project", "Resource",
+    "Allocation", "Hold", "Job", "Charge", "Refund",
+    "Session", "get_projects", "get_users", "import_job"]
 
 
 def configured_engine ():

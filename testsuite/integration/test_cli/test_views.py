@@ -12,8 +12,8 @@ import cbank
 import cbank.model
 from cbank.model import (
     User, Resource, Project, Allocation, Hold,
-    Job, Charge, Refund)
-from cbank.controllers import Session
+    Job, Charge, Refund,
+    Session)
 import cbank.model.database
 import cbank.upstreams.default
 import cbank.cli.views

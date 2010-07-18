@@ -40,8 +40,8 @@ import cbank
 from cbank import config
 from cbank.model import (
     User, Project, Resource,
-    Allocation, Hold, Job, Charge, Refund)
-from cbank.controllers import Session, get_projects, get_users, import_job
+    Allocation, Hold, Job, Charge, Refund,
+    Session, get_projects, get_users, import_job)
 from cbank.cli.views import (print_allocation, print_charge,
     print_charges, print_hold, print_holds, print_refund, print_users_list,
     print_projects_list, print_allocations_list, print_holds_list,

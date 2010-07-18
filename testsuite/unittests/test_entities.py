@@ -5,10 +5,10 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 
 from cbank import config
-from cbank.controllers import Session
 from cbank.model import (
     metadata, User, Project, Resource,
-    Allocation, Hold, Job, Charge, Refund)
+    Allocation, Hold, Job, Charge, Refund,
+    Session)
 import cbank.upstreams.default
 
 

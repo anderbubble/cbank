@@ -11,8 +11,8 @@ import cbank
 from cbank.model import (
     metadata,
     User, Project, Resource,
-    Allocation, Hold, Job, Charge, Refund)
-from cbank.controllers import get_projects, get_users
+    Allocation, Hold, Job, Charge, Refund,
+    get_projects, get_users)
 from cbank.cli.controllers import Session
 import cbank.upstreams.default
 import cbank.cli.controllers

@@ -37,9 +37,9 @@ from sqlalchemy.orm import eagerload, contains_eager
 
 from cbank import config
 from cbank.cli.common import get_unit_factor
-from cbank.model import (User, Project, Resource, Allocation, Hold,
-    Job, Charge, Refund)
-from cbank.controllers import Session
+from cbank.model import (
+    Session, User, Project, Resource,
+    Allocation, Hold, Job, Charge, Refund)
 
 __all__ = ["unit_definition", "convert_units", "display_units",
     "print_users_list", "print_projects_list", "print_allocations_list",
