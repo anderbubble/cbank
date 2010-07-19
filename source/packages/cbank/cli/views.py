@@ -45,18 +45,16 @@ def print_users_list (users, truncate=True, **kwargs):
     users_printed = []
     if users:
         data = cbank.model.queries.user_summary(users, **kwargs)
-    else:
-        data = []
-    for user_id, job_count, charge_sum in data:
-        user = User.cached(user_id)
-        users_printed.append(user)
-        job_count_total += job_count
-        charge_sum_total += charge_sum
-        print format({'Name':user, 'Jobs':job_count,
-            'Charged':display_units(charge_sum)})
-    for user in users:
-        if user not in users_printed:
-            print format({'Name':user, 'Jobs':0,
+        for user_id, job_count, charge_sum in data:
+            user = User.cached(user_id)
+            users_printed.append(user)
+            job_count_total += job_count
+            charge_sum_total += charge_sum
+            print format({'Name':user, 'Jobs':job_count,
+                'Charged':display_units(charge_sum)})
+        for user in users:
+            if user not in users_printed:
+                print format({'Name':user, 'Jobs':0,
                           'Charged':display_units(0)})
     print >> sys.stderr, format.separator(["Jobs", "Charged"])
     print >> sys.stderr, format({'Jobs':job_count_total,
@@ -115,9 +113,7 @@ def print_projects_list (projects, truncate=True, **kwargs):
     print >> sys.stderr, unit_definition()
 
 
-def print_allocations_list (allocations, users=None,
-                            before=None, after=None,
-                            comments=False, truncate=True):
+def print_allocations_list (allocations, truncate=True, comments=False, **kwargs):
     
     """Allocations list.
     
@@ -133,7 +129,7 @@ def print_allocations_list (allocations, users=None,
     before -- only show charges before this datetime (exclusive)
     comments -- list allocation comments
     """
-    
+
     fields = ["Allocation", "End", "Resource", "Project", "Jobs",
         "Charged", "Available"]
     if comments:
@@ -147,99 +143,26 @@ def print_allocations_list (allocations, users=None,
     format.aligns = {'Available':"right", 'Jobs':"right", 'Charged':"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
-    
-    s = Session()
-    holds_q = s.query(
-        Allocation.id.label("allocation_id"),
-        func.sum(Hold.amount).label("hold_sum")).group_by(Allocation.id)
-    holds_q = holds_q.join(Hold.allocation)
-    holds_q = holds_q.filter(Hold.active == True)
-    charges_q = s.query(
-        Allocation.id.label("allocation_id"),
-        func.sum(Charge.amount).label("charge_sum")).group_by(Allocation.id)
-    charges_q = charges_q.join(Charge.allocation)
-    refunds_q = s.query(
-        Allocation.id.label("allocation_id"),
-        func.sum(Refund.amount).label("refund_sum")).group_by(Allocation.id)
-    refunds_q = refunds_q.join(
-        Refund.charge, Charge.allocation)
-    jobs_q = s.query(
-        Allocation.id.label("allocation_id"),
-        func.count(Job.id).label("job_count")).group_by(Allocation.id)
-    jobs_q = jobs_q.join(
-        Job.charges, Charge.allocation)
-    now = datetime.now()
-    allocations_ = and_(Allocation.start <= now, Allocation.end > now)
-    charges_ = Charge.allocation.has(allocations_)
-    allocation_charges_q = charges_q.filter(charges_)
-    allocation_refunds_q = refunds_q.filter(Refund.charge.has(charges_))
-    
-    if users:
-        jobs_ = Job.user_id.in_(str(user.id) for user in users)
-        jobs_q = jobs_q.filter(jobs_)
-        charges_ = Charge.job.has(jobs_)
-        charges_q = charges_q.filter(charges_)
-        refunds_q = refunds_q.filter(charges_)
-    if after:
-        jobs_q = jobs_q.filter(Job.end > after)
-        after_ = Charge.datetime >= after
-        charges_q = charges_q.filter(after_)
-        refunds_q = refunds_q.filter(after_)
-    if before:
-        jobs_q = jobs_q.filter(Job.start < before)
-        before_ = Charge.datetime < before
-        charges_q = charges_q.filter(before_)
-        refunds_q = refunds_q.filter(before_)
-    
-    holds_q = holds_q.subquery()
-    charges_q = charges_q.subquery()
-    refunds_q = refunds_q.subquery()
-    jobs_q = jobs_q.subquery()
-    allocation_charges_q = allocation_charges_q.subquery()
-    allocation_refunds_q = allocation_refunds_q.subquery()
-    query = s.query(
-        Allocation,
-        func.coalesce(jobs_q.c.job_count, 0),
-        (func.coalesce(charges_q.c.charge_sum, 0)
-            - func.coalesce(refunds_q.c.refund_sum, 0)),
-        (Allocation.amount
-            - func.coalesce(holds_q.c.hold_sum, 0)
-            - func.coalesce(allocation_charges_q.c.charge_sum, 0)
-            + func.coalesce(allocation_refunds_q.c.refund_sum, 0)))
-    query = query.outerjoin(
-        (jobs_q, Allocation.id == jobs_q.c.allocation_id),
-        (charges_q, Allocation.id == charges_q.c.allocation_id),
-        (refunds_q, Allocation.id == refunds_q.c.allocation_id),
-        (holds_q, Allocation.id == holds_q.c.allocation_id),
-        (allocation_charges_q,
-            Allocation.id == allocation_charges_q.c.allocation_id),
-        (allocation_refunds_q,
-            Allocation.id == allocation_refunds_q.c.allocation_id))
-    query = query.order_by(Allocation.id)
-    if allocations:
-        query = query.filter(Allocation.id.in_(
-            allocation.id for allocation in allocations))
-    else:
-        query = []
-    
+
     job_count_total = 0
     charge_sum_total = 0
     allocation_sum_total = 0
-    now = datetime.now()
-    for allocation, job_count, charge_sum, allocation_sum in query:
-        if not (allocation.start <= now < allocation.end):
-            allocation_sum = 0
-        job_count_total += job_count
-        charge_sum_total += charge_sum
-        allocation_sum_total += allocation_sum
-        print format({
-            'Allocation':allocation.id,
-            'Project':allocation.project,
-            'Resource':allocation.resource,
-            'End':format_datetime(allocation.end),
-            'Jobs':job_count,
-            'Charged':display_units(charge_sum),
-            'Available':display_units(allocation_sum),
+    if allocations:
+        data = cbank.model.queries.allocation_summary(allocations, **kwargs)
+        for allocation, job_count, charge_sum, allocation_sum in data:
+            if not allocation.active():
+                allocation_sum = 0
+            job_count_total += job_count
+            charge_sum_total += charge_sum
+            allocation_sum_total += allocation_sum
+            print format({
+                'Allocation':allocation.id,
+                'Project':allocation.project,
+                'Resource':allocation.resource,
+                'End':format_datetime(allocation.end),
+                'Jobs':job_count,
+                'Charged':display_units(charge_sum),
+                'Available':display_units(allocation_sum),
             'Comment':allocation.comment})
     print >> sys.stderr, format.separator(["Available", "Jobs", "Charged"])
     print >> sys.stderr, format({
