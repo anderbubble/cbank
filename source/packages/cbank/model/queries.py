@@ -11,7 +11,9 @@ from cbank.model import (
 from cbank.model.entities import parse_pbs
 
 
-__all__ = ["Session", "get_projects", "get_users", "import_job"]
+__all__ = [
+    "Session", "get_projects", "get_users", "import_job",
+    "user_summary", "project_summary"]
 
 
 class EntityConstraints (SessionExtension):
