@@ -163,7 +163,7 @@ def print_allocations_list (allocations, truncate=True, comments=False, **kwargs
                 'Jobs':job_count,
                 'Charged':display_units(charge_sum),
                 'Available':display_units(allocation_sum),
-            'Comment':allocation.comment})
+            'Comment':(allocation.comment or "")})
     print >> sys.stderr, format.separator(["Available", "Jobs", "Charged"])
     print >> sys.stderr, format({
         'Jobs':job_count_total,
@@ -215,7 +215,7 @@ def print_holds_list (holds, comments=False, truncate=True):
             'Resource':hold.allocation.resource,
             'Date':format_datetime(hold.datetime),
             'Held':display_units(hold.amount),
-            'Comment':hold.comment})
+            'Comment':(hold.comment or "")})
     print >> sys.stderr, format.separator(["Held"])
     print >> sys.stderr, format({'Held':display_units(hold_sum)})
     print >> sys.stderr, unit_definition()
@@ -321,7 +321,7 @@ def print_charges_list (charges, comments=False, truncate=True):
             'Resource':charge.allocation.resource,
             'Date':format_datetime(charge.datetime),
             'Charged':display_units(charge_amount),
-            'Comment':charge.comment})
+            'Comment':(charge.comment or "")})
     print >> sys.stderr, format.separator(["Charged"])
     print >> sys.stderr, format({'Charged':display_units(total_charged)})
     print >> sys.stderr, unit_definition()
@@ -343,7 +343,7 @@ def print_allocation (allocation):
     print " * Resource: %s" % allocation.resource
     print " * Start: %s" % allocation.start
     print " * End: %s" % allocation.end
-    print " * Comment: %s" % allocation.comment
+    print " * Comment: %s" % (allocation.comment or "")
 
 
 def print_holds (holds):
@@ -360,7 +360,7 @@ def print_hold (hold):
     print " * Allocation: %s" % hold.allocation
     print " * Project: %s" % hold.allocation.project
     print " * Resource: %s" % hold.allocation.resource
-    print " * Comment: %s" % hold.comment
+    print " * Comment: %s" % (hold.comment or "")
     print " * Job: %s" % hold.job
 
 
@@ -416,7 +416,7 @@ def print_charge (charge):
     print " * Allocation: %s" % charge.allocation
     print " * Project: %s" % charge.allocation.project
     print " * Resource: %s" % charge.allocation.resource
-    print " * Comment: %s" % charge.comment
+    print " * Comment: %s" % (charge.comment or "")
     print " * Job: %s" % charge.job
 
 
@@ -434,7 +434,7 @@ def print_refund (refund):
     print " * Allocation: %s" % refund.charge.allocation
     print " * Project: %s" % refund.charge.allocation.project
     print " * Resource: %s" % refund.charge.allocation.resource
-    print " * Comment: %s" % refund.comment
+    print " * Comment: %s" % (refund.comment or "")
     print " * Job: %s" % refund.charge.job
 
 
