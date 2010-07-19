@@ -64,22 +64,12 @@ def print_users_list (users, truncate=True, **kwargs):
     print >> sys.stderr, unit_definition()
 
 
-def print_projects_list (projects, users=None, resources=None,
-                         before=None, after=None, truncate=True):
+def print_projects_list (projects, truncate=True, **kwargs):
     
     """Projects list.
     
     The projects list lists allocations and charges for each project
     in the system.
-    
-    Arguments:
-    projects -- projects to list
-    
-    Keyword arguments:
-    users -- only show charges by these users
-    resources -- only show charges for these resources
-    after -- only show charges after this datetime (inclusive)
-    before -- only show charges before this datetime (exclusive)
     """
     
     format = Formatter([
@@ -91,120 +81,35 @@ def print_projects_list (projects, users=None, resources=None,
         'Charged':"right", "Available":"right"}
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
-    
-    s = Session()
-    allocations_q = s.query(
-        Allocation.project_id,
-        func.sum(Allocation.amount).label("allocation_sum")
-        ).group_by(Allocation.project_id)
-    now = datetime.now()
-    allocations_q = allocations_q.filter(
-        and_(Allocation.start<=now, Allocation.end>now))
-    holds_q = s.query(
-        Allocation.project_id,
-        func.sum(Hold.amount).label("hold_sum"))
-    holds_q = holds_q.group_by(Allocation.project_id)
-    holds_q = holds_q.join(Hold.allocation)
-    holds_q = holds_q.filter(Hold.active == True)
-    jobs_q = s.query(
-        Allocation.project_id,
-        func.count(Job.id).label("job_count")).group_by(Allocation.project_id)
-    jobs_q = jobs_q.outerjoin(Job.charges, Charge.allocation)
-    charges_q = s.query(
-        Allocation.project_id,
-        func.sum(Charge.amount).label("charge_sum"))
-    charges_q = charges_q.group_by(Allocation.project_id)
-    charges_q = charges_q.join(Charge.allocation)
-    refunds_q = s.query(
-        Allocation.project_id,
-        func.sum(Refund.amount).label("refund_sum"))
-    refunds_q = refunds_q.group_by(Allocation.project_id)
-    refunds_q = refunds_q.join(Refund.charge, Charge.allocation)
-    
-    if resources:
-        resources_ = Allocation.resource_id.in_(
-            resource.id for resource in resources)
-        allocations_q = allocations_q.filter(resources_)
-        charges_q = charges_q.filter(resources_)
-        refunds_q = refunds_q.filter(resources_)
-        jobs_q = jobs_q.filter(resources_)
-    
-    allocations_ = and_(Allocation.start <= now, Allocation.end > now)
-    charges_ = Charge.allocation.has(allocations_)
-    allocation_charges_q = charges_q.filter(charges_)
-    allocation_refunds_q = refunds_q.filter(Refund.charge.has(charges_))
-    if users:
-        users_ = Job.user_id.in_(user.id for user in users)
-        jobs_q = jobs_q.filter(users_)
-        charges_ = Charge.job.has(users_)
-        charges_q = charges_q.filter(charges_)
-        refunds_q = refunds_q.filter(charges_)
-    if after:
-        jobs_q = jobs_q.filter(Job.end > after)
-        after_ = Charge.datetime >= after
-        charges_q = charges_q.filter(after_)
-        refunds_q = refunds_q.filter(after_)
-    if before:
-        jobs_q = jobs_q.filter(Job.start < before)
-        before_ = Charge.datetime < before
-        charges_q = charges_q.filter(before_)
-        refunds_q = refunds_q.filter(before_)
-    
-    allocations_q = allocations_q.subquery()
-    holds_q = holds_q.subquery()
-    allocation_charges_q = allocation_charges_q.subquery()
-    allocation_refunds_q = allocation_refunds_q.subquery()
-    jobs_q = jobs_q.subquery()
-    charges_q = charges_q.subquery()
-    refunds_q = refunds_q.subquery()
-    query = s.query(
-        Allocation.project_id,
-        func.coalesce(jobs_q.c.job_count, 0),
-        (func.coalesce(charges_q.c.charge_sum, 0)
-            - func.coalesce(refunds_q.c.refund_sum, 0)),
-        (func.coalesce(allocations_q.c.allocation_sum, 0)
-            - func.coalesce(holds_q.c.hold_sum, 0)
-            - func.coalesce(allocation_charges_q.c.charge_sum, 0)
-            + func.coalesce(allocation_refunds_q.c.refund_sum, 0))).distinct()
-    query = query.outerjoin(
-        (jobs_q, Allocation.project_id == jobs_q.c.project_id),
-        (charges_q, Allocation.project_id == charges_q.c.project_id),
-        (refunds_q, Allocation.project_id == refunds_q.c.project_id),
-        (allocations_q, Allocation.project_id == allocations_q.c.project_id),
-        (holds_q, Allocation.project_id == holds_q.c.project_id),
-        (allocation_charges_q,
-            Allocation.project_id == allocation_charges_q.c.project_id),
-        (allocation_refunds_q,
-            Allocation.project_id == allocation_refunds_q.c.project_id))
-    query = query.order_by(Allocation.project_id)
-    if projects:
-        query = query.filter(
-            Allocation.project_id.in_(project.id for project in projects))
-    else:
-        query = []
-    
+
     allocation_sum_total = 0
     job_count_total = 0
     charge_sum_total = 0
-    projects_displayed = []
-    for project_id, job_count, charge_sum, allocation_sum in query:
-        project = Project.cached(project_id)
-        projects_displayed.append(project)
-        job_count_total += job_count
-        charge_sum_total += charge_sum
-        allocation_sum_total += allocation_sum
-        print format({'Name':project,
-            'Jobs':job_count,
-            'Charged':display_units(charge_sum),
-            'Available':display_units(allocation_sum)})
-    for project in projects:
-        if project not in projects_displayed:
-            print format({'Name':project,
-                          'Jobs':0,
-                          'Charged':display_units(0),
-                          'Available':display_units(0)})
-    print >> sys.stderr, format.separator(["Jobs", "Charged", "Available"])
-    print >> sys.stderr, format({'Jobs':job_count_total,
+    if projects:
+        projects_displayed = []
+        data = cbank.model.queries.project_summary(projects, **kwargs)
+        for project_id, job_count, charge_sum, allocation_sum in data:
+            project = Project.cached(project_id)
+            projects_displayed.append(project)
+            job_count_total += job_count
+            charge_sum_total += charge_sum
+            allocation_sum_total += allocation_sum
+            print format({
+                'Name':project,
+                'Jobs':job_count,
+                'Charged':display_units(charge_sum),
+                'Available':display_units(allocation_sum)})
+        for project in projects:
+            if project not in projects_displayed:
+                print format({
+                    'Name':project,
+                    'Jobs':0,
+                    'Charged':display_units(0),
+                    'Available':display_units(0)})
+    print >> sys.stderr, format.separator([
+        "Jobs", "Charged", "Available"])
+    print >> sys.stderr, format({
+        'Jobs':job_count_total,
         'Charged':display_units(charge_sum_total),
         'Available':display_units(allocation_sum_total)})
     print >> sys.stderr, unit_definition()

@@ -1,12 +1,14 @@
+from datetime import datetime
+
+from sqlalchemy.sql import func, and_
+from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm.session import SessionExtension
+from sqlalchemy.orm.exc import NoResultFound
+
 from cbank.model import (
     User, Project,
     Allocation, Hold, Job, Charge, Refund)
 from cbank.model.entities import parse_pbs
-
-from sqlalchemy.sql import func
-from sqlalchemy.orm import scoped_session, sessionmaker
-from sqlalchemy.orm.session import SessionExtension
-from sqlalchemy.orm.exc import NoResultFound
 
 
 __all__ = ["Session", "get_projects", "get_users", "import_job"]
@@ -164,4 +166,100 @@ def user_summary (users, projects=None, resources=None,
         (refunds_q, Job.user_id == refunds_q.c.user_id))
     query = query.filter(Job.user_id.in_(user.id for user in users))
     query = query.distinct().order_by(Job.user_id)
+    return query
+
+
+def project_summary (projects, users=None, resources=None,
+                     before=None, after=None):
+    now = datetime.now()
+    s = Session()
+    allocations_q = s.query(
+        Allocation.project_id,
+        func.sum(Allocation.amount).label("allocation_sum")
+        ).group_by(Allocation.project_id)
+    allocations_q = allocations_q.filter(
+        and_(Allocation.start<=now, Allocation.end>now))
+    
+    holds_q = s.query(
+        Allocation.project_id,
+        func.sum(Hold.amount).label("hold_sum"))
+    holds_q = holds_q.group_by(Allocation.project_id)
+    holds_q = holds_q.join(Hold.allocation)
+    holds_q = holds_q.filter(Hold.active == True)
+    jobs_q = s.query(
+        Allocation.project_id,
+        func.count(Job.id).label("job_count")).group_by(Allocation.project_id)
+    jobs_q = jobs_q.outerjoin(Job.charges, Charge.allocation)
+    charges_q = s.query(
+        Allocation.project_id,
+        func.sum(Charge.amount).label("charge_sum"))
+    charges_q = charges_q.group_by(Allocation.project_id)
+    charges_q = charges_q.join(Charge.allocation)
+    refunds_q = s.query(
+        Allocation.project_id,
+        func.sum(Refund.amount).label("refund_sum"))
+    refunds_q = refunds_q.group_by(Allocation.project_id)
+    refunds_q = refunds_q.join(Refund.charge, Charge.allocation)
+    
+    if resources:
+        resources_ = Allocation.resource_id.in_(
+            resource.id for resource in resources)
+        allocations_q = allocations_q.filter(resources_)
+        charges_q = charges_q.filter(resources_)
+        refunds_q = refunds_q.filter(resources_)
+        jobs_q = jobs_q.filter(resources_)
+    
+    allocations_ = and_(Allocation.start <= now, Allocation.end > now)
+    charges_ = Charge.allocation.has(allocations_)
+    allocation_charges_q = charges_q.filter(charges_)
+    allocation_refunds_q = refunds_q.filter(Refund.charge.has(charges_))
+    if users:
+        users_ = Job.user_id.in_(user.id for user in users)
+        jobs_q = jobs_q.filter(users_)
+        charges_ = Charge.job.has(users_)
+        charges_q = charges_q.filter(charges_)
+        refunds_q = refunds_q.filter(charges_)
+    if after:
+        jobs_q = jobs_q.filter(Job.end > after)
+        after_ = Charge.datetime >= after
+        charges_q = charges_q.filter(after_)
+        refunds_q = refunds_q.filter(after_)
+    if before:
+        jobs_q = jobs_q.filter(Job.start < before)
+        before_ = Charge.datetime < before
+        charges_q = charges_q.filter(before_)
+        refunds_q = refunds_q.filter(before_)
+
+    allocations_q = allocations_q.subquery()
+    holds_q = holds_q.subquery()
+    allocation_charges_q = allocation_charges_q.subquery()
+    allocation_refunds_q = allocation_refunds_q.subquery()
+    jobs_q = jobs_q.subquery()
+    charges_q = charges_q.subquery()
+    refunds_q = refunds_q.subquery()
+    query = s.query(
+        Allocation.project_id,
+        func.coalesce(jobs_q.c.job_count, 0),
+        (func.coalesce(
+            charges_q.c.charge_sum, 0)
+            - func.coalesce(refunds_q.c.refund_sum, 0)),
+        (func.coalesce(
+            allocations_q.c.allocation_sum, 0)
+            - func.coalesce(holds_q.c.hold_sum, 0)
+            - func.coalesce(allocation_charges_q.c.charge_sum, 0)
+            + func.coalesce(allocation_refunds_q.c.refund_sum, 0)))
+    query = query.distinct()
+    query = query.outerjoin(
+        (jobs_q, Allocation.project_id == jobs_q.c.project_id),
+        (charges_q, Allocation.project_id == charges_q.c.project_id),
+        (refunds_q, Allocation.project_id == refunds_q.c.project_id),
+        (allocations_q, Allocation.project_id == allocations_q.c.project_id),
+        (holds_q, Allocation.project_id == holds_q.c.project_id),
+        (allocation_charges_q,
+            Allocation.project_id == allocation_charges_q.c.project_id),
+        (allocation_refunds_q,
+            Allocation.project_id == allocation_refunds_q.c.project_id))
+    query = query.order_by(Allocation.project_id)
+    query = query.filter(
+        Allocation.project_id.in_(project.id for project in projects))
     return query
