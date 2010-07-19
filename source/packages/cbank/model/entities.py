@@ -115,27 +115,7 @@ class User (UpstreamEntity):
 
 
 class Project (UpstreamEntity):
-    
-    """Project to which resources can be allocated.
-    
-    Methods:
-    charge -- charge the project's active allocations
-    """
-    
-    def charge (self, resource, amount):
-        """Charge any available allocation to the project for a given amount
-        of a resource.
-        
-        Arguments:
-        resource -- the resource the charge is for
-        amount -- how much to charge
-        """
-        now = datetime.now()
-        allocations = [allocation for allocation in self.allocations
-            if allocation.start <= now and allocation.end > now
-            and allocation.resource == resource]
-        charges = Charge.distributed(allocations, amount)
-        return charges
+    """Project to which resources can be allocated."""
 
 
 class Resource (UpstreamEntity):
