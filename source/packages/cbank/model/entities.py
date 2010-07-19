@@ -16,7 +16,7 @@ import re
 from datetime import datetime, timedelta
 import ConfigParser
 
-from cbank import config
+import decorator
 
 
 __all__ = [
@@ -47,25 +47,24 @@ class Entity (object):
         else:
             return "?"
 
+def getattr_ (obj, name, default_thunk):
+    try:
+        return getattr(obj, name)
+    except AttributeError:
+        default = default_thunk()
+        setattr(obj, name, default)
+        return default
 
-class memoized(object):
-   """Decorator that caches a function's return value each time it is called.
-   If called later with the same arguments, the cached value is returned, and
-   not re-evaluated.
-   """
-   def __init__(self, func):
-      self.func = func
-      self.cache = {}
-   def __call__(self, *args):
-      try:
-         return self.cache.setdefault(args,self.func(*args))
-      except TypeError:
-         # uncachable -- for instance, passing a list as an argument.
-         # Better to not cache than to blow up entirely.
-         return self.func(*args)
-   def __repr__(self):
-      """Return the function's docstring."""
-      return self.func.__doc__
+
+@decorator.decorator
+def memoized (func, *args):
+    dic = getattr_(func, "memoize_dic", dict)
+    if args in dic:
+        return dic[args]
+    else:
+        result = func(*args)
+        dic[args] = result
+        return result
 
 
 class UpstreamEntity (Entity):
