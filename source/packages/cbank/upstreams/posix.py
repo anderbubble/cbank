@@ -16,23 +16,25 @@ def user_in (user_string):
         uid = int(user_string)
     except ValueError:
         try:
-            return getpwnam(user_string)[2]
+            user_id = getpwnam(user_string)[2]
         except KeyError:
-            return str(user_string)
+            user_id = user_string
     else:
-        return getpwuid(uid)[2]
+        user_id = getpwuid(uid)[2]
+    return str(user_id)
 
 
 def user_out (id_):
     try:
         uid = int(id_)
     except ValueError:
-        return str(id_)
+        user_display = id_
     else:
         try:
-            return getpwuid(uid)[0]
+            user_display = getpwuid(uid)[0]
         except KeyError:
-            return str(id_)
+            user_display = id_
+    return str(user_display)
 
 
 def group_in (group_string):
@@ -40,23 +42,25 @@ def group_in (group_string):
         gid = int(group_string)
     except ValueError:
         try:
-            return getgrnam(group_string)[2]
+            group_id = getgrnam(group_string)[2]
         except KeyError:
-            return str(group_string)
+            group_id = group_string
     else:
-        return getgrgid(gid)[2]
+        group_id = getgrgid(gid)[2]
+    return str(group_id)
 
 
 def group_out (id_):
     try:
         gid = int(id_)
     except ValueError:
-        return str(id_)
+        group_display = id_
     else:
         try:
-            return getgrgid(gid)[0]
+            group_display = getgrgid(gid)[0]
         except KeyError:
-            return str(id_)
+            group_display = id_
+    return str(group_display)
 
 
 resource_in = project_in = group_in
