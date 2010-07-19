@@ -1639,7 +1639,7 @@ class TestPrintHolds (CbankViewTester):
              * Allocation: 1
              * Project: project1
              * Resource: res1
-             * Comment: None
+             * Comment: 
              * Job: None
             """))
     
@@ -1663,7 +1663,7 @@ class TestPrintHolds (CbankViewTester):
              * Allocation: 1
              * Project: project1
              * Resource: res1
-             * Comment: None
+             * Comment: 
              * Job: res1.1
             """))
 
@@ -1754,7 +1754,7 @@ class TestPrintCharges (CbankViewTester):
              * Allocation: 1
              * Project: project1
              * Resource: res1
-             * Comment: None
+             * Comment: 
              * Job: None
             """))
     
@@ -1777,7 +1777,7 @@ class TestPrintCharges (CbankViewTester):
              * Allocation: 1
              * Project: project1
              * Resource: res1
-             * Comment: None
+             * Comment: 
              * Job: res1.1
             """))
 
@@ -1804,7 +1804,7 @@ class TestPrintRefunds (CbankViewTester):
              * Allocation: 1
              * Project: project1
              * Resource: res1
-             * Comment: None
+             * Comment: 
              * Job: None
             """))
     
@@ -1829,7 +1829,7 @@ class TestPrintRefunds (CbankViewTester):
              * Allocation: 1
              * Project: project1
              * Resource: res1
-             * Comment: None
+             * Comment: 
              * Job: res1.1
             """))
 
