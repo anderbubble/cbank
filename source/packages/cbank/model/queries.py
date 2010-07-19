@@ -13,7 +13,7 @@ from cbank.model.entities import parse_pbs
 
 __all__ = [
     "Session", "get_projects", "get_users", "import_job",
-    "user_summary", "project_summary"]
+    "user_summary", "project_summary", "allocation_summary"]
 
 
 class EntityConstraints (SessionExtension):
@@ -180,7 +180,7 @@ def project_summary (projects, users=None, resources=None,
         func.sum(Allocation.amount).label("allocation_sum")
         ).group_by(Allocation.project_id)
     allocations_q = allocations_q.filter(
-        and_(Allocation.start<=now, Allocation.end>now))
+        and_(Allocation.start <= now, Allocation.end > now))
     
     holds_q = s.query(
         Allocation.project_id,
@@ -264,4 +264,79 @@ def project_summary (projects, users=None, resources=None,
     query = query.order_by(Allocation.project_id)
     query = query.filter(
         Allocation.project_id.in_(project.id for project in projects))
+    return query
+
+
+def allocation_summary (allocations, users=None,
+                        before=None, after=None):
+    now = datetime.now()
+    s = Session()
+    holds_q = s.query(
+        Allocation.id.label("allocation_id"),
+        func.sum(Hold.amount).label("hold_sum")).group_by(Allocation.id)
+    holds_q = holds_q.join(Hold.allocation)
+    holds_q = holds_q.filter(Hold.active == True)
+    charges_q = s.query(
+        Allocation.id.label("allocation_id"),
+        func.sum(Charge.amount).label("charge_sum")).group_by(Allocation.id)
+    charges_q = charges_q.join(Charge.allocation)
+    refunds_q = s.query(
+        Allocation.id.label("allocation_id"),
+        func.sum(Refund.amount).label("refund_sum")).group_by(Allocation.id)
+    refunds_q = refunds_q.join(
+        Refund.charge, Charge.allocation)
+    jobs_q = s.query(
+        Allocation.id.label("allocation_id"),
+        func.count(Job.id).label("job_count")).group_by(Allocation.id)
+    jobs_q = jobs_q.join(
+        Job.charges, Charge.allocation)
+    allocations_ = and_(Allocation.start <= now, Allocation.end > now)
+    charges_ = Charge.allocation.has(allocations_)
+    allocation_charges_q = charges_q.filter(charges_)
+    allocation_refunds_q = refunds_q.filter(Refund.charge.has(charges_))
+    
+    if users:
+        jobs_ = Job.user_id.in_(str(user.id) for user in users)
+        jobs_q = jobs_q.filter(jobs_)
+        charges_ = Charge.job.has(jobs_)
+        charges_q = charges_q.filter(charges_)
+        refunds_q = refunds_q.filter(charges_)
+    if after:
+        jobs_q = jobs_q.filter(Job.end > after)
+        after_ = Charge.datetime >= after
+        charges_q = charges_q.filter(after_)
+        refunds_q = refunds_q.filter(after_)
+    if before:
+        jobs_q = jobs_q.filter(Job.start < before)
+        before_ = Charge.datetime < before
+        charges_q = charges_q.filter(before_)
+        refunds_q = refunds_q.filter(before_)
+    
+    holds_q = holds_q.subquery()
+    charges_q = charges_q.subquery()
+    refunds_q = refunds_q.subquery()
+    jobs_q = jobs_q.subquery()
+    allocation_charges_q = allocation_charges_q.subquery()
+    allocation_refunds_q = allocation_refunds_q.subquery()
+    query = s.query(
+        Allocation,
+        func.coalesce(jobs_q.c.job_count, 0),
+        (func.coalesce(charges_q.c.charge_sum, 0)
+            - func.coalesce(refunds_q.c.refund_sum, 0)),
+        (Allocation.amount
+            - func.coalesce(holds_q.c.hold_sum, 0)
+            - func.coalesce(allocation_charges_q.c.charge_sum, 0)
+            + func.coalesce(allocation_refunds_q.c.refund_sum, 0)))
+    query = query.outerjoin(
+        (jobs_q, Allocation.id == jobs_q.c.allocation_id),
+        (charges_q, Allocation.id == charges_q.c.allocation_id),
+        (refunds_q, Allocation.id == refunds_q.c.allocation_id),
+        (holds_q, Allocation.id == holds_q.c.allocation_id),
+        (allocation_charges_q,
+            Allocation.id == allocation_charges_q.c.allocation_id),
+        (allocation_refunds_q,
+            Allocation.id == allocation_refunds_q.c.allocation_id))
+    query = query.order_by(Allocation.id)
+    query = query.filter(Allocation.id.in_(
+            allocation.id for allocation in allocations))
     return query

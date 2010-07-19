@@ -48,6 +48,7 @@ def setup ():
         cbank.upstreams.default.User("1", "user1"),
         cbank.upstreams.default.User("2", "user2")]
     datetime_ = FakeDateTime(datetime(2000, 1, 1))
+    cbank.model.entities.Allocation.active.im_func.func_defaults = (datetime(2000, 1, 1), )
     cbank.model.queries.datetime = datetime_
     cbank.cli.views.datetime = datetime_
 
@@ -58,6 +59,7 @@ def teardown ():
     cbank.upstreams.default.users = []
     cbank.upstreams.default.projects = []
     cbank.upstreams.default.resources = []
+    cbank.model.entities.Allocation.active.im_func.func_defaults = (datetime.now, )
     cbank.model.queries.datetime = datetime
     cbank.cli.views.datetime = datetime
 
