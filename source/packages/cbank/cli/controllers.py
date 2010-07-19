@@ -31,6 +31,7 @@ import time
 import ConfigParser
 from datetime import datetime, timedelta
 from textwrap import dedent
+import decorator
 
 from sqlalchemy import and_, or_
 from sqlalchemy.exceptions import InvalidRequestError, IntegrityError
@@ -66,34 +67,26 @@ def datetime_strptime (value, format):
     return datetime(*time.strptime(value, format)[0:6])
 
 
-def handle_exceptions (func):
+@decorator.decorator
+def handle_exceptions (func, *args, **kwargs):
     """Decorate a function to intercept exceptions and exit appropriately."""
-    def decorated_func (*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except KeyboardInterrupt:
-            sys.exit(1)
-        except CbankException, ex:
-            print >> sys.stderr, ex
-            sys.exit(ex.exit_code)
-    decorated_func.__name__ = func.__name__
-    decorated_func.__doc__ = func.__doc__
-    decorated_func.__dict__.update(func.__dict__)
-    return decorated_func
+    try:
+        return func(*args, **kwargs)
+    except KeyboardInterrupt:
+        sys.exit(1)
+    except CbankException, ex:
+        print >> sys.stderr, ex
+        sys.exit(ex.exit_code)
 
 
-def require_admin (func):
+@decorator.decorator
+def require_admin (func, *args, **kwargs):
     """Decorate a function to require administrator rights."""
-    def decorated_func (*args, **kwargs):
-        current_user = get_current_user()
-        if not current_user in configured_admins():
-            raise NotPermitted(current_user)
-        else:
-            return func(*args, **kwargs)
-    decorated_func.__name__ = func.__name__
-    decorated_func.__doc__ = func.__doc__
-    decorated_func.__dict__.update(func.__dict__)
-    return decorated_func
+    current_user = get_current_user()
+    if not current_user in configured_admins():
+        raise NotPermitted(current_user)
+    else:
+        return func(*args, **kwargs)
 
 
 def help_requested ():

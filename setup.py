@@ -14,7 +14,7 @@ setup(
     author="Jonathon Anderson",
     author_email="anderbubble@gmail.com",
     url="http://www.civilfritz.net/wiki/projects/cbank",
-    install_requires=["SQLAlchemy>=0.5.0"],
+    install_requires=["SQLAlchemy>=0.5.0", "decorator"],
     packages=find_packages("source/packages", exclude=['ez_setup']),
     package_dir={'':"source/packages"},
     test_suite="nose.collector",
