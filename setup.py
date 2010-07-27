@@ -21,4 +21,4 @@ setup(
     zip_safe = True,
     entry_points = {'console_scripts': [
         "cbank = cbank.cli.controllers:main"]},
-    data_files=[("/etc", ["etc/cbank.conf"])])
+    data_files=[("etc", ["etc/cbank.conf"])])
