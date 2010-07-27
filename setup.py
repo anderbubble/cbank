@@ -10,7 +10,7 @@ except ImportError:
 setup(
     name="cbank",
     version="trunk",
-    description="Accounting software for networked resources.",
+    description="Abstract accounting system",
     author="Jonathon Anderson",
     author_email="anderbubble@gmail.com",
     url="http://www.civilfritz.net/wiki/projects/cbank",
