@@ -5,6 +5,13 @@ To install cbank, run:
 
 python setup.py install
 
+Installation requires setuptools.  The latest version of
+setuptools can be obtained using
+http://peak.telecommunity.com/dist/ez_setup.py
+
+More information about setuptools is available at
+http://pypi.python.org/pypi/setuptools
+
 
 Database initialization
 =======================
