@@ -1,43 +1,112 @@
-Clusterbank is a system for storing allocations, holds, and charges for
-computational resources.
+cbank is an accounting system based on allocations, holds,
+charges, and refunds.
 
-== features ==
 
- * plugin architecture for accessing existing directory services
- * complete user- and admin-level command-line interface
- * clean SQLAlchemy-based API
+Features
+========
 
-== upstream plugins ==
+* plugin architecture for accessing existing directory services
+* complete user- and admin-level command-line interface
+* SQLAlchemy-based model supports many common databases
 
-clusterbank uses a system called "upstream" to access existing entities:
- * users
- * projects
- * resources
 
-Each entity must have a unique name and a canonical and immutable numeric id.
+Command-line interface
+======================
 
-Also tracked are the relationships between these entities:
- * project membership -- users M:M projects
- * project administration -- users M:M projects
+cbank's command-line interface is made up of a number of
+subcommands.  For detailed help concerning a specific command,
+use the -h (or --help) option.
 
-The upstream interface is explicitly designed to be easy to implement as a
-drop-in replacement for the upstream module provided with clusterbank. A
-clusterbank upstream module must define the following functions:
+Each of the commands are further divided into one of three main
+categories: new, list, or edit.
 
-get_project_id (project_name) => project_id || None
-get_project_name (project_id) => project_name || None
-get_project_members (project_id) => [user_id_1, user_id_2, ..., user_id_n]
-get_project_admins (project_id) => [user_id_1, user_id_2, ..., user_id_n]
-get_resource_id (resource_name) => resource_id || None
-get_resource_name (resource_id) => resource_name || None
-get_user_id (user_name) => user_id || None
-get_user_name (user_id) => user_name || None
-get_member_projects (user_id) => [project_id_1, project_id_2, ..., project_id_n]
-get_admin_projects (user_id) => [project_id_1, project_id_2, ..., project_id_n]
+New entities
+------------
 
-Two example upstream modules are supplied with clusterbank:
- * clusterbank.upstreams.default -- memory-only, used for testing
- * clusterbank.upstreams.posix -- derives users from /etc/passwd, projects and resources from /etc/group
+Create new entities.
 
-The upstream module to be used is specified in clusterbank.conf as the
-"module" setting in the [upstream] section.
+* cbank new allocation
+* cbank new hold
+* cbank new charge
+* cbank new refund
+
+Edit entities
+-------------
+
+Modify entity attributes.
+
+* cbank edit allocation
+* cbank edit hold
+* cbank edit charge
+* cbank edit refund
+
+List entities
+-------------
+
+Aggregate data from a number of perspectives.
+
+* cbank list users
+* cbank list projects
+* cbank list allocations
+* cbank list holds
+* cbank list charges
+
+Detail entities
+---------------
+
+Full detail on specific entities.
+
+* cbank detail allocations
+* cbank detail holds
+* cbank detail charges
+* cbank detail refunds
+
+
+Upstream plugins
+================
+
+cbank uses a plugin system to access certain upstream entities:
+
+* users
+* projects
+* resources
+
+The included upstream module, cbank.upstreams.posix, derives users,
+projects, and resources from the local nameservice.  Users are derived
+from the pwd module.  Projects and resources are derived from the grp
+module.
+
+The upstream module is specified using the module configuration
+variable in the [upstream] section.
+
+An upstream plugin is a python module with a series of defined
+functions:
+
+Input functions
+---------------
+
+These functions transform a user-provided representation of an
+upstream entity into a unique id to be used in the database.
+
+* user_in
+* project_in
+* resource_in
+
+Output functions
+----------------
+
+These functions transform an entity's internal id into a
+user-visible representation.
+
+* user_out
+* project_out
+* resource_out
+
+Membership functions
+--------------------
+
+These functions depict the relationship between projects
+and users.
+
+* project_member
+* project_manager
