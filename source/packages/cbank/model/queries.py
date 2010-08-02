@@ -48,7 +48,8 @@ class EntityConstraints (SessionExtension):
     
     def check_holds (self, session):
         """Require new holds to fit in their allocations."""
-        holds_ = (instance for instance in (session.new | session.dirty)
+        holds_ = (
+            instance for instance in (session.new | session.dirty)
             if isinstance(instance, Hold) and instance.active)
         for allocation in set(hold.allocation for hold in holds_):
             if allocation.amount_available() < 0:
@@ -56,7 +57,8 @@ class EntityConstraints (SessionExtension):
     
     def check_refunds (self, session):
         """Require new refunds to fit in their charges."""
-        refunds_ = (instance for instance in (session.new | session.dirty)
+        refunds_ = (
+            instance for instance in (session.new | session.dirty)
             if isinstance(instance, Refund))
         charges_ = set(refund.charge for refund in refunds_)
         for charge in charges_:
@@ -76,8 +78,8 @@ Session = scoped_session(sessionmaker(extension=EntityConstraints()))
 def get_projects (member=None, manager=None):
     """Allocated projects that have a given member or manager."""
     projects = (
-        Project.cached(project_id) for (project_id, )
-        in Session.query(Allocation.project_id).distinct())
+        Project.cached(project_id)
+        for (project_id, ) in Session.query(Allocation.project_id).distinct())
     if member:
         projects = (
             project for project in projects
