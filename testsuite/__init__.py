@@ -1,5 +1,6 @@
 from nose.tools import assert_equal
 
+import cbank
 import cbank.model
 
 
@@ -9,6 +10,16 @@ def assert_identical (left, right):
 
 def assert_not_identical (left, right):
     assert left is not right, "%r should not be %r" % (left, right)
+
+
+def setup ():
+    clear_config()
+    cbank.model.clear_upstream()
+
+
+def clear_config ():
+    for section in cbank.config.sections():
+        cbank.config.remove_section(section)
 
 
 class BaseTester (object):
