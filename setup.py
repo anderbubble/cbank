@@ -18,6 +18,7 @@ setup(
     packages=find_packages("source/packages", exclude=['ez_setup']),
     package_dir={'':"source/packages"},
     test_suite="nose.collector",
+    tests_require=["mock"],
     zip_safe = True,
     entry_points = {'console_scripts': [
         "cbank = cbank.cli.controllers:main"]},

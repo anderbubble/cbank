@@ -47,6 +47,7 @@ class Entity (object):
         else:
             return "?"
 
+
 def getattr_ (obj, name, default_thunk):
     try:
         return getattr(obj, name)
@@ -69,35 +70,35 @@ def memoized (func, *args):
 
 class UpstreamEntity (Entity):
 
+    _in = None
+    _out = None
+
     def __init__ (self, id_):
         Entity.__init__(self)
         self.id = id_
 
-    _in = None
-    _out = None
-
-    def __str__ (self):
-        str_ = self._out(self.id)
-        if str_ is None:
-            return str(self.id)
-        else:
-            return str(str_)
-
     @classmethod
     def fetch (cls, input):
-        id_ = cls._in(input)
-        if id_ is None:
-            return cls.cached(input)
-        else:
-            return cls.cached(id_)
+        if cls._in is not None:
+            id_ = cls._in(input)
+            if id_ is not None:
+                return cls.cached(id_)
+        return cls.cached(input)
 
     @classmethod
     @memoized
     def cached (cls, *args):
         return cls(*args)
 
+    def __str__ (self):
+        if self._out is not None:
+            str_ = self._out(self.id)
+            if str_ is not None:
+                return str_
+        return str(self.id)
+
     def __eq__ (self, other):
-        return type(self) is type(other) and (str(self.id) == str(other.id))
+        return type(self) == type(other) and (str(self.id) == str(other.id))
 
 
 class User (UpstreamEntity):

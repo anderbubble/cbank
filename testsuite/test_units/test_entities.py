@@ -1,14 +1,19 @@
-from nose.tools import raises, assert_equal, assert_almost_equals
+from testsuite import BaseTester, assert_identical
+
+from nose.tools import (
+    raises, assert_equal, assert_not_equal, assert_almost_equals)
+
+from mock import Mock, patch
 
 from datetime import datetime, timedelta
 
 from sqlalchemy import create_engine
 
 from cbank import config
-from cbank.model import (
-    User, Project, Resource,
-    Allocation, Hold, Job, Charge, Refund,
-    Session)
+from cbank.model.entities import (
+    UpstreamEntity, User, Project, Resource,
+    Allocation, Hold, Job, Charge, Refund)
+from cbank.model.queries import Session
 import cbank.upstreams.default
 import cbank.model
 
@@ -31,6 +36,66 @@ def teardown ():
     cbank.upstreams.default.resources = []
     cbank.model.clear_upstream()
     cbank.model.metadata.bind = None
+
+
+class TestUpstreamEntity (BaseTester):
+
+    def test_init (self):
+        assert_equal(UpstreamEntity(1).id, 1)
+
+    def test_str_unconfigured (self):
+        assert_equal(str(UpstreamEntity("1")), "1")
+
+    @patch.object(UpstreamEntity, "_out",
+                  Mock(return_value=None))
+    def test_str_undefined (self, *args):
+        assert_equal(str(UpstreamEntity("1")), "1")
+        UpstreamEntity._out.assert_called_with("1")
+
+    @patch.object(UpstreamEntity, "_out",
+                  Mock(return_value="one"))
+    def test_str_defined (self):
+        assert_equal(str(UpstreamEntity("1")), "one")
+        UpstreamEntity._out.assert_called_with("1")
+
+    def test_fetch_identity (self):
+        assert_identical(
+            UpstreamEntity.fetch("one"),
+            UpstreamEntity.fetch("one"))
+        assert_not_identical(
+            UpstreamEntity.fetch("one"),
+            UpstreamEntity.fetch("two"))
+
+    def test_fetch_unconfigured (self):
+        assert_equal(UpstreamEntity.fetch("one").id, "one")
+
+    @patch.object(UpstreamEntity, "_in",
+                  Mock(return_value=None))
+    def test_fetch_undefined (self):
+        assert_equal(UpstreamEntity.fetch("one").id, "one")
+        UpstreamEntity._in.assert_called_with("one")
+
+    @patch.object(UpstreamEntity, "_in",
+                  Mock(return_value="1"))
+    def test_fetch_defined (self):
+        assert_equal(UpstreamEntity.fetch("one").id, "1")
+        UpstreamEntity._in.assert_called_with("one")
+
+    def test_cached (self):
+        assert_identical(
+            UpstreamEntity.cached("1"),
+            UpstreamEntity.cached("1"))
+        assert_not_identical(
+            UpstreamEntity.cached("1"),
+            UpstreamEntity.cached("2"))
+
+    def test_eq (self):
+        assert_equal(
+            UpstreamEntity("1"),
+            UpstreamEntity("1"))
+        assert_not_equal(
+            UpstreamEntity("1"),
+            UpstreamEntity("2"))
 
 
 class MappedEntityTester (object):
