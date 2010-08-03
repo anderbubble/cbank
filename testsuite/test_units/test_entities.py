@@ -18,26 +18,6 @@ import cbank.upstreams.default
 import cbank.model
 
 
-def setup ():
-    cbank.model.metadata.bind = \
-        create_engine("sqlite:///:memory:")
-    cbank.model.use_upstream(cbank.upstreams.default)
-    cbank.upstreams.default.users = [
-        cbank.upstreams.default.User("1", "monty")]
-    cbank.upstreams.default.projects = [
-        cbank.upstreams.default.Project("1", "grail")]
-    cbank.upstreams.default.resources = [
-        cbank.upstreams.default.Resource("1", "spam")]
-
-
-def teardown ():
-    cbank.upstreams.default.users = []
-    cbank.upstreams.default.projects = []
-    cbank.upstreams.default.resources = []
-    cbank.model.clear_upstream()
-    cbank.model.metadata.bind = None
-
-
 class TestUpstreamEntity (BaseTester):
 
     def test_init (self):
@@ -98,50 +78,63 @@ class TestUpstreamEntity (BaseTester):
             UpstreamEntity("2"))
 
 
+class TestUser (BaseTester):
+
+    @patch.object(User, "_member",
+                  Mock(return_value=False))
+    def test_not_member (self):
+        project = Mock()
+        project.id = "2"
+        assert not User("1").is_member(project)
+        User._member.assert_called_with("2", "1")
+
+    @patch.object(User, "_member",
+                  Mock(return_value=True))
+    def test_member (self):
+        project = Mock()
+        project.id = "2"
+        assert User("1").is_member(project)
+        User._member.assert_called_with("2", "1")
+
+    @patch.object(User, "_manager",
+                  Mock(return_value=False))
+    def test_not_manager (self):
+        project = Mock()
+        project.id = "2"
+        assert not User("1").is_manager(project)
+        User._manager.assert_called_with("2", "1")
+
+    @patch.object(User, "_manager",
+                  Mock(return_value=True))
+    def test_manager (self):
+        project = Mock()
+        project.id = "2"
+        assert User("1").is_manager(project)
+        User._manager.assert_called_with("2", "1")
+
+
 class MappedEntityTester (object):
-    
+
     def setup (self):
+        cbank.model.metadata.bind = (
+            create_engine("sqlite:///:memory:"))
+        cbank.model.use_upstream(cbank.upstreams.default)
+        cbank.upstreams.default.users = [
+            cbank.upstreams.default.User("1", "monty")]
+        cbank.upstreams.default.projects = [
+            cbank.upstreams.default.Project("1", "grail")]
+        cbank.upstreams.default.resources = [
+            cbank.upstreams.default.Resource("1", "spam")]
         cbank.model.metadata.create_all()
-    
+
     def teardown (self):
         Session.close()
-        cbank.model.metadata.drop_all()        
-
-
-class TestUser (object):
-    
-    def test_cached (self):
-        assert_identical(User.cached("1"), User.cached("1"))
-        assert_not_identical(User.cached("1"), User.cached("2"))
-        assert_identical(User.cached("2"), User.cached("2"))
-    
-    def test_str (self):
-        assert_equal(str(User.cached("1")), "monty")
-        assert_equal(str(User.cached("2")), "2")
-
-
-class TestProject (object):
-    
-    def test_cached (self):
-        assert_identical(Project.cached("1"), Project.cached("1"))
-        assert_not_identical(Project.cached("1"), Project.cached("2"))
-        assert_identical(Project.cached("2"), Project.cached("2"))
-    
-    def test_str (self):
-        assert_equal(str(Project.cached("1")), "grail")
-        assert_equal(str(Project.cached("2")), "2")
-
-
-class TestResource (object):
-    
-    def test_cached (self):
-        assert_identical(Resource.cached("1"), Resource.cached("1"))
-        assert_not_identical(Resource.cached("1"), Resource.cached("2"))
-        assert_identical(Resource.cached("2"), Resource.cached("2"))
-    
-    def test_str (self):
-        assert_equal(str(Resource.cached("1")), "spam")
-        assert_equal(str(Resource.cached("2")), "2")
+        cbank.model.metadata.drop_all()
+        cbank.upstreams.default.users = []
+        cbank.upstreams.default.projects = []
+        cbank.upstreams.default.resources = []
+        cbank.model.clear_upstream()
+        cbank.model.metadata.bind = None
 
 
 class TestAllocation (MappedEntityTester):
