@@ -167,6 +167,20 @@ class Allocation (Entity):
         self.holds = []
         self.charges = []
 
+    def _set_project (self, project):
+        if project is None:
+            self.project_id = None
+        else:
+            self.project_id = project.id
+
+    def _get_project (self):
+        if self.project_id is None:
+            return None
+        else:
+            return Project.cached(self.project_id)
+
+    project = property(_get_project, _set_project)
+
     def _set_resource (self, resource):
         if resource is None:
             self.resource_id = None
@@ -181,20 +195,6 @@ class Allocation (Entity):
 
     resource = property(_get_resource, _set_resource)
 
-    def _set_project (self, project):
-        if project is None:
-            self.project_id = None
-        else:
-            self.project_id = project.id
-
-    def _get_project (self):
-        if self.project_id is None:
-            return None
-        else:
-            return Project.cached(self.project_id)
-
-    project = property(_get_project, _set_project)
-    
     def amount_charged (self):
         """Compute the sum of effective charges (after refunds)."""
         return sum(charge.effective_amount() for charge in self.charges)
@@ -205,8 +205,10 @@ class Allocation (Entity):
     
     def amount_available (self):
         """Compute the amount available for charges."""
-        return self.amount - (self.amount_charged() + self.amount_held())
-    
+        charged = self.amount_charged()
+        held = self.amount_held()
+        return max(0, (self.amount - (charged + held)))
+
     def active (self, now=datetime.now):
         """Determine whether or not this allocation is still active."""
         try:
@@ -269,33 +271,20 @@ class Hold (Entity):
         """
         
         holds = list()
-        for allocation in allocations:
-            amount_available = allocation.amount_available()
-            if amount_available <= 0:
-                continue
-            if amount_available >= amount:
-                hold = cls(allocation, amount)
-            else:
-                hold = cls(allocation, amount_available)
-            holds.append(hold)
-            amount -= hold.amount
-            if amount <= 0:
-                break
-        
-        if amount > 0:
+        amount_remaining = amount
+        allocations_available = allocations[:]
+        while amount_remaining > 0:
             try:
-                hold = holds[-1]
+                allocation = allocations_available.pop(0)
             except IndexError:
-                try:
-                    allocation = allocations[0]
-                except IndexError:
-                    raise ValueError("no allocation to hold on")
-                else:
-                    hold = cls(allocation=allocation, amount=amount)
-                    holds.append(hold)
-                    amount = 0
+                raise ValueError("insufficient allocation")
             else:
-                hold.amount += amount
+                amount_available = allocation.amount_available()
+                if amount_available > 0:
+                    hold_amount = min(amount_remaining, amount_available)
+                    hold = cls(allocation, hold_amount)
+                    holds.append(hold)
+                    amount_remaining -= hold.amount
         return holds
 
 
@@ -476,35 +465,27 @@ class Charge (Entity):
         accomodate.
         """
         
-        charges = []
-        for allocation in allocations:
-            amount_available = allocation.amount_available()
-            if amount_available <= 0:
-                continue
-            if amount_available >= amount:
-                charge = cls(allocation, amount)
-            else:
-                charge = cls(allocation, amount_available)
-            amount -= charge.amount
-            charges.append(charge)
-            if amount <= 0:
-                break
-        
-        if amount > 0:
+        charges = list()
+        amount_remaining = amount
+        allocations_available = allocations[:]
+        while amount_remaining > 0:
             try:
-                charge = charges[-1]
+                allocation = allocations_available.pop(0)
             except IndexError:
                 try:
-                    allocation = allocations[0]
+                    charge = charges[-1]
                 except IndexError:
-                    raise ValueError("no allocations to charge against")
+                    raise ValueError("insufficient allocation")
                 else:
-                    charge = cls(allocation, amount)
-                    charges.append(charge)
-                    amount = 0
+                    charge.amount += amount_remaining
+                    amount_remaining -= charge.amount
             else:
-                charge.amount += amount
-        
+                amount_available = allocation.amount_available()
+                if amount_available > 0:
+                    charge_amount = min(amount_remaining, amount_available)
+                    charge = cls(allocation, charge_amount)
+                    charges.append(charge)
+                    amount_remaining -= charge.amount
         return charges
     
     def amount_refunded (self):
@@ -515,32 +496,16 @@ class Charge (Entity):
         """Compute the difference between the charge and refunds."""
         return self.amount - self.amount_refunded()
     
-    def transfer (self, project, amount=None):
-        """Transfer a charge to allocations of another project.
-        
-        Returns a tuple containing the refund and a list of new charges.
-        
-        Arguments:
-        project -- the project to transfer the charge to
-        amount -- the amount to tranfer (default all)
-        """
-        if amount is None:
-            amount = self.effective_amount()
-        charges = project.charge(self.allocation.resource, amount)
-        for charge in charges:
-            charge.comment = self.comment
-            charge.jobs = self.jobs
-        refund = self.refund(amount)
-        refund.comment = "transferred to %s" % project
-        return refund, charges
-    
     def refund (self, amount=None):
         """Refund an amount of a charge.
         
         Arguments:
         amount (default all of effective charge)
         """
-        return Refund(self, amount)
+        if amount is None:
+            return Refund(self, self.effective_amount())
+        else:
+            return Refund(self, amount)
 
 
 class Refund (Entity):
@@ -554,7 +519,7 @@ class Refund (Entity):
     comment -- misc. comments
     """
     
-    def __init__ (self, charge, amount=None):
+    def __init__ (self, charge, amount):
         """Initialize a new refund.
         
         Attributes:
@@ -564,10 +529,7 @@ class Refund (Entity):
         Entity.__init__(self)
         self.datetime = datetime.now()
         self.charge = charge
-        if amount is not None:
-            self.amount = amount
-        else:
-            self.amount = charge.effective_amount()
+        self.amount = amount
         self.comment = None
 
 
