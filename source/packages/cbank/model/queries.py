@@ -52,7 +52,9 @@ class EntityConstraints (SessionExtension):
             instance for instance in (session.new | session.dirty)
             if isinstance(instance, Hold) and instance.active)
         for allocation in set(hold.allocation for hold in holds_):
-            if allocation.amount_available() < 0:
+            amount_used = (
+                allocation.amount_charged() + allocation.amount_held())
+            if amount_used > allocation.amount:
                 raise ValueError("cannot hold more than is available")
     
     def check_refunds (self, session):
