@@ -1,5 +1,6 @@
 from testsuite import (
-    BaseTester, assert_identical, clear_mappers, restore_mappers, assert_in)
+    BaseTester, assert_identical, assert_not_identical,
+    clear_mappers, restore_mappers, assert_in)
 
 from nose.tools import (
     raises, assert_equal, assert_not_equal, assert_almost_equals)
