@@ -145,4 +145,3 @@ refunds = Table("refunds", metadata,
     Column("amount", Integer, nullable=False),
     Column("comment", Text),
     mysql_engine="InnoDB")
-
