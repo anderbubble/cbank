@@ -262,7 +262,7 @@ class TestDetailRefunds (CbankTester):
         c = Charge(a, 0)
         c.job = Job("resource1.1")
         c.job.user = current_user()
-        r = Refund(c)
+        r = c.refund()
         Session.add(r)
         Session.flush()
         run(detail_refunds_main, ["%i" % r.id])
@@ -273,7 +273,7 @@ class TestDetailRefunds (CbankTester):
         a = Allocation(Project.fetch("project1"), Resource.fetch("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
-        r = Refund(c)
+        r = c.refund()
         Session.add(r)
         Session.flush()
         run(detail_refunds_main, ["%i" % r.id])
@@ -284,7 +284,7 @@ class TestDetailRefunds (CbankTester):
         a = Allocation(Project.fetch("project3"), Resource.fetch("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
-        r = Refund(c)
+        r = c.refund()
         Session.add(r)
         Session.flush()
         run(detail_refunds_main, ["%i" % r.id])
@@ -302,7 +302,7 @@ class TestAdminDetailRefunds (TestDetailRefunds):
         a = Allocation(Project.fetch("project1"), Resource.fetch("resource1"), 0,
             datetime(2000, 1, 1), datetime(2001, 1, 1))
         c = Charge(a, 0)
-        r = Refund(c)
+        r = c.refund()
         Session.add(r)
         Session.flush()
         run(detail_refunds_main, ["%i" % r.id])
