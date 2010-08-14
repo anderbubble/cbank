@@ -1,80 +1,81 @@
 from nose.tools import raises, assert_equal
 
+from mock import Mock, patch
+
+from testsuite import (
+    BaseTester, setup_upstream, teardown_upstream)
+
 from datetime import datetime
 
-from sqlalchemy import create_engine
-
-import cbank.model
 import cbank.upstreams.default
-from cbank.model import (
-    User, Project, Resource, Allocation, Hold, Job, Charge, Refund)
+from cbank.model.entities import (
+    User, Project, Resource, Allocation, Hold, Charge, Refund)
 from cbank.model.queries import Session, get_projects
 
 
-def setup ():
-    cbank.model.metadata.bind = create_engine("sqlite:///:memory:")
-    cbank.model.use_upstream(cbank.upstreams.default)
-
-
-def teardown ():
-    cbank.model.clear_upstream()
-    cbank.model.metadata.bind = None
-
-
-def assert_identical (obj1, obj2):
-    assert obj1 is obj2, "%r is not %r" % (obj1, obj2)
-
-
-class DatabaseEnabledTester (object):
+class QueryTester (BaseTester):
 
     def setup (self):
-        """Create the tables before each test."""
-        cbank.model.metadata.create_all()
+        self.setup_database()
     
     def teardown (self):
-        """drop the database after each test."""
         Session.remove()
-        cbank.model.metadata.drop_all()
+        self.teardown_database()
 
 
-class TestGetProjects (DatabaseEnabledTester):
+class TestGetProjects (QueryTester):
 
-    def setup (self):
-        DatabaseEnabledTester.setup(self)
-        p1 = cbank.upstreams.default.Project("1", "one")
-        p2 = cbank.upstreams.default.Project("2", "two")
-        u1 = cbank.upstreams.default.Project("1", "one")
-        u2 = cbank.upstreams.default.Project("2", "two")
-        p1.members = [u1]
-        p1.managers = [u2]
-        p2.members = [u2]
-        p2.managers = [u1]
-        cbank.upstreams.default.projects = [p1, p2]
-        cbank.upstreams.default.users = [u1, u2]
-        a1 = Allocation(Project.cached("1"), Resource.cached("1"), 1,
-                       datetime.now(), datetime.now())
-        a2 = Allocation(Project.cached("2"), Resource.cached("1"), 1,
-                       datetime.now(), datetime.now())
-        Session.add_all([a1, a2])
-        Session.commit()
+    def test_no_allocations (self):
+        assert_equal(get_projects(), [])
 
-    def teardown (self):
-        DatabaseEnabledTester.teardown(self)
-        cbank.upstreams.default.projects = []
-        cbank.upstreams.default.users = []
+    def test_allocations (self):
+        project_1 = Mock(['id'])
+        project_1.id = "1"
+        project_2 = Mock(['id'])
+        project_2.id = "2"
+        resource = Mock(['id'])
+        resource.id = "1"
+        dt = datetime(2000, 1, 1)
+        Session.add(Allocation(project_1, resource, 0, dt, dt))
+        Session.add(Allocation(project_2, resource, 0, dt, dt))
+        assert_equal(
+            set(get_projects()),
+            set([Project.cached("1"), Project.cached("2")]))
 
-    def test_all_projects (self):
-        assert_equal(set(get_projects()),
-                     set([Project.cached("1"), Project.cached("2")]))
-
+    @patch.object(User, "_member",
+                  staticmethod(lambda p, u: p == "1" and u == "1"))
     def test_member_projects (self):
-        assert_equal(get_projects(member=User.cached("1")), [Project.cached("1")])
+        project_1 = Mock(['id'])
+        project_1.id = "1"
+        project_2 = Mock(['id'])
+        project_2.id = "2"
+        resource = Mock(['id'])
+        resource.id = "1"
+        dt = datetime(2000, 1, 1)
+        Session.add(Allocation(project_1, resource, 0, dt, dt))
+        Session.add(Allocation(project_2, resource, 0, dt, dt))
+        assert_equal(
+            get_projects(member=User.cached("1")),
+            [Project.cached("1")])
 
+    @patch.object(User, "_manager",
+                  staticmethod(lambda p, u: p == "1" and u == "1"))
     def test_manager_projects (self):
-        assert_equal(get_projects(manager=User.cached("1")), [Project.cached("2")])
+        project_1 = Mock(['id'])
+        project_1.id = "1"
+        project_2 = Mock(['id'])
+        project_2.id = "2"
+        resource = Mock(['id'])
+        resource.id = "1"
+        dt = datetime(2000, 1, 1)
+        Session.add(Allocation(project_1, resource, 0, dt, dt))
+        Session.add(Allocation(project_2, resource, 0, dt, dt))
+        assert_equal(
+            get_projects(manager=User.cached("1")),
+            [Project.cached("1")])
 
 
-class TestPositiveAmountConstraints (DatabaseEnabledTester):
+class TestPositiveAmountConstraints (QueryTester):
 
     @raises(ValueError)
     def test_allocation_amount_negative (self):
@@ -109,7 +110,7 @@ class TestPositiveAmountConstraints (DatabaseEnabledTester):
         Session.commit()
 
 
-class TestHoldConstraints (DatabaseEnabledTester):
+class TestHoldConstraints (QueryTester):
 
     @raises(ValueError)
     def test_hold_gt (self):
@@ -137,7 +138,7 @@ class TestHoldConstraints (DatabaseEnabledTester):
         Session.commit()
 
 
-class TestRefundConstraints (DatabaseEnabledTester):
+class TestRefundConstraints (QueryTester):
 
     @raises(ValueError)
     def test_refund_gt (self):

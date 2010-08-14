@@ -1,9 +1,11 @@
 from nose.tools import assert_equal
 
+import sqlalchemy
 import sqlalchemy.orm
 
 import cbank
 import cbank.model
+import cbank.model.database
 
 
 def assert_identical (left, right):
@@ -20,6 +22,14 @@ def assert_in (item, container):
 
 def setup ():
     clear_config()
+    teardown_upstream()
+
+
+def setup_upstream ():
+    cbank.model.use_upstream(cbank.upstreams.default)
+
+
+def teardown_upstream ():
     cbank.model.clear_upstream()
 
 
@@ -38,12 +48,14 @@ def restore_mappers ():
 
 class BaseTester (object):
 
-    def setup_engine (self):
-        cbank.model.metadata.bind = (
-            create_engine("sqlite:///:memory:"))
+    def setup_database (self):
+        cbank.model.database.metadata.bind = (
+            sqlalchemy.create_engine("sqlite:///:memory:"))
+        cbank.model.database.metadata.create_all()
 
-    def teardown_engine (self):
-        cbank.model.metadata.bind = None
+    def teardown_database (self):
+        cbank.model.database.metadata.drop_all()
+        cbank.model.database.metadata.bind = None
 
     def setup_upstream (self):
         cbank.model.use_upstream(cbank.upstreams.default)
