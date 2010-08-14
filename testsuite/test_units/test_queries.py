@@ -9,8 +9,8 @@ from datetime import datetime
 
 import cbank.upstreams.default
 from cbank.model.entities import (
-    User, Project, Resource, Allocation, Hold, Charge, Refund)
-from cbank.model.queries import Session, get_projects
+    User, Project, Resource, Allocation, Hold, Job, Charge, Refund)
+from cbank.model.queries import Session, get_projects, get_users
 
 
 class QueryTester (BaseTester):
@@ -73,6 +73,49 @@ class TestGetProjects (QueryTester):
         assert_equal(
             get_projects(manager=User.cached("1")),
             [Project.cached("1")])
+
+
+class TestGetUsers (QueryTester):
+
+    def test_no_jobs (self):
+        assert_equal(get_users(), [])
+
+    def test_with_jobs (self):
+        job_1 = Job("1")
+        job_1.user_id = "1"
+        job_2 = Job("2")
+        job_2.user_id = "2"
+        dt = datetime(2000, 1, 1)
+        Session.add_all([job_1, job_2])
+        assert_equal(
+            set(get_users()),
+            set([User.cached("1"), User.cached("2")]))
+
+    @patch.object(User, "_member",
+                  staticmethod(lambda p, u: p == "1" and u == "1"))
+    def test_member_projects (self):
+        job_1 = Job("1")
+        job_1.user_id = "1"
+        job_2 = Job("2")
+        job_2.user_id = "2"
+        dt = datetime(2000, 1, 1)
+        Session.add_all([job_1, job_2])
+        assert_equal(
+            get_users(member=Project.cached("1")),
+            [User.cached("1")])
+
+    @patch.object(User, "_manager",
+                  staticmethod(lambda p, u: p == "1" and u == "1"))
+    def test_manager_projects (self):
+        job_1 = Job("1")
+        job_1.user_id = "1"
+        job_2 = Job("2")
+        job_2.user_id = "2"
+        dt = datetime(2000, 1, 1)
+        Session.add_all([job_1, job_2])
+        assert_equal(
+            get_users(manager=Project.cached("1")),
+            [User.cached("1")])
 
 
 class TestPositiveAmountConstraints (QueryTester):
