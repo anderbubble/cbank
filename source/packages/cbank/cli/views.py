@@ -42,23 +42,25 @@ def print_users_list (users, truncate=True, **kwargs):
     print >> sys.stderr, format.separator()
     job_count_total = 0
     charge_sum_total = 0
+    refund_sum_total = 0
     users_printed = []
     if users:
         data = cbank.model.queries.user_summary(users, **kwargs)
-        for user_id, job_count, charge_sum in data:
+        for user_id, job_count, charge_sum, refund_sum in data:
             user = User.cached(user_id)
             users_printed.append(user)
             job_count_total += job_count
             charge_sum_total += charge_sum
+            refund_sum_total += refund_sum
             print format({'Name':user, 'Jobs':job_count,
-                'Charged':display_units(charge_sum)})
+                'Charged':display_units(charge_sum - refund_sum)})
         for user in users:
             if user not in users_printed:
                 print format({'Name':user, 'Jobs':0,
                           'Charged':display_units(0)})
     print >> sys.stderr, format.separator(["Jobs", "Charged"])
     print >> sys.stderr, format({'Jobs':job_count_total,
-        'Charged':display_units(charge_sum_total)})
+        'Charged':display_units(charge_sum_total - refund_sum_total)})
     print >> sys.stderr, unit_definition()
 
 

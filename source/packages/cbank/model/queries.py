@@ -164,8 +164,8 @@ def user_summary (users, projects=None, resources=None,
     query = s.query(
         Job.user_id,
         func.coalesce(jobs_q.c.job_count, 0),
-        (func.coalesce(charges_q.c.charge_sum, 0)
-            - func.coalesce(refunds_q.c.refund_sum, 0)))
+        func.coalesce(charges_q.c.charge_sum, 0),
+        func.coalesce(refunds_q.c.refund_sum, 0))
     query = query.outerjoin(
         (jobs_q, Job.user_id == jobs_q.c.user_id),
         (charges_q, Job.user_id == charges_q.c.user_id),

@@ -5,12 +5,13 @@ from mock import Mock, patch
 from testsuite import (
     BaseTester, setup_upstream, teardown_upstream)
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import cbank.upstreams.default
 from cbank.model.entities import (
     User, Project, Resource, Allocation, Hold, Job, Charge, Refund)
-from cbank.model.queries import Session, get_projects, get_users
+from cbank.model.queries import (
+    Session, get_projects, get_users, user_summary)
 
 
 class QueryTester (BaseTester):
@@ -191,3 +192,256 @@ class TestRefundConstraints (QueryTester):
         r = Refund(c, 6)
         Session.add(r)
         Session.commit()
+
+
+class TestUserSummary (QueryTester):
+    
+    def test_blank (self):
+        users = [User.cached("1"), User.cached("2")]
+        assert_equal(list(user_summary(users)), [])
+    
+    def test_jobs (self):
+        user_1 = User.cached("1")
+        user_2 = User.cached("2")
+        job_1 = Job("1")
+        job_2 = Job("2")
+        job_3 = Job("3")
+        job_4 = Job("4")
+        job_1.user_id = "1"
+        job_2.user_id = "2"
+        job_3.user_id = "2"
+        job_4.user_id = "2"
+        Session.add_all([job_1, job_2, job_3, job_4])
+        assert_equal(list(user_summary([user_1, user_2])),
+                     [("1", 1, 0, 0), ("2", 3, 0, 0)])
+    
+    def test_charges (self):
+        user_1 = User.cached("1")
+        user_2 = User.cached("2")
+        project_1 = Project.cached("1")
+        project_2 = Project.cached("2")
+        resource_1 = Resource.cached("1")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 0, start, end)
+        allocation_2 = Allocation(project_2, resource_1, 0, start, end)
+        job_1 = Job("1")
+        job_2 = Job("2")
+        job_3 = Job("3")
+        job_4 = Job("4")
+        job_1.user_id = "1"
+        job_2.user_id = "2"
+        job_3.user_id = "2"
+        job_4.user_id = "2"
+        job_1.charges = [Charge(allocation_1, 1)]
+        job_2.charges = [Charge(allocation_1, 2)]
+        job_3.charges = [Charge(allocation_2, 4)]
+        job_4.charges = [Charge(allocation_2, 8)]
+        Session.add_all([allocation_1, allocation_2])
+        assert_equal(
+            list(user_summary([user_1, user_2])),
+            [("1", 1, 1, 0), ("2", 3, 14, 0)])
+    
+    def test_refunds (self):
+        user_1 = User.cached("1")
+        user_2 = User.cached("2")
+        project_1 = Project.cached("1")
+        project_2 = Project.cached("2")
+        resource_1 = Resource.cached("1")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 0, start, end)
+        allocation_2 = Allocation(project_2, resource_1, 0, start, end)
+        job_1 = Job("1")
+        job_2 = Job("2")
+        job_3 = Job("3")
+        job_4 = Job("4")
+        job_1.user_id = "1"
+        job_2.user_id = "2"
+        job_3.user_id = "2"
+        job_4.user_id = "2"
+        job_1.charges = [Charge(allocation_1, 1)]
+        job_2.charges = [Charge(allocation_1, 2)]
+        job_3.charges = [Charge(allocation_2, 4)]
+        job_4.charges = [Charge(allocation_2, 8)]
+        Refund(job_1.charges[0], 1)
+        Refund(job_2.charges[0], 2)
+        Refund(job_3.charges[0], 3)
+        Refund(job_4.charges[0], 4)
+        Session.add_all([allocation_1, allocation_2])
+        assert_equal(
+            list(user_summary([user_1, user_2])),
+            [("1", 1, 1, 1), ("2", 3, 14, 9)])
+
+    def test_projects_filter (self):
+        user_1 = User.cached("1")
+        user_2 = User.cached("2")
+        project_1 = Project.cached("1")
+        project_2 = Project.cached("2")
+        resource_1 = Resource.cached("1")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 0, start, end)
+        allocation_2 = Allocation(project_2, resource_1, 0, start, end)
+        job_1 = Job("1")
+        job_2 = Job("2")
+        job_3 = Job("3")
+        job_4 = Job("4")
+        job_1.user_id = "1"
+        job_2.user_id = "2"
+        job_3.user_id = "2"
+        job_4.user_id = "2"
+        job_1.account_id = "1"
+        job_2.account_id = "1"
+        job_3.account_id = "2"
+        job_4.account_id = "2"
+        job_1.charges = [Charge(allocation_1, 1)]
+        job_2.charges = [Charge(allocation_1, 2)]
+        job_3.charges = [Charge(allocation_2, 4)]
+        job_4.charges = [Charge(allocation_2, 8)]
+        Refund(job_1.charges[0], 1)
+        Refund(job_2.charges[0], 2)
+        Refund(job_3.charges[0], 3)
+        Refund(job_4.charges[0], 4)
+        Session.add_all([
+            allocation_1, allocation_2])
+
+        users = [user_1, user_2]
+        projects = [Project.cached("1")]
+        assert_equal(
+            list(user_summary(users, projects=projects)),
+            [("1", 1, 1, 1), ("2", 1, 2, 2)])
+
+    def test_resources_filter (self):
+        user_1 = User.cached("1")
+        user_2 = User.cached("2")
+        project_1 = Project.cached("1")
+        project_2 = Project.cached("2")
+        resource_1 = Resource.cached("1")
+        resource_2 = Resource.cached("2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 0, start, end)
+        allocation_2 = Allocation(project_2, resource_2, 0, start, end)
+        job_1 = Job("1")
+        job_2 = Job("2")
+        job_3 = Job("3")
+        job_4 = Job("4")
+        job_1.user_id = "1"
+        job_2.user_id = "2"
+        job_3.user_id = "2"
+        job_4.user_id = "2"
+        job_1.account_id = "1"
+        job_2.account_id = "1"
+        job_3.account_id = "2"
+        job_4.account_id = "2"
+        job_1.charges = [Charge(allocation_1, 1)]
+        job_2.charges = [Charge(allocation_1, 2)]
+        job_3.charges = [Charge(allocation_2, 4)]
+        job_4.charges = [Charge(allocation_2, 8)]
+        Refund(job_1.charges[0], 1)
+        Refund(job_2.charges[0], 2)
+        Refund(job_3.charges[0], 3)
+        Refund(job_4.charges[0], 4)
+        Session.add_all([
+            allocation_1, allocation_2])
+
+        users = [user_1, user_2]
+        resources = [Resource.cached("2")]
+        assert_equal(
+            list(user_summary(users, resources=resources)),
+            [("1", 0, 0, 0), ("2", 2, 12, 7)])
+    
+    def test_after_filter (self):
+        user_1 = User.cached("1")
+        user_2 = User.cached("2")
+        project_1 = Project.cached("1")
+        project_2 = Project.cached("2")
+        resource_1 = Resource.cached("1")
+        resource_2 = Resource.cached("2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 0, start, end)
+        allocation_2 = Allocation(project_2, resource_2, 0, start, end)
+        job_1 = Job("1")
+        job_2 = Job("2")
+        job_3 = Job("3")
+        job_4 = Job("4")
+        job_1.end = datetime(2000, 1, 2)
+        job_2.end = datetime(2000, 1, 3)
+        job_3.end = datetime(2000, 1, 4)
+        job_4.end = datetime(2000, 1, 5)
+        job_1.user_id = "1"
+        job_2.user_id = "2"
+        job_3.user_id = "2"
+        job_4.user_id = "2"
+        job_1.account_id = "1"
+        job_2.account_id = "1"
+        job_3.account_id = "2"
+        job_4.account_id = "2"
+        job_1.charges = [Charge(allocation_1, 1)]
+        job_2.charges = [Charge(allocation_1, 2)]
+        job_3.charges = [Charge(allocation_2, 4)]
+        job_4.charges = [Charge(allocation_2, 8)]
+        job_1.charges[0].datetime = datetime(2000, 1, 2)
+        job_2.charges[0].datetime = datetime(2000, 1, 3)
+        job_3.charges[0].datetime = datetime(2000, 1, 4)
+        job_4.charges[0].datetime = datetime(2000, 1, 5)
+        Refund(job_1.charges[0], 1)
+        Refund(job_2.charges[0], 2)
+        Refund(job_3.charges[0], 3)
+        Refund(job_4.charges[0], 4)
+        Session.add_all([
+            allocation_1, allocation_2])
+
+        users = [User.cached("1"), User.cached("2")]
+        assert_equal(
+            list(user_summary(users, after=datetime(2000, 1, 3))),
+            [("1", 0, 0, 0), ("2", 2, 14, 9)])
+
+    def test_before_filter (self):
+        user_1 = User.cached("1")
+        user_2 = User.cached("2")
+        project_1 = Project.cached("1")
+        project_2 = Project.cached("2")
+        resource_1 = Resource.cached("1")
+        resource_2 = Resource.cached("2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 0, start, end)
+        allocation_2 = Allocation(project_2, resource_2, 0, start, end)
+        job_1 = Job("1")
+        job_2 = Job("2")
+        job_3 = Job("3")
+        job_4 = Job("4")
+        job_1.start = datetime(2000, 1, 1)
+        job_2.start = datetime(2000, 1, 2)
+        job_3.start = datetime(2000, 1, 3)
+        job_4.start = datetime(2000, 1, 4)
+        job_1.user_id = "1"
+        job_2.user_id = "2"
+        job_3.user_id = "2"
+        job_4.user_id = "2"
+        job_1.account_id = "1"
+        job_2.account_id = "1"
+        job_3.account_id = "2"
+        job_4.account_id = "2"
+        job_1.charges = [Charge(allocation_1, 1)]
+        job_2.charges = [Charge(allocation_1, 2)]
+        job_3.charges = [Charge(allocation_2, 4)]
+        job_4.charges = [Charge(allocation_2, 8)]
+        job_1.charges[0].datetime = datetime(2000, 1, 2)
+        job_2.charges[0].datetime = datetime(2000, 1, 3)
+        job_3.charges[0].datetime = datetime(2000, 1, 4)
+        job_4.charges[0].datetime = datetime(2000, 1, 5)
+        Refund(job_1.charges[0], 1)
+        Refund(job_2.charges[0], 2)
+        Refund(job_3.charges[0], 3)
+        Refund(job_4.charges[0], 4)
+        Session.add_all([
+            allocation_1, allocation_2])
+
+        users = [User.cached("1"), User.cached("2")]
+        assert_equal(
+            list(user_summary(users, before=datetime(2000, 1, 3))),
+            [("1", 1, 1, 1), ("2", 1, 0, 0)])
