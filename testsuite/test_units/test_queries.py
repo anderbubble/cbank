@@ -11,7 +11,7 @@ import cbank.upstreams.default
 from cbank.model.entities import (
     User, Project, Resource, Allocation, Hold, Job, Charge, Refund)
 from cbank.model.queries import (
-    Session, get_projects, get_users, user_summary)
+    Session, get_projects, get_users, user_summary, project_summary)
 
 
 class QueryTester (BaseTester):
@@ -445,3 +445,355 @@ class TestUserSummary (QueryTester):
         assert_equal(
             list(user_summary(users, before=datetime(2000, 1, 3))),
             [("1", 1, 1, 1), ("2", 1, 0, 0)])
+
+
+class TestProjectSummary (QueryTester):
+
+    datetime_mock = Mock(['now'])
+    datetime_mock.now = Mock([], return_value=datetime(2000, 1, 1))
+
+    def test_projects (self):
+        projects = [Project.cached("1"), Project.cached("2")]
+        assert_equal(list(project_summary(projects)), [])
+
+    @patch("cbank.model.queries.datetime", datetime_mock)
+    def test_allocations (self):
+        project_1 = Project.cached("1")
+        project_2 = Project.cached("2")
+        resource_1 = Resource.cached("1")
+        resource_2 = Resource.cached("2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 10, start, end)
+        allocation_2 = Allocation(project_1, resource_1, 20, start, end)
+        allocation_3 = Allocation(project_2, resource_1, 30, start, end)
+        allocation_4 = Allocation(project_2, resource_2, 35, start, end)
+        Session.add_all([
+            allocation_1, allocation_2, allocation_3, allocation_4])
+        assert_equal(list(project_summary([project_1, project_2])),
+                     [('1', 0, 0, 0, 30), ("2", 0, 0, 0, 65)])
+
+    @patch("cbank.model.queries.datetime", datetime_mock)
+    def test_expired_allocations (self):
+        project_1 = Project.cached("1")
+        project_2 = Project.cached("2")
+        resource_1 = Resource.cached("1")
+        resource_2 = Resource.cached("2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 10, start, start)
+        allocation_2 = Allocation(project_1, resource_1, 20, start, start)
+        allocation_3 = Allocation(project_2, resource_1, 30, start, end)
+        allocation_4 = Allocation(project_2, resource_2, 35, start, start)
+        Session.add_all([
+            allocation_1, allocation_2, allocation_3, allocation_4])
+        assert_equal(list(project_summary([project_1, project_2])),
+                     [("1", 0, 0, 0, 0), ("2", 0, 0, 0, 30)])
+
+    @patch("cbank.model.queries.datetime", datetime_mock)
+    def test_holds (self):
+        project_1 = Project.cached("1")
+        project_2 = Project.cached("2")
+        resource_1 = Resource.cached("1")
+        resource_2 = Resource.cached("2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 10, start, start)
+        allocation_2 = Allocation(project_1, resource_1, 20, start, end)
+        allocation_3 = Allocation(project_2, resource_1, 30, start, end)
+        allocation_4 = Allocation(project_2, resource_2, 35, start, end)
+        Hold(allocation_1, 10)
+        Hold(allocation_2, 15)
+        hold_3 = Hold(allocation_2, 5)
+        hold_4 = Hold(allocation_4, 9)
+        Hold(allocation_4, 8)
+        hold_3.active = False
+        hold_4.active = False
+        Session.add_all([
+            allocation_1, allocation_2, allocation_3, allocation_4])
+        assert_equal(list(project_summary([project_1, project_2])),
+                     [("1", 0, 0, 0, 5), ("2", 0, 0, 0, 57)])
+
+    def test_jobs (self):
+        project_1 = Project.cached("1")
+        project_2 = Project.cached("2")
+        resource_1 = Resource.cached("1")
+        resource_2 = Resource.cached("1")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 0, start, end)
+        allocation_2 = Allocation(project_2, resource_2, 0, start, end)
+        job_1 = Job("1.1")
+        job_2 = Job("1.2")
+        job_3 = Job("1.3")
+        job_4 = Job("2.1")
+        job_5 = Job("2.2")
+        charge_1 = Charge(allocation_1, 0)
+        charge_2 = Charge(allocation_1, 0)
+        charge_3 = Charge(allocation_1, 0)
+        charge_4 = Charge(allocation_2, 0)
+        charge_5 = Charge(allocation_2, 0)
+        charge_1.job = job_1
+        charge_2.job = job_2
+        charge_3.job = job_3
+        charge_4.job = job_4
+        charge_5.job = job_5
+        job_1.account = project_1
+        job_2.account = project_1
+        job_3.account = project_1
+        job_4.account = project_2
+        job_5.account = project_2
+        Session.add_all([job_1, job_2, job_3, job_4, job_5])
+        assert_equal(list(project_summary([project_1, project_2])),
+                     [("1", 3, 0, 0, 0), ("2", 2, 0, 0, 0)])
+
+    @patch("cbank.model.queries.datetime", datetime_mock)
+    def test_charges (self):
+        project_1 = Project.cached("1")
+        project_2 = Project.cached("2")
+        resource_1 = Resource.cached("1")
+        resource_2 = Resource.cached("2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 10, start, end)
+        allocation_2 = Allocation(project_1, resource_1, 20, start, end)
+        allocation_3 = Allocation(project_2, resource_1, 30, start, end)
+        allocation_4 = Allocation(project_2, resource_2, 35, start, end)
+        job_1 = Job("1.1")
+        job_2 = Job("1.2")
+        job_3 = Job("1.3")
+        job_4 = Job("2.1")
+        job_5 = Job("2.2")
+        job_1.account = project_1
+        job_2.account = project_1
+        job_3.account = project_1
+        job_4.account = project_2
+        job_5.account = project_2
+        job_1.charges = [Charge(allocation_1, 10)]
+        job_2.charges = [Charge(allocation_2, 15)]
+        job_3.charges = [Charge(allocation_2, 5)]
+        job_4.charges = [Charge(allocation_4, 9)]
+        job_5.charges = [Charge(allocation_4, 8)]
+        Session.add_all([allocation_1, allocation_2, allocation_3, allocation_4])
+        assert_equal(list(project_summary([project_1, project_2])),
+                     [("1", 3, 30, 0, 0), ("2", 2, 17, 0, 48)])
+    
+    @patch("cbank.model.queries.datetime", datetime_mock)
+    def test_expired_charges (self):
+        project_1 = Project.cached("1")
+        project_2 = Project.cached("2")
+        resource_1 = Resource.cached("1")
+        resource_2 = Resource.cached("2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 10, start, start)
+        allocation_2 = Allocation(project_1, resource_1, 20, start, end)
+        allocation_3 = Allocation(project_2, resource_1, 30, start, start)
+        allocation_4 = Allocation(project_2, resource_2, 35, start, start)
+        job_1 = Job("1.1")
+        job_2 = Job("1.2")
+        job_3 = Job("1.3")
+        job_4 = Job("2.1")
+        job_5 = Job("2.2")
+        job_1.account = project_1
+        job_2.account = project_1
+        job_3.account = project_1
+        job_4.account = project_2
+        job_5.account = project_2
+        job_1.charges = [Charge(allocation_1, 10)]
+        job_2.charges = [Charge(allocation_2, 15)]
+        job_3.charges = [Charge(allocation_2, 5)]
+        job_4.charges = [Charge(allocation_4, 9)]
+        job_5.charges = [Charge(allocation_4, 8)]
+        Session.add_all([allocation_1, allocation_2, allocation_3, allocation_4])
+        assert_equal(list(project_summary([project_1, project_2])),
+                     [("1", 3, 30, 0, 0), ("2", 2, 17, 0, 0)])
+    
+    @patch("cbank.model.queries.datetime", datetime_mock)
+    def test_refunds (self):
+        project_1 = Project.cached("1")
+        project_2 = Project.cached("2")
+        resource_1 = Resource.cached("1")
+        resource_2 = Resource.cached("2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 10, start, end)
+        allocation_2 = Allocation(project_1, resource_1, 20, start, end)
+        allocation_3 = Allocation(project_2, resource_1, 30, start, end)
+        allocation_4 = Allocation(project_2, resource_2, 35, start, end)
+        job_1 = Job("1.1")
+        job_2 = Job("1.2")
+        job_3 = Job("1.3")
+        job_4 = Job("2.1")
+        job_5 = Job("2.2")
+        job_1.account = project_1
+        job_2.account = project_1
+        job_3.account = project_1
+        job_4.account = project_2
+        job_5.account = project_2
+        job_1.charges = [Charge(allocation_1, 10)]
+        job_2.charges = [Charge(allocation_2, 15)]
+        job_3.charges = [Charge(allocation_2, 5)]
+        job_4.charges = [Charge(allocation_4, 9)]
+        job_5.charges = [Charge(allocation_4, 8)]
+        Refund(job_1.charges[0], 4)
+        Refund(job_2.charges[0], 3)
+        Refund(job_2.charges[0], 5)
+        Refund(job_5.charges[0], 8)
+        Session.add_all([allocation_1, allocation_2, allocation_3, allocation_4])
+        assert_equal(list(project_summary([project_1, project_2])),
+                     [("1", 3, 30, 12, 12), ("2", 2, 17, 8, 56)])
+    
+    @patch("cbank.model.queries.datetime", datetime_mock)
+    def test_after (self):
+        project_1 = Project.cached("1")
+        project_2 = Project.cached("2")
+        resource_1 = Resource.cached("1")
+        resource_2 = Resource.cached("2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 10, start, end)
+        allocation_2 = Allocation(project_1, resource_1, 20, start, end)
+        allocation_3 = Allocation(project_2, resource_1, 30, start, end)
+        allocation_4 = Allocation(project_2, resource_2, 35, start, end)
+        job_1 = Job("1.1")
+        job_2 = Job("1.2")
+        job_3 = Job("1.3")
+        job_4 = Job("2.1")
+        job_5 = Job("2.2")
+        job_1.account = project_1
+        job_2.account = project_1
+        job_3.account = project_1
+        job_4.account = project_2
+        job_5.account = project_2
+        job_1.charges = [Charge(allocation_1, 10)]
+        job_2.charges = [Charge(allocation_2, 15)]
+        job_3.charges = [Charge(allocation_2, 5)]
+        job_4.charges = [Charge(allocation_4, 9)]
+        job_5.charges = [Charge(allocation_4, 8)]
+        Refund(job_1.charges[0], 4)
+        Refund(job_2.charges[0], 3)
+        Refund(job_2.charges[0], 5)
+        Refund(job_5.charges[0], 8)
+        job_1.end = datetime(2000, 1, 2)
+        job_2.end = datetime(2000, 1, 3)
+        job_3.end = datetime(2000, 1, 4)
+        job_4.end = datetime(2000, 1, 2)
+        job_5.end = datetime(2000, 1, 5)
+        job_1.charges[0].datetime = datetime(2000, 1, 2)
+        job_2.charges[0].datetime = datetime(2000, 1, 3)
+        job_3.charges[0].datetime = datetime(2000, 1, 4)
+        job_4.charges[0].datetime = datetime(2000, 1, 2)
+        job_5.charges[0].datetime = datetime(2000, 1, 5)
+        Session.add_all([allocation_1, allocation_2, allocation_3, allocation_4])
+        assert_equal(
+            list(project_summary([project_1, project_2], after=datetime(2000, 1, 3))),
+            [("1", 1, 20, 8, 12), ("2", 1, 8, 8, 56)])
+    
+    @patch("cbank.model.queries.datetime", datetime_mock)
+    def test_before (self):
+        project_1 = Project.cached("1")
+        project_2 = Project.cached("2")
+        resource_1 = Resource.cached("1")
+        resource_2 = Resource.cached("2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 10, start, end)
+        allocation_2 = Allocation(project_1, resource_1, 20, start, end)
+        allocation_3 = Allocation(project_2, resource_1, 30, start, end)
+        allocation_4 = Allocation(project_2, resource_2, 35, start, end)
+        job_1 = Job("1.1")
+        job_2 = Job("1.2")
+        job_3 = Job("1.3")
+        job_4 = Job("2.1")
+        job_5 = Job("2.2")
+        job_1.account = project_1
+        job_2.account = project_1
+        job_3.account = project_1
+        job_4.account = project_2
+        job_5.account = project_2
+        job_1.charges = [Charge(allocation_1, 10)]
+        job_2.charges = [Charge(allocation_2, 15)]
+        job_3.charges = [Charge(allocation_2, 5)]
+        job_4.charges = [Charge(allocation_4, 9)]
+        job_5.charges = [Charge(allocation_4, 8)]
+        Refund(job_1.charges[0], 4)
+        Refund(job_2.charges[0], 3)
+        Refund(job_2.charges[0], 5)
+        Refund(job_5.charges[0], 8)
+        job_1.start = datetime(2000, 1, 1)
+        job_2.start = datetime(2000, 1, 2)
+        job_3.start = datetime(2000, 1, 3)
+        job_4.start = datetime(2000, 1, 1)
+        job_5.start = datetime(2000, 1, 4)
+        job_1.charges[0].datetime = datetime(2000, 1, 2)
+        job_2.charges[0].datetime = datetime(2000, 1, 3)
+        job_3.charges[0].datetime = datetime(2000, 1, 4)
+        job_4.charges[0].datetime = datetime(2000, 1, 2)
+        job_5.charges[0].datetime = datetime(2000, 1, 5)
+        Session.add_all([allocation_1, allocation_2, allocation_3, allocation_4])
+        assert_equal(
+            list(project_summary([project_1, project_2], before=datetime(2000, 1, 3))),
+            [("1", 2, 10, 4, 12), ("2", 1, 9, 0, 56)])
+
+    @patch("cbank.model.queries.datetime", datetime_mock)
+    def test_users (self):
+        user_1 = User.cached("1")
+        project_1 = Project.cached("1")
+        project_2 = Project.cached("2")
+        resource_1 = Resource.cached("1")
+        resource_2 = Resource.cached("2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 10, start, end)
+        allocation_2 = Allocation(project_1, resource_1, 20, start, end)
+        allocation_3 = Allocation(project_2, resource_1, 30, start, end)
+        allocation_4 = Allocation(project_2, resource_2, 35, start, end)
+        job_1 = Job("1.1")
+        job_2 = Job("1.2")
+        job_3 = Job("1.3")
+        job_4 = Job("2.1")
+        job_5 = Job("2.2")
+        job_1.user = user_1
+        job_3.user = user_1
+        job_5.user = user_1
+        job_1.account = project_1
+        job_2.account = project_1
+        job_3.account = project_1
+        job_4.account = project_2
+        job_5.account = project_2
+        job_1.charges = [Charge(allocation_1, 10)]
+        job_2.charges = [Charge(allocation_2, 15)]
+        job_3.charges = [Charge(allocation_2, 5)]
+        job_4.charges = [Charge(allocation_4, 9)]
+        job_5.charges = [Charge(allocation_4, 8)]
+        Refund(job_1.charges[0], 4)
+        Refund(job_2.charges[0], 3)
+        Refund(job_2.charges[0], 5)
+        Refund(job_5.charges[0], 8)
+        Session.add_all([allocation_1, allocation_2, allocation_3, allocation_4])
+        assert_equal(
+            list(project_summary([project_1, project_2], users=[user_1])),
+            [("1", 2, 15, 4, 12), ("2", 1, 8, 8, 56)])
+    
+    def test_resources (self):
+        project_1 = Project.cached("1")
+        resource_1 = Resource.cached("1")
+        resource_2 = Resource.cached("2")
+        allocation_1 = Allocation(project_1, resource_1, 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        allocation_2 = Allocation(project_1, resource_2, 0,
+            datetime(2000, 1, 1), datetime(2001, 1, 1))
+        job_1 = Job("1.1")
+        job_2 = Job("1.2")
+        job_3 = Job("2.1")
+        job_1.account = project_1
+        job_2.account = project_1
+        job_3.account = project_1
+        job_1.charges = [Charge(allocation_1, 0)]
+        job_2.charges = [Charge(allocation_1, 0)]
+        job_3.charges = [Charge(allocation_2, 0)]
+        Session.add_all([allocation_1, allocation_2])
+        assert_equal(
+            list(project_summary([project_1], resources=[resource_1])),
+            [("1", 2, 0, 0, 0)])

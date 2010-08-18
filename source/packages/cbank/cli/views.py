@@ -85,19 +85,21 @@ def print_projects_list (projects, truncate=True, **kwargs):
     allocation_sum_total = 0
     job_count_total = 0
     charge_sum_total = 0
+    refund_sum_total = 0
     if projects:
         projects_displayed = []
         data = cbank.model.queries.project_summary(projects, **kwargs)
-        for project_id, job_count, charge_sum, allocation_sum in data:
+        for project_id, job_count, charge_sum, refund_sum, allocation_sum in data:
             project = Project.cached(project_id)
             projects_displayed.append(project)
             job_count_total += job_count
             charge_sum_total += charge_sum
+            refund_sum_total += refund_sum
             allocation_sum_total += allocation_sum
             print format({
                 'Name':project,
                 'Jobs':job_count,
-                'Charged':display_units(charge_sum),
+                'Charged':display_units(charge_sum - refund_sum),
                 'Available':display_units(allocation_sum)})
         for project in projects:
             if project not in projects_displayed:
@@ -110,7 +112,7 @@ def print_projects_list (projects, truncate=True, **kwargs):
         "Jobs", "Charged", "Available"])
     print >> sys.stderr, format({
         'Jobs':job_count_total,
-        'Charged':display_units(charge_sum_total),
+        'Charged':display_units(charge_sum_total - refund_sum_total),
         'Available':display_units(allocation_sum_total)})
     print >> sys.stderr, unit_definition()
 

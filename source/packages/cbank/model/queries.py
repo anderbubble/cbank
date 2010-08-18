@@ -183,8 +183,8 @@ def project_summary (projects, users=None, resources=None,
         Allocation.project_id,
         func.sum(Allocation.amount).label("allocation_sum")
         ).group_by(Allocation.project_id)
-    allocations_q = allocations_q.filter(
-        and_(Allocation.start <= now, Allocation.end > now))
+    allocations_active = and_(Allocation.start <= now, Allocation.end > now)
+    allocations_q = allocations_q.filter(allocations_active)
     
     holds_q = s.query(
         Allocation.project_id,
@@ -192,6 +192,7 @@ def project_summary (projects, users=None, resources=None,
     holds_q = holds_q.group_by(Allocation.project_id)
     holds_q = holds_q.join(Hold.allocation)
     holds_q = holds_q.filter(Hold.active == True)
+    holds_q = holds_q.filter(Hold.allocation.has(allocations_active))
     jobs_q = s.query(
         Allocation.project_id,
         func.count(Job.id).label("job_count")).group_by(Allocation.project_id)
@@ -215,8 +216,7 @@ def project_summary (projects, users=None, resources=None,
         refunds_q = refunds_q.filter(resources_)
         jobs_q = jobs_q.filter(resources_)
     
-    allocations_ = and_(Allocation.start <= now, Allocation.end > now)
-    charges_ = Charge.allocation.has(allocations_)
+    charges_ = Charge.allocation.has(allocations_active)
     allocation_charges_q = charges_q.filter(charges_)
     allocation_refunds_q = refunds_q.filter(Refund.charge.has(charges_))
     if users:
@@ -246,9 +246,8 @@ def project_summary (projects, users=None, resources=None,
     query = s.query(
         Allocation.project_id,
         func.coalesce(jobs_q.c.job_count, 0),
-        (func.coalesce(
-            charges_q.c.charge_sum, 0)
-            - func.coalesce(refunds_q.c.refund_sum, 0)),
+        func.coalesce(charges_q.c.charge_sum, 0),
+        func.coalesce(refunds_q.c.refund_sum, 0),
         (func.coalesce(
             allocations_q.c.allocation_sum, 0)
             - func.coalesce(holds_q.c.hold_sum, 0)
