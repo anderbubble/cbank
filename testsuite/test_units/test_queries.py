@@ -472,7 +472,7 @@ class TestProjectSummary (QueryTester):
         Session.add_all([
             allocation_1, allocation_2, allocation_3, allocation_4])
         assert_equal(list(project_summary([project_1, project_2])),
-                     [('1', 0, 0, 0, 30), ("2", 0, 0, 0, 65)])
+                     [('1', 0, 0, 30), ("2", 0, 0, 65)])
 
     @patch("cbank.model.queries.datetime", datetime_mock)
     def test_expired_allocations (self):
@@ -489,7 +489,7 @@ class TestProjectSummary (QueryTester):
         Session.add_all([
             allocation_1, allocation_2, allocation_3, allocation_4])
         assert_equal(list(project_summary([project_1, project_2])),
-                     [("1", 0, 0, 0, 0), ("2", 0, 0, 0, 30)])
+                     [("1", 0, 0, 0), ("2", 0, 0, 30)])
 
     @patch("cbank.model.queries.datetime", datetime_mock)
     def test_holds (self):
@@ -513,7 +513,7 @@ class TestProjectSummary (QueryTester):
         Session.add_all([
             allocation_1, allocation_2, allocation_3, allocation_4])
         assert_equal(list(project_summary([project_1, project_2])),
-                     [("1", 0, 0, 0, 5), ("2", 0, 0, 0, 57)])
+                     [("1", 0, 0, 5), ("2", 0, 0, 57)])
 
     def test_jobs (self):
         project_1 = Project.cached("1")
@@ -546,7 +546,7 @@ class TestProjectSummary (QueryTester):
         job_5.account = project_2
         Session.add_all([job_1, job_2, job_3, job_4, job_5])
         assert_equal(list(project_summary([project_1, project_2])),
-                     [("1", 3, 0, 0, 0), ("2", 2, 0, 0, 0)])
+                     [("1", 3, 0, 0), ("2", 2, 0, 0)])
 
     @patch("cbank.model.queries.datetime", datetime_mock)
     def test_charges (self):
@@ -577,7 +577,7 @@ class TestProjectSummary (QueryTester):
         job_5.charges = [Charge(allocation_4, 8)]
         Session.add_all([allocation_1, allocation_2, allocation_3, allocation_4])
         assert_equal(list(project_summary([project_1, project_2])),
-                     [("1", 3, 30, 0, 0), ("2", 2, 17, 0, 48)])
+                     [("1", 3, 30, 0), ("2", 2, 17, 48)])
     
     @patch("cbank.model.queries.datetime", datetime_mock)
     def test_expired_charges (self):
@@ -608,7 +608,7 @@ class TestProjectSummary (QueryTester):
         job_5.charges = [Charge(allocation_4, 8)]
         Session.add_all([allocation_1, allocation_2, allocation_3, allocation_4])
         assert_equal(list(project_summary([project_1, project_2])),
-                     [("1", 3, 30, 0, 0), ("2", 2, 17, 0, 0)])
+                     [("1", 3, 30, 0), ("2", 2, 17, 0)])
     
     @patch("cbank.model.queries.datetime", datetime_mock)
     def test_refunds (self):
@@ -643,7 +643,7 @@ class TestProjectSummary (QueryTester):
         Refund(job_5.charges[0], 8)
         Session.add_all([allocation_1, allocation_2, allocation_3, allocation_4])
         assert_equal(list(project_summary([project_1, project_2])),
-                     [("1", 3, 30, 12, 12), ("2", 2, 17, 8, 56)])
+                     [("1", 3, 18, 12), ("2", 2, 9, 56)])
     
     @patch("cbank.model.queries.datetime", datetime_mock)
     def test_after (self):
@@ -689,7 +689,7 @@ class TestProjectSummary (QueryTester):
         Session.add_all([allocation_1, allocation_2, allocation_3, allocation_4])
         assert_equal(
             list(project_summary([project_1, project_2], after=datetime(2000, 1, 3))),
-            [("1", 1, 20, 8, 12), ("2", 1, 8, 8, 56)])
+            [("1", 1, 12, 12), ("2", 1, 0, 56)])
     
     @patch("cbank.model.queries.datetime", datetime_mock)
     def test_before (self):
@@ -735,7 +735,7 @@ class TestProjectSummary (QueryTester):
         Session.add_all([allocation_1, allocation_2, allocation_3, allocation_4])
         assert_equal(
             list(project_summary([project_1, project_2], before=datetime(2000, 1, 3))),
-            [("1", 2, 10, 4, 12), ("2", 1, 9, 0, 56)])
+            [("1", 2, 6, 12), ("2", 1, 9, 56)])
 
     @patch("cbank.model.queries.datetime", datetime_mock)
     def test_users (self):
@@ -775,7 +775,7 @@ class TestProjectSummary (QueryTester):
         Session.add_all([allocation_1, allocation_2, allocation_3, allocation_4])
         assert_equal(
             list(project_summary([project_1, project_2], users=[user_1])),
-            [("1", 2, 15, 4, 12), ("2", 1, 8, 8, 56)])
+            [("1", 2, 11, 12), ("2", 1, 0, 56)])
     
     def test_resources (self):
         project_1 = Project.cached("1")
@@ -797,7 +797,7 @@ class TestProjectSummary (QueryTester):
         Session.add_all([allocation_1, allocation_2])
         assert_equal(
             list(project_summary([project_1], resources=[resource_1])),
-            [("1", 2, 0, 0, 0)])
+            [("1", 2, 0, 0)])
 
 
 class TestAllocationSummary (QueryTester):

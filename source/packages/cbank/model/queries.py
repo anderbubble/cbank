@@ -246,8 +246,9 @@ def project_summary (projects, users=None, resources=None,
     query = s.query(
         Allocation.project_id,
         func.coalesce(jobs_q.c.job_count, 0),
-        func.coalesce(charges_q.c.charge_sum, 0),
-        func.coalesce(refunds_q.c.refund_sum, 0),
+        (func.coalesce(
+            charges_q.c.charge_sum, 0)
+            - func.coalesce(refunds_q.c.refund_sum, 0)),
         (func.coalesce(
             allocations_q.c.allocation_sum, 0)
             - func.coalesce(holds_q.c.hold_sum, 0)
