@@ -26,7 +26,7 @@ Once your database has been configured, use the python shell
 to create the database schema:
 
     >>> import cbank.model.database
-    >>> cbank.model.database.create_all()
+    >>> cbank.model.database.metadata.create_all()
 
 See the SQLAlchemy documentation for more information on specifying
 engine urls: http://www.sqlalchemy.org/docs/dbengine.html
