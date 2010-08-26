@@ -214,7 +214,7 @@ class TestUserSummary (QueryTester):
         job_4.user_id = "2"
         Session.add_all([job_1, job_2, job_3, job_4])
         assert_equal(list(user_summary([user_1, user_2])),
-                     [("1", 1, 0, 0), ("2", 3, 0, 0)])
+                     [("1", 1, 0), ("2", 3, 0)])
     
     def test_charges (self):
         user_1 = User.cached("1")
@@ -241,7 +241,7 @@ class TestUserSummary (QueryTester):
         Session.add_all([allocation_1, allocation_2])
         assert_equal(
             list(user_summary([user_1, user_2])),
-            [("1", 1, 1, 0), ("2", 3, 14, 0)])
+            [("1", 1, 1), ("2", 3, 14)])
     
     def test_refunds (self):
         user_1 = User.cached("1")
@@ -272,7 +272,7 @@ class TestUserSummary (QueryTester):
         Session.add_all([allocation_1, allocation_2])
         assert_equal(
             list(user_summary([user_1, user_2])),
-            [("1", 1, 1, 1), ("2", 3, 14, 9)])
+            [("1", 1, 0), ("2", 3, 5)])
 
     def test_projects_filter (self):
         user_1 = User.cached("1")
@@ -311,7 +311,7 @@ class TestUserSummary (QueryTester):
         projects = [Project.cached("1")]
         assert_equal(
             list(user_summary(users, projects=projects)),
-            [("1", 1, 1, 1), ("2", 1, 2, 2)])
+            [("1", 1, 0), ("2", 1, 0)])
 
     def test_resources_filter (self):
         user_1 = User.cached("1")
@@ -351,7 +351,7 @@ class TestUserSummary (QueryTester):
         resources = [Resource.cached("2")]
         assert_equal(
             list(user_summary(users, resources=resources)),
-            [("1", 0, 0, 0), ("2", 2, 12, 7)])
+            [("1", 0, 0), ("2", 2, 5)])
     
     def test_after_filter (self):
         user_1 = User.cached("1")
@@ -398,7 +398,7 @@ class TestUserSummary (QueryTester):
         users = [User.cached("1"), User.cached("2")]
         assert_equal(
             list(user_summary(users, after=datetime(2000, 1, 3))),
-            [("1", 0, 0, 0), ("2", 2, 14, 9)])
+            [("1", 0, 0), ("2", 2, 5)])
 
     def test_before_filter (self):
         user_1 = User.cached("1")
@@ -445,7 +445,7 @@ class TestUserSummary (QueryTester):
         users = [User.cached("1"), User.cached("2")]
         assert_equal(
             list(user_summary(users, before=datetime(2000, 1, 3))),
-            [("1", 1, 1, 1), ("2", 1, 0, 0)])
+            [("1", 1, 0), ("2", 1, 0)])
 
 
 class TestProjectSummary (QueryTester):
