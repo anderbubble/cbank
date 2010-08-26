@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy.sql import func, and_
+from sqlalchemy.sql import func, and_, case
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.orm.session import SessionExtension
 from sqlalchemy.orm.exc import NoResultFound
@@ -293,8 +293,9 @@ def allocation_summary (allocations, users=None,
         func.count(Job.id).label("job_count")).group_by(Allocation.id)
     jobs_q = jobs_q.join(
         Job.charges, Charge.allocation)
-    allocations_ = and_(Allocation.start <= now, Allocation.end > now)
-    charges_ = Charge.allocation.has(allocations_)
+    allocations_active = and_(Allocation.start <= now, Allocation.end > now)
+    holds_q = holds_q.filter(Hold.allocation.has(allocations_active))
+    charges_ = Charge.allocation.has(allocations_active)
     allocation_charges_q = charges_q.filter(charges_)
     allocation_refunds_q = refunds_q.filter(Refund.charge.has(charges_))
     
@@ -326,7 +327,7 @@ def allocation_summary (allocations, users=None,
         func.coalesce(jobs_q.c.job_count, 0),
         (func.coalesce(charges_q.c.charge_sum, 0)
             - func.coalesce(refunds_q.c.refund_sum, 0)),
-        (Allocation.amount
+        (case([(allocations_active, Allocation.amount)], else_=0)
             - func.coalesce(holds_q.c.hold_sum, 0)
             - func.coalesce(allocation_charges_q.c.charge_sum, 0)
             + func.coalesce(allocation_refunds_q.c.refund_sum, 0)))

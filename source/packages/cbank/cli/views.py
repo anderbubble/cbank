@@ -154,8 +154,6 @@ def print_allocations_list (allocations, truncate=True, comments=False, **kwargs
     if allocations:
         data = cbank.model.queries.allocation_summary(allocations, **kwargs)
         for allocation, job_count, charge_sum, allocation_sum in data:
-            if not allocation.active():
-                allocation_sum = 0
             job_count_total += job_count
             charge_sum_total += charge_sum
             allocation_sum_total += allocation_sum
