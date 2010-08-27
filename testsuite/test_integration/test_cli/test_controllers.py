@@ -149,11 +149,10 @@ def setup ():
 
 
 def teardown ():
-    cbank.model.clear_upstream()
+    cbank.model.use_upstream(None)
     cbank.upstreams.volatile.users = []
     cbank.upstreams.volatile.projects = []
     cbank.upstreams.volatile.resources = []
-    cbank.model.clear_upstream()
     Session.bind = None
     cbank.cli.controllers.datetime = datetime
 

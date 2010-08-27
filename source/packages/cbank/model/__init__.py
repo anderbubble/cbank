@@ -123,7 +123,14 @@ mapper(Refund, refunds, properties={
 def use_upstream (upstream):
     """untested"""
     if upstream is None:
-        clear_upstream()
+        User._in = None
+        User._out = None
+        User._member = None
+        User._manager = None
+        Project._in = None
+        Project._out = None
+        Resource._in = None
+        Resource._out = None
     else:
         User._in = staticmethod(upstream.user_in)
         User._out = staticmethod(upstream.user_out)
@@ -133,18 +140,6 @@ def use_upstream (upstream):
         Project._out = staticmethod(upstream.project_out)
         Resource._in = staticmethod(upstream.resource_in)
         Resource._out = staticmethod(upstream.resource_out)
-
-
-def clear_upstream ():
-    """untested"""
-    User._in = None
-    User._out = None
-    User._member = None
-    User._manager = None
-    Project._in = None
-    Project._out = None
-    Resource._in = None
-    Resource._out = None
 
 
 metadata.bind = configured_engine()

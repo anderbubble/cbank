@@ -25,12 +25,8 @@ def setup ():
     teardown_upstream()
 
 
-def setup_upstream ():
-    cbank.model.use_upstream(cbank.upstreams.default)
-
-
 def teardown_upstream ():
-    cbank.model.clear_upstream()
+    cbank.model.use_upstream(None)
 
 
 def clear_config ():
@@ -61,4 +57,4 @@ class BaseTester (object):
         cbank.model.use_upstream(cbank.upstreams.default)
 
     def teardown_upstream (self):
-        cbank.model.clear_upstream()
+        cbank.model.use_upstream(None)

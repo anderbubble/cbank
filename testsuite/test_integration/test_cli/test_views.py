@@ -55,7 +55,7 @@ def setup ():
 
 def teardown ():
     cbank.model.database.metadata.bind = None
-    cbank.model.clear_upstream()
+    cbank.model.use_upstream(None)
     cbank.upstreams.volatile.users = []
     cbank.upstreams.volatile.projects = []
     cbank.upstreams.volatile.resources = []

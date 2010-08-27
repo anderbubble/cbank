@@ -2,8 +2,7 @@ from nose.tools import raises, assert_equal
 
 from mock import Mock, patch
 
-from testsuite import (
-    BaseTester, setup_upstream, teardown_upstream)
+from testsuite import BaseTester
 
 from datetime import datetime, timedelta
 
