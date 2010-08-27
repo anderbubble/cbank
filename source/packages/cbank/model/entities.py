@@ -464,7 +464,8 @@ class Charge (Entity):
         distributed charge to charge more funds than any one allocation can
         accomodate.
         """
-        
+
+        allocations = list(allocations)
         charges = list()
         amount_remaining = amount
         allocations_available = allocations[:]
@@ -472,13 +473,15 @@ class Charge (Entity):
             try:
                 allocation = allocations_available.pop(0)
             except IndexError:
-                try:
-                    charge = charges[-1]
-                except IndexError:
-                    raise ValueError("insufficient allocation")
-                else:
+                if charges:
+                    charge = charges[0]
                     charge.amount += amount_remaining
-                    amount_remaining -= charge.amount
+                elif allocations:
+                    charge = cls(allocations[0], amount_remaining)
+                    charges.append(charge)
+                else:
+                    raise ValueError("insufficient allocation")
+                amount_remaining -= charge.amount
             else:
                 amount_available = allocation.amount_available()
                 if amount_available > 0:
