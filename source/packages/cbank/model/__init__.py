@@ -44,17 +44,18 @@ def configured_upstream ():
     try:
         module_name = config.get("upstream", "module")
     except ConfigParser.Error:
-        module_name = "cbank.upstreams.default"
-    try:
-        module = __import__(module_name, locals(), globals(), [
-            "user_in", "user_out",
-            "project_in", "project_out",
-            "resource_in", "resource_out",
-            "project_member", "project_manager"])
-    except ImportError:
-        warnings.warn(
-            "invalid upstream module: %s" % (module_name), UserWarning)
         module = None
+    else:
+        try:
+            module = __import__(module_name, locals(), globals(), [
+                "user_in", "user_out",
+                "project_in", "project_out",
+                "resource_in", "resource_out",
+                "project_member", "project_manager"])
+        except ImportError:
+            warnings.warn(
+                "invalid upstream module: %s" % (module_name), UserWarning)
+            module = None
     return module
 
 
@@ -121,14 +122,17 @@ mapper(Refund, refunds, properties={
 
 def use_upstream (upstream):
     """untested"""
-    User._in = staticmethod(upstream.user_in)
-    User._out = staticmethod(upstream.user_out)
-    User._member = staticmethod(upstream.project_member)
-    User._manager = staticmethod(upstream.project_manager)
-    Project._in = staticmethod(upstream.project_in)
-    Project._out = staticmethod(upstream.project_out)
-    Resource._in = staticmethod(upstream.resource_in)
-    Resource._out = staticmethod(upstream.resource_out)
+    if upstream is None:
+        clear_upstream()
+    else:
+        User._in = staticmethod(upstream.user_in)
+        User._out = staticmethod(upstream.user_out)
+        User._member = staticmethod(upstream.project_member)
+        User._manager = staticmethod(upstream.project_manager)
+        Project._in = staticmethod(upstream.project_in)
+        Project._out = staticmethod(upstream.project_out)
+        Resource._in = staticmethod(upstream.resource_in)
+        Resource._out = staticmethod(upstream.resource_out)
 
 
 def clear_upstream ():

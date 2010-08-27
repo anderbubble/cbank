@@ -1,7 +1,7 @@
 from nose.tools import raises, assert_equal
 
-import cbank.upstreams.default
-from cbank.upstreams.default import (
+import cbank.upstreams.volatile
+from cbank.upstreams.volatile import (
     user_in, user_out,
     project_in, project_out,
     resource_in, resource_out,
@@ -12,9 +12,9 @@ from cbank.upstreams.default import (
 class UpstreamTester (object):
 
     def teardown (self):
-        cbank.upstreams.default.users = []
-        cbank.upstreams.default.projects = []
-        cbank.upstreams.default.resources = []
+        cbank.upstreams.volatile.users = []
+        cbank.upstreams.volatile.projects = []
+        cbank.upstreams.volatile.resources = []
 
 
 class TestProject (UpstreamTester):
@@ -23,8 +23,8 @@ class TestProject (UpstreamTester):
         project = Project("1", "Shrubbery")
         project.members = [User("1", "Monty")]
         project.managers = [User("2", "Python")]
-        cbank.upstreams.default.projects = [project]
-        cbank.upstreams.default.users = project.members + project.managers
+        cbank.upstreams.volatile.projects = [project]
+        cbank.upstreams.volatile.users = project.members + project.managers
 
     def test_out (self):
         assert_equal(project_out("1"), "Shrubbery")
@@ -46,7 +46,7 @@ class TestProject (UpstreamTester):
 class TestResource (UpstreamTester):
 
     def setup (self):
-        cbank.upstreams.default.resources = [
+        cbank.upstreams.volatile.resources = [
             Resource("1", "Spam"),
             Resource("3", "Life")]
 
@@ -69,8 +69,8 @@ class TestUser (UpstreamTester):
         spam = Project("2", "Spam")
         shrubbery.members = [user]
         spam.managers = [user]
-        cbank.upstreams.default.projects = [shrubbery, spam]
-        cbank.upstreams.default.users = [user]
+        cbank.upstreams.volatile.projects = [shrubbery, spam]
+        cbank.upstreams.volatile.users = [user]
 
     def test_in (self):
         assert_equal(user_in("Monty"), "1")

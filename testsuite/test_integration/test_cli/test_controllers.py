@@ -14,7 +14,7 @@ from cbank.model import (
     Allocation, Hold, Job, Charge, Refund,
     get_projects, get_users)
 from cbank.cli.controllers import Session
-import cbank.upstreams.default
+import cbank.upstreams.volatile
 import cbank.cli.controllers
 from cbank.cli.controllers import (
     main, list_main, new_main,
@@ -117,42 +117,42 @@ def not_admin ():
 def setup ():
     metadata.bind = create_engine("sqlite:///:memory:")
     current_user = current_username()
-    cbank.model.use_upstream(cbank.upstreams.default)
-    cbank.upstreams.default.users = [
-        cbank.upstreams.default.User("1", "user1"),
-        cbank.upstreams.default.User("2", "user2"),
-        cbank.upstreams.default.User("3", current_user)]
-    cbank.upstreams.default.projects = [
-        cbank.upstreams.default.Project("1", "project1"),
-        cbank.upstreams.default.Project("2", "project2"),
-        cbank.upstreams.default.Project("3", "project3"),
-        cbank.upstreams.default.Project("4", "project4")]
-    cbank.upstreams.default.projects[0].members = [
-        cbank.upstreams.default.users[0]]
-    cbank.upstreams.default.projects[1].members = [
-        cbank.upstreams.default.users[1],
-        cbank.upstreams.default.users[2]]
-    cbank.upstreams.default.projects[2].members = [
-        cbank.upstreams.default.users[1],
-        cbank.upstreams.default.users[2]]
-    cbank.upstreams.default.projects[2].managers = [
-        cbank.upstreams.default.users[2]]
-    cbank.upstreams.default.projects[3].members = [
-        cbank.upstreams.default.users[0]]
-    cbank.upstreams.default.projects[3].managers = [
-        cbank.upstreams.default.users[2]]
-    cbank.upstreams.default.resources = [
-        cbank.upstreams.default.Resource("1", "resource1"),
-        cbank.upstreams.default.Resource("2", "resource2")]
+    cbank.model.use_upstream(cbank.upstreams.volatile)
+    cbank.upstreams.volatile.users = [
+        cbank.upstreams.volatile.User("1", "user1"),
+        cbank.upstreams.volatile.User("2", "user2"),
+        cbank.upstreams.volatile.User("3", current_user)]
+    cbank.upstreams.volatile.projects = [
+        cbank.upstreams.volatile.Project("1", "project1"),
+        cbank.upstreams.volatile.Project("2", "project2"),
+        cbank.upstreams.volatile.Project("3", "project3"),
+        cbank.upstreams.volatile.Project("4", "project4")]
+    cbank.upstreams.volatile.projects[0].members = [
+        cbank.upstreams.volatile.users[0]]
+    cbank.upstreams.volatile.projects[1].members = [
+        cbank.upstreams.volatile.users[1],
+        cbank.upstreams.volatile.users[2]]
+    cbank.upstreams.volatile.projects[2].members = [
+        cbank.upstreams.volatile.users[1],
+        cbank.upstreams.volatile.users[2]]
+    cbank.upstreams.volatile.projects[2].managers = [
+        cbank.upstreams.volatile.users[2]]
+    cbank.upstreams.volatile.projects[3].members = [
+        cbank.upstreams.volatile.users[0]]
+    cbank.upstreams.volatile.projects[3].managers = [
+        cbank.upstreams.volatile.users[2]]
+    cbank.upstreams.volatile.resources = [
+        cbank.upstreams.volatile.Resource("1", "resource1"),
+        cbank.upstreams.volatile.Resource("2", "resource2")]
     fake_dt = FakeDateTime(datetime(2000, 1, 1))
     cbank.cli.controllers.datetime = fake_dt
 
 
 def teardown ():
     cbank.model.clear_upstream()
-    cbank.upstreams.default.users = []
-    cbank.upstreams.default.projects = []
-    cbank.upstreams.default.resources = []
+    cbank.upstreams.volatile.users = []
+    cbank.upstreams.volatile.projects = []
+    cbank.upstreams.volatile.resources = []
     cbank.model.clear_upstream()
     Session.bind = None
     cbank.cli.controllers.datetime = datetime

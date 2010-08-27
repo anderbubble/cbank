@@ -15,7 +15,7 @@ from cbank.model import (
     Job, Charge, Refund,
     Session)
 import cbank.model.database
-import cbank.upstreams.default
+import cbank.upstreams.volatile
 import cbank.cli.views
 from cbank.cli.views import (
     print_users_list, print_projects_list, print_allocations_list,
@@ -37,16 +37,16 @@ class FakeDateTime (object):
 
 def setup ():
     cbank.model.database.metadata.bind = create_engine("sqlite:///:memory:")
-    cbank.model.use_upstream(cbank.upstreams.default)
-    cbank.upstreams.default.projects = [
-        cbank.upstreams.default.Project("1", "project1"),
-        cbank.upstreams.default.Project("2", "project2")]
-    cbank.upstreams.default.resources = [
-        cbank.upstreams.default.Resource("1", "res1"),
-        cbank.upstreams.default.Resource("2", "res2")]
-    cbank.upstreams.default.users = [
-        cbank.upstreams.default.User("1", "user1"),
-        cbank.upstreams.default.User("2", "user2")]
+    cbank.model.use_upstream(cbank.upstreams.volatile)
+    cbank.upstreams.volatile.projects = [
+        cbank.upstreams.volatile.Project("1", "project1"),
+        cbank.upstreams.volatile.Project("2", "project2")]
+    cbank.upstreams.volatile.resources = [
+        cbank.upstreams.volatile.Resource("1", "res1"),
+        cbank.upstreams.volatile.Resource("2", "res2")]
+    cbank.upstreams.volatile.users = [
+        cbank.upstreams.volatile.User("1", "user1"),
+        cbank.upstreams.volatile.User("2", "user2")]
     datetime_ = FakeDateTime(datetime(2000, 1, 1))
     cbank.model.entities.Allocation.active.im_func.func_defaults = (datetime(2000, 1, 1), )
     cbank.model.queries.datetime = datetime_
@@ -56,9 +56,9 @@ def setup ():
 def teardown ():
     cbank.model.database.metadata.bind = None
     cbank.model.clear_upstream()
-    cbank.upstreams.default.users = []
-    cbank.upstreams.default.projects = []
-    cbank.upstreams.default.resources = []
+    cbank.upstreams.volatile.users = []
+    cbank.upstreams.volatile.projects = []
+    cbank.upstreams.volatile.resources = []
     cbank.model.entities.Allocation.active.im_func.func_defaults = (datetime.now, )
     cbank.model.queries.datetime = datetime
     cbank.cli.views.datetime = datetime

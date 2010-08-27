@@ -7,7 +7,6 @@ from testsuite import (
 
 from datetime import datetime, timedelta
 
-import cbank.upstreams.default
 from cbank.model.entities import (
     User, Project, Resource, Allocation, Hold, Job, Charge, Refund)
 from cbank.model.queries import (

@@ -16,7 +16,6 @@ from cbank.model.entities import (
     UpstreamEntity, User, Project, Resource,
     Allocation, Hold, Charge, Refund)
 from cbank.model.queries import Session
-import cbank.upstreams.default
 import cbank.model
 
 
