@@ -294,12 +294,11 @@ def allocation_summary (allocations, users=None,
         func.count(Job.id).label("job_count")).group_by(Allocation.id)
     jobs_q = jobs_q.join(
         Job.charges, Charge.allocation)
-    allocations_active = and_(Allocation.start <= now, Allocation.end > now)
-    holds_q = holds_q.filter(Hold.allocation.has(allocations_active))
-    charges_ = Charge.allocation.has(allocations_active)
-    allocation_charges_q = charges_q.filter(charges_)
-    allocation_refunds_q = refunds_q.filter(Refund.charge.has(charges_))
-    
+
+    balance_charges_q = charges_q.subquery()
+    balance_refunds_q = refunds_q.subquery()
+    holds_q = holds_q.subquery()
+
     if users:
         jobs_ = Job.user_id.in_(str(user.id) for user in users)
         jobs_q = jobs_q.filter(jobs_)
@@ -316,31 +315,32 @@ def allocation_summary (allocations, users=None,
         before_ = Charge.datetime < before
         charges_q = charges_q.filter(before_)
         refunds_q = refunds_q.filter(before_)
-    
-    holds_q = holds_q.subquery()
+
     charges_q = charges_q.subquery()
     refunds_q = refunds_q.subquery()
     jobs_q = jobs_q.subquery()
-    allocation_charges_q = allocation_charges_q.subquery()
-    allocation_refunds_q = allocation_refunds_q.subquery()
+
+    balance = (
+        Allocation.amount
+        - func.coalesce(holds_q.c.hold_sum, 0)
+        - func.coalesce(balance_charges_q.c.charge_sum, 0)
+        + func.coalesce(balance_refunds_q.c.refund_sum, 0))
+
+    allocations_active = and_(Allocation.start <= now, Allocation.end > now)
+
     query = s.query(
         Allocation,
         func.coalesce(jobs_q.c.job_count, 0),
         (func.coalesce(charges_q.c.charge_sum, 0)
             - func.coalesce(refunds_q.c.refund_sum, 0)),
-        (case([(allocations_active, Allocation.amount)], else_=0)
-            - func.coalesce(holds_q.c.hold_sum, 0)
-            - func.coalesce(allocation_charges_q.c.charge_sum, 0)
-            + func.coalesce(allocation_refunds_q.c.refund_sum, 0)))
+        (case([(allocations_active, balance)], else_=0)))
     query = query.outerjoin(
         (jobs_q, Allocation.id == jobs_q.c.allocation_id),
         (charges_q, Allocation.id == charges_q.c.allocation_id),
+        (balance_charges_q, Allocation.id == balance_charges_q.c.allocation_id),
         (refunds_q, Allocation.id == refunds_q.c.allocation_id),
-        (holds_q, Allocation.id == holds_q.c.allocation_id),
-        (allocation_charges_q,
-            Allocation.id == allocation_charges_q.c.allocation_id),
-        (allocation_refunds_q,
-            Allocation.id == allocation_refunds_q.c.allocation_id))
+        (balance_refunds_q, Allocation.id == balance_refunds_q.c.allocation_id),
+        (holds_q, Allocation.id == holds_q.c.allocation_id))
     query = query.order_by(Allocation.id)
     query = query.filter(Allocation.id.in_(
             allocation.id for allocation in allocations))
