@@ -473,6 +473,20 @@ class TestProjectSummary (QueryTester):
                      [('1', 0, 0, 30), ("2", 0, 0, 65)])
 
     @patch("cbank.model.queries.datetime", datetime_mock)
+    def test_negative_balance (self):
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation = Allocation(
+            Project.cached("1"),
+            Resource.cached("1"),
+            10, start, end)
+        Charge(allocation, 20)
+        Session.add_all([allocation])
+        Session.flush()
+        assert_equal(list(project_summary([allocation])),
+                     [('1', 0, 20, 0)])
+
+    @patch("cbank.model.queries.datetime", datetime_mock)
     def test_expired_allocations (self):
         project_1 = Project.cached("1")
         project_2 = Project.cached("2")
@@ -827,6 +841,20 @@ class TestAllocationSummary (QueryTester):
              (allocation_2, 0, 0, 20),
              (allocation_3, 0, 0, 30),
              (allocation_4, 0, 0, 35)])
+
+    @patch("cbank.model.queries.datetime", datetime_mock)
+    def test_negative_balance (self):
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation = Allocation(
+            Project.cached("1"),
+            Resource.cached("1"),
+            10, start, end)
+        Charge(allocation, 20)
+        Session.add_all([allocation])
+        Session.flush()
+        assert_equal(list(allocation_summary([allocation])),
+                     [(allocation, 0, 20, 0)])
 
     @patch("cbank.model.queries.datetime", datetime_mock)
     def test_expired (self):

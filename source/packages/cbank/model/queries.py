@@ -183,16 +183,13 @@ def project_summary (projects, users=None, resources=None,
         Allocation.project_id,
         func.sum(Allocation.amount).label("allocation_sum")
         ).group_by(Allocation.project_id)
-    allocations_active = and_(Allocation.start <= now, Allocation.end > now)
-    allocations_q = allocations_q.filter(allocations_active)
-    
+
     holds_q = s.query(
         Allocation.project_id,
         func.sum(Hold.amount).label("hold_sum"))
     holds_q = holds_q.group_by(Allocation.project_id)
     holds_q = holds_q.join(Hold.allocation)
     holds_q = holds_q.filter(Hold.active == True)
-    holds_q = holds_q.filter(Hold.allocation.has(allocations_active))
     jobs_q = s.query(
         Allocation.project_id,
         func.count(Job.id).label("job_count")).group_by(Allocation.project_id)
@@ -207,7 +204,7 @@ def project_summary (projects, users=None, resources=None,
         func.sum(Refund.amount).label("refund_sum"))
     refunds_q = refunds_q.group_by(Allocation.project_id)
     refunds_q = refunds_q.join(Refund.charge, Charge.allocation)
-    
+
     if resources:
         resources_ = Allocation.resource_id.in_(
             resource.id for resource in resources)
@@ -215,10 +212,18 @@ def project_summary (projects, users=None, resources=None,
         charges_q = charges_q.filter(resources_)
         refunds_q = refunds_q.filter(resources_)
         jobs_q = jobs_q.filter(resources_)
-    
+
+    allocations_active = and_(Allocation.start <= now, Allocation.end > now)
+    allocations_q = allocations_q.filter(allocations_active)
+    holds_q = holds_q.filter(Hold.allocation.has(allocations_active))
     charges_ = Charge.allocation.has(allocations_active)
-    allocation_charges_q = charges_q.filter(charges_)
-    allocation_refunds_q = refunds_q.filter(Refund.charge.has(charges_))
+    balance_charges_q = charges_q.filter(charges_)
+    balance_refunds_q = refunds_q.filter(Refund.charge.has(charges_))
+
+    holds_q = holds_q.subquery()
+    balance_charges_q = balance_charges_q.subquery()
+    balance_refunds_q = balance_refunds_q.subquery()
+
     if users:
         users_ = Job.user_id.in_(user.id for user in users)
         jobs_q = jobs_q.filter(users_)
@@ -237,23 +242,22 @@ def project_summary (projects, users=None, resources=None,
         refunds_q = refunds_q.filter(before_)
 
     allocations_q = allocations_q.subquery()
-    holds_q = holds_q.subquery()
-    allocation_charges_q = allocation_charges_q.subquery()
-    allocation_refunds_q = allocation_refunds_q.subquery()
     jobs_q = jobs_q.subquery()
     charges_q = charges_q.subquery()
     refunds_q = refunds_q.subquery()
+
+    balance = (
+        func.coalesce(allocations_q.c.allocation_sum, 0)
+        - func.coalesce(holds_q.c.hold_sum, 0)
+        - func.coalesce(balance_charges_q.c.charge_sum, 0)
+        + func.coalesce(balance_refunds_q.c.refund_sum, 0))
+
     query = s.query(
         Allocation.project_id,
         func.coalesce(jobs_q.c.job_count, 0),
-        (func.coalesce(
-            charges_q.c.charge_sum, 0)
-            - func.coalesce(refunds_q.c.refund_sum, 0)),
-        (func.coalesce(
-            allocations_q.c.allocation_sum, 0)
-            - func.coalesce(holds_q.c.hold_sum, 0)
-            - func.coalesce(allocation_charges_q.c.charge_sum, 0)
-            + func.coalesce(allocation_refunds_q.c.refund_sum, 0)))
+        (func.coalesce(charges_q.c.charge_sum, 0)
+         - func.coalesce(refunds_q.c.refund_sum, 0)),
+        case([(balance>=0, balance)], else_=0))
     query = query.distinct()
     query = query.outerjoin(
         (jobs_q, Allocation.project_id == jobs_q.c.project_id),
@@ -261,10 +265,10 @@ def project_summary (projects, users=None, resources=None,
         (refunds_q, Allocation.project_id == refunds_q.c.project_id),
         (allocations_q, Allocation.project_id == allocations_q.c.project_id),
         (holds_q, Allocation.project_id == holds_q.c.project_id),
-        (allocation_charges_q,
-            Allocation.project_id == allocation_charges_q.c.project_id),
-        (allocation_refunds_q,
-            Allocation.project_id == allocation_refunds_q.c.project_id))
+        (balance_charges_q,
+            Allocation.project_id == balance_charges_q.c.project_id),
+        (balance_refunds_q,
+            Allocation.project_id == balance_refunds_q.c.project_id))
     query = query.order_by(Allocation.project_id)
     query = query.filter(
         Allocation.project_id.in_(project.id for project in projects))
@@ -333,7 +337,7 @@ def allocation_summary (allocations, users=None,
         func.coalesce(jobs_q.c.job_count, 0),
         (func.coalesce(charges_q.c.charge_sum, 0)
             - func.coalesce(refunds_q.c.refund_sum, 0)),
-        (case([(allocations_active, balance)], else_=0)))
+        (case([(and_(allocations_active, balance>=0), balance)], else_=0)))
     query = query.outerjoin(
         (jobs_q, Allocation.id == jobs_q.c.allocation_id),
         (charges_q, Allocation.id == charges_q.c.allocation_id),
