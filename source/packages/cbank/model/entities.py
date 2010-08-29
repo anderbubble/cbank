@@ -79,7 +79,7 @@ class UpstreamEntity (Entity):
 
     @classmethod
     def fetch (cls, input):
-        if cls._in is not None:
+        if cls._in:
             id_ = cls._in(input)
             if id_ is not None:
                 return cls.cached(id_)
@@ -91,7 +91,7 @@ class UpstreamEntity (Entity):
         return cls(*args)
 
     def __str__ (self):
-        if self._out is not None:
+        if self._out:
             str_ = self._out(self.id)
             if str_ is not None:
                 return str_
@@ -108,10 +108,16 @@ class User (UpstreamEntity):
     _manager = None
 
     def is_member (self, project):
-        return self._member(project.id, self.id)
+        if self._member:
+            return self._member(project.id, self.id)
+        else:
+            return False
 
     def is_manager (self, project):
-        return self._manager(project.id, self.id)
+        if self._manager:
+            return self._manager(project.id, self.id)
+        else:
+            return False
 
 
 class Project (UpstreamEntity):
