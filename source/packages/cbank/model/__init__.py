@@ -132,14 +132,22 @@ def use_upstream (upstream):
         Resource._in = None
         Resource._out = None
     else:
-        User._in = staticmethod(upstream.user_in)
-        User._out = staticmethod(upstream.user_out)
-        User._member = staticmethod(upstream.project_member)
-        User._manager = staticmethod(upstream.project_manager)
-        Project._in = staticmethod(upstream.project_in)
-        Project._out = staticmethod(upstream.project_out)
-        Resource._in = staticmethod(upstream.resource_in)
-        Resource._out = staticmethod(upstream.resource_out)
+        if hasattr(upstream, "user_in"):
+            User._in = staticmethod(upstream.user_in)
+        if hasattr(upstream, "user_out"):
+            User._out = staticmethod(upstream.user_out)
+        if hasattr(upstream, "project_member"):
+            User._member = staticmethod(upstream.project_member)
+        if hasattr(upstream, "project_manager"):
+            User._manager = staticmethod(upstream.project_manager)
+        if hasattr(upstream, "project_in"):
+            Project._in = staticmethod(upstream.project_in)
+        if hasattr(upstream, "project_out"):
+            Project._out = staticmethod(upstream.project_out)
+        if hasattr(upstream, "resource_in"):
+            Resource._in = staticmethod(upstream.resource_in)
+        if hasattr(upstream, "resource_out"):
+            Resource._out = staticmethod(upstream.resource_out)
 
 
 metadata.bind = configured_engine()
