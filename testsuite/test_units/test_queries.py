@@ -527,6 +527,21 @@ class TestProjectSummary (QueryTester):
         assert_equal(list(project_summary([project_1, project_2])),
                      [("1", 0, 0, 5), ("2", 0, 0, 57)])
 
+    @patch("cbank.model.queries.datetime", datetime_mock)
+    def test_holds_specific_resource (self):
+        project_1 = Project.cached("1")
+        resource_1 = Resource.cached("1")
+        resource_2 = Resource.cached("2")
+        start = datetime(2000, 1, 1)
+        end = start + timedelta(weeks=1)
+        allocation_1 = Allocation(project_1, resource_1, 10, start, end)
+        allocation_2 = Allocation(project_1, resource_2, 20, start, end)
+        Hold(allocation_1, 10)
+        Hold(allocation_2, 15)
+        Session.add_all([allocation_1, allocation_2])
+        assert_equal(list(project_summary([project_1], resources=[resource_2])),
+                     [("1", 0, 0, 5)])
+
     def test_jobs (self):
         project_1 = Project.cached("1")
         project_2 = Project.cached("2")

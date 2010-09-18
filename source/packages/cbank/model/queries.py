@@ -209,6 +209,7 @@ def project_summary (projects, users=None, resources=None,
         resources_ = Allocation.resource_id.in_(
             resource.id for resource in resources)
         allocations_q = allocations_q.filter(resources_)
+        holds_q = holds_q.filter(resources_)
         charges_q = charges_q.filter(resources_)
         refunds_q = refunds_q.filter(resources_)
         jobs_q = jobs_q.filter(resources_)
