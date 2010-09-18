@@ -1,0 +1,36 @@
+1.2.0
+=====
+
+- model+api
+  - Removed Charge.transfer, as it depended on Project.charge
+    which was removed when Project.allocations was removed.
+  - amount_available now returns a minimum of 0 in keeping
+    with the definition of "available" established in the
+    command-line interface.
+  - project_summary and allocation_summary no longer reflect
+    holds against inactive allocations.
+  - Charge.distributed will now create charges against active,
+    negative allocations if no active, positive allocations
+    exist.
+  - project_summary now properly reflects the resources filter
+    in calculation of amount held.
+
+- cli
+  - "Available" columns now return a minimum of 0.  (This is
+    a result of changes in the model+api.)
+  - "list projects" and "list allocations" no longer reflect
+    holds against inactive allocations.  (This is a result
+    of changes in the model+api.)
+  - "new charge" will now create charges against active,
+    negative allocations if no active, positive allocations
+    exist.  (This is a result of changes in the model+api.)
+
+- upstream
+  - The model can now handle a null (None) upstream which behaves
+    as a simple passthrough.  This is now the default configuration.
+  - cbank.upstreams.default has been renamed to
+    cbank.upstreams.volatile.
+
+- configuration
+  - Updated example cbank.conf to accurately reflect the renaming
+    of clusterbank.cbank to cbank.cli.
