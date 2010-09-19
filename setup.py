@@ -9,7 +9,7 @@ except ImportError:
 
 setup(
     name="cbank",
-    version="trunk",
+    version="1.2.0",
     description="Abstract accounting system",
     author="Jonathon Anderson",
     author_email="anderbubble@gmail.com",
