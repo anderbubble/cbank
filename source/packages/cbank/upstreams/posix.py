@@ -72,7 +72,6 @@ def project_member (project_id, user_id):
         return True
     try:
         gid = int(project_id)
-        uid = int(user_id)
     except ValueError:
         return False
     try:
@@ -81,7 +80,7 @@ def project_member (project_id, user_id):
         return False
 
     for user_string in getgrgid(gid)[3]:
-        if uid == user_in(user_string):
+        if str(user_id) == user_in(user_string):
             return True
     return False
 
