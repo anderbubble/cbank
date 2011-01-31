@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy.sql import func, and_, case
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker, contains_eager
 from sqlalchemy.orm.session import SessionExtension
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -13,7 +13,8 @@ from cbank.model.entities import parse_pbs
 
 __all__ = [
     "Session", "get_projects", "get_users", "import_job",
-    "user_summary", "project_summary", "allocation_summary"]
+    "user_summary", "project_summary", "allocation_summary",
+    "hold_summary", "charge_summary"]
 
 
 class EntityConstraints (SessionExtension):
@@ -349,4 +350,58 @@ def allocation_summary (allocations, users=None,
     query = query.order_by(Allocation.id)
     query = query.filter(Allocation.id.in_(
             allocation.id for allocation in allocations))
+    return query
+
+
+def hold_summary (users=None, projects=None, resources=None, jobs=None, after=None, before=None):
+    s = Session()
+    query = s.query(Hold).filter_by(active=True)
+    query = query.join(Hold.allocation)
+    query = query.options(contains_eager(Hold.allocation))
+    query = query.order_by(Hold.datetime, Hold.id)
+
+    if users:
+        query = query.filter(Hold.job.has(Job.user_id.in_(
+            user.id for user in users)))
+    if projects:
+        query = query.filter(Hold.allocation.has(
+            Allocation.project_id.in_(project.id for project in projects)))
+    if resources:
+        query = query.filter(Hold.allocation.has(
+            Allocation.resource_id.in_(resource.id for resource in resources)))
+    if after:
+        query = query.filter(Hold.datetime >= after)
+    if before:
+        query = query.filter(Hold.datetime < before)
+    if jobs:
+        query = query.filter(Hold.job.has(Job.id.in_(
+            job.id for job in jobs)))
+
+    return query
+
+
+def charge_summary (users=None, projects=None, resources=None, jobs=None, after=None, before=None):
+    s = Session()
+    query = s.query(Charge)
+    query = query.join(Charge.allocation)
+    query = query.options(contains_eager(Charge.allocation))
+    query = query.order_by(Charge.datetime, Charge.id)
+
+    if users:
+        query = query.filter(Charge.job.has(Job.user_id.in_(
+            user.id for user in users)))
+    if projects:
+        query = query.filter(Charge.allocation.has(
+            Allocation.project_id.in_(project.id for project in projects)))
+    if resources:
+        query = query.filter(Charge.allocation.has(
+            Allocation.resource_id.in_(resource.id for resource in resources)))
+    if after:
+        query = query.filter(Charge.datetime >= after)
+    if before:
+        query = query.filter(Charge.datetime < before)
+    if jobs:
+        query = query.filter(Charge.job.has(Job.id.in_(
+            job.id for job in jobs)))
+
     return query

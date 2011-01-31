@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy.sql import and_, func
-from sqlalchemy.orm import eagerload, contains_eager
+from sqlalchemy.orm import eagerload
 
 from cbank import config
 from cbank.cli.common import get_unit_factor
@@ -196,14 +196,6 @@ def print_holds_list (holds, comments=False, truncate=True):
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
     
-    query = Session.query(Hold)
-    query = query.options(eagerload(Hold.allocation))
-    query = query.order_by(Hold.datetime, Hold.id)
-    if holds:
-        query = query.filter(Hold.id.in_(hold.id for hold in holds))
-    else:
-        query = []
-    
     hold_sum = 0
     for hold in holds:
         hold_sum += hold.amount
@@ -296,22 +288,9 @@ def print_charges_list (charges, comments=False, truncate=True):
     print >> sys.stderr, format.header()
     print >> sys.stderr, format.separator()
     
-    s = Session()
-    query = s.query(Charge,
-        (Charge.amount
-            - func.coalesce(func.sum(Refund.amount), 0))
-        ).group_by(Charge)
-    query = query.outerjoin(Charge.refunds, Charge.allocation)
-    query = query.group_by(Allocation)
-    query = query.options(contains_eager(Charge.allocation))
-    query = query.order_by(Charge.datetime, Charge.id)
-    if charges:
-        query = query.filter(Charge.id.in_(charge.id for charge in charges))
-    else:
-        query = []
-    
     total_charged = 0
-    for charge, charge_amount in query:
+    for charge in charges:
+        charge_amount = charge.effective_amount()
         total_charged += charge_amount
         print format({
             'Charge':charge.id,

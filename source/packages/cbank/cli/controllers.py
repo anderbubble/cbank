@@ -42,7 +42,8 @@ from cbank import config
 from cbank.model import (
     User, Project, Resource,
     Allocation, Hold, Job, Charge, Refund,
-    Session, get_projects, get_users, import_job)
+    Session, get_projects, get_users, import_job,
+    hold_summary, charge_summary)
 from cbank.cli.views import (print_allocation, print_charge,
     print_charges, print_hold, print_holds, print_refund, print_users_list,
     print_projects_list, print_allocations_list, print_holds_list,
@@ -689,26 +690,11 @@ def list_holds_main ():
             elif set(users) != set([current_user]):
                 raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
-    comments = options.comments
-    holds = Session.query(Hold)
-    holds = holds.filter(Hold.active==True)
-    if users:
-        holds = holds.filter(Hold.job.has(Job.user_id.in_(
-            user_.id for user_ in users)))
-    if projects:
-        holds = holds.filter(Hold.allocation.has(
-            Allocation.project_id.in_(project.id for project in projects)))
-    if resources:
-        holds = holds.filter(Hold.allocation.has(
-            Allocation.resource_id.in_(resource.id for resource in resources)))
-    if options.after:
-        holds = holds.filter(Hold.datetime >= options.after)
-    if options.before:
-        holds = holds.filter(Hold.datetime < options.before)
-    if options.jobs:
-        holds = holds.filter(Hold.job.has(Job.id.in_(
-            job.id for job in options.jobs)))
-    print_holds_list(holds, comments=comments, truncate=(not options.long))
+    holds = hold_summary(
+        users=users, projects=projects,
+        resources=resources, jobs=options.jobs,
+        after=options.after, before=options.before)
+    print_holds_list(holds, comments=options.comments, truncate=(not options.long))
 
 
 @handle_exceptions
@@ -773,23 +759,11 @@ def list_charges_main ():
                 raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
     comments = options.comments
-    charges = Session.query(Charge)
-    if users:
-        charges = charges.filter(Charge.job.has(Job.user_id.in_(
-            user.id for user in users)))
-    if projects:
-        charges = charges.filter(Charge.allocation.has(
-            Allocation.project_id.in_(project.id for project in projects)))
-    if resources:
-        charges = charges.filter(Charge.allocation.has(
-            Allocation.resource_id.in_(resource.id for resource in resources)))
-    if options.after:
-        charges = charges.filter(Charge.datetime >= options.after)
-    if options.before:
-        charges = charges.filter(Charge.datetime < options.before)
-    if options.jobs:
-        charges = charges.filter(Charge.job.has(Job.id.in_(
-            job.id for job in options.jobs)))
+
+    charges = charge_summary(
+        users=users, projects=projects,
+        resources=resources, jobs=options.jobs,
+        after=options.after, before=options.before)
     print_charges_list(charges, comments=comments,
         truncate=(not options.long))
 

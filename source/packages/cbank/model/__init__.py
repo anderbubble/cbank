@@ -14,14 +14,16 @@ from cbank.model.database import (
     metadata, allocations, holds, jobs, charges, refunds)
 from cbank.model.queries import (
     Session, get_projects, get_users, import_job,
-    user_summary, project_summary, allocation_summary)
+    user_summary, project_summary, allocation_summary,
+    hold_summary, charge_summary)
 
 
 __all__ = [
     "User", "Project", "Resource",
     "Allocation", "Hold", "Job", "Charge", "Refund",
     "Session", "get_projects", "get_users", "import_job",
-    "user_summary", "project_summary", "allocation_summary"]
+    "user_summary", "project_summary", "allocation_summary",
+    "hold_summary", "charge_summary"]
 
 
 def configured_engine ():
