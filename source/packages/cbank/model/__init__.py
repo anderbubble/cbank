@@ -79,6 +79,11 @@ allocation_refund_sum_subquery = (
                 charges.c.allocation_id==allocations.c.id))).correlate(allocations)
 
 
+charge_refund_sum_subquery = (
+    select([func.coalesce(func.sum(refunds.c.amount), 0)]).where(
+        refunds.c.charge_id==charges.c.id)).correlate(charges)
+
+
 mapper(Allocation, allocations, properties={
     'id':allocations.c.id,
     'project_id':allocations.c.project_id,
@@ -133,7 +138,8 @@ mapper(Charge, charges, properties={
     'amount':charges.c.amount,
     'comment':charges.c.comment,
     'job':relation(Job, backref="charges"),
-    'refunds':relation(Refund, backref="charge", cascade="all")})
+    'refunds':relation(Refund, backref="charge", cascade="all"),
+    '_refund_sum':column_property(charge_refund_sum_subquery)})
 
 
 mapper(Refund, refunds, properties={

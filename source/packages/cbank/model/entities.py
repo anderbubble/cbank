@@ -465,6 +465,8 @@ class Charge (Entity):
         self.refunds = []
         self.amount = amount
         self.job = None
+
+        self._refund_sum = None
     
     @classmethod
     def distributed (cls, allocations, amount):
@@ -509,7 +511,10 @@ class Charge (Entity):
     
     def amount_refunded (self):
         """Compute the sum of refunds of the charge."""
-        return sum(refund.amount or 0 for refund in self.refunds)
+        if self._refund_sum is not None:
+            return self._refund_sum
+        else:
+            return sum(refund.amount or 0 for refund in self.refunds)
     
     def effective_amount (self):
         """Compute the difference between the charge and refunds."""
