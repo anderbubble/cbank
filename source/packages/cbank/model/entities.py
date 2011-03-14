@@ -173,6 +173,10 @@ class Allocation (Entity):
         self.holds = []
         self.charges = []
 
+        self._active_hold_sum = None
+        self._charge_sum = None
+        self._refund_sum = None
+
     def _set_project (self, project):
         if project is None:
             self.project_id = None
@@ -203,11 +207,17 @@ class Allocation (Entity):
 
     def amount_charged (self):
         """Compute the sum of effective charges (after refunds)."""
-        return sum(charge.effective_amount() for charge in self.charges)
+        if None not in (self._charge_sum, self._refund_sum):
+            return (self._charge_sum - self._refund_sum)
+        else:
+            return sum(charge.effective_amount() for charge in self.charges)
     
     def amount_held (self):
         """Compute the sum of the effective amount currently on hold."""
-        return sum(hold.amount or 0 for hold in self.holds if hold.active)
+        if self._active_hold_sum is not None:
+            return self._active_hold_sum
+        else:
+            return sum(hold.amount or 0 for hold in self.holds if hold.active)
     
     def amount_available (self):
         """Compute the amount available for charges."""

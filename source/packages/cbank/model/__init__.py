@@ -2,7 +2,8 @@ import warnings
 import ConfigParser
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import mapper, relation
+from sqlalchemy.sql import select, and_, func, join
+from sqlalchemy.orm import mapper, relation, column_property
 from sqlalchemy.exceptions import ArgumentError
 
 from cbank import config
@@ -59,6 +60,25 @@ def configured_upstream ():
     return module
 
 
+allocation_active_hold_sum_subquery = (
+    select([func.coalesce(func.sum(holds.c.amount), 0)]).where(
+        and_(
+            holds.c.allocation_id==allocations.c.id,
+            holds.c.active==True))).correlate(allocations)
+
+
+allocation_charge_sum_subquery = (
+    select([func.coalesce(func.sum(charges.c.amount), 0)]).where(
+        charges.c.allocation_id==allocations.c.id)).correlate(allocations)
+
+
+allocation_refund_sum_subquery = (
+    select([func.coalesce(func.sum(refunds.c.amount), 0)], from_obj=join(charges, refunds)).where(
+            and_(
+                refunds.c.charge_id==charges.c.id,
+                charges.c.allocation_id==allocations.c.id))).correlate(allocations)
+
+
 mapper(Allocation, allocations, properties={
     'id':allocations.c.id,
     'project_id':allocations.c.project_id,
@@ -67,7 +87,10 @@ mapper(Allocation, allocations, properties={
     'amount':allocations.c.amount,
     'start':allocations.c.start,
     'end':allocations.c.end,
-    'comment':allocations.c.comment})
+    'comment':allocations.c.comment,
+    '_active_hold_sum':column_property(allocation_active_hold_sum_subquery),
+    '_charge_sum':column_property(allocation_charge_sum_subquery),
+    '_refund_sum':column_property(allocation_refund_sum_subquery)})
 
 
 mapper(Hold, holds, properties={
