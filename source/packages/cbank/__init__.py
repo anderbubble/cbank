@@ -5,7 +5,7 @@ A library for managing and accounting for the use of resources.
 
 import ConfigParser
 
-__version__ = "trunk"
+__version__ = "1.2.2"
 
 config = ConfigParser.SafeConfigParser()
 config.read(["/etc/cbank.conf"])
