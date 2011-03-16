@@ -207,10 +207,11 @@ class Allocation (Entity):
 
     def amount_charged (self):
         """Compute the sum of effective charges (after refunds)."""
-        if None not in (self._charge_sum, self._refund_sum):
-            return (self._charge_sum - self._refund_sum)
+        if None in (self._charge_sum, self._refund_sum):
+            return sum(
+                charge.effective_amount() for charge in self.charges)
         else:
-            return sum(charge.effective_amount() for charge in self.charges)
+            return (self._charge_sum - self._refund_sum)
     
     def amount_held (self):
         """Compute the sum of the effective amount currently on hold."""
