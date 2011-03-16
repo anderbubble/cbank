@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy.sql import func, and_, case
-from sqlalchemy.orm import scoped_session, sessionmaker, contains_eager
+from sqlalchemy.orm import scoped_session, sessionmaker, joinedload
 from sqlalchemy.orm.session import SessionExtension
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -356,8 +356,7 @@ def allocation_summary (allocations, users=None,
 def hold_summary (users=None, projects=None, resources=None, jobs=None, after=None, before=None):
     s = Session()
     query = s.query(Hold).filter_by(active=True)
-    query = query.join(Hold.allocation)
-    query = query.options(contains_eager(Hold.allocation))
+    query = query.options(joinedload(Hold.allocation))
     query = query.order_by(Hold.datetime, Hold.id)
 
     if users:
@@ -383,8 +382,7 @@ def hold_summary (users=None, projects=None, resources=None, jobs=None, after=No
 def charge_summary (users=None, projects=None, resources=None, jobs=None, after=None, before=None):
     s = Session()
     query = s.query(Charge)
-    query = query.join(Charge.allocation)
-    query = query.options(contains_eager(Charge.allocation))
+    query = query.options(joinedload(Charge.allocation))
     query = query.order_by(Charge.datetime, Charge.id)
 
     if users:

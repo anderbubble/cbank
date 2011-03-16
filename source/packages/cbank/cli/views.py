@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy.sql import and_, func
-from sqlalchemy.orm import eagerload
 
 from cbank import config
 from cbank.cli.common import get_unit_factor

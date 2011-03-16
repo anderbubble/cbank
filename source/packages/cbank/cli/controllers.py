@@ -35,7 +35,7 @@ import decorator
 
 from sqlalchemy import and_, or_
 from sqlalchemy.exceptions import InvalidRequestError, IntegrityError
-from sqlalchemy.orm import eagerload
+from sqlalchemy.orm import joinedload, undefer
 
 import cbank
 from cbank import config
@@ -392,9 +392,14 @@ def pop_allocation (args, index):
         allocation_id = args.pop(index)
     except IndexError:
         raise MissingArgument("allocation")
+    query = Session.query(Allocation)
+    query = query.filter_by(id=allocation_id)
+    query = query.options(undefer(
+            Allocation._active_hold_sum,
+            Allocation._charge_sum,
+            Allocation._refund_sum))
     try:
-        allocation = Session.query(Allocation).filter_by(
-            id=allocation_id).one()
+        allocation = query.one()
     except InvalidRequestError:
         raise UnknownAllocation(allocation_id)
     return allocation
@@ -420,8 +425,11 @@ def pop_charge (args, index):
         charge_id = args.pop(index)
     except IndexError:
         raise MissingArgument("charge")
+    query = Session.query(Charge)
+    query = query.filter_by(id=charge_id)
+    query = query.options(undefer(Charge._refund_sum))
     try:
-        charge = Session.query(Charge).filter_by(id=charge_id).one()
+        charge = query.one()
     except InvalidRequestError:
         raise UnknownCharge(charge_id)
     return charge
@@ -718,7 +726,7 @@ def list_jobs_main ():
                 raise NotPermitted(current_user)
     resources = options.resources or configured_resources()
     jobs = Session.query(Job).order_by(Job.ctime).options(
-        eagerload(Job.charges, Charge.refunds))
+        joinedload(Job.charges, Charge.refunds))
     if users:
         jobs = jobs.filter(Job.user_id.in_(
             user.id for user in users))

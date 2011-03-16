@@ -95,9 +95,9 @@ mapper(Allocation, allocations, properties={
     'start':allocations.c.start,
     'end':allocations.c.end,
     'comment':allocations.c.comment,
-    '_active_hold_sum':column_property(allocation_active_hold_sum_subquery),
-    '_charge_sum':column_property(allocation_charge_sum_subquery),
-    '_refund_sum':column_property(allocation_refund_sum_subquery)})
+    '_active_hold_sum':column_property(allocation_active_hold_sum_subquery, deferred=True),
+    '_charge_sum':column_property(allocation_charge_sum_subquery, deferred=True),
+    '_refund_sum':column_property(allocation_refund_sum_subquery, deferred=True)})
 
 
 mapper(Hold, holds, properties={
@@ -141,7 +141,7 @@ mapper(Charge, charges, properties={
     'comment':charges.c.comment,
     'job':relation(Job, backref="charges"),
     'refunds':relation(Refund, backref="charge", cascade="all"),
-    '_refund_sum':column_property(charge_refund_sum_subquery)})
+    '_refund_sum':column_property(charge_refund_sum_subquery, deferred=True)})
 
 
 mapper(Refund, refunds, properties={
