@@ -9,7 +9,8 @@ from sqlalchemy.exceptions import ArgumentError
 from cbank import config
 from cbank.model.entities import (
     User, Project, Resource,
-    Allocation, Hold, Job, Charge, Refund)
+    Allocation, Hold, Job, Charge, Refund,
+    distribute_amount)
 from cbank.model.database import (
     metadata, allocations, holds, jobs, charges, refunds)
 from cbank.model.queries import (
@@ -21,6 +22,7 @@ from cbank.model.queries import (
 __all__ = [
     "User", "Project", "Resource",
     "Allocation", "Hold", "Job", "Charge", "Refund",
+    "distribute_amount",
     "Session", "get_projects", "get_users", "import_job",
     "user_summary", "project_summary", "allocation_summary",
     "hold_summary", "charge_summary"]

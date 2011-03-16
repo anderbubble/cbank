@@ -42,6 +42,7 @@ from cbank import config
 from cbank.model import (
     User, Project, Resource,
     Allocation, Hold, Job, Charge, Refund,
+    distribute_amount,
     Session, get_projects, get_users, import_job,
     hold_summary, charge_summary)
 from cbank.cli.views import (print_allocation, print_charge,
@@ -248,11 +249,14 @@ def new_charge_main ():
         Allocation.start <= now, Allocation.end > now))
     allocations = allocations.order_by(Allocation.end)
     try:
-        charges = Charge.distributed(allocations, amount)
+        amounts = distribute_amount(allocations, amount)
     except ValueError, ex:
         raise ValueError_(ex)
-    for charge in charges:
+    charges = []
+    for allocation, amount_ in amounts.iteritems():
+        charge = allocation.charge(amount_)
         charge.comment = options.comment
+        charges.append(charge)
     if options.commit:
         for charge in charges:
             s.add(charge)
@@ -283,12 +287,18 @@ def new_hold_main ():
         Allocation.start <= now, Allocation.end > now))
     allocations = allocations.order_by(Allocation.end)
     try:
-        holds = Hold.distributed(allocations, amount)
+        amounts = distribute_amount(allocations, amount)
     except ValueError, ex:
         raise ValueError_(ex)
-    for hold in holds:
+    holds = []
+    for allocation, amount_ in amounts.iteritems():
+        try:
+            hold = allocation.hold(amount_)
+        except ValueError, ex:
+            raise ValueError_(ex)
         hold.user = options.user
         hold.comment = options.comment
+        holds.append(hold)
     if options.commit:
         for hold in holds:
             s.add(hold)

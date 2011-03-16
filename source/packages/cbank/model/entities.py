@@ -21,7 +21,8 @@ import decorator
 
 __all__ = [
     "User", "Project", "Resource",
-    "Allocation", "Hold", "Charge", "Refund"
+    "Allocation", "Hold", "Charge", "Refund",
+    "distribute_amount",
 ]
 
 
@@ -46,6 +47,9 @@ class Entity (object):
             return str(self.id)
         else:
             return "?"
+
+    def validate (self):
+        pass
 
 
 def getattr_ (obj, name, default_thunk):
@@ -177,6 +181,21 @@ class Allocation (Entity):
         self._charge_sum = None
         self._refund_sum = None
 
+    def validate (self):
+        if self.amount < 0:
+            raise ValueError(
+                "invalid amount for allocation: %r" % self.amount)
+    
+    def hold (self, amount):
+        """Hold some amount of an allocation."""
+        if amount > self.amount_available():
+            raise ValueError("cannot hold more than is available")
+        return Hold(self, amount)
+
+    def charge (self, amount):
+        """Charge some amount of an allocation."""
+        return Charge(self, amount)
+
     def _set_project (self, project):
         if project is None:
             self.project_id = None
@@ -235,6 +254,39 @@ class Allocation (Entity):
         return self.start <= now_ < self.end
 
 
+def distribute_amount (allocations, amount):
+        
+    """Distribute some theoretical amount across multiple allocations.
+
+    Arguments:
+    allocations -- a list of allocations available for charges
+
+    Keyword arguments:
+    amount -- total amount to distribute
+    """
+
+    remaining_amount = amount
+
+    amounts = {}
+    for allocation in allocations:
+        if remaining_amount <= 0:
+            break
+        amount_ = min(remaining_amount, allocation.amount_available())
+        if amount_:
+            amounts[allocation] = amount_
+            remaining_amount -= amount_
+    if remaining_amount > 0:
+        try:
+            allocation = allocations[0]
+        except IndexError:
+            raise ValueError("no available allocation")
+        try:
+            amounts[allocation] += remaining_amount
+        except KeyError:
+            amounts[allocation] = remaining_amount
+    return amounts
+
+
 class Hold (Entity):
     
     """Uncharged but unavailable amount of an allocation.
@@ -250,9 +302,6 @@ class Hold (Entity):
     amount -- amount held
     comment -- misc. comments
     active -- the hold is active
-    
-    Classmethods:
-    distributed -- construct multiple holds across multiple allocations
     """
     
     def __init__ (self, allocation, amount):
@@ -269,40 +318,11 @@ class Hold (Entity):
         self.active = True
         self.amount = amount
         self.job = None
-    
-    @classmethod
-    def distributed (cls, allocations, amount):
-        
-        """Construct multiple holds across multiple allocations.
-        
-        Arguments:
-        allocations -- a list of allocations available for holds
-        
-        Keyword arguments:
-        amount -- total amount to be held (required)
-        
-        Example:
-        A project has multiple allocations on a single resource. Use a
-        distributed hold to easily hold more funds than any one allocation can
-        accomodate.
-        """
-        
-        holds = list()
-        amount_remaining = amount
-        allocations_available = allocations[:]
-        while amount_remaining > 0:
-            try:
-                allocation = allocations_available.pop(0)
-            except IndexError:
-                raise ValueError("insufficient allocation")
-            else:
-                amount_available = allocation.amount_available()
-                if amount_available > 0:
-                    hold_amount = min(amount_remaining, amount_available)
-                    hold = cls(allocation, hold_amount)
-                    holds.append(hold)
-                    amount_remaining -= hold.amount
-        return holds
+
+    def validate (self):
+        if self.amount < 0:
+            raise ValueError(
+                "invalid amount for hold: %r" % self.amount)
 
 
 class Job (Entity):
@@ -443,9 +463,6 @@ class Charge (Entity):
     refunds -- refunds from the charge
     job -- the job associated with this charge
     
-    Classmethods:
-    distributed -- construct multiple charges across multiple allocations
-    
     Methods:
     transfer -- transfer a charged amount to allocations of another project
     amount_refunded -- the sum of refunds of this charge
@@ -468,47 +485,11 @@ class Charge (Entity):
         self.job = None
 
         self._refund_sum = None
-    
-    @classmethod
-    def distributed (cls, allocations, amount):
-        
-        """Construct multiple charges across multiple allocations.
-        
-        Arguments:
-        allocations -- a list of allocations available for charges
-        amount -- total amount to be charged
-        
-        Example:
-        A project has multiple allocations on a single resource. Use a
-        distributed charge to charge more funds than any one allocation can
-        accomodate.
-        """
 
-        allocations = list(allocations)
-        charges = list()
-        amount_remaining = amount
-        allocations_available = allocations[:]
-        while amount_remaining > 0:
-            try:
-                allocation = allocations_available.pop(0)
-            except IndexError:
-                if charges:
-                    charge = charges[0]
-                    charge.amount += amount_remaining
-                elif allocations:
-                    charge = cls(allocations[0], amount_remaining)
-                    charges.append(charge)
-                else:
-                    raise ValueError("insufficient allocation")
-                amount_remaining -= charge.amount
-            else:
-                amount_available = allocation.amount_available()
-                if amount_available > 0:
-                    charge_amount = min(amount_remaining, amount_available)
-                    charge = cls(allocation, charge_amount)
-                    charges.append(charge)
-                    amount_remaining -= charge.amount
-        return charges
+    def validate (self):
+        if self.amount < 0:
+            raise ValueError(
+                "invalid amount for charge: %r" % self.amount)
     
     def amount_refunded (self, recalculate=False):
         """Compute the sum of refunds of the charge."""
@@ -529,6 +510,8 @@ class Charge (Entity):
         """
         if amount is None:
             return Refund(self, self.effective_amount())
+        elif amount > self.effective_amount():
+            raise ValueError("cannot refund more than was charged")
         else:
             return Refund(self, amount)
 
@@ -556,6 +539,11 @@ class Refund (Entity):
         self.charge = charge
         self.amount = amount
         self.comment = None
+
+    def validate (self):
+        if self.amount < 0:
+            raise ValueError(
+                "invalid amount for refund: %r" % self.amount)
 
 
 def parse_pbs (entry):

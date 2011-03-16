@@ -14,7 +14,8 @@ from sqlalchemy import create_engine
 from cbank import config
 from cbank.model.entities import (
     UpstreamEntity, User, Project, Resource,
-    Allocation, Hold, Charge, Refund)
+    Allocation, Hold, Charge, Refund,
+    distribute_amount)
 from cbank.model.queries import Session
 import cbank.model
 
@@ -25,6 +26,61 @@ def setup ():
 
 def teardown ():
     restore_mappers()
+
+
+class TestDistributeAmount (BaseTester):
+
+    def test_none (self):
+        amounts = distribute_amount([], 0)
+        assert_equal(amounts, {})
+
+    @raises(ValueError)
+    def test_no_allocation (self):
+        amounts = distribute_amount([], 1)
+
+    def test_one_allocation (self):
+        allocation = Mock([])
+        allocation.amount_available = Mock([], return_value=1)
+        amounts = distribute_amount([allocation], 1)
+        assert_equal(set(amounts.items()), set([(allocation, 1)]))
+
+    def test_one_overflowing_allocation (self):
+        allocation = Mock([])
+        allocation.amount_available = Mock([], return_value=1)
+        amounts = distribute_amount([allocation], 2)
+        assert_equal(set(amounts.items()), set([(allocation, 2)]))
+
+    def test_two_allocations (self):
+        allocation_1 = Mock([])
+        allocation_1.amount_available = Mock([], return_value=1)
+        allocation_2 = Mock([])
+        allocation_2.amount_available = Mock([], return_value=1)
+        amounts = distribute_amount([allocation_1, allocation_2], 2)
+        assert_equal(set(amounts.items()), set([(allocation_1, 1), (allocation_2, 1)]))
+
+    def test_two_overflowing_allocations (self):
+        allocation_1 = Mock([])
+        allocation_1.amount_available = Mock([], return_value=1)
+        allocation_2 = Mock([])
+        allocation_2.amount_available = Mock([], return_value=1)
+        amounts = distribute_amount([allocation_1, allocation_2], 3)
+        assert_equal(set(amounts.items()), set([(allocation_1, 2), (allocation_2, 1)]))
+
+    def test_skip_allocation (self):
+        allocation_1 = Mock([])
+        allocation_1.amount_available = Mock([], return_value=0)
+        allocation_2 = Mock([])
+        allocation_2.amount_available = Mock([], return_value=1)
+        amounts = distribute_amount([allocation_1, allocation_2], 1)
+        assert_equal(set(amounts.items()), set([(allocation_2, 1)]))
+
+    def test_overflow_into_skipped_allocation (self):
+        allocation_1 = Mock([])
+        allocation_1.amount_available = Mock([], return_value=0)
+        allocation_2 = Mock([])
+        allocation_2.amount_available = Mock([], return_value=1)
+        amounts = distribute_amount([allocation_1, allocation_2], 2)
+        assert_equal(set(amounts.items()), set([(allocation_1, 1), (allocation_2, 1)]))
 
 
 class TestUpstreamEntity (BaseTester):
@@ -184,6 +240,15 @@ class TestAllocation (BaseTester):
         assert not allocation.active(end)
         assert not allocation.active(end+timedelta(hours=1))
 
+    @patch("cbank.model.entities.Hold",
+           Mock(return_value=sentinel.hold))
+    def test_hold (self):
+        allocation = Allocation(None, None, 1, None, None)
+        hold = allocation.hold(1)
+        cbank.model.entities.Hold.assert_called_with(
+            allocation, 1)
+        assert_equal(hold, sentinel.hold)
+
     def test_amount_held (self):
         allocation = Allocation(None, None, None, None, None)
         assert_equal(allocation.amount_held(), 0)
@@ -262,32 +327,6 @@ class TestHold (BaseTester):
         assert_equal(hold.comment, None)
         assert hold.active
 
-    @raises(ValueError)
-    def test_distributed_without_allocations (self):
-        holds = Hold.distributed([], amount=1)
-
-    def test_distributed (self):
-        allocation_1 = Mock(['amount_available'])
-        allocation_1.amount_available = Mock([], return_value=600)
-        allocation_2 = Mock(['amount_available'])
-        allocation_2.amount_available = Mock([], return_value=600)
-        allocations = [allocation_1, allocation_2]
-        holds = Hold.distributed(allocations, amount=900)
-        assert_equal(len(holds), 2)
-        assert_equal(holds[0].allocation, allocation_1)
-        assert_equal(holds[0].amount, 600)
-        assert_equal(holds[1].allocation, allocation_2)
-        assert_equal(holds[1].amount, 300)
-
-    def test_distributed_zero_amount (self):
-        holds = Hold.distributed([Mock([])], amount=0)
-
-    @raises(ValueError)
-    def test_distributed_greater_than_allocation (self):
-        allocation = Mock(['amount_available'])
-        allocation.amount_available = Mock([], return_value=1)
-        holds = Hold.distributed([allocation], amount=2)
-
 
 class TestCharge (BaseTester):
 
@@ -304,32 +343,19 @@ class TestCharge (BaseTester):
         assert_equal(charge.comment, None)
         assert_equal(charge.refunds, [])
 
+    @patch("cbank.model.entities.Refund",
+           Mock(return_value=sentinel.refund))
+    def test_refund (self):
+        charge = Charge(None, 1)
+        refund = charge.refund(1)
+        cbank.model.entities.Refund.assert_called_with(
+            charge, 1)
+        assert_equal(refund, sentinel.refund)
+
     @raises(ValueError)
-    def test_distributed_without_allocations (self):
-        charges = Charge.distributed([], amount=1)
-
-    def test_distributed (self):
-        allocation_1 = Mock(['amount_available'])
-        allocation_1.amount_available = Mock([], return_value=600)
-        allocation_2 = Mock(['amount_available'])
-        allocation_2.amount_available = Mock([], return_value=600)
-        allocations = [allocation_1, allocation_2]
-        charges = Charge.distributed(allocations, amount=900)
-        assert_equal(len(charges), 2)
-        assert_equal(charges[0].allocation, allocation_1)
-        assert_equal(charges[0].amount, 600)
-        assert_equal(charges[1].allocation, allocation_2)
-        assert_equal(charges[1].amount, 300)
-
-    def test_distributed_zero_amount (self):
-        charges = Charge.distributed([Mock([])], amount=0)
-
-    def test_distributed_greater_than_allocation (self):
-        allocation = Mock(['amount_available'])
-        allocation.amount_available = Mock([], return_value=1)
-        charges = Charge.distributed([allocation], amount=2)
-        assert_equal(len(charges), 1)
-        assert_equal(charges[0].amount, 2)
+    def test_refund_more_than_charge (self):
+        charge = Charge(None, 0)
+        refund = charge.refund(1)
 
     def test_amount_refunded (self):
         charge = Charge(None, None)
@@ -358,11 +384,18 @@ class TestCharge (BaseTester):
     @patch("cbank.model.entities.Refund",
            Mock(return_value=sentinel.refund))
     def test_refund (self):
-        charge = Charge(None, None)
-        refund = charge.refund(sentinel.refund_amount)
+        charge = Charge(None, 0)
+        refund = charge.refund(0)
         cbank.model.entities.Refund.assert_called_with(
-            charge, sentinel.refund_amount)
+            charge, 0)
         assert_equal(refund, sentinel.refund)
+
+    @raises(ValueError)
+    @patch("cbank.model.entities.Refund",
+           Mock(return_value=sentinel.refund))
+    def test_refund_too_much (self):
+        charge = Charge(None, 0)
+        refund = charge.refund(1)
 
     @patch("cbank.model.entities.Refund", Mock([]))
     def test_default_refund (self):

@@ -153,46 +153,6 @@ class TestPositiveAmountConstraints (QueryTester):
         Session.commit()
 
 
-class TestHoldConstraints (QueryTester):
-
-    @raises(ValueError)
-    def test_hold_gt (self):
-        a = Allocation(Project("1"), Resource("1"), 10,
-                       datetime.now(), datetime.now())
-        h = Hold(a, 11)
-        Session.add(h)
-        Session.commit()
-
-    def test_hold_inactive_gt (self):
-        a = Allocation(Project("1"), Resource("1"), 10,
-                       datetime.now(), datetime.now())
-        h = Hold(a, 11)
-        h.active = False
-        Session.add(h)
-        Session.commit()
-
-    def test_hold_inactive_overdrawn (self):
-        a = Allocation(Project("1"), Resource("1"), 10,
-                       datetime.now(), datetime.now())
-        c = Charge(a, 11)
-        h = Hold(a, 1)
-        h.active = False
-        Session.add_all([c, h])
-        Session.commit()
-
-
-class TestRefundConstraints (QueryTester):
-
-    @raises(ValueError)
-    def test_refund_gt (self):
-        a = Allocation(Project("1"), Resource("1"), 10,
-                       datetime.now(), datetime.now())
-        c = Charge(a, 5)
-        r = Refund(c, 6)
-        Session.add(r)
-        Session.commit()
-
-
 class TestUserSummary (QueryTester):
     
     def test_blank (self):

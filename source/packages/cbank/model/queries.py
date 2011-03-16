@@ -19,60 +19,10 @@ __all__ = [
 
 class EntityConstraints (SessionExtension):
 
-    """SQLAlchemy SessionExtension containing entity constraints.
-    
-    Methods (constraints):
-    check_amounts -- require entity amounts to be positive
-    check_holds -- require new holds to fit in their allocations
-    check_refunds -- require new refunds to fit in their charges
-    """
-
-    def check_amounts (self, session):
-        """Require new entities to have positive amounts."""
-        for entity_ in (session.new | session.dirty):
-            if isinstance(entity_, Allocation):
-                if entity_.amount < 0:
-                    raise ValueError(
-                        "invalid amount for allocation: %r" % entity_.amount)
-            elif isinstance(entity_, Hold):
-                if entity_.amount < 0:
-                    raise ValueError(
-                        "invalid amount for hold: %r" % entity_.amount)
-            elif isinstance(entity_, Charge):
-                if entity_.amount < 0:
-                    raise ValueError(
-                        "invalid amount for charge: %r" % entity_.amount)
-            elif isinstance(entity_, Refund):
-                if entity_.amount < 0:
-                    raise ValueError(
-                        "invalid amount for refund: %r" % entity_.amount)
-    
-    def check_holds (self, session):
-        """Require new holds to fit in their allocations."""
-        holds_ = (
-            instance for instance in (session.new | session.dirty)
-            if isinstance(instance, Hold) and instance.active)
-        for allocation in set(hold.allocation for hold in holds_):
-            amount_used = (
-                allocation.amount_charged() + allocation.amount_held())
-            if amount_used > allocation.amount:
-                raise ValueError("cannot hold more than is available")
-    
-    def check_refunds (self, session):
-        """Require new refunds to fit in their charges."""
-        refunds_ = (
-            instance for instance in (session.new | session.dirty)
-            if isinstance(instance, Refund))
-        charges_ = set(refund.charge for refund in refunds_)
-        for charge in charges_:
-            if charge.effective_amount() < 0:
-                raise ValueError("cannot refund more than was charged")
-    
     def before_commit (self, session):
         """Check constraints before committing."""
-        self.check_amounts(session)
-        self.check_holds(session)
-        self.check_refunds(session)
+        for entity in (session.new | session.dirty):
+            entity.validate()
 
 
 Session = scoped_session(sessionmaker(extension=EntityConstraints()))
