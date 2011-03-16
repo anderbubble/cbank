@@ -205,26 +205,26 @@ class Allocation (Entity):
 
     resource = property(_get_resource, _set_resource)
 
-    def amount_charged (self):
+    def amount_charged (self, recalculate=False):
         """Compute the sum of effective charges (after refunds)."""
-        if None in (self._charge_sum, self._refund_sum):
+        if recalculate or None in (self._charge_sum, self._refund_sum):
             return sum(
                 charge.effective_amount() for charge in self.charges)
         else:
             return (self._charge_sum - self._refund_sum)
     
-    def amount_held (self):
+    def amount_held (self, recalculate=False):
         """Compute the sum of the effective amount currently on hold."""
-        if self._active_hold_sum is not None:
-            return self._active_hold_sum
-        else:
-            return sum(hold.amount or 0 for hold in self.holds if hold.active)
-    
-    def amount_available (self):
+        if recalculate or self._active_hold_sum is None:
+            self._active_hold_sum = sum(
+                hold.amount or 0 for hold in self.holds if hold.active)
+        return self._active_hold_sum
+
+    def amount_available (self, **kwargs):
         """Compute the amount available for charges."""
-        charged = self.amount_charged()
-        held = self.amount_held()
-        return max(0, (self.amount - (charged + held)))
+        charged = self.amount_charged(**kwargs)
+        held = self.amount_held(**kwargs)
+        return max(0, ((self.amount or 0) - (charged + held)))
 
     def active (self, now=datetime.now):
         """Determine whether or not this allocation is still active."""
@@ -510,16 +510,16 @@ class Charge (Entity):
                     amount_remaining -= charge.amount
         return charges
     
-    def amount_refunded (self):
+    def amount_refunded (self, recalculate=False):
         """Compute the sum of refunds of the charge."""
-        if self._refund_sum is not None:
-            return self._refund_sum
-        else:
-            return sum(refund.amount or 0 for refund in self.refunds)
+        if recalculate or self._refund_sum is None:
+            self._refund_sum = sum(
+                refund.amount or 0 for refund in self.refunds)
+        return sum(refund.amount or 0 for refund in self.refunds)
     
-    def effective_amount (self):
+    def effective_amount (self, **kwargs):
         """Compute the difference between the charge and refunds."""
-        return self.amount - self.amount_refunded()
+        return (self.amount or 0) - self.amount_refunded(**kwargs)
     
     def refund (self, amount=None):
         """Refund an amount of a charge.

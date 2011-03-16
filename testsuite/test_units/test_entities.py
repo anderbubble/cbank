@@ -191,16 +191,16 @@ class TestAllocation (BaseTester):
         hold_1.amount = 1
         hold_1.active = True
         allocation.holds.append(hold_1)
-        assert_equal(allocation.amount_held(), 1)
+        assert_equal(allocation.amount_held(recalculate=True), 1)
         hold_2 = Mock(['amount', 'active'])
         hold_2.amount = 2
         hold_2.active = True
         allocation.holds.append(hold_2)
-        assert_equal(allocation.amount_held(), 3)
+        assert_equal(allocation.amount_held(recalculate=True), 3)
         hold_1.active = False
-        assert_equal(allocation.amount_held(), 2)
+        assert_equal(allocation.amount_held(recalculate=True), 2)
         hold_2.active = False
-        assert_equal(allocation.amount_held(), 0)
+        assert_equal(allocation.amount_held(recalculate=True), 0)
 
     def test_amount_charged (self):
         allocation = Allocation(None, None, None, None, None)
@@ -208,11 +208,11 @@ class TestAllocation (BaseTester):
         charge_1 = Mock(['effective_amount'])
         charge_1.effective_amount = Mock(return_value=1)
         allocation.charges.append(charge_1)
-        assert_equal(allocation.amount_charged(), 1)
+        assert_equal(allocation.amount_charged(recalculate=True), 1)
         charge_2 = Mock(['effective_amount'])
         charge_2.effective_amount = Mock(return_value=2)
         allocation.charges.append(charge_2)
-        assert_equal(allocation.amount_charged(), 3)
+        assert_equal(allocation.amount_charged(recalculate=True), 3)
 
     def test_amount_available (self):
         allocation = Allocation(None, None, 0, None, None)
@@ -223,28 +223,28 @@ class TestAllocation (BaseTester):
         hold_1.amount = 1
         hold_1.active = True
         allocation.holds.append(hold_1)
-        assert_equal(allocation.amount_available(), 9)
+        assert_equal(allocation.amount_available(recalculate=True), 9)
         hold_2 = Mock(['amount', 'active'])
         hold_2.amount = 2
         hold_2.active = True
         allocation.holds.append(hold_2)
-        assert_equal(allocation.amount_available(), 7)
+        assert_equal(allocation.amount_available(recalculate=True), 7)
         hold_1.active = False
-        assert_equal(allocation.amount_available(), 8)
+        assert_equal(allocation.amount_available(recalculate=True), 8)
         hold_2.active = False
-        assert_equal(allocation.amount_available(), 10)
+        assert_equal(allocation.amount_available(recalculate=True), 10)
         charge_1 = Mock(['effective_amount'])
         charge_1.effective_amount = Mock(return_value=1)
         allocation.charges.append(charge_1)
-        assert_equal(allocation.amount_available(), 9)
+        assert_equal(allocation.amount_available(recalculate=True), 9)
         charge_2 = Mock(['effective_amount'])
         charge_2.effective_amount = Mock(return_value=2)
         allocation.charges.append(charge_2)
-        assert_equal(allocation.amount_available(), 7)
+        assert_equal(allocation.amount_available(recalculate=True), 7)
         charge_3 = Mock(['effective_amount'])
         charge_3.effective_amount = Mock(return_value=8)
         allocation.charges.append(charge_3)
-        assert_equal(allocation.amount_available(), 0)
+        assert_equal(allocation.amount_available(recalculate=True), 0)
 
 
 class TestHold (BaseTester):
