@@ -3,3 +3,4 @@
 /build
 ez_setup.py
 dist
+cbank.sqlite
